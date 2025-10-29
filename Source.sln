@@ -1,0 +1,77 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36518.9
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "[CAP] Chat Interactive", "[CAP] Chat Interactive\[CAP] Chat Interactive.csproj", "{931E9D4D-3A8D-4B9F-8B45-55CB9267242A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "About", "About", "{0083D6CE-282C-4E30-BECE-19D430116E62}"
+	ProjectSection(SolutionItems) = preProject
+		..\About\about.xml = ..\About\about.xml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Def", "Def", "{BAF1F8E2-D0F1-41F4-8A1F-D3E0A079B5CF}"
+	ProjectSection(SolutionItems) = preProject
+		..\Defs\GameComponentDefs.xml = ..\Defs\GameComponentDefs.xml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AddonDefs", "AddonDefs", "{C453C835-CD10-4ECE-BC3E-283FF251DBD4}"
+	ProjectSection(SolutionItems) = preProject
+		..\Defs\AddonDefs\ChatInteractiveAddon.xml = ..\Defs\AddonDefs\ChatInteractiveAddon.xml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MainButtons", "MainButtons", "{49C15348-3D46-45F9-A09E-7959EC3BEFC1}"
+	ProjectSection(SolutionItems) = preProject
+		..\Defs\MainButtons\ChatInteractiveMainButton.xml = ..\Defs\MainButtons\ChatInteractiveMainButton.xml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Commands", "Commands", "{793A7750-82A5-422A-91B2-ED7339186BA9}"
+	ProjectSection(SolutionItems) = preProject
+		..\Defs\Commands\Commands.xml = ..\Defs\Commands\Commands.xml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misc", "Misc", "{79FF489B-5D9F-49E1-A04D-AF5034BAFA9A}"
+	ProjectSection(SolutionItems) = preProject
+		..\Defs\Misc\Letters.xml = ..\Defs\Misc\Letters.xml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WeatherDef", "WeatherDef", "{07153523-D502-4C06-863F-995F5503835A}"
+	ProjectSection(SolutionItems) = preProject
+		..\Defs\WeatherDefs\CAPWeathers.xml = ..\Defs\WeatherDefs\CAPWeathers.xml
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "[CAP] HAR Patch", "[CAP] HAR Patch\[CAP] HAR Patch.csproj", "{6A6186C9-4DC4-4098-B598-BAACF789CE32}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{931E9D4D-3A8D-4B9F-8B45-55CB9267242A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{931E9D4D-3A8D-4B9F-8B45-55CB9267242A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{931E9D4D-3A8D-4B9F-8B45-55CB9267242A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{931E9D4D-3A8D-4B9F-8B45-55CB9267242A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6A6186C9-4DC4-4098-B598-BAACF789CE32}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A6186C9-4DC4-4098-B598-BAACF789CE32}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A6186C9-4DC4-4098-B598-BAACF789CE32}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A6186C9-4DC4-4098-B598-BAACF789CE32}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0083D6CE-282C-4E30-BECE-19D430116E62} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{BAF1F8E2-D0F1-41F4-8A1F-D3E0A079B5CF} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{C453C835-CD10-4ECE-BC3E-283FF251DBD4} = {BAF1F8E2-D0F1-41F4-8A1F-D3E0A079B5CF}
+		{49C15348-3D46-45F9-A09E-7959EC3BEFC1} = {BAF1F8E2-D0F1-41F4-8A1F-D3E0A079B5CF}
+		{793A7750-82A5-422A-91B2-ED7339186BA9} = {BAF1F8E2-D0F1-41F4-8A1F-D3E0A079B5CF}
+		{79FF489B-5D9F-49E1-A04D-AF5034BAFA9A} = {BAF1F8E2-D0F1-41F4-8A1F-D3E0A079B5CF}
+		{07153523-D502-4C06-863F-995F5503835A} = {BAF1F8E2-D0F1-41F4-8A1F-D3E0A079B5CF}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0130A430-4ED0-4CF4-A387-6AFDCFF9326F}
+	EndGlobalSection
+EndGlobal

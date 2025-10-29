@@ -1,0 +1,62 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>CAP_ChatInteractive.Patch.HAR</RootNamespace>
+    <OutputPath>C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\[CAP] Chat Interactive\1.6\Patches\HAR\Assemblies</OutputPath>
+    <DebugType>none</DebugType>
+    <CopyLocal>False</CopyLocal>
+    <LangVersion>10</LangVersion>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.4566" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\[CAP] Chat Interactive\[CAP] Chat Interactive.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="AlienRace">
+      <HintPath>..\..\..\..\..\..\workshop\content\294100\839005762\1.6\Assemblies\AlienRace.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Update="System">
+      <Private>False</Private>
+    </Reference>
+    <Reference Update="System.Core">
+      <Private>False</Private>
+    </Reference>
+    <Reference Update="System.Data">
+      <Private>False</Private>
+    </Reference>
+    <Reference Update="System.Drawing">
+      <Private>False</Private>
+    </Reference>
+    <Reference Update="System.IO.Compression.FileSystem">
+      <Private>False</Private>
+    </Reference>
+    <Reference Update="System.Numerics">
+      <Private>False</Private>
+    </Reference>
+    <Reference Update="System.Runtime.Serialization">
+      <Private>False</Private>
+    </Reference>
+    <Reference Update="System.Xml">
+      <Private>False</Private>
+    </Reference>
+    <Reference Update="System.Xml.Linq">
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

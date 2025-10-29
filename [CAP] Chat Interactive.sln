@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36518.9
+MinimumVisualStudioVersion = 10.0.40219.1
+Project(...) = "Source", "[CAP] Chat Interactive.csproj", "{0AB8EBE0-F761-4225-AD1F-18EA6AB3D6FB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0AB8EBE0-F761-4225-AD1F-18EA6AB3D6FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0AB8EBE0-F761-4225-AD1F-18EA6AB3D6FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0AB8EBE0-F761-4225-AD1F-18EA6AB3D6FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0AB8EBE0-F761-4225-AD1F-18EA6AB3D6FB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C97F86F7-492C-4975-AA97-CDCBDD818F5C}
+	EndGlobalSection
+EndGlobal

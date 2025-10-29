@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <RootNamespace>_CAP__Chat_Interactive</RootNamespace>
+    <OutputPath>..\Assemblies\</OutputPath>
+    <DebugType>none</DebugType>
+    <CopyLocal>False</CopyLocal>
+    <LangVersion>10</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.70.0.3847" />
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.4566" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="TwitchLib.Client" Version="3.4.0" />
+  </ItemGroup>
+</Project>
