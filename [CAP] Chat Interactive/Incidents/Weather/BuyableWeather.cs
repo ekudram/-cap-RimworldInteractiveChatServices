@@ -30,7 +30,6 @@ namespace CAP_ChatInteractive.Incidents
             ModSource = weatherDef.modContentPack?.Name ?? "RimWorld";
 
             SetDefaultPricing(weatherDef);
-            Logger.Debug($"Created weather: {DefName}, Label: {Label}, Cost: {BaseCost}");
         }
 
         private void SetDefaultPricing(WeatherDef weatherDef)

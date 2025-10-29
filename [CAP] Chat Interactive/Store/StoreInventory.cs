@@ -30,7 +30,6 @@ namespace CAP_ChatInteractive.Store
                 if (!LoadStoreFromJson())
                 {
                     // If no JSON exists, create default store
-                    Logger.Debug("No store JSON found, creating default store...");
                     CreateDefaultStore();
                     SaveStoreToJson();
                 }
@@ -60,8 +59,6 @@ namespace CAP_ChatInteractive.Store
                 {
                     AllStoreItems[kvp.Key] = kvp.Value;
                 }
-
-                Logger.Debug($"Loaded {AllStoreItems.Count} items from JSON");
                 return true;
             }
             catch (System.Exception e)
@@ -73,12 +70,9 @@ namespace CAP_ChatInteractive.Store
 
         private static void CreateDefaultStore()
         {
-
-            TestSpecificItems();
             AllStoreItems.Clear();
 
             var tradeableItems = GetDefaultTradeableItems().ToList();
-            Logger.Debug($"Processing {tradeableItems.Count} tradeable items into store items");
 
             int itemsCreated = 0;
             foreach (var thingDef in tradeableItems)
@@ -94,7 +88,6 @@ namespace CAP_ChatInteractive.Store
                         // Log every 100 items to see progress
                         if (itemsCreated % 100 == 0)
                         {
-                            Logger.Debug($"Created {itemsCreated} store items so far...");
                         }
                     }
                 }
@@ -104,14 +97,7 @@ namespace CAP_ChatInteractive.Store
                 }
             }
 
-            Logger.Debug($"Created default store with {AllStoreItems.Count} items");
-
-            // Log some final examples
-            if (AllStoreItems.Count > 0)
-            {
-                var finalExamples = AllStoreItems.Take(5).Select(kvp => $"{kvp.Key} (Price: {kvp.Value.BasePrice})");
-                Logger.Debug($"Final store examples: {string.Join(", ", finalExamples)}");
-            }
+            Logger.Message($"Created store with {AllStoreItems.Count} items");
         }
 
         private static void ValidateAndUpdateStore()
@@ -142,12 +128,10 @@ namespace CAP_ChatInteractive.Store
                     {
                         existingItem.Category = "Mechs";
                         updatedCategories++;
-                        Logger.Debug($"Renamed category for {thingDef.defName}: Animal -> Mechs");
                     }
                     // Check if category needs updating (if Def category changed)
                     else if (existingItem.Category != tempStoreItem.Category)
                     {
-                        Logger.Debug($"Updating category for {thingDef.defName}: {existingItem.Category} -> {tempStoreItem.Category}");
                         existingItem.Category = tempStoreItem.Category;
                         updatedCategories++;
                     }
@@ -159,7 +143,6 @@ namespace CAP_ChatInteractive.Store
                         existingItem.QuantityLimit = baseStack;
                         existingItem.LimitMode = QuantityLimitMode.OneStack;
                         existingItem.HasQuantityLimit = true;
-                        Logger.Debug($"Fixed quantity limit for {thingDef.defName}: {existingItem.QuantityLimit}");
                         updatedQuantityLimits++;
                     }
                 }
@@ -190,15 +173,13 @@ namespace CAP_ChatInteractive.Store
                 if (updatedQuantityLimits > 0) changes.Append($" {updatedQuantityLimits} quantity limits fixed");
                 if (updatedCategories > 0) changes.Append($" {updatedCategories} categories updated");
 
-                Logger.Debug(changes.ToString());
+                Logger.Message(changes.ToString());
                 SaveStoreToJson(); // Save changes
             }
         }
 
         private static IEnumerable<ThingDef> GetDefaultTradeableItems()
         {
-            Logger.Debug("Searching for tradeable items...");
-
             List<ThingDef> allThingDefs;
             try
             {
@@ -209,8 +190,6 @@ namespace CAP_ChatInteractive.Store
                 Logger.Error($"Error accessing ThingDef database: {ex.Message}");
                 return new List<ThingDef>();
             }
-
-            Logger.Debug($"Total ThingDefs in database: {allThingDefs.Count}");
 
             var tradeableItems = allThingDefs
                 .Where(t =>
@@ -229,8 +208,6 @@ namespace CAP_ChatInteractive.Store
                 })
                 .ToList();
 
-            Logger.Debug($"Found {tradeableItems.Count} tradeable items");
-
             return tradeableItems;
         }
 
@@ -246,7 +223,6 @@ namespace CAP_ChatInteractive.Store
                     {
                         string jsonContent = JsonFileManager.SerializeStoreItems(AllStoreItems);
                         JsonFileManager.SaveFile("StoreItems.json", jsonContent);
-                        Logger.Debug("Store JSON saved successfully");
                     }
                     catch (System.Exception e)
                     {
@@ -275,39 +251,6 @@ namespace CAP_ChatInteractive.Store
         {
             Find.WindowStack.Add(new Dialog_QualityResearchSettings());
         }
-        private static void DebugThingDefProperties(ThingDef thingDef)
-        {
-            Logger.Debug($"ThingDef: {thingDef.defName}");
-            Logger.Debug($"  Tradeability: {thingDef.tradeability}");
-            Logger.Debug($"  BaseMarketValue: {thingDef.BaseMarketValue}");
-            Logger.Debug($"  FirstCategory: {thingDef.FirstThingCategory?.defName ?? "None"}");
-            Logger.Debug($"  IsCorpse: {thingDef.IsCorpse}");
-            Logger.Debug($"  IsBlueprint: {thingDef.IsBlueprint}");
-            Logger.Debug($"  IsFrame: {thingDef.IsFrame}");
-            // Logger.Debug($"  abstractDef: {thingDef.abstractDef}");
-            Logger.Debug($"  Building: {thingDef.building != null}");
-            Logger.Debug($"  Minifiable: {thingDef.Minifiable}");
-            Logger.Debug($"  Race: {thingDef.race != null}");
-        }
-        private static void TestSpecificItems()
-        {
-            var testDefNames = new[] { "MealSimple", "WoodLog", "Steel", "Pemmican", "MedicineHerbal" };
-
-            foreach (var defName in testDefNames)
-            {
-                var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(defName);
-                if (thingDef != null)
-                {
-                    Logger.Debug($"Testing {defName}:");
-                    DebugThingDefProperties(thingDef);
-                }
-                else
-                {
-                    Logger.Debug($"Could not find {defName} in DefDatabase");
-                }
-            }
-        }
-
     }
     public static class ThingDefExtensions
     {

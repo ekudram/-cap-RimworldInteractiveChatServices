@@ -45,19 +45,13 @@ namespace CAP_ChatInteractive
 
         private void RegisterDefCommands()
         {
-            Logger.Debug("Registering commands from Defs...");
-
             var defs = DefDatabase<ChatCommandDef>.AllDefsListForReading;
-            Logger.Debug($"Found {defs.Count} command defs in database");
 
             // Register all ChatCommandDefs with the processor
             foreach (var commandDef in defs)
             {
-                Logger.Debug($"Processing command def: {commandDef.defName} -> {commandDef.commandText}");
                 commandDef.RegisterCommand();
             }
-
-            Logger.Debug($"Registered {defs.Count} commands from Defs");
         }
     }
 }

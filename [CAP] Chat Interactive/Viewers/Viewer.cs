@@ -54,7 +54,6 @@ namespace CAP_ChatInteractive
             {
                 // Always use lowercase for consistency
                 string platformKey = platform.ToLowerInvariant();
-                // Logger.Debug($"Adding platform ID: {platformKey} -> {userId} for user {Username}");
                 PlatformUserIds[platformKey] = userId;
             }
             else
@@ -175,7 +174,6 @@ namespace CAP_ChatInteractive
 
         public void UpdateFromMessage(ChatMessageWrapper message)
         {
-            // Logger.Debug($"Updating viewer {Username} from message on {message.Platform}");
             UpdateActivity();
 
             // Add platform user ID if available
@@ -255,49 +253,8 @@ namespace CAP_ChatInteractive
 
                     // YouTube doesn't have a direct VIP equivalent
                     // You could track this manually or use custom logic
-
-                    // Logger.Debug($"YouTube roles for {Username}: Moderator={IsModerator}, Broadcaster={IsBroadcaster}, Sponsor={IsSubscriber}");
                 }
             }
-        }
-
-        public void AssignPawn(Pawn pawn)
-        {
-            // Store pawn reference - you might want to store the pawn's ThingID or other identifier
-            this.AssignedPawnId = pawn.ThingID;
-
-            // Save viewer data to persist the assignment
-            Viewers.SaveViewers();
-        }
-        //public Pawn GetAssignedPawn()
-        //{
-        //    if (string.IsNullOrEmpty(AssignedPawnId))
-        //        return null;
-
-        //    return FindPawnByThingId(AssignedPawnId);
-        //}
-
-        private static Pawn FindPawnByThingId(string thingId)
-        {
-            if (string.IsNullOrEmpty(thingId))
-                return null;
-
-            // Search all maps for the pawn
-            foreach (var map in Find.Maps)
-            {
-                foreach (var pawn in map.mapPawns.AllPawns)
-                {
-                    if (pawn.ThingID == thingId)
-                        return pawn;
-                }
-            }
-
-            // Also check world pawns
-            var worldPawn = Find.WorldPawns.AllPawnsAlive.FirstOrDefault(p => p.ThingID == thingId);
-            if (worldPawn != null)
-                return worldPawn;
-
-            return null;
         }
     }
 }

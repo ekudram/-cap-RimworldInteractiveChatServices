@@ -178,8 +178,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return HandleMyPawnCommand(user);
             }
 
-            Logger.Debug($"Pawn purchase args: [{string.Join(", ", args)}]");
-
             // Parse arguments with better logic
             string raceName = "";
             string xenotypeName = "Baseliner";
@@ -199,25 +197,21 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                     if (arg == "male" || arg == "female")
                     {
                         genderName = arg;
-                        Logger.Debug($"Detected gender: {genderName}");
                     }
                     // Check if argument is an age (numeric)
                     else if (int.TryParse(arg, out int age))
                     {
                         ageString = age.ToString();
-                        Logger.Debug($"Detected age: {ageString}");
                     }
                     // Check if argument is "random" for age
                     else if (arg == "random")
                     {
                         ageString = "Random";
-                        Logger.Debug($"Detected random age");
                     }
                     // Otherwise, assume it's a xenotype
                     else
                     {
                         xenotypeName = args[i]; // Keep original casing for xenotype lookup
-                        Logger.Debug($"Detected xenotype: {xenotypeName}");
                     }
                 }
             }
@@ -240,8 +234,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         private string HandleMyPawnCommand(ChatMessageWrapper user)
         {
-            var viewer = Viewers.GetViewer(user.Username);
-            var pawn = viewer.GetAssignedPawn();
+            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+            var pawn = assignmentManager.GetAssignedPawn(user.Username);
 
             if (pawn != null && !pawn.Dead)
             {
@@ -253,8 +247,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             else
             {
                 // Clear the assignment if pawn is dead
-                viewer.AssignedPawnId = null;
-                Viewers.SaveViewers();
+                assignmentManager.UnassignPawn(user.Username);
                 return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
             }
         }
@@ -453,7 +446,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             // Get command settings
             var settingsCommand = GetCommandSettings();
 
-            Logger.Debug($"Event command executed by {user.Username} with args: [{string.Join(", ", args)}]");
             if (args.Length == 0)
             {
                 return "Usage: !event <type> [options]. Types: weather, raid, animal, trader. Example: !event weather rain";
@@ -528,8 +520,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            Logger.Debug($"Weather command executed by {user.Username} with args: [{string.Join(", ", args)}]");
-
             // Check if command is enabled
             if (!IsEnabled())
             {
@@ -715,8 +705,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             // Get command settings
             var settingsCommand = GetCommandSettings();
 
-            Logger.Debug($"MyPawn command executed by {user.Username} with args: [{string.Join(", ", args)}]");
-
             if (args.Length == 0)
             {
                 return ShowMyPawnHelp();
@@ -852,8 +840,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 }
             }
 
-            Logger.Debug($"Parsed - Type: {raidType}, Strategy: {strategy}, Wager: {wager}");
-
             // Check if this specific raid type is allowed
             if (!validRaidTypes.Contains(raidType))
             {
@@ -945,129 +931,4 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
-    public class RaidDebugStrategies : ChatCommand
-    {
-        public override string Name => "raidstrategies";
-        public override string Description => "Debug command to list available raid strategies";
-        public override string PermissionLevel => "moderator";
-        public override int CooldownSeconds
-        {
-            get
-            {
-                var settings = GetCommandSettings();
-                return settings?.CooldownSeconds ?? 0;
-            }
-        }
-        public override string Execute(ChatMessageWrapper user, string[] args)
-        {
-            try
-            {
-                var results = new System.Text.StringBuilder();
-                results.AppendLine("=== RAID STRATEGIES DEBUG ===");
-
-                var allStrategies = DefDatabase<RaidStrategyDef>.AllDefsListForReading;
-
-                results.AppendLine($"Total Raid Strategies: {allStrategies.Count}");
-                results.AppendLine();
-
-                foreach (var strategy in allStrategies)
-                {
-                    results.AppendLine($"Strategy: {strategy.defName}");
-                    results.AppendLine($"  Label: {strategy.label}");
-                    results.AppendLine($"  Worker: {strategy.Worker?.GetType().Name ?? "None"}");
-                    results.AppendLine($"  Arrival Modes: {string.Join(", ", strategy.arriveModes?.Select(m => m.defName) ?? new List<string>())}");
-                    results.AppendLine($"  Points Factor Curve: {strategy.pointsFactorCurve != null}");
-                    results.AppendLine($"  Selection Weight per Points Curve: {strategy.selectionWeightPerPointsCurve != null}");
-                    results.AppendLine();
-                }
-
-                Logger.Debug(results.ToString());
-                return $"Found {allStrategies.Count} raid strategies. Check logs for details.";
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Raid strategies debug error: {ex}");
-                return $"Debug error: {ex.Message}";
-            }
-        }
-    }
-
-    public class RaidDebug : ChatCommand
-    {
-        public override string Name => "raiddebug";
-        public override string Description => "Debug command to explore raid incidents";
-        public override string PermissionLevel => "moderator"; // Keep this restricted for debugging
-        public override int CooldownSeconds
-        {
-            get
-            {
-                var settings = GetCommandSettings();
-                return settings?.CooldownSeconds ?? 0;
-            }
-        }
-        public override string Execute(ChatMessageWrapper user, string[] args)
-        {
-            try
-            {
-                var results = new System.Text.StringBuilder();
-                results.AppendLine("=== RAID INCIDENT DEBUG INFO ===");
-
-                // Get all incident defs
-                var allIncidents = DefDatabase<IncidentDef>.AllDefsListForReading;
-                var raidIncidents = allIncidents.Where(inc => IsRaidIncident(inc)).ToList();
-
-                results.AppendLine($"Total Incidents: {allIncidents.Count}");
-                results.AppendLine($"Raid Incidents: {raidIncidents.Count}");
-
-                // List raid incidents with details
-                foreach (var raid in raidIncidents.Take(10)) // Limit output
-                {
-                    results.AppendLine($"\nRaid: {raid.defName}");
-                    results.AppendLine($"  Label: {raid.label}");
-                    results.AppendLine($"  Category: {raid.category?.defName ?? "None"}");
-                    results.AppendLine($"  Worker: {raid.Worker?.GetType().Name ?? "None"}");
-                    results.AppendLine($"  Points Scaleable: {raid.pointsScaleable}");
-                    results.AppendLine($"  Min Points: {raid.minThreatPoints}");
-                    results.AppendLine($"  Max Points: {raid.maxThreatPoints}");
-                    results.AppendLine($"  Base Chance: {raid.baseChance}");
-
-                    // Check for specific raid types
-                    if (raid.defName.Contains("Drop"))
-                        results.AppendLine($"  Type: Drop Pod Raid");
-                    else if (raid.defName.Contains("Siege"))
-                        results.AppendLine($"  Type: Siege");
-                    else if (raid.defName.Contains("Mechanoid"))
-                        results.AppendLine($"  Type: Mechanoid");
-                    else
-                        results.AppendLine($"  Type: Standard Edge Walk-in");
-                }
-
-                if (raidIncidents.Count > 10)
-                    results.AppendLine($"\n... and {raidIncidents.Count - 10} more raid types");
-
-                Logger.Debug(results.ToString());
-                return $"Raid debug info logged. Found {raidIncidents.Count} raid types. Check logs for details.";
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Raid debug error: {ex}");
-                return $"Debug error: {ex.Message}";
-            }
-        }
-
-        private bool IsRaidIncident(IncidentDef incident)
-        {
-            if (incident.Worker == null) return false;
-
-            string workerName = incident.Worker.GetType().Name.ToLower();
-            string defName = incident.defName.ToLower();
-            string category = incident.category?.defName?.ToLower() ?? "";
-
-            return workerName.Contains("raid") ||
-                   defName.Contains("raid") ||
-                   category.Contains("raid") ||
-                   defName.Contains("manhunter") || // Manhunter packs are raid-like
-                   defName.Contains("infestation"); // Infestations are raid-like
-        }
-    }
 }

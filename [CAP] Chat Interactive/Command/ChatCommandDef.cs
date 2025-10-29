@@ -60,7 +60,6 @@ namespace CAP_ChatInteractive
         {
             if (!enabled)
             {
-                Logger.Debug($"Skipping registration of disabled command: {commandText}");
                 return;
             }
 
@@ -79,8 +78,6 @@ namespace CAP_ChatInteractive
                     // we can create a wrapper that uses the Def values
                     var wrappedCommand = new DefBasedChatCommand(this, commandInstance);
                     ChatCommandProcessor.RegisterCommand(wrappedCommand);
-
-                    Logger.Debug($"Registered command: {commandText} -> {commandClass.Name}");
                 }
                 else
                 {

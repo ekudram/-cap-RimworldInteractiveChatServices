@@ -43,7 +43,6 @@ namespace CAP_ChatInteractive
 
         private static bool IsCommand(string message)
         {
-            Logger.Debug($"Checking if message is command: {message}");
             if (string.IsNullOrEmpty(message)) return false;
 
             var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
@@ -56,7 +55,6 @@ namespace CAP_ChatInteractive
             // Fast exit: Empty message
             if (string.IsNullOrEmpty(message.Message))
             {
-                Logger.Debug("Empty message received, skipping");
                 return;
             }
 
@@ -73,8 +71,6 @@ namespace CAP_ChatInteractive
             var commandText = parts[0];
             var args = parts.Skip(1).ToArray();
 
-            Logger.Debug($"Raw command text: '{commandText}'");  // Debug log
-
             // Prefix check (already have this)
             var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings as CAPGlobalChatSettings;
             if (commandText.StartsWith(globalSettings.Prefix) ||
@@ -84,19 +80,15 @@ namespace CAP_ChatInteractive
             }
             else
             {
-                Logger.Debug($"Message '{message.Message}' doesn't match prefixes, skipping");
                 return;
             }
 
-            Logger.Debug($"Raw command text: '{commandText}'");  // Debug log after prefix removal?
 
             commandText = commandText.ToLowerInvariant();
-            Logger.Debug($"Available commands in dictionary: {string.Join(", ", _commands.Keys)}");
 
             // Fast exit: Unknown command
             if (!_commands.TryGetValue(commandText, out var command))
             {
-                Logger.Debug($"Unknown command: {commandText}");
                 SendMessageToUser(message, $"Unknown command: {commandText}. Type {globalSettings.Prefix}help for available commands.");
                 return;
             }
@@ -178,8 +170,6 @@ namespace CAP_ChatInteractive
             if (onCooldown)
             {
                 var remaining = TimeSpan.FromSeconds(command.CooldownSeconds) - (DateTime.Now - lastUsed);
-                Logger.Debug($"Cooldown check for {username}_{command.Name}: {onCooldown} (Cooldown: {command.CooldownSeconds}s)");
-                Logger.Debug($"Time remaining: {remaining.TotalSeconds:F0}s");
             }
             return onCooldown;
         }

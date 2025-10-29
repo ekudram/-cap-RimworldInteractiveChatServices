@@ -41,8 +41,6 @@ namespace CAP_ChatInteractive.Traits
             // Use the degree-specific label if available, otherwise use trait def label
             Name = degreeData?.label?.CapitalizeFirst() ?? traitDef.LabelCap;
 
-            Logger.Debug($"Creating trait: DefName={traitDef.defName}, Degree={degreeData?.degree}, Name={Name}");
-
             // Replace [PAWN_nameDef] with [PAWN_name] in description
             Description = (degreeData?.description ?? traitDef.description)?.Replace("[PAWN_nameDef]", "[PAWN_name]");
 
@@ -69,13 +67,10 @@ namespace CAP_ChatInteractive.Traits
                     }
                 }
             }
-
             ModSource = traitDef.modContentPack?.Name ?? "RimWorld";
 
             // Set default prices based on trait impact
             SetDefaultPrices(traitDef, degreeData);
-
-            DebugTraits(); // Call debug method to log specific traits
         }
 
         private void SetDefaultPrices(TraitDef traitDef, TraitDegreeData degreeData)
@@ -170,23 +165,5 @@ namespace CAP_ChatInteractive.Traits
 
             return description;
         }
-
-        private void DebugTraits()
-        {
-            var beautyTraits = TraitsManager.AllBuyableTraits.Values
-                .Where(t => t.DefName.Contains("Beauty"))
-                .ToList();
-
-            foreach (var trait in beautyTraits)
-            {
-                Logger.Debug($"Beauty Trait - Key: {GetTraitKey(trait)}, DefName: {trait.DefName}, Name: {trait.Name}, Degree: {trait.Degree}");
-            }
-        }
-
-        private string GetTraitKey(BuyableTrait trait)
-        {
-            return TraitsManager.AllBuyableTraits.FirstOrDefault(x => x.Value == trait).Key;
-        }
-
     }
 }

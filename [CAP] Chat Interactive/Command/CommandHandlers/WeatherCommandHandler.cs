@@ -73,7 +73,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // Logging current map count and game state
-                Logger.Debug($"Current game state: {Current.ProgramState}, Map count: {Current.Game?.Maps?.Count ?? 0}");
 
                 bool success = false;
                 string resultMessage = "";
@@ -164,8 +163,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static bool TriggerSimpleWeather(BuyableWeather weather, string username, out string immersiveMessage)
         {
             immersiveMessage = "";
-            Logger.Debug($"TriggerSimpleWeather: Looking for weather def '{weather.DefName}'");
-
+            
             var weatherDef = DefDatabase<WeatherDef>.GetNamedSilentFail(weather.DefName);
             if (weatherDef == null)
             {
@@ -174,10 +172,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return false;
             }
 
-            Logger.Debug($"Found weather def: {weatherDef.defName}, label: {weatherDef.label}");
-
             var playerMaps = Current.Game.Maps.Where(map => map.IsPlayerHome).ToList();
-            Logger.Debug($"Found {playerMaps.Count} player home maps");
 
             var suitableMaps = playerMaps
                 .Where(map => map.weatherManager.curWeather != weatherDef)
@@ -189,11 +184,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return false;
             }
 
-            Logger.Debug($"Found {suitableMaps.Count} maps that don't already have this weather");
 
             // Apply weather to a random suitable map
             var targetMap = suitableMaps.RandomElement();
-            Logger.Debug($"Selected map: {targetMap}, current weather: {targetMap.weatherManager.curWeather?.defName}");
 
             if (!IsBiomeValidForWeather(targetMap))
             {
@@ -201,14 +194,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return false;
             }
 
-
             // Check for temperature-based conversions
             var finalWeatherDef = GetTemperatureAdjustedWeather(weatherDef, targetMap, out string conversionMessage);
-            Logger.Debug($"Final weather to apply: {finalWeatherDef.defName}");
 
             // Actually change the weather
             targetMap.weatherManager.TransitionTo(finalWeatherDef);
-            Logger.Debug($"Weather transition completed. New weather: {targetMap.weatherManager.curWeather?.defName}");
 
             // Build immersive message
             if (finalWeatherDef != weatherDef)
@@ -306,7 +296,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Check biome validity first
                 if (!IsBiomeValidForWeather(map))
                 {
-                    Logger.Debug($"Skipping map {map} - invalid biome for weather: {map.Biome?.defName}");
                     continue; // Skip to next map instead of failing completely
                 }
 
@@ -322,7 +311,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     bool executed = worker.TryExecute(parms);
                     if (executed)
                     {
-                        Logger.Debug($"Triggered game condition {weather.Label} on map {map} for {username}");
                         immersiveMessage = GetGameConditionMessage(weather);
                         return true;
                     }

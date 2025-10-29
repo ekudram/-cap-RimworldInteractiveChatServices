@@ -1,4 +1,4 @@
-﻿// Create new file: IncidentWorker_CallForAid.cs
+﻿// IncidentWorker_CallForAid.cs
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -8,8 +8,6 @@ using Verse;
 
 namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
-    // Updated IncidentWorker_CallForAid.cs
-    // Updated IncidentWorker_CallForAid.cs
     public class IncidentWorker_CallForAid : IncidentWorker_RaidFriendly
     {
         private bool _letterSent = false;

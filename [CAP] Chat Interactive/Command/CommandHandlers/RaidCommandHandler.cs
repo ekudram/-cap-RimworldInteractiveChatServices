@@ -138,8 +138,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         bool executed = raidConfig.IncidentWorker.TryExecute(raidConfig.Params);
                         if (executed)
                         {
-                            Logger.Debug($"Raid triggered successfully for {username} on map {map}");
-
                             // Build better description
                             string description = BuildRaidDescription(raidConfig, raidType);
 
@@ -152,10 +150,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                 raidConfig.Strategy
                             );
                         }
-                    }
-                    else
-                    {
-                        Logger.Debug($"Raid cannot fire now on map {map} with params: {raidConfig.Params}");
                     }
                 }
                 catch (Exception ex)
@@ -232,7 +226,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (raidType.ToLower() == "mechcluster" && !HasRoyaltyDLC)
             {
                 // This shouldn't happen due to earlier validation, but just in case
-                Logger.Debug($"Mech cluster not available, falling back to standard mech raid");
                 raidType = "mech";
             }
 
@@ -242,7 +235,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                   // Mech clusters from Royalty DLC can siege since they drop with built structures
                 if (HasRoyaltyDLC)
                 {
-                    Logger.Debug($"Mech cluster using siege strategy - they arrive with built structures");
                     // Allow mech clusters to use siege - they drop with turrets and buildings
                     raidType = "mechcluster";
                     strategy = null;
@@ -250,7 +242,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 else if (!HasRoyaltyDLC)
                 {
                     // This shouldn't happen due to earlier validation, but just in case
-                    Logger.Debug($"Mech cluster not available, falling back to immediate attack");
                     raidType = "mech";
                     strategy = "immediate";  // get random strategy ??
                 }
@@ -275,12 +266,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     // Ensure strategy is compatible with drop mode
                     if (parms.raidStrategy != null && !IsStrategyCompatibleWithArrival(parms.raidStrategy, dropResult.Mode))
                     {
-                        Logger.Debug($"Strategy {parms.raidStrategy.defName} incompatible with {dropResult.Mode.defName}, falling back to ImmediateAttack");
                         parms.raidStrategy = RaidStrategyDefOf.ImmediateAttack;
                         config.Strategy = RaidStrategyDefOf.ImmediateAttack;
                     }
-
-                    Logger.Debug($"Using {dropResult.Mode.defName} with {dropResult.PointMultiplier:P0} point multiplier");
                     break;
 
                 case "dropcenter":
@@ -288,7 +276,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     config.IncidentWorker = new IncidentWorker_RaidEnemy();
                     config.IncidentWorker.def = IncidentDefOf.RaidEnemy;
                     parms.points *= 0.85f; // Significant reduction for deadliest type
-                    Logger.Debug("Using CenterDrop (deadliest) with 85% points");
                     break;
 
                 case "dropedge":
@@ -296,7 +283,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     config.IncidentWorker = new IncidentWorker_RaidEnemy();
                     config.IncidentWorker.def = IncidentDefOf.RaidEnemy;
                     parms.points *= 1.1f; // Increase for easier type
-                    Logger.Debug("Using EdgeDrop (easier) with 110% points");
                     break;
 
                 case "dropchaos":
@@ -304,7 +290,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     config.IncidentWorker = new IncidentWorker_RaidEnemy();
                     config.IncidentWorker.def = IncidentDefOf.RaidEnemy;
                     parms.points *= 1.0f; // No adjustment - chaotic but unpredictable
-                    Logger.Debug("Using RandomDrop (chaotic) with 100% points");
                     break;
 
                 case "dropgroups":
@@ -312,7 +297,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     config.IncidentWorker = new IncidentWorker_RaidEnemy();
                     config.IncidentWorker.def = IncidentDefOf.RaidEnemy;
                     parms.points *= 1.2f; // Increase for easiest type
-                    Logger.Debug("Using EdgeDropGroups (easiest) with 120% points");
                     break;
 
                 case "manhunter":
@@ -432,9 +416,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             var selectedOption = dropOptions.RandomElementByWeight(opt => opt.Weight);
 
-            Logger.Debug($"Random drop selected: {selectedOption.Description} " +
-                         $"(Weight: {selectedOption.Weight}, Multiplier: {selectedOption.PointMultiplier})");
-
             return new DropResult
             {
                 Mode = selectedOption.Mode,
@@ -476,7 +457,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             else
             {
                 // Fallback to standard mech raid if cluster not available
-                Logger.Debug("MechCluster incident not found, falling back to standard mech raid");
                 return ConfigureMechRaid(parms, map, strategy);
             }
 
@@ -568,18 +548,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var strategyDef = DefDatabase<RaidStrategyDef>.GetNamedSilentFail(strategyName);
             if (strategyDef != null)
             {
-                Logger.Debug($"Found strategy by defName: {strategyDef.defName}");
                 return strategyDef;
             }
 
             // Try aliases
             if (StrategyAliases.TryGetValue(strategyName, out strategyDef))
             {
-                Logger.Debug($"Found strategy by alias '{strategyName}': {strategyDef?.defName ?? "null"}");
                 return strategyDef;
             }
 
-            Logger.Debug($"Unknown raid strategy: {strategyName}");
             return null;
         }
 

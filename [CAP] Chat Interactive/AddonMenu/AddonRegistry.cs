@@ -18,7 +18,7 @@ namespace CAP_ChatInteractive
                 .OrderBy(def => def.displayOrder)
                 .ToList();
 
-            Logger.Debug($"Loaded {AddonDefs.Count} addon defs");
+            // Logger.Debug($"Loaded {AddonDefs.Count} addon defs");
         }
 
         public static IAddonMenu GetMainMenu()

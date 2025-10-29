@@ -96,7 +96,6 @@ namespace CAP_ChatInteractive
             {
                 string json = JsonConvert.SerializeObject(commandSettings, Formatting.Indented);
                 JsonFileManager.SaveFile("CommandSettings.json", json);
-                Logger.Debug($"Saved command settings for {commandSettings.Count} commands");
             }
             catch (Exception ex)
             {

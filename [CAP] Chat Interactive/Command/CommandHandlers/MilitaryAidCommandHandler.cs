@@ -98,7 +98,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         bool executed = incident.TryExecute(parms);
                         if (executed && parms.faction != null)
                         {
-                            Logger.Debug($"Military aid triggered successfully for {username} on map {map}");
+                            // Logger.Debug($"Military aid triggered successfully for {username} on map {map}");
 
                             // For now, don't try to count - just indicate success
                             // The actual count might not be immediately available

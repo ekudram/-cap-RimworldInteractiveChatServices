@@ -27,11 +27,9 @@ namespace CAP_ChatInteractive.Incidents.Weather
             {
                 if (isInitialized) return;
 
-                Logger.Debug("Initializing Buyable Weather System...");
 
                 if (!LoadWeatherFromJson())
                 {
-                    Logger.Debug("No weather JSON found, creating default weather...");
                     CreateDefaultWeather();
                     SaveWeatherToJson();
                 }
@@ -62,13 +60,10 @@ namespace CAP_ChatInteractive.Incidents.Weather
                 {
                     AllBuyableWeather[kvp.Key] = kvp.Value;
                 }
-
-                Logger.Debug($"Loaded {AllBuyableWeather.Count} weather types from JSON");
                 return true;
             }
             catch (System.Exception e)
             {
-                Logger.Error($"Error loading weather JSON: {e.Message}");
                 return false;
             }
         }
@@ -78,7 +73,6 @@ namespace CAP_ChatInteractive.Incidents.Weather
             AllBuyableWeather.Clear();
 
             var allWeatherDefs = DefDatabase<WeatherDef>.AllDefs.ToList();
-            Logger.Debug($"Processing {allWeatherDefs.Count} weather definitions");
 
             int weatherCreated = 0;
             foreach (var weatherDef in allWeatherDefs)
@@ -101,8 +95,6 @@ namespace CAP_ChatInteractive.Incidents.Weather
                     Logger.Error($"Error creating buyable weather for {weatherDef.defName}: {ex.Message}");
                 }
             }
-
-            Logger.Debug($"Created default weather with {AllBuyableWeather.Count} entries");
         }
 
         private static bool IsWeatherSuitableForStore(WeatherDef weatherDef)
@@ -177,7 +169,6 @@ namespace CAP_ChatInteractive.Incidents.Weather
                     {
                         string jsonContent = JsonFileManager.SerializeWeather(AllBuyableWeather);
                         JsonFileManager.SaveFile("Weather.json", jsonContent);
-                        Logger.Debug("Weather JSON saved successfully");
                     }
                     catch (System.Exception e)
                     {

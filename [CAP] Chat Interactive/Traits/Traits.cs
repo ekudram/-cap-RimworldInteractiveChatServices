@@ -31,7 +31,6 @@ namespace CAP_ChatInteractive.Traits
 
                 if (!LoadTraitsFromJson())
                 {
-                    Logger.Debug("No traits JSON found, creating default traits...");
                     CreateDefaultTraits();
                     SaveTraitsToJson();
                 }
@@ -61,7 +60,6 @@ namespace CAP_ChatInteractive.Traits
                     AllBuyableTraits[kvp.Key] = kvp.Value;
                 }
 
-                Logger.Debug($"Loaded {AllBuyableTraits.Count} traits from JSON");
                 return true;
             }
             catch (System.Exception e)
@@ -76,7 +74,6 @@ namespace CAP_ChatInteractive.Traits
             AllBuyableTraits.Clear();
 
             var allTraitDefs = DefDatabase<TraitDef>.AllDefs.ToList();
-            Logger.Debug($"Processing {allTraitDefs.Count} trait definitions");
 
             int traitsCreated = 0;
             foreach (var traitDef in allTraitDefs)
@@ -106,20 +103,12 @@ namespace CAP_ChatInteractive.Traits
                             traitsCreated++;
                         }
                     }
-
-                    // Log progress every 50 traits
-                    if (traitsCreated % 50 == 0)
-                    {
-                        Logger.Debug($"Created {traitsCreated} buyable traits so far...");
-                    }
                 }
                 catch (Exception ex)
                 {
                     Logger.Error($"Error creating buyable trait for {traitDef.defName}: {ex.Message}");
                 }
             }
-
-            Logger.Debug($"Created default traits with {AllBuyableTraits.Count} entries");
         }
 
         private static void ValidateAndUpdateTraits()
@@ -187,7 +176,7 @@ namespace CAP_ChatInteractive.Traits
 
             if (addedTraits > 0 || removedTraits > 0)
             {
-                Logger.Debug($"Traits updated: +{addedTraits} traits, -{removedTraits} traits");
+                Logger.Message($"Traits updated: +{addedTraits} traits, -{removedTraits} traits");
                 SaveTraitsToJson(); // Save changes
             }
         }
@@ -207,7 +196,6 @@ namespace CAP_ChatInteractive.Traits
                     {
                         string jsonContent = JsonFileManager.SerializeTraits(AllBuyableTraits);
                         JsonFileManager.SaveFile("Traits.json", jsonContent);
-                        Logger.Debug("Traits JSON saved successfully");
                     }
                     catch (System.Exception e)
                     {

@@ -22,7 +22,6 @@ namespace CAP_ChatInteractive
 
         public static Viewer GetViewer(string username)
         {
-            // Logger.Debug($"GetViewer called with username: {username}");
             if (string.IsNullOrEmpty(username))
             {
                 Logger.Warning("GetViewer: Username is null or empty");
@@ -37,14 +36,11 @@ namespace CAP_ChatInteractive
 
                 if (viewer == null)
                 {
-                    // Logger.Debug($"Creating new viewer: {usernameLower}");
                     viewer = new Viewer(username);
                     All.Add(viewer);
 
                     // Save immediately for new viewers during debugging
                     SaveViewers();
-
-                    // Logger.Debug($"Total viewers after adding {usernameLower}: {All.Count}");
                 }
                 // DebugSaveAndLog();
                 return viewer;
@@ -64,7 +60,6 @@ namespace CAP_ChatInteractive
 
         public static void UpdateViewerActivity(ChatMessageWrapper message)
         {
-            // Logger.Debug($"Updating activity for message from {message.Username}");
             try
             {
                 var viewer = GetViewer(message.Username);
@@ -81,7 +76,6 @@ namespace CAP_ChatInteractive
                     // If a new platform ID was added, save immediately
                     if (!hadPlatformIdBefore && hasPlatformIdAfter)
                     {
-                        // Logger.Debug($"New platform ID added for {viewer.Username}, saving...");
                         SaveViewers();
                     }
                     // Otherwise use periodic saving
@@ -89,9 +83,6 @@ namespace CAP_ChatInteractive
                     {
                         SaveViewers();
                     }
-
-                    //DebugPlatformIds();
-                    //DebugSerialization();
                 }
             }
             catch (Exception ex)
@@ -188,8 +179,6 @@ namespace CAP_ChatInteractive
                     // Use Newtonsoft.Json instead of JsonUtility
                     string json = Newtonsoft.Json.JsonConvert.SerializeObject(data, Newtonsoft.Json.Formatting.Indented);
 
-                    // Logger.Debug($"Attempting to save {All.Count} viewers. JSON length: {json.Length}");
-
                     bool success = JsonFileManager.SaveFile("viewers.json", json);
                     if (success)
                     {
@@ -214,9 +203,8 @@ namespace CAP_ChatInteractive
                 string json = JsonFileManager.LoadFile("viewers.json");
                 if (!string.IsNullOrEmpty(json))
                 {
-                    // Logger.Debug($"Loading viewers from JSON, length: {json.Length}");
-
                     var data = Newtonsoft.Json.JsonConvert.DeserializeObject<ViewerData>(json);
+
                     if (data?.viewers != null)
                     {
                         lock (_lock)

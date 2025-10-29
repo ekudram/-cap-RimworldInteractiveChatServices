@@ -13,7 +13,7 @@ namespace CAP_ChatInteractive
         public override void ResolveReferences()
         {
             base.ResolveReferences();
-            Logger.Debug($"Resolving AddonDef: {defName}, MenuClass: {menuClass?.Name}");
+            // Logger.Debug($"Resolving AddonDef: {defName}, MenuClass: {menuClass?.Name}");
         }
 
         public IAddonMenu GetAddonMenu()
@@ -22,18 +22,18 @@ namespace CAP_ChatInteractive
             {
                 if (!enabled)
                 {
-                    Logger.Debug($"AddonDef {defName} is disabled");
+                    //Logger.Debug($"AddonDef {defName} is disabled");
                     return null;
                 }
 
-                Logger.Debug($"Creating menu instance for {defName}");
+                // Logger.Debug($"Creating menu instance for {defName}");
                 var menu = Activator.CreateInstance(menuClass) as IAddonMenu;
-                Logger.Debug($"Menu created: {menu != null}");
+                // Logger.Debug($"Menu created: {menu != null}");
                 return menu;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Failed to create addon menu for {defName}: {ex.Message}");
+                // Logger.Error($"Failed to create addon menu for {defName}: {ex.Message}");
                 return null;
             }
         }
