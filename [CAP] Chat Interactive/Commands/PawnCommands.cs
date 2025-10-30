@@ -471,6 +471,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
+    // UPDATE in PawnCommands.cs
     public class JoinQueue : ChatCommand
     {
         public override string Name => "join";
@@ -481,21 +482,58 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             get
             {
                 var settings = GetCommandSettings();
-                return settings?.CooldownSeconds ?? 0;
+                return settings?.CooldownSeconds ?? 30; // 30 second cooldown
             }
         }
+
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
             if (!IsEnabled())
             {
-                return "The JoinQueue is currently disabled.";
+                return "The pawn queue is currently disabled.";
             }
 
-            // Get command settings
-            var settingsCommand = GetCommandSettings();
+            return PawnQueueCommandHandler.HandleJoinQueueCommand(user);
+        }
+    }
 
-            // TODO: Implement pawn queue logic
-            return "Pawn queue functionality coming soon!";
+    // ADD these new commands to PawnCommands.cs
+    public class LeaveQueue : ChatCommand
+    {
+        public override string Name => "leavequeue";
+        public override string Description => "Leave the pawn queue";
+        public override string PermissionLevel => "everyone";
+        public override int CooldownSeconds => 10;
+
+        public override string Execute(ChatMessageWrapper user, string[] args)
+        {
+            return PawnQueueCommandHandler.HandleLeaveQueueCommand(user);
+        }
+    }
+
+    public class QueueStatus : ChatCommand
+    {
+        public override string Name => "queuestatus";
+        public override string Description => "Check your position in the pawn queue";
+        public override string PermissionLevel => "everyone";
+        public override int CooldownSeconds => 10;
+
+        public override string Execute(ChatMessageWrapper user, string[] args)
+        {
+            return PawnQueueCommandHandler.HandleQueueStatusCommand(user);
+        }
+    }
+
+    public class AcceptPawn : ChatCommand
+    {
+        public override string Name => "acceptpawn";
+        public override string Description => "Accept a pawn offer";
+        public override string PermissionLevel => "everyone";
+        public override int CooldownSeconds => 10;
+
+        public override string Execute(ChatMessageWrapper user, string[] args)
+        {
+            return PawnQueueCommandHandler.HandleAcceptPawnCommand(user);
         }
     }
 }

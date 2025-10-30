@@ -13,6 +13,7 @@ namespace CAP_ChatInteractive
     public class ChatInteractiveAddonMenu : IAddonMenu
     {
         // In ChatInteractiveAddonMenu.cs - Update the MenuOptions method
+        // UPDATE in ChatInteractiveAddonMenu.cs - Add to MenuOptions method
         public List<FloatMenuOption> MenuOptions()
         {
             return new List<FloatMenuOption>
@@ -36,7 +37,7 @@ namespace CAP_ChatInteractive
             Find.WindowStack.Add(new Dialog_TraitsEditor());
         }),
 
-        // Events Management Submenu - NEW!
+        // Events Management Submenu
         new FloatMenuOption("Events →", () =>
         {
             ShowEventsMenu();
@@ -74,10 +75,16 @@ namespace CAP_ChatInteractive
             Find.WindowStack.Add(new Dialog_CommandManager());
         }),
 
-        // Pawn Race & Xenotype Settings - NEW!
+        // Pawn Race & Xenotype Settings
         new FloatMenuOption("Pawn Settings", () =>
         {
             Find.WindowStack.Add(new Dialog_PawnSettings());
+        }),
+
+        // NEW: Pawn Queue Management
+        new FloatMenuOption("Pawn Queue", () =>
+        {
+            Find.WindowStack.Add(new Dialog_PawnQueue());
         }),
 
         // Connection Status
