@@ -12,20 +12,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class BuyItemCommandHandler
     {
+        
         public static string HandleBuyItem(ChatMessageWrapper user, string[] args, bool requireEquippable = false, bool requireWearable = false, bool addToInventory = false)
         {
             try
             {
                 Logger.Debug($"HandleBuyItem called for user: {user.Username}, args: {string.Join(", ", args)}, requireEquippable: {requireEquippable}, requireWearable: {requireWearable}, addToInventory: {addToInventory}");
-
-                if (args.Length == 0)
-                {
-                    return "Usage: !buy <item> [quality] [material] [quantity]";
-                }
-
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-                var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
-                var viewer = Viewers.GetViewer(user.Username);
 
                 // Parse arguments - handle multi-word item names
                 string itemName;
@@ -42,11 +34,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     {
                         string arg = args[i];
 
-                        // Check if this argument is a quality, material, or quantity indicator
-                        if (IsQualityKeyword(arg.ToLower()) || IsMaterialKeyword(arg) || (i > 0 && int.TryParse(arg, out _)))
+                        // The FIRST argument must always be part of the item name
+                        // Only check for keywords after we have at least one item name part
+                        if (itemNameParts.Count > 0)
                         {
-                            // We've hit a non-item-name argument, stop collecting
-                            break;
+                            // Check if this argument is a quality, material, or quantity indicator
+                            if (IsQualityKeyword(arg.ToLower()) || IsMaterialKeyword(arg) || int.TryParse(arg, out _))
+                            {
+                                // We've hit a non-item-name argument, stop collecting
+                                break;
+                            }
                         }
 
                         itemNameParts.Add(args[i]);
@@ -57,52 +54,42 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     // Parse remaining arguments
                     int currentIndex = itemNameParts.Count;
 
-                    if (args.Length > currentIndex)
+                    // Parse quality (if next arg is a quality keyword)
+                    if (args.Length > currentIndex && IsQualityKeyword(args[currentIndex].ToLower()))
                     {
-                        string nextArg = args[currentIndex];
-
-                        // Check if it's quality
-                        if (IsQualityKeyword(nextArg.ToLower()))
-                        {
-                            qualityStr = nextArg;
-                            currentIndex++;
-                        }
-                        // Check if it's material  
-                        else if (IsMaterialKeyword(nextArg))
-                        {
-                            materialStr = nextArg;
-                            currentIndex++;
-                        }
-                        // Check if it's quantity
-                        else if (int.TryParse(nextArg, out _))
-                        {
-                            quantityStr = nextArg;
-                            currentIndex++;
-                        }
+                        qualityStr = args[currentIndex];
+                        currentIndex++;
                     }
 
-                    // Check for material after quality
+                    // Parse material (if next arg is a material keyword)  
                     if (args.Length > currentIndex && IsMaterialKeyword(args[currentIndex]))
                     {
                         materialStr = args[currentIndex];
                         currentIndex++;
                     }
 
-                    // Check for quantity (last priority)
+                    // Parse quantity (if next arg is a number) - lowest priority
                     if (args.Length > currentIndex && int.TryParse(args[currentIndex], out _))
                     {
                         quantityStr = args[currentIndex];
                     }
+
+                    Logger.Debug($"Parsed - Item: '{itemName}', Quality: '{qualityStr}', Material: '{materialStr}', Quantity: '{quantityStr}'");
+                    Logger.Debug($"Original args: {string.Join("|", args)}, ItemNameParts: [{string.Join(", ", itemNameParts)}]");
                 }
                 else
                 {
                     return "Usage: !buy <item> [quality] [material] [quantity]";
                 }
 
-                Logger.Debug($"Parsed - Item: '{itemName}', Quality: '{qualityStr}', Material: '{materialStr}', Quantity: '{quantityStr}'");
+                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
+                var viewer = Viewers.GetViewer(user.Username);
 
                 // Get store item
                 var storeItem = StoreCommandHelper.GetStoreItemByName(itemName);
+                Logger.Debug($"Store item lookup for '{itemName}': {(storeItem != null ? $"Found: {storeItem.DefName}, Enabled: {storeItem.Enabled}" : "Not Found")}");
+
                 if (storeItem == null)
                 {
                     Logger.Debug($"Item not found: {itemName}");
@@ -230,6 +217,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     StoreCommandHelper.SpawnItemForPawn(thingDef, quantity, quality, material, viewerPawn, addToInventory);
                 }
+
+
 
                 // Log success
                 Logger.Debug($"Purchase successful: {user.Username} bought {quantity}x {itemName} for {finalPrice}{currencySymbol}");

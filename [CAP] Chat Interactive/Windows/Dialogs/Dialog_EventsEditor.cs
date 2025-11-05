@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// Dialog_EventsEditor.cs
+using System.Collections.Generic;
 using System.Linq;
 using RimWorld;
 using UnityEngine;

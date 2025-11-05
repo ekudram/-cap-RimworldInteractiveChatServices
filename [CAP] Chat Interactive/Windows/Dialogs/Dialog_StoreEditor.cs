@@ -515,7 +515,7 @@ namespace CAP_ChatInteractive
                 }
                 x += 80f;
 
-                // === Info text === - FIXED: Use dynamic calculation instead of fixed width
+                // === Info text === 
                 float infoWidth = 210f; // Fixed reasonable width for item info
                 Rect infoRect = new Rect(x, 5f, infoWidth, 50f);
                 Text.Anchor = TextAnchor.MiddleLeft;

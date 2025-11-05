@@ -251,34 +251,90 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 else
                 {
-                    // Find a valid drop location
+                    // IMPROVED DROP POD DELIVERY
+                    Map targetMap = null;
                     IntVec3 dropPos;
-                    Map map;
 
                     if (pawn != null && pawn.Map != null)
                     {
-                        map = pawn.Map;
-                        dropPos = pawn.Position;
+                        targetMap = pawn.Map;
+                        if (!DropCellFinder.TryFindDropSpotNear(pawn.Position, targetMap, out dropPos, allowFogged: false, canRoofPunch: true, maxRadius: 15))
+                        {
+                            dropPos = pawn.Position;
+                        }
                     }
                     else
                     {
-                        // Find any player home map
-                        map = Find.CurrentMap ?? Find.Maps.FirstOrDefault(m => m.IsPlayerHome);
-                        if (map == null)
+                        targetMap = Find.CurrentMap ?? Find.Maps.FirstOrDefault(m => m.IsPlayerHome);
+                        if (targetMap == null)
                         {
                             Logger.Error("No valid map found for item delivery");
                             return;
                         }
-                        dropPos = DropCellFinder.TradeDropSpot(map);
+
+                        if (!DropCellFinder.TryFindDropSpotNear(targetMap.Center, targetMap, out dropPos, allowFogged: false, canRoofPunch: true, maxRadius: 30))
+                        {
+                            dropPos = DropCellFinder.TradeDropSpot(targetMap);
+                        }
                     }
 
-                    Logger.Debug($"Dropping item at position {dropPos} on map {map}");
-                    DropPodUtility.DropThingsNear(dropPos, map, new List<Thing> { thing }, canRoofPunch: false);
+                    Logger.Debug($"Dropping {quantity}x {thingDef.defName} at position {dropPos} on map {targetMap}");
+
+                    // Use the improved delivery method for handling stack limits
+                    DeliverItemsInDropPods(thingDef, quantity, quality, finalMaterial, dropPos, targetMap);
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error spawning item for pawn: {ex}");
+                throw;
+            }
+        }
+
+        private static void DeliverItemsInDropPods(ThingDef thingDef, int quantity, QualityCategory? quality, ThingDef material, IntVec3 dropPos, Map map)
+        {
+            try
+            {
+                List<Thing> thingsToDeliver = new List<Thing>();
+                int remainingQuantity = quantity;
+
+                while (remainingQuantity > 0)
+                {
+                    int stackSize = Math.Min(remainingQuantity, thingDef.stackLimit);
+                    Thing thing = ThingMaker.MakeThing(thingDef, material);
+                    thing.stackCount = stackSize;
+
+                    // Set quality if applicable
+                    if (quality.HasValue && thingDef.HasComp(typeof(CompQuality)))
+                    {
+                        if (thing.TryGetQuality(out QualityCategory existingQuality))
+                        {
+                            thing.TryGetComp<CompQuality>()?.SetQuality(quality.Value, ArtGenerationContext.Outsider);
+                        }
+                    }
+
+                    thingsToDeliver.Add(thing);
+                    remainingQuantity -= stackSize;
+                }
+
+                // Deliver all items in one drop pod
+                DropPodUtility.DropThingsNear(
+                    dropPos,
+                    map,
+                    thingsToDeliver,
+                    openDelay: 110,
+                    // instaDrop: false,
+                    leaveSlag: false,
+                    canRoofPunch: true,
+                    forbid: true,
+                    allowFogged: false
+                );
+
+                Logger.Debug($"Delivered {quantity}x {thingDef.defName} in {thingsToDeliver.Count} stacks");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error delivering items in drop pods: {ex}");
                 throw;
             }
         }

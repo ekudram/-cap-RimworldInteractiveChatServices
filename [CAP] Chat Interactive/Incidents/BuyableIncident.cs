@@ -396,45 +396,45 @@ namespace CAP_ChatInteractive.Incidents
 
         private void SetDefaultPricing(IncidentDef incidentDef)
         {
-            int basePrice = 100; // Reduced from 500 to 100
+            int basePrice = 150; // Slightly higher than minimal since other income sources exist
             float impactFactor = 1.0f;
 
             // Determine karma type first
             KarmaType = DetermineKarmaType(incidentDef);
 
-            // Adjust price based on incident type
+            // Tier-based pricing for different viewer engagement levels
             if (IsRaidIncident)
             {
-                impactFactor *= 2.0f; // Reduced from 3.0f
+                impactFactor *= 2.5f; // Premium tier - channel points/daily reward targets
                 EventCap = 1;
             }
             else if (IsWeatherIncident)
             {
-                impactFactor *= 1.2f; // Reduced from 1.5f
+                impactFactor *= 1.3f; // Mid tier - regular watching + occasional bonuses
             }
             else if (IsDiseaseIncident)
             {
-                impactFactor *= 1.5f; // Reduced from 2.0f
+                impactFactor *= 1.7f; // High tier - requires some saving/daily rewards
             }
             else if (IsQuestIncident)
             {
-                impactFactor *= 1.1f; // Reduced from 1.2f
+                impactFactor *= 1.2f; // Low-mid tier - accessible with moderate engagement
             }
 
-            // Adjust based on threat points for scaleable incidents
+            // Threat points scaling (reduced impact since other income exists)
             if (PointsScaleable && MaxThreatPoints > 0)
             {
-                impactFactor *= (MaxThreatPoints / 2000f); // Reduced impact from threat points
+                impactFactor *= (MaxThreatPoints / 2500f);
             }
 
-            // Adjust based on base chance (rarer events = more expensive)
+            // Rarity adjustment
             if (BaseChance > 0)
             {
-                impactFactor *= (1.0f / BaseChance) * 0.05f; // Reduced rarity multiplier
+                impactFactor *= (1.0f / BaseChance) * 0.08f;
             }
 
             BaseCost = (int)(basePrice * impactFactor);
-            BaseCost = Math.Max(50, Math.Min(5000, BaseCost)); // Reduced max from 10,000 to 5,000
+            BaseCost = Math.Max(75, Math.Min(7500, BaseCost)); // Wider range for economy flexibility
         }
     }
 }
