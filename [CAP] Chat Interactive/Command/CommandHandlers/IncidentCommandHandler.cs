@@ -392,11 +392,51 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             Logger.Message($"Total incidents: {allIncidents.Count}");
             Logger.Message($"Available for !event command: {availableIncidents.Count}");
             Logger.Message($"Filtered out: {allIncidents.Count - availableIncidents.Count}");
+            Logger.Message("");
 
-            foreach (var incident in allIncidents.Values.Where(i => !IsIncidentSuitableForCommand(i)))
+            // Group incidents by source
+            var rimworldIncidents = allIncidents.Values.Where(i => i.ModSource == "RimWorld" || i.ModSource == "Core").ToList();
+            var dlcIncidents = allIncidents.Values.Where(i =>
+                i.ModSource.Contains("Royalty") ||
+                i.ModSource.Contains("Ideology") ||
+                i.ModSource.Contains("Biotech") ||
+                i.ModSource.Contains("Anomaly") ||
+                i.ModSource.Contains("Odyssey")).ToList();
+            var modIncidents = allIncidents.Values.Where(i =>
+                !rimworldIncidents.Contains(i) && !dlcIncidents.Contains(i)).ToList();
+
+            // Log RimWorld incidents
+            Logger.Message($"=== RIMWORLD INCIDENTS ({rimworldIncidents.Count}) ===");
+            foreach (var incident in rimworldIncidents.OrderBy(i => i.DefName))
             {
-                Logger.Message($"FILTERED: {incident.DefName} - {incident.Label}");
+                string status = IsIncidentSuitableForCommand(incident) ? "AVAILABLE" : "FILTERED";
+                Logger.Message($"{status}: {incident.DefName} - {incident.Label} (Source: {incident.ModSource})");
             }
+            Logger.Message("");
+
+            // Log DLC incidents
+            Logger.Message($"=== DLC INCIDENTS ({dlcIncidents.Count}) ===");
+            foreach (var incident in dlcIncidents.OrderBy(i => i.ModSource).ThenBy(i => i.DefName))
+            {
+                string status = IsIncidentSuitableForCommand(incident) ? "AVAILABLE" : "FILTERED";
+                Logger.Message($"{status}: {incident.DefName} - {incident.Label} (Source: {incident.ModSource})");
+            }
+            Logger.Message("");
+
+            // Log mod incidents
+            Logger.Message($"=== MOD INCIDENTS ({modIncidents.Count}) ===");
+            foreach (var incident in modIncidents.OrderBy(i => i.ModSource).ThenBy(i => i.DefName))
+            {
+                string status = IsIncidentSuitableForCommand(incident) ? "AVAILABLE" : "FILTERED";
+                Logger.Message($"{status}: {incident.DefName} - {incident.Label} (Source: {incident.ModSource})");
+            }
+
+            // Summary by source
+            Logger.Message("");
+            Logger.Message($"=== SUMMARY BY SOURCE ===");
+            Logger.Message($"RimWorld: {rimworldIncidents.Count(i => IsIncidentSuitableForCommand(i))}/{rimworldIncidents.Count} available");
+            Logger.Message($"DLC: {dlcIncidents.Count(i => IsIncidentSuitableForCommand(i))}/{dlcIncidents.Count} available");
+            Logger.Message($"Mods: {modIncidents.Count(i => IsIncidentSuitableForCommand(i))}/{modIncidents.Count} available");
         }
 
     }

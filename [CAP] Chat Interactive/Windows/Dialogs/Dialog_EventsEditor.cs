@@ -819,8 +819,8 @@ namespace CAP_ChatInteractive
     }
     public enum EventListViewType
     {
-        Category,
-        ModSource
+        ModSource,
+        Category        
     }
 
     public class EventsDefInfoWindow : Window
