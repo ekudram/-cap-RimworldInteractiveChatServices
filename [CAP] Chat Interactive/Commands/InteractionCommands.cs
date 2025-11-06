@@ -85,4 +85,39 @@ namespace CAP_ChatInteractive.Commands.InteractionCommands
             return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.AnimalChat, args);
         }
     }
+
+    public class MarriageProposal : ChatCommand
+    {
+        public override string Name => "marry";
+
+        public override string Execute(ChatMessageWrapper user, string[] args)
+        {
+            return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.MarriageProposal, args);
+        }
+    }
+
+    public class BuildRapport : ChatCommand
+    {
+        public override string Name => "buildrapport";
+
+        public override string Execute(ChatMessageWrapper user, string[] args)
+        {
+            return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.BuildRapport, args);
+        }
+    }
+
+    public class ConvertIdeo : ChatCommand
+    {
+        public override string Name => "convert";
+
+        public override string Execute(ChatMessageWrapper user, string[] args)
+        {
+            // Check if Ideology is available
+            if (InteractionDefOf.ConvertIdeoAttempt == null)
+            {
+                return "The 'convert' interaction requires the Ideology DLC.";
+            }
+            return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.ConvertIdeoAttempt, args);
+        }
+    }
 }

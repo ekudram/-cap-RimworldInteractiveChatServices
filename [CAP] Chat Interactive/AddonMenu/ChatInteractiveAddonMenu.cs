@@ -82,7 +82,7 @@ namespace CAP_ChatInteractive
         }),
 
         // Pawn Race & Xenotype Settings
-        new FloatMenuOption("Pawn Settings", () =>
+        new FloatMenuOption("Pawn Races", () =>
         {
             Find.WindowStack.Add(new Dialog_PawnSettings());
         }),

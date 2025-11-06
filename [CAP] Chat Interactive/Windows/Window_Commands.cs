@@ -3,6 +3,7 @@
 // Licensed under the AGPLv3 License. See LICENSE file in the project root for full license information.
 //
 // A window that displays available chat commands and their descriptions
+/*
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -39,3 +40,4 @@ namespace CAP_ChatInteractive.Windows
         }
     }
 }
+*/
