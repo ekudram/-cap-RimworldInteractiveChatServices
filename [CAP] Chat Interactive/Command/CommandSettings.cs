@@ -44,23 +44,9 @@ public class CommandSettings
     // Constructor to initialize default values
     public CommandSettings()
     {
-        // Initialize raid types with all options enabled by default
-        if (AllowedRaidTypes.Count == 0)
-        {
-            AllowedRaidTypes = new List<string> {
-                "standard", "drop", "dropcenter", "dropedge", "dropchaos",
-                "dropgroups", "mech", "mechcluster", "manhunter", "infestation",
-                "water", "wateredge"
-            };
-        }
-
-        // Initialize raid strategies with all options enabled by default
-        if (AllowedRaidStrategies.Count == 0)
-        {
-            AllowedRaidStrategies = new List<string> {
-                "default", "immediate", "smart", "sappers", "breach",
-                "breachsmart", "stage", "siege"
-            };
-        }
+        // Don't initialize raid-specific lists here - they'll be initialized when needed
+        // by the specific commands that use them
     }
+
+
 }

@@ -26,6 +26,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             { "siege", DefDatabase<RaidStrategyDef>.GetNamedSilentFail("Siege") ?? RaidStrategyDefOf.ImmediateAttack }
         };
 
+        private static CommandSettings GetRaidCommandSettings()
+        {
+            return CommandSettingsManager.GetSettings("raid"); // CORRECT
+        }
+
         // Check for Royalty DLC (Mech Clusters)
         public static bool HasRoyaltyDLC => ModsConfig.RoyaltyActive;
 
@@ -41,12 +46,42 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var viewer = Viewers.GetViewer(user.Username);
 
+                // NEW: Get raid command settings
+                var raidSettings = GetRaidCommandSettings();
+
+                // Validate wager amount against settings
+                if (wager < raidSettings.MinRaidWager || wager > raidSettings.MaxRaidWager)
+                {
+                    MessageHandler.SendFailureLetter("Raid Failed",
+                        $"{user.Username} tried invalid wager amount\n\nMin: {raidSettings.MinRaidWager}{currencySymbol}, Max: {raidSettings.MaxRaidWager}{currencySymbol}");
+                    return $"Wager must be between {raidSettings.MinRaidWager} and {raidSettings.MaxRaidWager}{currencySymbol}.";
+                }
+
                 // Validate wager amount
                 if (viewer.Coins < wager)
                 {
                     MessageHandler.SendFailureLetter("Raid Failed",
                         $"{user.Username} doesn't have enough {currencySymbol} for raid\n\nNeeded: {wager}{currencySymbol}, Has: {viewer.Coins}{currencySymbol}");
                     return $"You need {wager}{currencySymbol} to call a raid! You have {viewer.Coins}{currencySymbol}.";
+                }
+
+                // NEW: Check if raid type is allowed
+                if (raidSettings.AllowedRaidTypes != null && raidSettings.AllowedRaidTypes.Count > 0 &&
+                    !raidSettings.AllowedRaidTypes.Contains(raidType.ToLower()))
+                {
+                    MessageHandler.SendFailureLetter("Raid Failed",
+                        $"{user.Username} tried disabled raid type: {raidType}");
+                    return $"Raid type '{raidType}' is not allowed. Allowed types: {string.Join(", ", raidSettings.AllowedRaidTypes)}";
+                }
+
+                // NEW: Check if strategy is allowed
+                if (!string.IsNullOrEmpty(strategy) && strategy.ToLower() != "default" &&
+                    raidSettings.AllowedRaidStrategies != null && raidSettings.AllowedRaidStrategies.Count > 0 &&
+                    !raidSettings.AllowedRaidStrategies.Contains(strategy.ToLower()))
+                {
+                    MessageHandler.SendFailureLetter("Raid Failed",
+                        $"{user.Username} tried disabled strategy: {strategy}");
+                    return $"Strategy '{strategy}' is not allowed. Allowed strategies: {string.Join(", ", raidSettings.AllowedRaidStrategies)}";
                 }
 
                 if (!IsGameReadyForRaid())
