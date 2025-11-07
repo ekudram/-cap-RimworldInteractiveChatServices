@@ -1,14 +1,15 @@
 ﻿// Dialog_PawnSettings.cs
 // Copyright (c) Captolamia. All rights reserved.
 // Licensed under the AGPLv3 License. See LICENSE file in the project root for full license information.
-// A dialog window for configuring pawn
+// A dialog window for configuring pawn races and xenotypes 
+using _CAP__Chat_Interactive.Interfaces;
+using _CAP__Chat_Interactive.Utilities;
 using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Verse;
-using _CAP__Chat_Interactive.Interfaces;
 
 namespace CAP_ChatInteractive
 {
@@ -45,12 +46,12 @@ namespace CAP_ChatInteractive
                 FilterRaces();
             }
 
-            // Header
-            Rect headerRect = new Rect(0f, 0f, inRect.width, 40f);
+            // Header - INCREASED HEIGHT to accommodate two rows
+            Rect headerRect = new Rect(0f, 0f, inRect.width, 60f); // Changed from 40f to 60f
             DrawHeader(headerRect);
 
-            // Main content area
-            Rect contentRect = new Rect(0f, 45f, inRect.width, inRect.height - 45f - CloseButSize.y);
+            // Main content area - ADJUSTED START POSITION
+            Rect contentRect = new Rect(0f, 65f, inRect.width, inRect.height - 65f - CloseButSize.y); // Changed from 45f to 65f
             DrawContent(contentRect);
         }
 
@@ -58,22 +59,74 @@ namespace CAP_ChatInteractive
         {
             Widgets.BeginGroup(rect);
 
-            // Title with counts
+            // Title row
             Text.Font = GameFont.Medium;
+            GUI.color = ColorLibrary.Orange;
             Rect titleRect = new Rect(0f, 0f, 200f, 30f);
-            string titleText = $"Pawn Races ({DefDatabase<ThingDef>.AllDefs.Count(d => d.race?.Humanlike ?? false)})";
-            if (filteredRaces.Count != GetHumanlikeRaces().Count())
-                titleText += $" - Filtered: {filteredRaces.Count}";
-            Widgets.Label(titleRect, titleText);
-            Text.Font = GameFont.Small;
 
-            // Search bar
-            Rect searchRect = new Rect(210f, 5f, 250f, 30f);
+            // FIXED: Use enabled races count instead of all humanlike races
+            int enabledRacesCount = RaceUtils.GetEnabledRaces().Count;
+            int totalRacesCount = DefDatabase<ThingDef>.AllDefs.Count(d => d.race?.Humanlike ?? false);
+            string titleText = $"Pawn Races ({enabledRacesCount}";
+
+            // Show filtered count if search is active
+            if (filteredRaces.Count != enabledRacesCount)
+                titleText += $"/{filteredRaces.Count}";
+
+            titleText += $")";
+
+            Widgets.Label(titleRect, titleText);
+
+            // Draw underline
+            Rect underlineRect = new Rect(titleRect.x, titleRect.yMax - 2f, titleRect.width, 2f);
+            Widgets.DrawLineHorizontal(underlineRect.x, underlineRect.y, underlineRect.width);
+
+            Text.Font = GameFont.Small;
+            GUI.color = Color.white;
+
+            // Second row for controls - ADJUSTED POSITION
+            float controlsY = 35f;
+
+            // Search bar with icon
+            float searchY = controlsY;
+            Rect searchIconRect = new Rect(0f, searchY, 24f, 24f);
+            Texture2D searchIcon = ContentFinder<Texture2D>.Get("UI/Widgets/Search", false);
+            if (searchIcon != null)
+            {
+                Widgets.DrawTextureFitted(searchIconRect, searchIcon, 1f);
+            }
+            else
+            {
+                // Fallback to text if icon not found
+                Widgets.Label(new Rect(0f, searchY, 40f, 30f), "Search:");
+            }
+
+            Rect searchRect = new Rect(30f, searchY, 170f, 24f);
             searchQuery = Widgets.TextField(searchRect, searchQuery);
 
             // Sort buttons
-            Rect sortRect = new Rect(470f, 5f, 300f, 30f);
+            Rect sortRect = new Rect(210f, controlsY, 300f, 24f);
             DrawSortButtons(sortRect);
+
+            // Debug gear icon - top right corner
+            Rect debugRect = new Rect(rect.width - 30f, 5f, 24f, 24f);
+            Texture2D gearIcon = ContentFinder<Texture2D>.Get("UI/Icons/Options/OptionsGeneral", false);
+            if (gearIcon != null)
+            {
+                if (Widgets.ButtonImage(debugRect, gearIcon))
+                {
+                    Find.WindowStack.Add(new Dialog_DebugRaces());
+                }
+            }
+            else
+            {
+                // Fallback to the original gear icon
+                if (Widgets.ButtonImage(debugRect, TexButton.OpenInspector))
+                {
+                    Find.WindowStack.Add(new Dialog_DebugRaces());
+                }
+            }
+            TooltipHandler.TipRegion(debugRect, "Open Race Debug Information");
 
             Widgets.EndGroup();
         }
@@ -85,9 +138,10 @@ namespace CAP_ChatInteractive
             float buttonWidth = 90f;
             float spacing = 5f;
             float x = 0f;
+            float y = 0f; // Draw at top of the group, not at absolute top
 
             // Sort by Name
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Name"))
+            if (Widgets.ButtonText(new Rect(x, y, buttonWidth, 24f), "Name"))
             {
                 if (sortMethod == PawnSortMethod.Name)
                     sortAscending = !sortAscending;
@@ -98,7 +152,7 @@ namespace CAP_ChatInteractive
             x += buttonWidth + spacing;
 
             // Sort by Category
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Category"))
+            if (Widgets.ButtonText(new Rect(x, y, buttonWidth, 24f), "Category"))
             {
                 if (sortMethod == PawnSortMethod.Category)
                     sortAscending = !sortAscending;
@@ -109,7 +163,7 @@ namespace CAP_ChatInteractive
             x += buttonWidth + spacing;
 
             // Sort by Status
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Status"))
+            if (Widgets.ButtonText(new Rect(x, y, buttonWidth, 24f), "Status"))
             {
                 if (sortMethod == PawnSortMethod.Status)
                     sortAscending = !sortAscending;
@@ -133,6 +187,7 @@ namespace CAP_ChatInteractive
             DrawRaceDetails(detailsRect);
         }
 
+        // In Dialog_PawnSettings.cs - Update the DrawRaceList method
         private void DrawRaceList(Rect rect)
         {
             Widgets.DrawMenuSection(rect);
@@ -156,7 +211,15 @@ namespace CAP_ChatInteractive
                 for (int i = 0; i < filteredRaces.Count; i++)
                 {
                     var race = filteredRaces[i];
-                    var settings = raceSettings[race.defName];
+
+                    // SAFELY get settings - don't crash if race was removed
+                    RaceSettings settings = null;
+                    if (!raceSettings.TryGetValue(race.defName, out settings))
+                    {
+                        // Race was excluded or not in settings - skip it
+                        Logger.Warning($"Race {race.defName} not found in raceSettings, skipping");
+                        continue;
+                    }
 
                     Rect buttonRect = new Rect(5f, y, viewRect.width - 10f, rowHeight - 2f);
 
@@ -203,10 +266,19 @@ namespace CAP_ChatInteractive
                 return;
             }
 
-            var settings = raceSettings[selectedRace.defName];
+            // SAFELY get settings
+            RaceSettings settings = null;
+            if (!raceSettings.TryGetValue(selectedRace.defName, out settings))
+            {
+                Rect messageRect = new Rect(rect.x, rect.y, rect.width, rect.height);
+                Text.Anchor = TextAnchor.MiddleCenter;
+                Widgets.Label(messageRect, $"Race {selectedRace.defName} not found in settings");
+                Text.Anchor = TextAnchor.UpperLeft;
+                return;
+            }
 
-            // Header with race name
-            Rect headerRect = new Rect(rect.x, rect.y, rect.width, 40f);
+            // Compact header
+            Rect headerRect = new Rect(rect.x, rect.y, rect.width, 30f);
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter;
 
@@ -219,11 +291,10 @@ namespace CAP_ChatInteractive
             Text.Anchor = TextAnchor.UpperLeft;
 
             // Details content with scrolling
-            Rect contentRect = new Rect(rect.x, rect.y + 50f, rect.width, rect.height - 60f);
+            Rect contentRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 40f);
             DrawRaceDetailsContent(contentRect, settings);
         }
 
-        // In Dialog_PawnSettings.cs - Replace the DrawRaceDetailsContent method
         private void DrawRaceDetailsContent(Rect rect, RaceSettings settings)
         {
             float contentWidth = rect.width - 30f;
@@ -235,48 +306,45 @@ namespace CAP_ChatInteractive
                 float y = 0f;
                 float sectionHeight = 28f;
                 float leftPadding = 15f;
+                float columnWidth = (viewRect.width - leftPadding - 20f) / 2f;
 
                 // Basic Info section
                 Rect basicLabelRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
-                Widgets.Label(basicLabelRect, "Basic Information:");
+                Text.Font = GameFont.Medium;
+                Widgets.Label(basicLabelRect, "Basic Information");
+                Text.Font = GameFont.Small;
                 y += sectionHeight;
 
-                // Race description
-                Rect descRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight * 2);
+                // Race description (compact)
+                Rect descRect = new Rect(leftPadding, y, viewRect.width - leftPadding, sectionHeight * 1.5f);
                 string desc = string.IsNullOrEmpty(selectedRace.description) ?
                     "No description available" : selectedRace.description;
-                Widgets.Label(descRect, $"Description: {desc}");
-                y += sectionHeight * 2;
+                Widgets.Label(descRect, desc);
+                y += sectionHeight * 1.5f + 10f;
 
-                // Race def name
-                Rect defNameRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
-                Widgets.Label(defNameRect, $"Def Name: {selectedRace.defName}");
-                y += sectionHeight;
-
-                y += 10f;
-
-                // Basic Settings section
+                // Settings section
                 Rect settingsLabelRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
-                Widgets.Label(settingsLabelRect, "Basic Settings:");
+                Text.Font = GameFont.Medium;
+                Widgets.Label(settingsLabelRect, "Settings");
+                Text.Font = GameFont.Small;
                 y += sectionHeight;
 
-                // Enabled toggle
-                Rect enabledRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                Widgets.Label(enabledRect, "Enabled:");
-                Rect enabledToggleRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                if (Widgets.ButtonText(enabledToggleRect, settings.Enabled ? "ON" : "OFF"))
+                // Enabled checkbox and Base Price - same row
+                Rect enabledRect = new Rect(leftPadding, y, columnWidth - 10f, sectionHeight);
+                bool currentEnabled = settings.Enabled;
+                Widgets.CheckboxLabeled(enabledRect, "Enabled", ref currentEnabled);
+                if (currentEnabled != settings.Enabled)
                 {
-                    settings.Enabled = !settings.Enabled;
+                    settings.Enabled = currentEnabled;
                     SaveRaceSettings();
                 }
-                y += sectionHeight;
 
-                // Base price setting
-                Rect priceLabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                Widgets.Label(priceLabelRect, "Base Price (coins):");
-                Rect priceInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                Rect priceLabelRect = new Rect(leftPadding + columnWidth, y, 100f, sectionHeight);
+                Widgets.Label(priceLabelRect, "Base Price:");
+                Rect priceInputRect = new Rect(leftPadding + columnWidth + 100f, y, 80f, sectionHeight);
                 int currentPrice = settings.BasePrice;
                 string priceBuffer = currentPrice.ToString();
+                // Use TextFieldNumeric for price since it's better for numbers
                 Widgets.TextFieldNumeric(priceInputRect, ref currentPrice, ref priceBuffer, 0, 100000);
                 if (currentPrice != settings.BasePrice)
                 {
@@ -285,180 +353,181 @@ namespace CAP_ChatInteractive
                 }
                 y += sectionHeight;
 
-                // Description for price
-                Rect priceDescRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, 14f);
-                Text.Font = GameFont.Tiny;
-                GUI.color = new Color(0.7f, 0.7f, 0.7f);
-                Widgets.Label(priceDescRect, "Base cost for purchasing a pawn of this race");
-                Text.Font = GameFont.Small;
-                GUI.color = Color.white;
-                y += 20f;
+                // Age settings - same row with sliders
+                Rect ageMinLabelRect = new Rect(leftPadding, y, 70f, sectionHeight);
+                Widgets.Label(ageMinLabelRect, "Min Age:");
+                Rect ageMinInputRect = new Rect(leftPadding + 70f, y, 50f, sectionHeight);
+                int currentMinAge = settings.MinAge;
+                string ageMinBuffer = currentMinAge.ToString();
+                string newAgeMin = Widgets.TextField(ageMinInputRect, ageMinBuffer);
+                if (newAgeMin != ageMinBuffer && int.TryParse(newAgeMin, out int parsedMinAge) && parsedMinAge >= 4 && parsedMinAge <= 120)
+                {
+                    settings.MinAge = parsedMinAge;
+                    if (settings.MinAge > settings.MaxAge)
+                        settings.MaxAge = settings.MinAge;
+                    SaveRaceSettings();
+                }
+
+                // Min Age slider
+                Rect ageMinSliderRect = new Rect(leftPadding + 130f, y, 100f, sectionHeight);
+                int newMinAge = (int)Widgets.HorizontalSlider(ageMinSliderRect, settings.MinAge, 4, 120, middleAlignment: true, label: settings.MinAge.ToString(), leftAlignedLabel: "4", rightAlignedLabel: "120");
+                if (newMinAge != settings.MinAge)
+                {
+                    settings.MinAge = newMinAge;
+                    if (settings.MinAge > settings.MaxAge)
+                        settings.MaxAge = settings.MinAge;
+                    SaveRaceSettings();
+                }
+
+                Rect ageMaxLabelRect = new Rect(leftPadding + 240f, y, 70f, sectionHeight);
+                Widgets.Label(ageMaxLabelRect, "Max Age:");
+                Rect ageMaxInputRect = new Rect(leftPadding + 310f, y, 50f, sectionHeight);
+                int currentMaxAge = settings.MaxAge;
+                string ageMaxBuffer = currentMaxAge.ToString();
+                string newAgeMax = Widgets.TextField(ageMaxInputRect, ageMaxBuffer);
+                if (newAgeMax != ageMaxBuffer && int.TryParse(newAgeMax, out int parsedMaxAge) && parsedMaxAge >= settings.MinAge && parsedMaxAge <= 120)
+                {
+                    settings.MaxAge = parsedMaxAge;
+                    SaveRaceSettings();
+                }
+
+                // Max Age slider
+                Rect ageMaxSliderRect = new Rect(leftPadding + 370f, y, 100f, sectionHeight);
+                int newMaxAge = (int)Widgets.HorizontalSlider(ageMaxSliderRect, settings.MaxAge, settings.MinAge, 120, middleAlignment: true, label: settings.MaxAge.ToString(), leftAlignedLabel: settings.MinAge.ToString(), rightAlignedLabel: "120");
+                if (newMaxAge != settings.MaxAge)
+                {
+                    settings.MaxAge = newMaxAge;
+                    SaveRaceSettings();
+                }
+                y += sectionHeight;
+
+                // Allow Custom Xenotypes
+                Rect customXenoRect = new Rect(leftPadding, y, viewRect.width - leftPadding, sectionHeight);
+                bool currentAllowCustom = settings.AllowCustomXenotypes;
+                Widgets.CheckboxLabeled(customXenoRect, "Allow Custom Xenotypes for this Race", ref currentAllowCustom);
+                if (currentAllowCustom != settings.AllowCustomXenotypes)
+                {
+                    settings.AllowCustomXenotypes = currentAllowCustom;
+                    SaveRaceSettings();
+                }
+                y += sectionHeight + 10f;
 
                 // Xenotype Settings section (only if Biotech is active)
                 if (ModsConfig.BiotechActive)
                 {
                     Rect xenotypeLabelRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
-                    Widgets.Label(xenotypeLabelRect, "Xenotype Settings:");
+                    Text.Font = GameFont.Medium;
+                    Widgets.Label(xenotypeLabelRect, "Xenotype Settings");
+                    Text.Font = GameFont.Small;
                     y += sectionHeight;
 
-                    // Get allowed xenotypes from HAR patch if available
+                    // Get allowed xenotypes
                     var allowedXenotypes = GetAllowedXenotypes(selectedRace);
 
                     if (allowedXenotypes.Count > 0)
                     {
-                        // Xenotype enable/disable toggles
-                        Rect xenotypeEnableLabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
-                        Widgets.Label(xenotypeEnableLabelRect, "Enable/Disable Xenotypes:");
+                        // Column headers
+                        Rect xenotypeHeaderRect = new Rect(leftPadding, y, columnWidth, sectionHeight);
+                        Rect enabledHeaderRect = new Rect(leftPadding + columnWidth, y, 80f, sectionHeight);
+                        Rect multiplierHeaderRect = new Rect(leftPadding + columnWidth + 90f, y, 100f, sectionHeight);
+
+                        Text.Font = GameFont.Tiny;
+                        Widgets.Label(xenotypeHeaderRect, "Xenotype");
+                        Widgets.Label(enabledHeaderRect, "Enabled");
+                        Widgets.Label(multiplierHeaderRect, "Multiplier");
+                        Text.Font = GameFont.Small;
                         y += sectionHeight;
 
+                        // Xenotype rows
                         foreach (var xenotype in allowedXenotypes)
                         {
                             // Initialize if not exists
                             if (!settings.EnabledXenotypes.ContainsKey(xenotype))
                             {
-                                // Default rules: always enable Baseliner, enable xenotypes with same name as race
                                 bool defaultEnabled = xenotype == "Baseliner" ||
                                                     xenotype.ToLower() == selectedRace.defName.ToLower() ||
                                                     xenotype.ToLower() == selectedRace.LabelCap.RawText.ToLower();
                                 settings.EnabledXenotypes[xenotype] = defaultEnabled;
                             }
-
-                            Rect xenotypeToggleRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                            bool currentEnabled = settings.EnabledXenotypes[xenotype];
-                            Widgets.CheckboxLabeled(xenotypeToggleRect, xenotype, ref currentEnabled);
-                            if (currentEnabled != settings.EnabledXenotypes[xenotype])
-                            {
-                                settings.EnabledXenotypes[xenotype] = currentEnabled;
-                                SaveRaceSettings();
-                            }
-                            y += sectionHeight;
-                        }
-
-                        y += 5f;
-
-                        // Xenotype price multipliers
-                        Rect priceMultiplierLabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
-                        Widgets.Label(priceMultiplierLabelRect, "Xenotype Price Multipliers:");
-                        y += sectionHeight;
-
-                        foreach (var xenotype in allowedXenotypes)
-                        {
                             if (!settings.XenotypePrices.ContainsKey(xenotype))
                             {
-                                settings.XenotypePrices[xenotype] = 1.0f;
+                                settings.XenotypePrices[xenotype] = GetDefaultXenotypeMultiplier(xenotype);
                             }
 
-                            Rect xenotypeRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                            Widgets.Label(xenotypeRect, $"{xenotype}:");
+                            // Xenotype name
+                            Rect xenotypeNameRect = new Rect(leftPadding, y, columnWidth - 10f, sectionHeight);
+                            Widgets.Label(xenotypeNameRect, xenotype);
 
-                            Rect multiplierRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                            float multiplier = settings.XenotypePrices[xenotype];
-                            string multiplierBuffer = multiplier.ToString("F2");
-                            Widgets.TextFieldNumeric(multiplierRect, ref multiplier, ref multiplierBuffer, 0.1f, 10f);
-
-                            if (multiplier != settings.XenotypePrices[xenotype])
+                            // Enabled checkbox 
+                            Rect xenotypeEnabledRect = new Rect(leftPadding + columnWidth, y, 30f, sectionHeight);
+                            bool currentXenoEnabled = settings.EnabledXenotypes[xenotype];
+                            // Use the top-left position of the rect instead of the rect itself
+                            Widgets.Checkbox(xenotypeEnabledRect.position, ref currentXenoEnabled, 24f);
+                            if (currentXenoEnabled != settings.EnabledXenotypes[xenotype])
                             {
-                                settings.XenotypePrices[xenotype] = multiplier;
+                                settings.EnabledXenotypes[xenotype] = currentXenoEnabled;
                                 SaveRaceSettings();
                             }
+
+                            // Multiplier input
+                            Rect multiplierRect = new Rect(leftPadding + columnWidth + 90f, y, 80f, sectionHeight);
+                            float multiplier = settings.XenotypePrices[xenotype];
+                            string multiplierBuffer = multiplier.ToString("F2");
+                            // Use simple TextField for multiplier
+                            string newMultiplier = Widgets.TextField(multiplierRect, multiplierBuffer);
+                            if (newMultiplier != multiplierBuffer && float.TryParse(newMultiplier, out float parsedMultiplier) &&
+                                parsedMultiplier >= 0.1f && parsedMultiplier <= 10f)
+                            {
+                                settings.XenotypePrices[xenotype] = parsedMultiplier;
+                                SaveRaceSettings();
+                            }
+
                             y += sectionHeight;
                         }
                     }
                     else
                     {
                         // No xenotype restrictions
-                        Rect noXenotypeRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
+                        Rect noXenotypeRect = new Rect(leftPadding, y, viewRect.width - leftPadding, sectionHeight);
                         Widgets.Label(noXenotypeRect, "No xenotype restrictions - all xenotypes allowed");
                         y += sectionHeight;
                     }
-
-                    // Xenotype enabled toggle
-                    Rect xenotypeEnabledRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    bool currentAllowCustom = settings.AllowCustomXenotypes;
-                    Widgets.CheckboxLabeled(xenotypeEnabledRect, "Allow custom xenotypes for this race", ref currentAllowCustom);
-                    if (currentAllowCustom != settings.AllowCustomXenotypes)
-                    {
-                        settings.AllowCustomXenotypes = currentAllowCustom;
-                        SaveRaceSettings();
-                    }
-                    y += sectionHeight;
                 }
-
-                // Advanced Settings section
-                Rect advancedLabelRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
-                Widgets.Label(advancedLabelRect, "Advanced Settings:");
-                y += sectionHeight;
-
-                // Age range settings with validation
-                Rect ageMinRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                Widgets.Label(ageMinRect, "Minimum Age:");
-                Rect ageMinInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                int currentMinAge = settings.MinAge;
-                string ageMinBuffer = currentMinAge.ToString();
-                // CHANGED: Minimum age clamped at 4, maximum at 120
-                Widgets.TextFieldNumeric(ageMinInputRect, ref currentMinAge, ref ageMinBuffer, 4, 120);
-                if (currentMinAge != settings.MinAge)
-                {
-                    settings.MinAge = currentMinAge;
-                    // Ensure min age doesn't exceed max age
-                    if (settings.MinAge > settings.MaxAge)
-                        settings.MaxAge = settings.MinAge;
-                    SaveRaceSettings();
-                }
-                y += sectionHeight;
-
-                Rect ageMaxRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                Widgets.Label(ageMaxRect, "Maximum Age:");
-                Rect ageMaxInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                int currentMaxAge = settings.MaxAge;
-                string ageMaxBuffer = currentMaxAge.ToString();
-                // CHANGED: Maximum age clamped at 120
-                Widgets.TextFieldNumeric(ageMaxInputRect, ref currentMaxAge, ref ageMaxBuffer, settings.MinAge, 120);
-                if (currentMaxAge != settings.MaxAge)
-                {
-                    settings.MaxAge = currentMaxAge;
-                    SaveRaceSettings();
-                }
-                y += sectionHeight;
-
             }
             Widgets.EndScrollView();
         }
 
-        // In Dialog_PawnSettings.cs - Update CalculateDetailsHeight method
         private float CalculateDetailsHeight(RaceSettings settings)
         {
-            float height = 50f; // Header space
-            height += 28f * 4; // Basic info
-            height += 38f; // Basic settings label + spacing
-            height += 28f; // Enabled
-            height += 28f; // Base price
-            height += 14f; // Price description
-            height += 20f; // Extra spacing
+            float height = 0f;
+
+            // Basic Info section
+            height += 28f; // Header
+            height += 28f * 1.5f; // Description
+            height += 10f; // Spacing
+
+            // Settings section
+            height += 28f; // Header
+            height += 28f; // Enabled + Price row
+            height += 28f; // Age settings row (now includes sliders)
+            height += 28f; // Custom xenotypes
+            height += 10f; // Spacing
 
             // Xenotype section
             if (ModsConfig.BiotechActive)
             {
-                height += 28f; // Xenotype header
+                height += 28f; // Header
                 var allowedXenotypes = GetAllowedXenotypes(selectedRace);
                 if (allowedXenotypes.Count > 0)
                 {
-                    height += 28f; // Enable/disable header
-                    height += 28f * allowedXenotypes.Count; // Xenotype enable toggles
-                    height += 5f; // Spacing
-                    height += 28f; // Price multiplier header
-                    height += 28f * allowedXenotypes.Count; // Xenotype multipliers
+                    height += 28f; // Column headers
+                    height += 28f * allowedXenotypes.Count; // Xenotype rows
                 }
                 else
                 {
                     height += 28f; // No restrictions message
                 }
-                height += 28f; // Custom xenotypes toggle
             }
-
-            height += 38f; // Advanced settings label + spacing
-            height += 28f; // Min age
-            height += 28f; // Max age
 
             return height + 20f; // Extra padding
         }
@@ -479,20 +548,28 @@ namespace CAP_ChatInteractive
 
             return new List<string>();
         }
-        // In Dialog_PawnSettings.cs - Replace the LoadRaceSettings method
+
+        // In Dialog_PawnSettings.cs - Update the LoadRaceSettings method
         private void LoadRaceSettings()
         {
             // Load from JSON file using JsonFileManager
             raceSettings = JsonFileManager.LoadRaceSettings();
 
-            // Initialize defaults for any missing races
+            // Initialize defaults for any missing races - BUT ONLY FOR NON-EXCLUDED RACES
             foreach (var race in GetHumanlikeRaces())
             {
+                // Skip excluded races entirely - don't even add them to settings
+                if (RaceUtils.IsRaceExcluded(race))
+                {
+                    Logger.Debug($"Skipping excluded race in settings: {race.defName}");
+                    continue;
+                }
+
                 if (!raceSettings.ContainsKey(race.defName))
                 {
                     raceSettings[race.defName] = new RaceSettings
                     {
-                        Enabled = true,
+                        Enabled = true, // Enable by default for non-excluded races
                         BasePrice = CalculateDefaultPrice(race),
                         MinAge = 16,
                         MaxAge = 65,
@@ -512,13 +589,35 @@ namespace CAP_ChatInteractive
                                                 xenotype.ToLower() == race.defName.ToLower() ||
                                                 xenotype.ToLower() == race.LabelCap.RawText.ToLower();
                             raceSettings[race.defName].EnabledXenotypes[xenotype] = defaultEnabled;
+
+                            // Set default price multipliers
+                            raceSettings[race.defName].XenotypePrices[xenotype] = GetDefaultXenotypeMultiplier(xenotype);
                         }
                     }
                 }
             }
 
+            // Remove any excluded races that might have been in the saved settings
+            var excludedRaces = raceSettings.Keys.Where(key =>
+            {
+                var raceDef = DefDatabase<ThingDef>.AllDefs.FirstOrDefault(d => d.defName == key);
+                return raceDef != null && RaceUtils.IsRaceExcluded(raceDef);
+            }).ToList();
+
+            foreach (var excludedKey in excludedRaces)
+            {
+                Logger.Debug($"Removing excluded race from settings: {excludedKey}");
+                raceSettings.Remove(excludedKey);
+            }
+
             // Save any newly initialized settings
             SaveRaceSettings();
+        }
+
+        private static float GetDefaultXenotypeMultiplier(string xenotypeName)
+        {
+            // Use gene-based pricing if available, otherwise fall back to defaults
+            return GeneUtils.CalculateXenotypeGeneCost(xenotypeName);
         }
 
         private void SaveRaceSettings()
@@ -549,7 +648,7 @@ namespace CAP_ChatInteractive
 
         private IEnumerable<ThingDef> GetHumanlikeRaces()
         {
-            return DefDatabase<ThingDef>.AllDefs.Where(d => d.race?.Humanlike ?? false);
+            return RaceUtils.GetAllHumanlikeRaces(); // Use the filtered version
         }
 
         private void FilterRaces()
@@ -557,7 +656,8 @@ namespace CAP_ChatInteractive
             lastSearch = searchQuery;
             filteredRaces.Clear();
 
-            var allRaces = GetHumanlikeRaces().AsEnumerable();
+            // Use the filtered races from RaceUtils, but also filter by what's in our settings
+            var allRaces = GetHumanlikeRaces().Where(race => raceSettings.ContainsKey(race.defName)).AsEnumerable();
 
             // Search filter
             if (!string.IsNullOrEmpty(searchQuery))
@@ -572,6 +672,8 @@ namespace CAP_ChatInteractive
 
             filteredRaces = allRaces.ToList();
             SortRaces();
+
+            Logger.Debug($"Filtered races: {filteredRaces.Count} races after filtering");
         }
 
         private void SortRaces()
@@ -602,11 +704,10 @@ namespace CAP_ChatInteractive
     {
         public bool Enabled { get; set; } = true;
         public int BasePrice { get; set; } = 1000;
-        public int MinAge { get; set; } = 13;
-        public int MaxAge { get; set; } = 120;
+        public int MinAge { get; set; } = 16;
+        public int MaxAge { get; set; } = 65;
         public bool AllowCustomXenotypes { get; set; } = true;
         public Dictionary<string, float> XenotypePrices { get; set; } = new Dictionary<string, float>();
-        // ADD THIS: Xenotype enable/disable settings
         public Dictionary<string, bool> EnabledXenotypes { get; set; } = new Dictionary<string, bool>();
     }
 

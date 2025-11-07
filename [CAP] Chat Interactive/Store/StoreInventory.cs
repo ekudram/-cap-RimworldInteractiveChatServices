@@ -227,8 +227,6 @@ namespace CAP_ChatInteractive.Store
             return tradeableItems;
         }
 
-
-
         public static void SaveStoreToJson()
         {
             LongEventHandler.QueueLongEvent(() =>

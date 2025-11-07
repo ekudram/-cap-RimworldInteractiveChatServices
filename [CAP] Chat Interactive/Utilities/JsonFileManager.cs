@@ -354,7 +354,7 @@ namespace CAP_ChatInteractive
                 {
                     Formatting = Formatting.Indented,
                     NullValueHandling = NullValueHandling.Ignore,
-                    DefaultValueHandling = DefaultValueHandling.Ignore
+                    DefaultValueHandling = DefaultValueHandling.Include
                 };
 
                 return JsonConvert.SerializeObject(raceSettings, settings);
@@ -385,18 +385,27 @@ namespace CAP_ChatInteractive
         public static Dictionary<string, RaceSettings> LoadRaceSettings()
         {
             string json = LoadFile("RaceSettings.json");
+            Dictionary<string, RaceSettings> settings = new Dictionary<string, RaceSettings>();
+
             if (!string.IsNullOrEmpty(json))
             {
                 try
                 {
-                    return DeserializeRaceSettings(json);
+                    settings = DeserializeRaceSettings(json);
+                    Logger.Debug($"Loaded race settings for {settings.Count} races");
                 }
                 catch (Exception ex)
                 {
                     Logger.Error($"Error loading race settings: {ex.Message}");
+                    // Don't return empty, let the caller handle initialization
                 }
             }
-            return new Dictionary<string, RaceSettings>();
+            else
+            {
+                Logger.Debug("No RaceSettings.json found, will initialize defaults");
+            }
+
+            return settings;
         }
 
         public static RaceSettings GetRaceSettings(string raceDefName)
@@ -407,10 +416,10 @@ namespace CAP_ChatInteractive
                 return allSettings[raceDefName];
             }
 
-            // Return default settings if not found
+            // Return default settings if not found - but mark as disabled by default for safety
             return new RaceSettings
             {
-                Enabled = true,
+                Enabled = false, // Default to disabled until properly configured
                 BasePrice = 1000,
                 MinAge = 16,
                 MaxAge = 65,
@@ -419,5 +428,7 @@ namespace CAP_ChatInteractive
                 EnabledXenotypes = new Dictionary<string, bool>()
             };
         }
+
+
     }
 }

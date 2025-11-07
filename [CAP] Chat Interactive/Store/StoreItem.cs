@@ -64,15 +64,12 @@ namespace CAP_ChatInteractive.Store
         }
         public static bool IsItemUsable(ThingDef thingDef)
         {
-            // Items that should NEVER be usable
-            if (thingDef.IsApparel || thingDef.IsWeapon || thingDef.IsBuildingArtificial)
-                return false;
-
             // Items that can be consumed/used up when used
             return thingDef.IsIngestible ||
                    thingDef.IsMedicine ||
                    thingDef.IsDrug ||
                    thingDef.IsPleasureDrug ||
+                   thingDef.defName.Contains("Neurotrainer") ||
                    thingDef.defName.Contains("Psytrainer") ||
                    thingDef.defName.Contains("Neuroformer") ||
                    thingDef.defName.Contains("Serum") ||

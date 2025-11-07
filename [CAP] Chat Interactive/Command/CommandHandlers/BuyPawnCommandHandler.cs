@@ -3,13 +3,14 @@
 // Licensed under the AGPLv3 License. See LICENSE file in the project root for full license information.
 //
 // Pawn purchase command handler
+using _CAP__Chat_Interactive.Utilities;
+using CAP_ChatInteractive;
 using CAP_ChatInteractive.Commands.CommandHandlers;
 using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Verse;
-using CAP_ChatInteractive;
 
 namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
@@ -246,12 +247,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static PawnKindDef GetPawnKindDefForRace(string raceName)
         {
-            // First try to find by race def name
-            var raceDef = DefDatabase<ThingDef>.AllDefs.FirstOrDefault(
-                d => d.race?.Humanlike == true &&
-                (d.defName.Equals(raceName, StringComparison.OrdinalIgnoreCase) ||
-                 d.label.Equals(raceName, StringComparison.OrdinalIgnoreCase)));
-
+            // Use centralized race lookup
+            var raceDef = RaceUtils.FindRaceByName(raceName);
             if (raceDef != null)
             {
                 // Find a pawn kind def that uses this race
@@ -273,19 +270,31 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static bool IsValidPawnRequest(string raceDefName, string xenotypeName, out RaceSettings raceSettings)
         {
-            // Use JsonFileManager to get race settings
-            raceSettings = JsonFileManager.GetRaceSettings(raceDefName);
+            raceSettings = null;
 
-            // Check if race exists and is enabled
-            if (raceSettings == null || !raceSettings.Enabled)
+            // Use centralized race lookup
+            var raceDef = RaceUtils.FindRaceByName(raceDefName);
+            if (raceDef == null)
+            {
+                Logger.Warning($"Race not found: {raceDefName}");
                 return false;
+            }
+            // Check if race is enabled using centralized logic
+            if (!RaceUtils.IsRaceEnabled(raceDef.defName))
+            {
+                Logger.Debug($"Race disabled: {raceDef.defName}");
+                return false;
+            }
 
             // Check xenotype if specified and Biotech is active
             if (!string.IsNullOrEmpty(xenotypeName) && xenotypeName != "Baseliner" && ModsConfig.BiotechActive)
             {
                 // Check if xenotype is allowed for this race
                 if (!IsXenotypeAllowed(raceSettings, xenotypeName))
+                {
+                    Logger.Debug($"Xenotype not allowed: {xenotypeName} for race {raceDef.defName}");
                     return false;
+                }
             }
 
             return true;
@@ -339,20 +348,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return multiplier;
             }
 
-            // Default multipliers for common xenotypes if not specified
-            return xenotypeName.ToLowerInvariant() switch
-            {
-                "hussar" => 2.0f,
-                "genie" => 1.8f,
-                "sanguophage" => 3.0f,
-                "highmate" => 1.5f,
-                "waster" => 1.3f,
-                "pigskin" => 1.2f,
-                "neanderthal" => 1.4f,
-                "yttakin" => 1.3f,
-                "impoid" => 1.6f,
-                _ => 1.5f // Default for other xenotypes
-            };
+            // Use gene-based pricing as default
+            return GeneUtils.CalculateXenotypeGeneCost(xenotypeName);
         }
 
         private static bool IsGameReadyForPawnPurchase()
@@ -454,6 +451,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
             Viewers.SaveViewers();
+        }
+
+        public static string DebugRaceSettings(string raceName)
+        {
+            var raceDef = DefDatabase<ThingDef>.AllDefs.FirstOrDefault(
+                d => d.race?.Humanlike == true &&
+                (d.defName.Equals(raceName, StringComparison.OrdinalIgnoreCase) ||
+                 d.label.Equals(raceName, StringComparison.OrdinalIgnoreCase)));
+
+            if (raceDef == null)
+                return $"Race not found: {raceName}";
+
+            var settings = JsonFileManager.GetRaceSettings(raceDef.defName);
+
+            return $"Race: {raceDef.defName}, Enabled: {settings.Enabled}, Price: {settings.BasePrice}, " +
+                   $"MinAge: {settings.MinAge}, MaxAge: {settings.MaxAge}";
         }
     }
 

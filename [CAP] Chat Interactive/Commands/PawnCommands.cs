@@ -3,6 +3,7 @@
 // Licensed under the AGPLv3 License. See LICENSE file in the project root for full license information.
 //
 // Handles pawn-related chat commands: !pawn, !mypawn, trait commands, and queue management.
+using _CAP__Chat_Interactive.Utilities;
 using CAP_ChatInteractive.Commands.CommandHandlers;
 using CAP_ChatInteractive.Traits;
 using RimWorld;
@@ -405,6 +406,23 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
             return HealPawnCommandHandler.HandleHealPawn(user, args);
+        }
+    }
+    
+    public class DebugRaces : ChatCommand
+    {
+        public override string Name => "debugraces";
+
+        public override string Execute(ChatMessageWrapper user, string[] args)
+        {
+            var excluded = RaceUtils.GetExcludedRaceList();
+            var allHumanlike = DefDatabase<ThingDef>.AllDefs.Where(d => d.race?.Humanlike ?? false).Count();
+            var available = RaceUtils.GetAllHumanlikeRaces().Count();
+
+            string result = $"Races - Total Humanlike: {allHumanlike}, Available: {available}, Excluded: {excluded.Count}\n";
+            result += "Excluded races: " + string.Join(", ", excluded.Take(5)); // Show first 5 for chat
+
+            return result;
         }
     }
 }
