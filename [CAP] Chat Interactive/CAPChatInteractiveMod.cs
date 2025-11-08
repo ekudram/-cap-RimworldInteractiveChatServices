@@ -8,6 +8,7 @@ using _CAP__Chat_Interactive.Interfaces;
 using _CAP__Chat_Interactive.Utilities;
 using Google.Apis.YouTube.v3;
 using LudeonTK;
+using Newtonsoft.Json;
 using RimWorld;
 using System;   
 using System.Collections.Generic;
@@ -47,13 +48,14 @@ namespace CAP_ChatInteractive
                 }
             }
 
-            Logger.Message("[CAP] Chat Interactive mod loaded successfully!");
+            Logger.Message("[CAP] RICS mod loaded successfully!");
             // Force viewer loading by accessing the All property
             var viewerCount = Viewers.All.Count; // This triggers static constructor
             Logger.Debug($"Pre-loaded {viewerCount} viewers");
 
-            // Register commands from XML Defs first
-            RegisterDefCommands();
+            // Register commands from game constructor doesn't work reliably due to def loading order
+            // RegisterAllCommands();
+            // InitializeCommandSettings();
 
             // Then initialize services (which will use the registered commands)
             InitializeServices();
@@ -61,17 +63,138 @@ namespace CAP_ChatInteractive
             Logger.Debug("CAPChatInteractiveMod constructor completed");
         }
 
-        private void RegisterDefCommands()
+        private void InitializeCommandSettings()
         {
-            Logger.Debug("Registering commands from Defs...");
+            Logger.Debug("Initializing command settings...");
 
-            // Register all ChatCommandDefs with the processor
-            foreach (var commandDef in DefDatabase<ChatCommandDef>.AllDefs)
+            // Try to load existing settings
+            if (!LoadCommandSettingsFromJson())
+            {
+                // If no JSON exists, create default settings from XML defs
+                CreateDefaultCommandSettings();
+                SaveCommandSettingsToJson();
+            }
+
+            Logger.Message($"[CAP] Command settings initialized");
+        }
+
+        private bool LoadCommandSettingsFromJson()
+        {
+            string jsonContent = JsonFileManager.LoadFile("CommandSettings.json");
+            if (string.IsNullOrEmpty(jsonContent))
+                return false;
+
+            try
+            {
+                var loadedSettings = JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(jsonContent);
+
+                // Update the command settings in the dialog (if it exists later)
+                var dialog = Find.WindowStack?.WindowOfType<Dialog_CommandManager>();
+                if (dialog != null)
+                {
+                    foreach (var kvp in loadedSettings)
+                    {
+                        dialog.commandSettings[kvp.Key] = kvp.Value;
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error loading command settings JSON: {ex.Message}");
+                return false;
+            }
+        }
+
+        private void CreateDefaultCommandSettings()
+        {
+            // Get all command defs and create default settings for them
+            var commandDefs = DefDatabase<ChatCommandDef>.AllDefsListForReading;
+
+            foreach (var commandDef in commandDefs)
+            {
+                var settings = new CommandSettings
+                {
+                    Enabled = commandDef.enabled,
+                    CooldownSeconds = commandDef.cooldownSeconds,
+                    PermissionLevel = commandDef.permissionLevel,
+                    // Set other defaults as needed
+                };
+
+                // Store by command name, not defName
+                string commandName = commandDef.commandText?.ToLower() ?? commandDef.defName.ToLower();
+
+                // Update dialog if it exists
+                var dialog = Find.WindowStack?.WindowOfType<Dialog_CommandManager>();
+                if (dialog != null)
+                {
+                    dialog.commandSettings[commandName] = settings;
+                }
+            }
+        }
+
+        private void SaveCommandSettingsToJson()
+        {
+            try
+            {
+                // Get current settings from dialog or create empty dict
+                var settingsToSave = new Dictionary<string, CommandSettings>();
+                var dialog = Find.WindowStack?.WindowOfType<Dialog_CommandManager>();
+
+                if (dialog != null)
+                {
+                    settingsToSave = dialog.commandSettings;
+                }
+                else
+                {
+                    // Create from command defs if dialog doesn't exist yet
+                    foreach (var commandDef in DefDatabase<ChatCommandDef>.AllDefsListForReading)
+                    {
+                        string commandName = commandDef.commandText?.ToLower() ?? commandDef.defName.ToLower();
+                        settingsToSave[commandName] = new CommandSettings
+                        {
+                            Enabled = commandDef.enabled,
+                            CooldownSeconds = commandDef.cooldownSeconds,
+                            PermissionLevel = commandDef.permissionLevel
+                        };
+                    }
+                }
+
+                string json = JsonConvert.SerializeObject(settingsToSave, Formatting.Indented);
+                JsonFileManager.SaveFile("CommandSettings.json", json);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error saving command settings: {ex}");
+            }
+        }
+
+        private void RegisterAllCommands()
+        {
+            Logger.Debug("Registering all commands from Mod constructor...");
+
+            // Debug: Check all defs first
+            var allDefsCount = DefDatabase<Def>.AllDefsListForReading.Count;
+            Logger.Debug($"Total defs in database: {allDefsCount}");
+
+            // Debug: Check ChatCommandDefs specifically
+            var commandDefs = DefDatabase<ChatCommandDef>.AllDefsListForReading;
+            Logger.Debug($"Found {commandDefs.Count} ChatCommandDefs");
+
+            // Log each def we find
+            foreach (var def in commandDefs)
+            {
+                Logger.Debug($"  -> Def: {def.defName}, CommandText: {def.commandText}, Class: {def.commandClass?.Name}");
+            }
+
+            // Register commands from XML Defs
+            foreach (var commandDef in commandDefs)
             {
                 commandDef.RegisterCommand();
             }
 
-            Logger.Message($"Registered {DefDatabase<ChatCommandDef>.AllDefsListForReading.Count} commands from Defs");
+            Logger.Message($"[CAP] Registered {commandDefs.Count} commands successfully");
         }
 
         private void InitializeServices()
@@ -117,7 +240,7 @@ namespace CAP_ChatInteractive
                 _ => null
             };
         }
-        public override string SettingsCategory() => "[CAP] Chat Interactive";
+        public override string SettingsCategory() => "[CAP] RICS";
 
         // Public access to services for other parts of your mod
         public TwitchService TwitchService => _twitchService;

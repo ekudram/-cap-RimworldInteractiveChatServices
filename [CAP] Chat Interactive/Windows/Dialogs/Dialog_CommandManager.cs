@@ -93,16 +93,23 @@ namespace CAP_ChatInteractive
             }
         }
 
-        private void SaveCommandSettings()
+        public void SaveCommandSettings()
         {
-            try
+            // Delegate to the mod class for saving
+            var mod = CAPChatInteractiveMod.Instance;
+            if (mod != null)
             {
-                string json = JsonConvert.SerializeObject(commandSettings, Formatting.Indented);
-                JsonFileManager.SaveFile("CommandSettings.json", json);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error saving command settings: {ex}");
+                // You might need to make SaveCommandSettingsToJson public or use an event
+                // For now, we'll keep the save logic in the dialog but ensure it's consistent
+                try
+                {
+                    string json = JsonConvert.SerializeObject(commandSettings, Formatting.Indented);
+                    JsonFileManager.SaveFile("CommandSettings.json", json);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Error saving command settings: {ex}");
+                }
             }
         }
 
@@ -391,7 +398,7 @@ namespace CAP_ChatInteractive
 
                 // Get global settings for prefixes
                 var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-                string aliasText = settings.CustomPermission ?? ""; // Reusing this field for alias
+                string aliasText = settings.CommandAlias ?? ""; // Reusing this field for alias
 
                 // Strip prefixes if they were entered
                 if (!string.IsNullOrEmpty(aliasText))
@@ -404,7 +411,7 @@ namespace CAP_ChatInteractive
 
                 // Input field with placeholder text
                 aliasText = Widgets.TextField(aliasInputRect, aliasText);
-                settings.CustomPermission = aliasText; // Store without prefixes
+                settings.CommandAlias = aliasText; // Store without prefixes
 
                 y += sectionHeight;
 

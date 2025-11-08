@@ -79,9 +79,11 @@ namespace CAP_ChatInteractive
                 // Create instance and register with processor
                 if (Activator.CreateInstance(commandClass) is ChatCommand commandInstance)
                 {
-                    // If the command class doesn't have the proper properties set, 
-                    // we can create a wrapper that uses the Def values
                     var wrappedCommand = new DefBasedChatCommand(this, commandInstance);
+
+                    // Ensure settings are properly aligned between defName and command name
+                    EnsureSettingsAlignment(this, wrappedCommand);
+
                     ChatCommandProcessor.RegisterCommand(wrappedCommand);
                 }
                 else
@@ -92,6 +94,30 @@ namespace CAP_ChatInteractive
             catch (Exception ex)
             {
                 Logger.Error($"Error registering command {commandText}: {ex}");
+            }
+        }
+
+        private void EnsureSettingsAlignment(ChatCommandDef def, ChatCommand command)
+        {
+            try
+            {
+                var settings = CommandSettingsManager.GetSettings(def.defName);
+                if (settings != null)
+                {
+                    // If we have settings stored by defName, also make them available by command name
+                    var commandNameSettings = CommandSettingsManager.GetSettings(command.Name);
+
+                    // Copy alias from defName settings to command name settings if they differ
+                    if (!string.IsNullOrEmpty(settings.CommandAlias) &&
+                        string.IsNullOrEmpty(commandNameSettings.CommandAlias))
+                    {
+                        commandNameSettings.CommandAlias = settings.CommandAlias;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error ensuring settings alignment for {def.defName}: {ex}");
             }
         }
     }
@@ -113,9 +139,23 @@ public class DefBasedChatCommand : ChatCommand
 
         public override string Name => _def.commandText;
 
+        public override string Alias => _wrappedCommand.Alias;
+
         public override string Description => !string.IsNullOrEmpty(_def.commandDescription) ? _def.commandDescription : _wrappedCommand.Description;
 
-        public override string PermissionLevel => _def.permissionLevel;
+        public override string PermissionLevel
+        {
+            get
+            {
+                // Try to get from JSON settings first, fallback to XML def
+                var settings = GetCommandSettings();
+                if (!string.IsNullOrEmpty(settings?.PermissionLevel) && settings.PermissionLevel != "everyone")
+                {
+                    return settings.PermissionLevel;
+                }
+                return _def.permissionLevel;
+            }
+        }
 
         public override int CooldownSeconds => _def.cooldownSeconds;
 

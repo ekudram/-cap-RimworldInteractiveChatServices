@@ -89,6 +89,16 @@ namespace CAP_ChatInteractive
 
 
             commandText = commandText.ToLowerInvariant();
+            Logger.Debug($"Identified command: {commandText} with args: {string.Join(", ", args)}");
+
+            // NEW: Alias resolution - check if this is an alias and resolve to main command
+            string resolvedCommandName = ResolveCommandFromAlias(commandText);
+            Logger.Debug($"Resolved command name: {resolvedCommandName}");
+            if (resolvedCommandName != commandText)
+            {
+                Logger.Debug($"Resolved alias '{commandText}' to command '{resolvedCommandName}'");
+                commandText = resolvedCommandName;
+            }
 
             // Fast exit: Unknown command
             if (!_commands.TryGetValue(commandText, out var command))
@@ -161,6 +171,25 @@ namespace CAP_ChatInteractive
                 Logger.Error($"Error executing command {commandText}: {ex.Message}");
                 SendMessageToUser(message, $"Error executing command: {ex.Message}");
             }
+        }
+
+        private static string ResolveCommandFromAlias(string commandText)
+        {
+            // First, check if it's a direct command match
+            if (_commands.ContainsKey(commandText))
+                return commandText;
+
+            // Then check aliases
+            foreach (var command in _commands.Values.Distinct())
+            {
+                Logger.Debug($"Checking alias for command '{command.Name}': Alias='{command.Alias}'");
+                if (!string.IsNullOrEmpty(command.Alias) && command.Alias == commandText)
+                {
+                    return command.Name;
+                }
+            }
+
+            return commandText;
         }
 
         private static void ProcessChatMessage(ChatMessageWrapper message)
@@ -324,11 +353,18 @@ namespace CAP_ChatInteractive
         public static void RegisterCommand(ChatCommand command)
         {
             _commands[command.Name] = command;
-            // Also register aliases
-            foreach (var alias in command.Aliases)
+            Logger.Debug($"Registered command: '{command.Name}'");
+
+            // Register the single alias if it exists
+            if (!string.IsNullOrEmpty(command.Alias))
             {
-                _commands[alias] = command;
+                _commands[command.Alias] = command;
+                Logger.Debug($"  -> Registered alias: '{command.Alias}'");
             }
+
+            // Also log the CommandAlias value directly
+            var settings = command.GetCommandSettings();
+            Logger.Debug($"  -> CommandAlias value: '{settings.CommandAlias}'");
         }
 
         public static IEnumerable<ChatCommand> GetAvailableCommands(ChatMessageWrapper user)

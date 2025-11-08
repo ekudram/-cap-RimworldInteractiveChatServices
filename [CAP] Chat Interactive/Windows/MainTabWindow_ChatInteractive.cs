@@ -29,7 +29,7 @@ namespace CAP_ChatInteractive.Windows
 
             foreach (var addonDef in AddonRegistry.AddonDefs)
             {
-                Logger.Debug($"Processing addon: {addonDef.defName}");
+                // Logger.Debug($"Processing addon: {addonDef.defName}");
                 if (listing.ButtonText(addonDef.label))
                 {
                     var menu = addonDef.GetAddonMenu();

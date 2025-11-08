@@ -16,7 +16,24 @@ namespace CAP_ChatInteractive
     public abstract class ChatCommand
     {
         public abstract string Name { get; }
-        public virtual string[] Aliases => Array.Empty<string>();
+        public virtual string Alias
+        {
+            get
+            {
+                var settings = GetCommandSettings();
+                Logger.Debug($"  -> Alias lookup for {Name}: settings.CommandAlias = '{settings.CommandAlias}'");
+
+                if (!string.IsNullOrEmpty(settings.CommandAlias))
+                {
+                    string alias = settings.CommandAlias.Trim().ToLowerInvariant();
+                    Logger.Debug($"  -> Returning alias: '{alias}'");
+                    return alias;
+                }
+
+                Logger.Debug($"  -> No alias found, returning null");
+                return null;
+            }
+        }
         public virtual string Description => "No description available";
         // Make PermissionLevel virtual so it can use settings
         public virtual string PermissionLevel
@@ -24,7 +41,7 @@ namespace CAP_ChatInteractive
             get
             {
                 var settings = GetCommandSettings();
-                return settings?.CustomPermission ?? "everyone"; // Using CustomPermission field for override
+                return settings?.PermissionLevel ?? "everyone";
             }
         }
         public virtual int CooldownSeconds => 0;
@@ -91,14 +108,18 @@ namespace CAP_ChatInteractive
         {
             try
             {
+                Logger.Debug($"=== Settings lookup for: '{commandName}' ===");
+
                 // Try to get from open dialog first
                 var dialog = Find.WindowStack?.WindowOfType<Dialog_CommandManager>();
                 if (dialog != null && dialog.commandSettings.ContainsKey(commandName))
                 {
+                    Logger.Debug($"  -> Found in dialog settings");
                     return dialog.commandSettings[commandName];
                 }
 
                 // Fallback: Load directly from JSON
+                Logger.Debug($"  -> Looking in JSON file");
                 return LoadSettingsFromJson(commandName);
             }
             catch (Exception ex)
@@ -117,15 +138,47 @@ namespace CAP_ChatInteractive
                 try
                 {
                     var allSettings = JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(json);
+
+                    // FIXED: Proper null checking for the debug output
+                    if (allSettings != null)
+                    {
+                       // Logger.Debug($"  -> JSON keys available: {string.Join(", ", allSettings.Keys)}");
+                    }
+                    else
+                    {
+                        Logger.Debug($"  -> JSON deserialized to null");
+                    }
+
+                    // FIRST: Try exact match
                     if (allSettings != null && allSettings.ContainsKey(commandName))
                     {
+                        Logger.Debug($"  -> Found exact match for '{commandName}'");
                         return allSettings[commandName];
                     }
+
+                    // SECOND: Try to find by defName (case-insensitive)
+                    if (allSettings != null)
+                    {
+                        var matchingKey = allSettings.Keys.FirstOrDefault(k =>
+                            string.Equals(k, commandName, StringComparison.OrdinalIgnoreCase));
+
+                        if (matchingKey != null)
+                        {
+                            Logger.Debug($"  -> Found case-insensitive match: '{matchingKey}' -> '{commandName}'");
+                            return allSettings[matchingKey];
+                        }
+                    }
+
+                    Logger.Debug($"  -> No match found for '{commandName}'");
                 }
                 catch (Exception ex)
                 {
                     Logger.Error($"Error loading settings from JSON for {commandName}: {ex}");
                 }
+            }
+            else
+            {
+                Logger.Debug($"  -> JSON file is empty or doesn't exist");
             }
 
             return new CommandSettings();

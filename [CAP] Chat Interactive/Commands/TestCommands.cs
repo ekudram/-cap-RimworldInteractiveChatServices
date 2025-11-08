@@ -6,7 +6,7 @@ using System;
 
 namespace CAP_ChatInteractive.Commands.TestCommands
 {
-    public class HelloWorld : ChatCommand
+    public class Hello : ChatCommand
     {
         public override string Name => "hello";
 

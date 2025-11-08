@@ -105,7 +105,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
-    public class TraitCommand : ChatCommand
+    public class Trait : ChatCommand
     {
         public override string Name => "trait";
 
@@ -115,7 +115,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
-    public class AddTraitCommand : ChatCommand
+    public class AddTrait : ChatCommand
     {
         public override string Name => "addtrait";
 
@@ -125,7 +125,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
-    public class RemoveTraitCommand : ChatCommand
+    public class RemoveTrait : ChatCommand
     {
         public override string Name => "removetrait";
 
@@ -135,7 +135,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
-    public class ListTraitsCommand : ChatCommand
+    public class ListTraits : ChatCommand
     {
         public override string Name => "traits";
 
@@ -145,17 +145,12 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
-    public class LeaveCommand : ChatCommand
+    public class Leave : ChatCommand
     {
         public override string Name => "leave";
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            if (!IsEnabled())
-            {
-                return "The Leave command is currently disabled.";
-            }
-
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
 
             // Check if user has a pawn assigned
@@ -228,7 +223,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
     public class JoinQueue : ChatCommand
     {
-        public override string Name => "join";
+        public override string Name => "JoinQueue";
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
@@ -282,7 +277,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
     public class HealPawn : ChatCommand
     {
-        public override string Name => "heal pawn";
+        public override string Name => "healpawn";
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {

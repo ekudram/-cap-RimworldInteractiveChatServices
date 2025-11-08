@@ -12,7 +12,7 @@ using Verse;
 
 namespace CAP_ChatInteractive.Commands.ViewerCommands
 {
-    public class CheckBalance : ChatCommand
+    public class Bal : ChatCommand
     {
         public override string Name => "bal";
 
@@ -98,7 +98,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
-    public class Instructions : ChatCommand
+    public class help : ChatCommand
     {
         public override string Name => "help";
 
@@ -108,7 +108,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
-    public class AvailableCommands : ChatCommand
+    public class commands : ChatCommand
     {
         public override string Name => "commands";
         public override string Execute(ChatMessageWrapper user, string[] args)
@@ -119,7 +119,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
-    public class LookupCommand : ChatCommand
+    public class lookup : ChatCommand
     {
         public override string Name => "lookup";
 
