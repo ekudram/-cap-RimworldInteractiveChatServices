@@ -220,13 +220,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return null;
         }
 
-        public static void SpawnItemForPawn(ThingDef thingDef, int quantity, QualityCategory? quality, ThingDef material, Pawn pawn, bool addToInventory = false)
+        public static (List<Thing> spawnedThings, IntVec3 deliveryPos) SpawnItemForPawn(ThingDef thingDef, int quantity, QualityCategory? quality,
+            ThingDef material, Pawn pawn, bool addToInventory = false)
         {
-            SpawnItemForPawn(thingDef, quantity, quality, material, pawn, addToInventory, false, false);
+            return SpawnItemForPawn(thingDef, quantity, quality, material, pawn, addToInventory, false, false);
         }
-
-        public static void SpawnItemForPawn(ThingDef thingDef, int quantity, QualityCategory? quality, ThingDef material, Pawn pawn, bool addToInventory, bool equipItem, bool wearItem)
+        public static (List<Thing> spawnedThings, IntVec3 deliveryPos) SpawnItemForPawn(ThingDef thingDef, int quantity, QualityCategory? quality,
+            ThingDef material, Pawn pawn, bool addToInventory, bool equipItem, bool wearItem)
         {
+            List<Thing> spawnedThings = new List<Thing>();
+            IntVec3 deliveryPos = IntVec3.Invalid;
+
             try
             {
                 Logger.Debug($"Spawning item: {thingDef.defName}, quantity: {quantity}, for pawn: {pawn?.Name}, addToInventory: {addToInventory}, equipItem: {equipItem}, wearItem: {wearItem}");
@@ -240,7 +244,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // SPECIAL CASE: If this is a pawn (animal), use pawn delivery regardless of other parameters
-                if (thingDef.race != null && thingDef.thingClass == typeof(Pawn))
+                if (thingDef.thingClass == typeof(Verse.Pawn))
                 {
                     Logger.Debug($"Using special pawn delivery for {thingDef.defName}");
 
@@ -248,18 +252,25 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     if (targetMap == null)
                     {
                         Logger.Error("No valid map found for pawn delivery");
-                        return;
+                        return (spawnedThings, deliveryPos);
                     }
 
-                    IntVec3 dropPos;
-                    if (!TryFindSafeDropPosition(targetMap, out dropPos))
+                    if (!TryFindSafeDropPosition(targetMap, out deliveryPos))
                     {
                         Logger.Error("No safe drop position found for pawn delivery");
-                        return;
+                        return (spawnedThings, deliveryPos);
                     }
 
-                    TryPawnDelivery(thingDef, quantity, quality, material, dropPos, targetMap);
-                    return;
+                    // Get the actual spawn position from the pawn delivery
+                    var pawnDeliveryResult = TryPawnDelivery(thingDef, quantity, quality, material, deliveryPos, targetMap, pawn);
+                    if (pawnDeliveryResult.success)
+                    {
+                        // Use the actual spawn position instead of the trade spot
+                        deliveryPos = pawnDeliveryResult.spawnPosition;
+                        Logger.Debug($"Updated delivery position to actual spawn position: {deliveryPos}");
+                    }
+
+                    return (spawnedThings, deliveryPos);
                 }
 
                 // Create the thing
@@ -276,15 +287,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                 }
 
-
-
                 // Handle different delivery methods
                 if (equipItem && pawn != null && pawn.Map != null)
                 {
                     if (EquipItemOnPawn(thing, pawn))
                     {
                         Logger.Debug($"Item equipped on pawn");
-                        return;
+                        spawnedThings.Add(thing);
+                        deliveryPos = pawn.Position; // Use pawn position for targeting
+                        return (spawnedThings, deliveryPos);
                     }
                     else
                     {
@@ -294,6 +305,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         {
                             PurchaseHelper.SpawnItemAtTradeSpot(thing, pawn.Map);
                         }
+                        spawnedThings.Add(thing);
+                        deliveryPos = pawn.Position; // Use pawn position for targeting
                     }
                 }
                 else if (wearItem && pawn != null && pawn.Map != null)
@@ -301,7 +314,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     if (WearApparelOnPawn(thing, pawn))
                     {
                         Logger.Debug($"Item worn by pawn");
-                        return;
+                        spawnedThings.Add(thing);
+                        deliveryPos = pawn.Position; // Use pawn position for targeting
+                        return (spawnedThings, deliveryPos);
                     }
                     else
                     {
@@ -311,6 +326,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         {
                             PurchaseHelper.SpawnItemAtTradeSpot(thing, pawn.Map);
                         }
+                        spawnedThings.Add(thing);
+                        deliveryPos = pawn.Position; // Use pawn position for targeting
                     }
                 }
                 else if (addToInventory && pawn != null && pawn.Map != null)
@@ -321,17 +338,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         // If inventory full, drop at pawn's position
                         Logger.Debug($"Inventory full, dropping at pawn position");
                         GenPlace.TryPlaceThing(thing, pawn.Position, pawn.Map, ThingPlaceMode.Near);
+                        deliveryPos = pawn.Position; // Use pawn position for targeting
                     }
                     else
                     {
                         Logger.Debug($"Item added to pawn inventory");
+                        deliveryPos = pawn.Position; // Use pawn position for targeting
                     }
+                    spawnedThings.Add(thing);
                 }
                 else
                 {
+                    // For drop pod deliveries, we need to handle multiple stacks differently
+                    spawnedThings = CreateThingsForDelivery(thingDef, quantity, quality, finalMaterial);
+
                     // IMPROVED DELIVERY - Prioritize trade spots, then pawn proximity
                     Map targetMap = null;
-                    IntVec3 dropPos;
 
                     if (pawn != null && pawn.Map != null)
                     {
@@ -341,22 +363,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         IntVec3 tradeSpot = DropCellFinder.TradeDropSpot(targetMap);
 
                         // First try to find drop spot near trade spot (highest priority)
-                        if (DropCellFinder.TryFindDropSpotNear(tradeSpot, targetMap, out dropPos,
+                        if (DropCellFinder.TryFindDropSpotNear(tradeSpot, targetMap, out deliveryPos,
                             allowFogged: false, canRoofPunch: true, maxRadius: 15))
                         {
-                            Logger.Debug($"Using drop spot near trade spot: {dropPos} (trade spot: {tradeSpot})");
+                            Logger.Debug($"Using drop spot near trade spot: {deliveryPos} (trade spot: {tradeSpot})");
                         }
                         // If no trade spot available, try near pawn
-                        else if (DropCellFinder.TryFindDropSpotNear(pawn.Position, targetMap, out dropPos,
+                        else if (DropCellFinder.TryFindDropSpotNear(pawn.Position, targetMap, out deliveryPos,
                                  allowFogged: false, canRoofPunch: true, maxRadius: 15))
                         {
-                            Logger.Debug($"Using position near pawn for delivery: {dropPos} (pawn: {pawn.Position})");
+                            Logger.Debug($"Using position near pawn for delivery: {deliveryPos} (pawn: {pawn.Position})");
                         }
                         else
                         {
                             // Fallback to trade spot directly
-                            dropPos = tradeSpot;
-                            Logger.Debug($"Using trade spot directly as fallback: {dropPos}");
+                            deliveryPos = tradeSpot;
+                            Logger.Debug($"Using trade spot directly as fallback: {deliveryPos}");
                         }
                     }
                     else
@@ -370,54 +392,53 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             if (targetMap == null)
                             {
                                 Logger.Error("No player home map with spawned colonists found for item delivery");
-                                return;
+                                return (spawnedThings, deliveryPos);
                             }
                         }
 
                         Logger.Debug($"Selected map for delivery: {targetMap.info?.parent?.Label ?? "Unknown"} (Size: {targetMap.Size})");
 
                         // For colony-wide delivery, find a safe drop position
-                        if (!TryFindSafeDropPosition(targetMap, out dropPos))
+                        if (!TryFindSafeDropPosition(targetMap, out deliveryPos))
                         {
                             Logger.Error("No safe drop position found on map");
-                            return;
+                            return (spawnedThings, deliveryPos);
                         }
 
-                        Logger.Debug($"Using safe drop position for colony delivery: {dropPos}");
+                        Logger.Debug($"Using safe drop position for colony delivery: {deliveryPos}");
                     }
 
-                    Logger.Debug($"Delivering {quantity}x {thingDef.defName} at position {dropPos} on map {targetMap}");
+                    Logger.Debug($"Delivering {quantity}x {thingDef.defName} at position {deliveryPos} on map {targetMap}");
 
                     // Validate the delivery position
-                    if (!IsValidDeliveryPosition(dropPos, targetMap))
+                    if (!IsValidDeliveryPosition(deliveryPos, targetMap))
                     {
-                        Logger.Warning($"Invalid delivery position {dropPos}, finding alternative...");
+                        Logger.Warning($"Invalid delivery position {deliveryPos}, finding alternative...");
 
                         // Try to find any valid position on the map
                         if (CellFinderLoose.TryFindRandomNotEdgeCellWith(10, (IntVec3 c) =>
                             c.InBounds(targetMap) && !c.Fogged(targetMap) && c.Standable(targetMap),
                             targetMap, out IntVec3 altPos))
                         {
-                            dropPos = altPos;
-                            Logger.Debug($"Using alternative delivery position: {dropPos}");
+                            deliveryPos = altPos;
+                            Logger.Debug($"Using alternative delivery position: {deliveryPos}");
                         }
                         else
                         {
                             Logger.Error("No valid delivery position found on map");
-                            return;
+                            return (spawnedThings, deliveryPos);
                         }
                     }
 
-
                     // Use shuttle delivery if available, otherwise use drop pods
-                    if (TryShuttleDelivery(thingDef, quantity, quality, finalMaterial, dropPos, targetMap))
+                    if (TryShuttleDelivery(spawnedThings, deliveryPos, targetMap))
                     {
                         Logger.Debug($"Items delivered via shuttle/drop pod");
                     }
                     else
                     {
                         // Fallback to drop pod delivery
-                        DeliverItemsInDropPods(thingDef, quantity, quality, finalMaterial, dropPos, targetMap);
+                        DeliverItemsInDropPods(spawnedThings, deliveryPos, targetMap);
                     }
                 }
             }
@@ -426,6 +447,120 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Error($"Error spawning item for pawn: {ex}");
                 throw;
             }
+            return (spawnedThings, deliveryPos);
+        }
+
+        // New helper method to create things for delivery
+        private static List<Thing> CreateThingsForDelivery(ThingDef thingDef, int quantity, QualityCategory? quality, ThingDef material)
+        {
+            List<Thing> things = new List<Thing>();
+            int remainingQuantity = quantity;
+
+            // Check if this item should be minified
+            bool shouldMinify = ShouldMinifyForDelivery(thingDef);
+
+            while (remainingQuantity > 0)
+            {
+                Thing thing;
+
+                if (shouldMinify)
+                {
+                    // For minified items, deliver one at a time
+                    thing = CreateMinifiedThing(thingDef, quality, material);
+                    remainingQuantity -= 1;
+                }
+                else
+                {
+                    // For regular items, use normal stack logic
+                    int stackSize = Math.Min(remainingQuantity, thingDef.stackLimit);
+                    thing = ThingMaker.MakeThing(thingDef, material);
+                    thing.stackCount = stackSize;
+
+                    // Set quality if applicable
+                    if (quality.HasValue && thingDef.HasComp(typeof(CompQuality)))
+                    {
+                        if (thing.TryGetQuality(out QualityCategory existingQuality))
+                        {
+                            thing.TryGetComp<CompQuality>()?.SetQuality(quality.Value, ArtGenerationContext.Outsider);
+                        }
+                    }
+
+                    remainingQuantity -= stackSize;
+                }
+
+                things.Add(thing);
+            }
+
+            return things;
+        }
+
+        // Updated shuttle delivery to accept pre-created things
+        private static bool TryShuttleDelivery(List<Thing> thingsToDeliver, IntVec3 dropPos, Map map)
+        {
+            try
+            {
+                Logger.Debug($"Attempting delivery at position: {dropPos}, map: {map?.info?.parent?.Label ?? "null"}, map size: {map?.Size}, in bounds: {dropPos.InBounds(map)}");
+
+                if (map == null)
+                {
+                    Logger.Error("Map is null for delivery");
+                    return false;
+                }
+
+                if (!dropPos.InBounds(map))
+                {
+                    Logger.Error($"Delivery position {dropPos} is out of map bounds (map size: {map.Size})");
+                    return false;
+                }
+
+                Logger.Debug($"Calling DropPodUtility.DropThingsNear with {thingsToDeliver.Count} stacks at position {dropPos}");
+                LogDropPodDetails(thingsToDeliver, dropPos, map);
+
+                // Use DropPodUtility which automatically handles both shuttles and drop pods
+                // IMPORTANT: Set instigator to null to prevent automatic letter generation
+                DropPodUtility.DropThingsNear(
+                    dropPos,
+                    map,
+                    thingsToDeliver,
+                    // instigator: null, // This prevents the automatic "Cargo pod crash" letter
+                    openDelay: 110,
+                    leaveSlag: false,
+                    canRoofPunch: true,
+                    forbid: true,
+                    allowFogged: false
+                );
+
+                Logger.Debug($"Successfully called DropPodUtility for {thingsToDeliver.Count} items at {dropPos}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in delivery at position {dropPos}: {ex}");
+                return false;
+            }
+        }
+
+        private static void LogDropPodDetails(List<Thing> thingsToDeliver, IntVec3 dropPos, Map map)
+        {
+            Logger.Debug($"=== DROP POD DELIVERY DEBUG ===");
+            Logger.Debug($"Position: {dropPos}");
+            Logger.Debug($"Map: {map?.info?.parent?.Label ?? "null"}");
+            Logger.Debug($"Things to deliver: {thingsToDeliver.Count}");
+            foreach (var thing in thingsToDeliver)
+            {
+                Logger.Debug($"  - {thing.def.defName} x{thing.stackCount}");
+            }
+            Logger.Debug($"Position valid: {IsValidDeliveryPosition(dropPos, map)}");
+            Logger.Debug($"Position in bounds: {dropPos.InBounds(map)}");
+            Logger.Debug($"Position fogged: {dropPos.Fogged(map)}");
+            Logger.Debug($"Position standable: {dropPos.Standable(map)}");
+            Logger.Debug($"=== END DEBUG ===");
+        }
+
+        private static void DeliverItemsInDropPods(List<Thing> thingsToDeliver, IntVec3 dropPos, Map map)
+        {
+            // Just call the shuttle delivery method as a fallback
+            TryShuttleDelivery(thingsToDeliver, dropPos, map);
         }
 
         private static bool TryFindSafeDropPosition(Map map, out IntVec3 dropPos)
@@ -488,104 +623,102 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return false;
         }
 
-        private static bool TryShuttleDelivery(ThingDef thingDef, int quantity, QualityCategory? quality, ThingDef material, IntVec3 dropPos, Map map)
-        {
-            try
-            {
-                Logger.Debug($"Attempting delivery at position: {dropPos}, map: {map?.info?.parent?.Label ?? "null"}, map size: {map?.Size}, in bounds: {dropPos.InBounds(map)}");
+        //private static bool TryShuttleDelivery(ThingDef thingDef, int quantity, QualityCategory? quality, ThingDef material, IntVec3 dropPos, Map map)
+        //{
+        //    try
+        //    {
+        //        Logger.Debug($"Attempting delivery at position: {dropPos}, map: {map?.info?.parent?.Label ?? "null"}, map size: {map?.Size}, in bounds: {dropPos.InBounds(map)}");
 
-                if (map == null)
-                {
-                    Logger.Error("Map is null for delivery");
-                    return false;
-                }
+        //        if (map == null)
+        //        {
+        //            Logger.Error("Map is null for delivery");
+        //            return false;
+        //        }
 
-                if (!dropPos.InBounds(map))
-                {
-                    Logger.Error($"Delivery position {dropPos} is out of map bounds (map size: {map.Size})");
-                    return false;
-                }
+        //        if (!dropPos.InBounds(map))
+        //        {
+        //            Logger.Error($"Delivery position {dropPos} is out of map bounds (map size: {map.Size})");
+        //            return false;
+        //        }
 
+        //        List<Thing> thingsToDeliver = new List<Thing>();
+        //        int remainingQuantity = quantity;
 
-                List<Thing> thingsToDeliver = new List<Thing>();
-                int remainingQuantity = quantity;
+        //        // SPECIAL CASE: Handle pawns (animals) differently
+        //        if (thingDef.race != null && thingDef.thingClass == typeof(Pawn))
+        //        {
+        //            Logger.Debug($"Using pawn delivery for {thingDef.defName}");
+        //            return TryPawnDelivery(thingDef, quantity, quality, material, dropPos, map);
+        //        }
 
-                // SPECIAL CASE: Handle pawns (animals) differently
-                if (thingDef.race != null && thingDef.thingClass == typeof(Pawn))
-                {
-                    Logger.Debug($"Using pawn delivery for {thingDef.defName}");
-                    return TryPawnDelivery(thingDef, quantity, quality, material, dropPos, map);
-                }
+        //        // Check if this item should be minified
+        //        bool shouldMinify = ShouldMinifyForDelivery(thingDef);
+        //        Logger.Debug($"Should minify {thingDef.defName}: {shouldMinify}");
 
-                Logger.Debug($"Attempting delivery at position: {dropPos}, map: {map?.info?.parent?.Label ?? "null"}, map size: {map?.Size}, in bounds: {dropPos.InBounds(map)}");
+        //        while (remainingQuantity > 0)
+        //        {
+        //            Thing thing;
 
+        //            if (shouldMinify)
+        //            {
+        //                // For minified items, deliver one at a time
+        //                thing = CreateMinifiedThing(thingDef, quality, material);
+        //                remainingQuantity -= 1;
+        //                Logger.Debug($"Created minified version of {thingDef.defName}");
+        //            }
+        //            else
+        //            {
+        //                // For regular items, use normal stack logic
+        //                int stackSize = Math.Min(remainingQuantity, thingDef.stackLimit);
+        //                thing = ThingMaker.MakeThing(thingDef, material);
+        //                thing.stackCount = stackSize;
 
-                // Check if this item should be minified
-                bool shouldMinify = ShouldMinifyForDelivery(thingDef);
-                Logger.Debug($"Should minify {thingDef.defName}: {shouldMinify}");
+        //                // Set quality if applicable
+        //                if (quality.HasValue && thingDef.HasComp(typeof(CompQuality)))
+        //                {
+        //                    if (thing.TryGetQuality(out QualityCategory existingQuality))
+        //                    {
+        //                        thing.TryGetComp<CompQuality>()?.SetQuality(quality.Value, ArtGenerationContext.Outsider);
+        //                    }
+        //                }
 
-                while (remainingQuantity > 0)
-                {
-                    Thing thing;
+        //                remainingQuantity -= stackSize;
+        //                Logger.Debug($"Created regular thing: {thingDef.defName} with stack count: {stackSize}");
+        //            }
 
-                    if (shouldMinify)
-                    {
-                        // For minified items, deliver one at a time
-                        thing = CreateMinifiedThing(thingDef, quality, material);
-                        remainingQuantity -= 1;
-                        Logger.Debug($"Created minified version of {thingDef.defName}");
-                    }
-                    else
-                    {
-                        // For regular items, use normal stack logic
-                        int stackSize = Math.Min(remainingQuantity, thingDef.stackLimit);
-                        thing = ThingMaker.MakeThing(thingDef, material);
-                        thing.stackCount = stackSize;
+        //            thingsToDeliver.Add(thing);
+        //        }
 
-                        // Set quality if applicable
-                        if (quality.HasValue && thingDef.HasComp(typeof(CompQuality)))
-                        {
-                            if (thing.TryGetQuality(out QualityCategory existingQuality))
-                            {
-                                thing.TryGetComp<CompQuality>()?.SetQuality(quality.Value, ArtGenerationContext.Outsider);
-                            }
-                        }
+        //        Logger.Debug($"Calling DropPodUtility.DropThingsNear with {thingsToDeliver.Count} stacks at position {dropPos}");
 
-                        remainingQuantity -= stackSize;
-                        Logger.Debug($"Created regular thing: {thingDef.defName} with stack count: {stackSize}");
-                    }
+        //        // Use DropPodUtility which automatically handles both shuttles and drop pods
+        //        // IMPORTANT: Set instigator to null to prevent automatic letter generation
+        //        DropPodUtility.DropThingsNear(
+        //            dropPos,
+        //            map,
+        //            thingsToDeliver,
+        //            // instigator: null, // This prevents the automatic "Cargo pod crash" letter
+        //            openDelay: 110,
+        //            leaveSlag: false,
+        //            canRoofPunch: true,
+        //            forbid: true,
+        //            allowFogged: false
+        //        );
 
-                    thingsToDeliver.Add(thing);
-                }
-
-                Logger.Debug($"Calling DropPodUtility.DropThingsNear with {thingsToDeliver.Count} stacks at position {dropPos}");
-
-                // Use DropPodUtility which automatically handles both shuttles and drop pods
-                DropPodUtility.DropThingsNear(
-                    dropPos,
-                    map,
-                    thingsToDeliver,
-                    openDelay: 110,
-                    leaveSlag: false,
-                    canRoofPunch: true,
-                    forbid: true,
-                    allowFogged: false
-                );
-
-                Logger.Debug($"Successfully called DropPodUtility for {quantity}x {thingDef.defName} at {dropPos}");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error in delivery at position {dropPos}: {ex}");
-                return false;
-            }
-        }
-        private static void DeliverItemsInDropPods(ThingDef thingDef, int quantity, QualityCategory? quality, ThingDef material, IntVec3 dropPos, Map map)
-        {
-            // Just call the shuttle delivery method as a fallback
-            TryShuttleDelivery(thingDef, quantity, quality, material, dropPos, map);
-        }
+        //        Logger.Debug($"Successfully called DropPodUtility for {quantity}x {thingDef.defName} at {dropPos}");
+        //        return true;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Logger.Error($"Error in delivery at position {dropPos}: {ex}");
+        //        return false;
+        //    }
+        //}
+        //private static void DeliverItemsInDropPods(ThingDef thingDef, int quantity, QualityCategory? quality, ThingDef material, IntVec3 dropPos, Map map)
+        //{
+        //    // Just call the shuttle delivery method as a fallback
+        //    TryShuttleDelivery(thingDef, quantity, quality, material, dropPos, map);
+        //}
 
         private static Thing CreateMinifiedThing(ThingDef thingDef, QualityCategory? quality, ThingDef material)
         {
@@ -903,8 +1036,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return false;
         }
 
-        private static bool TryPawnDelivery(ThingDef pawnDef, int quantity, QualityCategory? quality, ThingDef material, IntVec3 dropPos, Map map)
+        private static (bool success, IntVec3 spawnPosition) TryPawnDelivery(ThingDef pawnDef, int quantity, QualityCategory? quality, ThingDef material, IntVec3 dropPos, Map map, Pawn viewerPawn = null)
         {
+            IntVec3 spawnPosition = IntVec3.Invalid;
+
             try
             {
                 Logger.Debug($"Attempting pawn delivery for {quantity}x {pawnDef.defName} at position: {dropPos}");
@@ -912,13 +1047,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (map == null)
                 {
                     Logger.Error("Map is null for pawn delivery");
-                    return false;
+                    return (false, spawnPosition);
                 }
 
                 if (!dropPos.InBounds(map))
                 {
                     Logger.Error($"Pawn delivery position {dropPos} is out of map bounds");
-                    return false;
+                    return (false, spawnPosition);
                 }
 
                 List<Pawn> pawnsToDeliver = new List<Pawn>();
@@ -927,12 +1062,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     // Create pawn using RimWorld's proper pawn generation
                     PawnGenerationRequest request = new PawnGenerationRequest(
-                        kind: pawnDef.race.AnyPawnKind, // Use the default pawn kind for this race
-                        faction: null, // No faction - wild/tame animal
+                        kind: pawnDef.race.AnyPawnKind,
+                        faction: null,
                         context: PawnGenerationContext.NonPlayer,
                         tile: -1,
                         forceGenerateNewPawn: true,
-                        // newborn: false,
                         allowDead: false,
                         allowDowned: false,
                         canGeneratePawnRelations: false,
@@ -948,8 +1082,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         worldPawnFactionDoesntMatter: false,
                         biocodeWeaponChance: 0f,
                         biocodeApparelChance: 0f,
-                        //extraPawnKind: null,
-                        //relationWithExtraPawnKind: null,
                         validatorPreGear: null,
                         validatorPostGear: null,
                         forcedTraits: null,
@@ -959,19 +1091,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         fixedChronologicalAge: null,
                         fixedGender: null,
                         fixedLastName: null,
-                        //fixedMelanin: null,
                         fixedBirthName: null
                     );
 
                     Pawn pawn = PawnGenerator.GeneratePawn(request);
-
-                    // Set the pawn's def to match what was purchased
-                    if (pawn.def != pawnDef)
-                    {
-                        Logger.Debug($"Generated pawn def {pawn.def.defName} doesn't match requested {pawnDef.defName}, adjusting...");
-                        // For animals, we need to ensure we have the right kind
-                    }
-
                     pawnsToDeliver.Add(pawn);
                     Logger.Debug($"Created pawn: {pawn.Name} ({pawn.def.defName})");
                 }
@@ -979,13 +1102,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Use a gentler delivery method for pawns - walk them in from the edge
                 if (pawnsToDeliver.Count > 0)
                 {
-                    IntVec3 spawnPos = FindPawnSpawnPosition(map, dropPos);
-                    Logger.Debug($"Spawning {pawnsToDeliver.Count} pawns at position: {spawnPos}");
+                    spawnPosition = FindPawnSpawnPosition(map, dropPos, viewerPawn);
+                    Logger.Debug($"Spawning {pawnsToDeliver.Count} pawns at position: {spawnPosition}");
 
                     foreach (var pawn in pawnsToDeliver)
                     {
                         // Spawn the pawn properly
-                        GenSpawn.Spawn(pawn, spawnPos, map);
+                        GenSpawn.Spawn(pawn, spawnPosition, map);
 
                         // Make animals tame
                         if (pawn.RaceProps.Animal)
@@ -995,53 +1118,64 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         }
 
                         // Add some arrival effects
-                        FleckMaker.ThrowDustPuff(spawnPos, map, 2f);
+                        FleckMaker.ThrowDustPuff(spawnPosition, map, 2f);
                     }
 
-                    // Send a custom letter for pawn deliveries
-                    string letterLabel = $"🐾 Rimazon Pet Delivery - {pawnsToDeliver.Count}x {pawnDef.label}";
-                    string letterText = $"Your Rimazon pet delivery has arrived! {pawnsToDeliver.Count}x {pawnDef.label} have been delivered to your colony.";
-
-                    if (pawnsToDeliver.Count == 1)
-                    {
-                        var singlePawn = pawnsToDeliver[0];
-                        letterText = $"Your Rimazon pet delivery has arrived! {singlePawn.Name} the {pawnDef.label} has joined your colony.";
-                    }
-
-                    Find.LetterStack.ReceiveLetter(letterLabel, letterText, LetterDefOf.PositiveEvent, pawnsToDeliver.FirstOrDefault());
-
-                    Logger.Debug($"Successfully delivered {pawnsToDeliver.Count}x {pawnDef.defName}");
-                    return true;
+                    Logger.Debug($"Successfully delivered {pawnsToDeliver.Count}x {pawnDef.defName} at {spawnPosition}");
+                    return (true, spawnPosition);
                 }
 
-                return false;
+                return (false, spawnPosition);
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in pawn delivery: {ex}");
-                return false;
+                return (false, spawnPosition);
             }
         }
-
-        private static IntVec3 FindPawnSpawnPosition(Map map, IntVec3 preferredPos)
+        private static IntVec3 FindPawnSpawnPosition(Map map, IntVec3 preferredPos, Pawn viewerPawn = null)
         {
-            // Try to find a valid spawn position near the preferred position
+            // First priority: try to spawn near the viewer's pawn if available
+            if (viewerPawn != null && viewerPawn.Map == map && !viewerPawn.Dead)
+            {
+                if (CellFinder.TryFindRandomCellNear(viewerPawn.Position, map, 8,
+                    (IntVec3 c) => c.Standable(map) && !c.Fogged(map) && c.Walkable(map) && c.GetRoom(map) == viewerPawn.GetRoom(),
+                    out IntVec3 spawnPos))
+                {
+                    Logger.Debug($"Found spawn position near viewer pawn: {spawnPos}");
+                    return spawnPos;
+                }
+
+                // If no room-appropriate position, try any nearby position
+                if (CellFinder.TryFindRandomCellNear(viewerPawn.Position, map, 15,
+                    (IntVec3 c) => c.Standable(map) && !c.Fogged(map) && c.Walkable(map),
+                    out spawnPos))
+                {
+                    Logger.Debug($"Found nearby spawn position: {spawnPos}");
+                    return spawnPos;
+                }
+            }
+
+            // Second priority: try near preferred position (usually trade spot)
             if (CellFinder.TryFindRandomCellNear(preferredPos, map, 10,
                 (IntVec3 c) => c.Standable(map) && !c.Fogged(map) && c.Walkable(map),
-                out IntVec3 spawnPos))
+                out IntVec3 spawnPos2))
             {
-                return spawnPos;
+                Logger.Debug($"Found spawn position near preferred position: {spawnPos2}");
+                return spawnPos2;
             }
 
             // Fallback: find any valid cell on the map edge
             if (CellFinder.TryFindRandomEdgeCellWith(
                 (IntVec3 c) => c.Standable(map) && !c.Fogged(map) && c.Walkable(map),
-                map, CellFinder.EdgeRoadChance_Ignore, out spawnPos))
+                map, CellFinder.EdgeRoadChance_Ignore, out spawnPos2))
             {
-                return spawnPos;
+                Logger.Debug($"Found edge spawn position: {spawnPos2}");
+                return spawnPos2;
             }
 
             // Final fallback: use the preferred position
+            Logger.Debug($"Using preferred position as fallback: {preferredPos}");
             return preferredPos;
         }
 

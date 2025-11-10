@@ -177,17 +177,54 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     Logger.Debug($"Awarded {karmaEarned} karma for {finalPrice} coin purchase");
                 }
 
+                (List<Thing> spawnedItems, IntVec3 deliveryPos) spawnResult;
+
                 // Spawn the item
                 if (requireEquippable || requireWearable)
                 {
-                    StoreCommandHelper.SpawnItemForPawn(thingDef, quantity, quality, material, viewerPawn, false, requireEquippable, requireWearable);
+                    spawnResult = StoreCommandHelper.SpawnItemForPawn(thingDef, quantity, quality, material, viewerPawn, false, requireEquippable, requireWearable);
                 }
                 else
                 {
-                    StoreCommandHelper.SpawnItemForPawn(thingDef, quantity, quality, material, viewerPawn, addToInventory);
+                    spawnResult = StoreCommandHelper.SpawnItemForPawn(thingDef, quantity, quality, material, viewerPawn, addToInventory);
+                }
+                List<Thing> spawnedItems = spawnResult.spawnedItems;
+                IntVec3 deliveryPos = spawnResult.deliveryPos;
+
+                // Create look targets - use the delivery position we know items will be at
+                LookTargets lookTargets = null;
+
+                if (thingDef.thingClass == typeof(Verse.Pawn))
+                {
+                    // For animal deliveries, target the EXACT SPAWN POSITION
+                    if (deliveryPos.IsValid)
+                    {
+                        Map targetMap = viewerPawn?.Map ?? Find.CurrentMap ?? Find.Maps.FirstOrDefault(m => m.IsPlayerHome);
+                        if (targetMap != null)
+                        {
+                            lookTargets = new LookTargets(deliveryPos, targetMap);
+                            Logger.Debug($"Created LookTargets for exact animal spawn position: {deliveryPos}");
+                        }
+                    }
+                }
+                else if (requireEquippable || requireWearable || addToInventory)
+                {
+                    // For direct pawn interactions, target the pawn
+                    lookTargets = viewerPawn != null ? new LookTargets(viewerPawn) : null;
+                    Logger.Debug($"Created LookTargets for pawn: {viewerPawn?.Name}");
+                }
+                else if (deliveryPos.IsValid)
+                {
+                    // For drop pod deliveries, target the delivery position
+                    Map targetMap = viewerPawn?.Map ?? Find.CurrentMap ?? Find.Maps.FirstOrDefault(m => m.IsPlayerHome);
+                    if (targetMap != null)
+                    {
+                        lookTargets = new LookTargets(deliveryPos, targetMap);
+                        Logger.Debug($"Created LookTargets for delivery position: {deliveryPos} on map {targetMap}");
+                    }
                 }
 
-
+                Logger.Debug($"Final LookTargets: {lookTargets?.ToString() ?? "null"}");
 
                 // Log success
                 Logger.Debug($"Purchase successful: {user.Username} bought {quantity}x {itemName} for {finalPrice}{currencySymbol}");
@@ -196,8 +233,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 string itemLabel = thingDef?.LabelCap ?? itemName;
                 string invoiceLabel = "";
                 string invoiceMessage = "";
+                string tClass = thingDef.thingClass.ToString();
 
-                if (addToInventory || requireEquippable || requireWearable)
+                // SPECIAL CASE: Animal deliveries - CHECK THIS FIRST
+                Logger.Debug($"Checking for special invoice case for item: {thingDef.thingClass} tClass: {tClass}");
+                if (thingDef.thingClass == typeof(Verse.Pawn) || tClass == "Verse.Pawn")
+                {
+                    string emoji = "🐾";
+                    invoiceLabel = $"{emoji} Rimazon Pet Delivery - {user.Username}";
+                    invoiceMessage = CreateRimazonPetInvoice(user.Username, itemLabel, quantity, finalPrice, currencySymbol);
+
+                }
+                // Then check for backpack/equip/wear
+                else if (addToInventory || requireEquippable || requireWearable)
                 {
                     // Backpack, Equip, and Wear all involve direct delivery to pawn
                     string serviceType = requireEquippable ? "Equip" : requireWearable ? "Wear" : "Backpack";
@@ -213,13 +261,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     invoiceMessage = CreateRimazonInvoice(user.Username, itemLabel, quantity, finalPrice, currencySymbol, quality, material);
                 }
 
+                // Send the letter
                 if (IsMajorPurchase(finalPrice, quality))
                 {
-                    MessageHandler.SendGoldLetter(invoiceLabel, invoiceMessage);
+                    MessageHandler.SendGoldLetter(invoiceLabel, invoiceMessage, lookTargets);
                 }
                 else
                 {
-                    MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
+                    MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage, lookTargets);
                 }
 
 
@@ -373,19 +422,28 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     // Pink letter for resurrection
                     invoiceLabel = $"💖 Rimazon Resurrection - {user.Username}";
                     invoiceMessage = CreateRimazonResurrectionInvoice(user.Username, itemLabel, finalPrice, currencySymbol);
-                    MessageHandler.SendPinkLetter(invoiceLabel, invoiceMessage);
+                    LookTargets resurrectionLookTargets = new LookTargets(viewerPawn);
+                    Logger.Debug($"Sending resurrection letter to {user.Username} for pawn {viewerPawn.Name}");
+                    Logger.Debug($"Resurrection look targets: {resurrectionLookTargets}");
+                    MessageHandler.SendPinkLetter(invoiceLabel, invoiceMessage, resurrectionLookTargets);
                 }
                 else if (IsMajorPurchase(finalPrice, null)) // Don't check quality for use commands
                 {
                     invoiceLabel = $"🔵 Rimazon Instant - {user.Username}";
                     invoiceMessage = CreateRimazonInstantInvoice(user.Username, itemLabel, quantity, finalPrice, currencySymbol);
-                    MessageHandler.SendGoldLetter(invoiceLabel, invoiceMessage);
+                    LookTargets useLookTargets = new LookTargets(rimworldPawn);
+                    Logger.Debug($"Sending major use letter to {user.Username} for pawn {rimworldPawn.Name}");
+                    Logger.Debug($"Use look targets: {useLookTargets}");
+                    MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, useLookTargets);
                 }
                 else
                 {
                     invoiceLabel = $"🔵 Rimazon Instant - {user.Username}";
                     invoiceMessage = CreateRimazonInstantInvoice(user.Username, itemLabel, quantity, finalPrice, currencySymbol);
-                    MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage); // Blue for instant/medical items
+                    LookTargets useLookTargets = new LookTargets(rimworldPawn);
+                    Logger.Debug($"Sending regular use letter to {user.Username} for pawn {rimworldPawn.Name}");
+                    Logger.Debug($"Use look targets: {useLookTargets}");
+                    MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, useLookTargets);
                 }
 
                 Logger.Debug($"Use item successful: {user.Username} used {quantity}x {itemName} for {finalPrice}{currencySymbol}");
@@ -534,14 +592,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Schedule the surgeries
                 ScheduleSurgeries(viewerPawn, recipe, bodyParts.Take(quantity).ToList());
 
-                // Send notification
+                // In HandleSurgery method, after scheduling surgeries:
+                LookTargets surgeryLookTargets = new LookTargets(viewerPawn);
                 string invoiceLabel = $"🏥 Rimazon Surgery - {user.Username}";
                 string invoiceMessage = CreateRimazonSurgeryInvoice(user.Username, itemName, quantity, finalPrice, currencySymbol, bodyParts.Take(quantity).ToList());
-                MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage);
+                MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, surgeryLookTargets);
 
                 Logger.Debug($"Surgery scheduled: {user.Username} scheduled {quantity}x {itemName} for {finalPrice}{currencySymbol}");
 
-                return $"Scheduled {quantity}x {itemName} surgery for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)}! Implant delivered to pawn's inventory. Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return $"Scheduled {quantity}x {itemName} surgery for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)}! Implant delivered to pawn's inventory please give them to the doctor. Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
 
             }
             catch (Exception ex)
@@ -853,6 +912,25 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return pawn.health.hediffSet.hediffs.Any(hediff =>
                 hediff.def?.defName?.Contains("Psylink") == true ||
                 hediff.def?.defName?.Contains("Psychic") == true);
+        }
+
+        private static IntVec3 FindAnimalSpawnPosition(Verse.Pawn viewerPawn)
+        {
+            if (viewerPawn == null || viewerPawn.Map == null)
+                return IntVec3.Invalid;
+
+            // Try to find a position near the viewer pawn where animals would spawn
+            if (CellFinder.TryFindRandomCellNear(viewerPawn.Position, viewerPawn.Map, 8,
+                (IntVec3 c) => c.Standable(viewerPawn.Map) && !c.Fogged(viewerPawn.Map) && c.Walkable(viewerPawn.Map),
+                out IntVec3 spawnPos))
+            {
+                Logger.Debug($"Found animal spawn position near viewer: {spawnPos}");
+                return spawnPos;
+            }
+
+            // Fallback to viewer position
+            Logger.Debug($"Using viewer position for animal spawn: {viewerPawn.Position}");
+            return viewerPawn.Position;
         }
 
         // ===== BODY PART METHODS =====
@@ -1200,6 +1278,32 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             invoice += $"Thank you for using Rimazon Resurrection!\n";
             invoice += $"Your pawn has been restored to life!\n";
             invoice += $"Life is precious - cherish every moment! 💖";
+
+            return invoice;
+        }
+
+        private static string CreateRimazonPetInvoice(string username, string itemName, int quantity, int price, string currencySymbol)
+        {
+            string invoice = $"RIMAZON PET DELIVERY\n";
+            invoice += $"====================\n";
+            invoice += $"Customer: {username}\n";
+            invoice += $"Pet: {itemName} x{quantity}\n";
+            invoice += $"Service: Live Animal Delivery\n";
+            invoice += $"====================\n";
+            invoice += $"Total: {price}{currencySymbol}\n";
+            invoice += $"====================\n";
+            invoice += $"Thank you for using Rimazon Pets!\n";
+
+            if (quantity == 1)
+            {
+                invoice += $"Your new companion has arrived safely!\n";
+            }
+            else
+            {
+                invoice += $"Your new companions have arrived safely!\n";
+            }
+
+            invoice += $"All animals are tame and ready for your colony!";
 
             return invoice;
         }

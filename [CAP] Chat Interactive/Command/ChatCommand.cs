@@ -21,16 +21,16 @@ namespace CAP_ChatInteractive
             get
             {
                 var settings = GetCommandSettings();
-                Logger.Debug($"  -> Alias lookup for {Name}: settings.CommandAlias = '{settings.CommandAlias}'");
+                //Logger.Debug($"  -> Alias lookup for {Name}: settings.CommandAlias = '{settings.CommandAlias}'");
 
                 if (!string.IsNullOrEmpty(settings.CommandAlias))
                 {
                     string alias = settings.CommandAlias.Trim().ToLowerInvariant();
-                    Logger.Debug($"  -> Returning alias: '{alias}'");
+                    //Logger.Debug($"  -> Returning alias: '{alias}'");
                     return alias;
                 }
 
-                Logger.Debug($"  -> No alias found, returning null");
+                //Logger.Debug($"  -> No alias found, returning null");
                 return null;
             }
         }

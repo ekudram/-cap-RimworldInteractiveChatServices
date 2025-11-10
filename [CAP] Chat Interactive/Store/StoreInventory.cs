@@ -222,21 +222,21 @@ namespace CAP_ChatInteractive.Store
                         // Skip humanlike races using RaceUtils
                         if (t.race?.Humanlike == true)
                         {
-                            Logger.Debug($"Excluding humanlike race from store: {t.defName} ({t.label})");
+                            //Logger.Debug($"Excluding humanlike race from store: {t.defName} ({t.label})");
                             return false;
                         }
 
                         // Skip corpses of humanlike races
                         if (t.IsCorpse && t.race?.Humanlike == true)
                         {
-                            Logger.Debug($"Excluding humanlike corpse from store: {t.defName}");
+                            //Logger.Debug($"Excluding humanlike corpse from store: {t.defName}");
                             return false;
                         }
 
                         // Skip if RaceUtils identifies it as excluded
                         if (RaceUtils.IsRaceExcluded(t))
                         {
-                            Logger.Debug($"Excluding race via RaceUtils: {t.defName} ({t.label})");
+                            //Logger.Debug($"Excluding race via RaceUtils: {t.defName} ({t.label})");
                             return false;
                         }
 

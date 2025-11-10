@@ -378,18 +378,18 @@ namespace CAP_ChatInteractive
         public static void RegisterCommand(ChatCommand command)
         {
             _commands[command.Name] = command;
-            Logger.Debug($"Registered command: '{command.Name}'");
+            //Logger.Debug($"Registered command: '{command.Name}'");
 
             // Register the single alias if it exists
             if (!string.IsNullOrEmpty(command.Alias))
             {
                 _commands[command.Alias] = command;
-                Logger.Debug($"  -> Registered alias: '{command.Alias}'");
+                //Logger.Debug($"  -> Registered alias: '{command.Alias}'");
             }
 
             // Also log the CommandAlias value directly
             var settings = command.GetCommandSettings();
-            Logger.Debug($"  -> CommandAlias value: '{settings.CommandAlias}'");
+            // Logger.Debug($"  -> CommandAlias value: '{settings.CommandAlias}'");
         }
 
         public static IEnumerable<ChatCommand> GetAvailableCommands(ChatMessageWrapper user)

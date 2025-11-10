@@ -43,7 +43,7 @@ public static class MessageHandler
             SendCustomLetter(label, message, LetterDefOf.NeutralEvent);
         }
 
-        public static void SendCustomLetter(string label, string message, LetterDef letterDef)
+        public static void SendCustomLetter(string label, string message, LetterDef letterDef, LookTargets lookTargets = null)
         {
             if (Current.Game == null || Find.LetterStack == null)
             {
@@ -53,53 +53,52 @@ public static class MessageHandler
 
             try
             {
-                Find.LetterStack.ReceiveLetter(label, message, letterDef);
-                Logger.Debug($"Sent letter: {label} - {message}");
+                // Create letter with look targets if provided
+                Letter letter = LetterMaker.MakeLetter(label, message, letterDef, lookTargets);
+                Find.LetterStack.ReceiveLetter(letter);
+                Logger.Debug($"Sent letter: {label} - {message} with lookTargets: {lookTargets != null}");
             }
             catch (System.Exception ex)
             {
                 Logger.Error($"Error sending letter: {ex.Message}");
             }
         }
+
         /// <summary>
         /// Blue for medical/rescue aid/heal/helpful events/revivals/etc.
         /// </summary>
-        /// <param name="label"></param>
-        /// <param name="message"></param>
-        public static void SendBlueLetter(string label, string message)
+        public static void SendBlueLetter(string label, string message, LookTargets lookTargets = null)
         {
             var blueLetter = DefDatabase<LetterDef>.GetNamedSilentFail("BlueLetter");
-            SendCustomLetter(label, message, blueLetter ?? LetterDefOf.NeutralEvent);
+            SendCustomLetter(label, message, blueLetter ?? LetterDefOf.NeutralEvent, lookTargets);
         }
+
         /// <summary>
         /// Green Letter for positive events from chat interactions
         /// </summary>
-        /// <param name="label"></param>
-        /// <param name="message"></param>
-        public static void SendGreenLetter(string label, string message)
+        public static void SendGreenLetter(string label, string message, LookTargets lookTargets = null)
         {
             var greenLetter = DefDatabase<LetterDef>.GetNamedSilentFail("GreenLetter");
-            SendCustomLetter(label, message, greenLetter ?? LetterDefOf.PositiveEvent);
+            SendCustomLetter(label, message, greenLetter ?? LetterDefOf.PositiveEvent, lookTargets);
         }
+
         /// <summary>
         /// For gold/special events from chat interactions like large rewards, unique occurrences, large buyables, etc.
         /// </summary>
-        /// <param name="label"></param>
-        /// <param name="message"></param>
-        public static void SendGoldLetter(string label, string message)
+        public static void SendGoldLetter(string label, string message, LookTargets lookTargets = null)
         {
             var goldLetter = DefDatabase<LetterDef>.GetNamedSilentFail("GoldLetter");
-            SendCustomLetter(label, message, goldLetter ?? LetterDefOf.PositiveEvent);
+            SendCustomLetter(label, message, goldLetter ?? LetterDefOf.PositiveEvent, lookTargets);
         }
+
         /// <summary>
         /// For relationship/diplomatic events from chat interactions
         /// </summary>
-        /// <param name="label"></param>
-        /// <param name="message"></param>
-        public static void SendPinkLetter(string label, string message)
+        public static void SendPinkLetter(string label, string message, LookTargets lookTargets = null)
         {
+            
             var pinkLetter = DefDatabase<LetterDef>.GetNamedSilentFail("PinkLetter");
-            SendCustomLetter(label, message, pinkLetter ?? LetterDefOf.NeutralEvent);
+            SendCustomLetter(label, message, pinkLetter ?? LetterDefOf.NeutralEvent, lookTargets);
         }
     }
 }
