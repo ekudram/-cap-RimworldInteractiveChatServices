@@ -5,6 +5,7 @@
 // Command handler for buying items from Rimazon store
 using CAP_ChatInteractive.Commands.ViewerCommands;
 using CAP_ChatInteractive.Store;
+using CAP_ChatInteractive.Utilities;
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -17,101 +18,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class BuyItemCommandHandler
     {
-        
+        // ===== MAIN COMMAND HANDLERS =====
         public static string HandleBuyItem(ChatMessageWrapper user, string[] args, bool requireEquippable = false, bool requireWearable = false, bool addToInventory = false)
         {
             try
             {
                 Logger.Debug($"HandleBuyItem called for user: {user.Username}, args: {string.Join(", ", args)}, requireEquippable: {requireEquippable}, requireWearable: {requireWearable}, addToInventory: {addToInventory}");
 
-                // Parse arguments - handle multi-word item names
-                string itemName;
-                string qualityStr = "random";
-                string materialStr = "random";
-                string quantityStr = "1";
 
-                if (args.Length >= 1)
-                {
-                    // Clean and validate the item name first
-                    var itemNameParts = new List<string>();
-                    bool foundNonItemArg = false;
+                // REPLACE all the parsing code (about 80 lines) with just:
+                var parsed = CommandParserUtility.ParseCommandArguments(args, allowQuality: true, allowMaterial: true, allowSide: false, allowQuantity: true);
+                if (parsed.HasError)
+                    return parsed.Error;
 
-                    for (int i = 0; i < args.Length; i++)
-                    {
-                        string arg = args[i];
-
-                        // Stop if we hit a quality, material, or quantity keyword
-                        if (itemNameParts.Count > 0)
-                        {
-
-                            if (IsQualityKeyword(arg.ToLower()) || IsMaterialKeyword(arg) || int.TryParse(arg, out _))
-                            {
-                                foundNonItemArg = true;
-                                break;
-                            }
-
-                            // Additional check: if argument contains invalid characters that suggest it's not part of item name
-                            if (arg.Contains("(") || arg.Contains(")") || arg.Contains("[") || arg.Contains("]"))
-                            {
-                                foundNonItemArg = true;
-                                break;
-                            }
-                        }
-
-                        itemNameParts.Add(args[i]);
-                    }
-
-                    itemName = string.Join(" ", itemNameParts).Trim();
-
-                    // Validate item name doesn't contain problematic characters
-                    if (itemName.Contains("(") || itemName.Contains(")"))
-                    {
-                        // Try to extract valid item name before special characters
-                        int specialCharIndex = itemName.IndexOfAny(new char[] { '(', ')', '[', ']' });
-                        if (specialCharIndex > 0)
-                        {
-                            string cleanItemName = itemName.Substring(0, specialCharIndex).Trim();
-                            Logger.Debug($"Cleaned item name from '{itemName}' to '{cleanItemName}'");
-                            itemName = cleanItemName;
-                        }
-                    }
-
-                    // Check if this is a banned race by name
-                    if (StoreCommandHelper.IsRaceBannedByName(itemName))
-                    {
-                        return $"Item '{itemName}' is a humanlike race and cannot be purchased.";
-                    }
-
-                    // Parse remaining arguments
-                    int currentIndex = itemNameParts.Count;
-
-                    // Parse quality (if next arg is a quality keyword)
-                    if (args.Length > currentIndex && IsQualityKeyword(args[currentIndex].ToLower()))
-                    {
-                        qualityStr = args[currentIndex];
-                        currentIndex++;
-                    }
-
-                    // Parse material (if next arg is a material keyword)  
-                    if (args.Length > currentIndex && IsMaterialKeyword(args[currentIndex]))
-                    {
-                        materialStr = args[currentIndex];
-                        currentIndex++;
-                    }
-
-                    // Parse quantity (if next arg is a number) - lowest priority
-                    if (args.Length > currentIndex && int.TryParse(args[currentIndex], out _))
-                    {
-                        quantityStr = args[currentIndex];
-                    }
-
-                    Logger.Debug($"Parsed - Item: '{itemName}', Quality: '{qualityStr}', Material: '{materialStr}', Quantity: '{quantityStr}'");
-                    Logger.Debug($"Original args: {string.Join("|", args)}, ItemNameParts: [{string.Join(", ", itemNameParts)}]");
-                }
-                else
-                {
-                    return "Usage: !buy/equip/wear <item> [quality] [material] [quantity]";
-                }
+                string itemName = parsed.ItemName;
+                string qualityStr = parsed.Quality;
+                string materialStr = parsed.Material;
+                string quantityStr = parsed.Quantity.ToString();
 
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
@@ -330,44 +253,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
                 var viewer = Viewers.GetViewer(user.Username);
 
-                // Parse arguments - handle multi-word item names like "skilltrainer (melee)"
-                string itemName;
-                string quantityStr = "1";
+                // REPLACE the parsing code (about 30 lines) with:
+                var parsed = CommandParserUtility.ParseCommandArguments(args, allowQuality: false, allowMaterial: false, allowSide: false, allowQuantity: true);
+                if (parsed.HasError)
+                    return parsed.Error;
 
-                if (args.Length >= 1)
-                {
-                    // Try to find the item name by combining arguments until we hit quantity
-                    var itemNameParts = new List<string>();
-
-                    for (int i = 0; i < args.Length; i++)
-                    {
-                        string arg = args[i];
-
-                        // Check if this argument could be a quantity
-                        if (itemNameParts.Count > 0 && int.TryParse(arg, out _))
-                        {
-                            // We've hit a quantity argument, stop collecting
-                            break;
-                        }
-
-                        itemNameParts.Add(args[i]);
-                    }
-
-                    itemName = string.Join(" ", itemNameParts);
-
-                    // Parse remaining arguments for quantity
-                    int currentIndex = itemNameParts.Count;
-                    if (args.Length > currentIndex && int.TryParse(args[currentIndex], out _))
-                    {
-                        quantityStr = args[currentIndex];
-                    }
-
-                    Logger.Debug($"Parsed - Item: '{itemName}', Quantity: '{quantityStr}'");
-                }
-                else
-                {
-                    return "Usage: !use <item> [quantity]";
-                }
+                string itemName = parsed.ItemName;
+                string quantityStr = parsed.Quantity.ToString();
 
                 // Get store item
                 var storeItem = StoreCommandHelper.GetStoreItemByName(itemName);
@@ -530,54 +422,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
                 var viewer = Viewers.GetViewer(user.Username);
 
-                // Parse arguments - handle multi-word item names like "bionic arm"
-                string itemName;
-                string sideStr = null;
-                string quantityStr = "1";
+                // REPLACE the parsing code (about 40 lines) with:
+                var parsed = CommandParserUtility.ParseCommandArguments(args, allowQuality: false, allowMaterial: false, allowSide: true, allowQuantity: true);
+                if (parsed.HasError)
+                    return parsed.Error;
 
-                if (args.Length >= 1)
-                {
-                    // Try to find the item name by combining arguments until we hit side/quantity keywords
-                    var itemNameParts = new List<string>();
-
-                    for (int i = 0; i < args.Length; i++)
-                    {
-                        string arg = args[i].ToLower();
-
-                        // Check if this argument could be a side or quantity
-                        if (itemNameParts.Count > 0 && (IsSideKeyword(arg) || int.TryParse(arg, out _)))
-                        {
-                            // We've hit a non-item-name argument, stop collecting
-                            break;
-                        }
-
-                        itemNameParts.Add(args[i]);
-                    }
-
-                    itemName = string.Join(" ", itemNameParts);
-
-                    // Parse remaining arguments
-                    int currentIndex = itemNameParts.Count;
-
-                    // Parse side (if next arg is a side keyword)
-                    if (args.Length > currentIndex && IsSideKeyword(args[currentIndex].ToLower()))
-                    {
-                        sideStr = args[currentIndex];
-                        currentIndex++;
-                    }
-
-                    // Parse quantity (if next arg is a number) - lowest priority
-                    if (args.Length > currentIndex && int.TryParse(args[currentIndex], out _))
-                    {
-                        quantityStr = args[currentIndex];
-                    }
-
-                    Logger.Debug($"Parsed - Item: '{itemName}', Side: '{sideStr}', Quantity: '{quantityStr}'");
-                }
-                else
-                {
-                    return "Usage: !surgery <implant> [left/right] [quantity] - Example: !surgery bionic arm left 1";
-                }
+                string itemName = parsed.ItemName;
+                string sideStr = parsed.Side;
+                string quantityStr = parsed.Quantity.ToString();
 
                 // Get store item
                 var storeItem = StoreCommandHelper.GetStoreItemByName(itemName);
@@ -699,156 +551,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        private static bool IsValidSurgeryItem(ThingDef thingDef)
-        {
-            // Check if this is an implant, bionic part, or other surgical item
-            if (thingDef.isTechHediff) return true;
-            if (thingDef.defName.Contains("Bionic") || thingDef.defName.Contains("Prosthetic")) return true;
-            if (thingDef.defName.Contains("Implant")) return true;
-
-            // Check if there are any recipes that use this item as an ingredient for surgery
-            var surgeryRecipes = DefDatabase<RecipeDef>.AllDefs
-                .Where(r => r.IsSurgery && r.ingredients.Any(i => i.filter.AllowedThingDefs.Contains(thingDef)))
-                .ToList();
-
-            return surgeryRecipes.Count > 0;
-        }
-
-        private static RecipeDef FindSurgeryRecipeForImplant(ThingDef implantDef, Verse.Pawn pawn)
-        {
-            return DefDatabase<RecipeDef>.AllDefs
-                .Where(r => r.IsSurgery && r.AvailableOnNow(pawn))
-                .FirstOrDefault(r => r.ingredients.Any(i => i.filter.AllowedThingDefs.Contains(implantDef)));
-        }
-
-        private static List<BodyPartRecord> FindBodyPartsForSurgery(RecipeDef recipe, Verse.Pawn pawn, string sideFilter, int maxQuantity)
-        {
-            Logger.Debug($"FindBodyPartsForSurgery - Recipe: {recipe.defName}, SideFilter: {sideFilter}, MaxQuantity: {maxQuantity}");
-
-            // Let RimWorld tell us which parts this surgery applies to
-            var availableParts = recipe.Worker.GetPartsToApplyOn(pawn, recipe).ToList();
-            Logger.Debug($"Initial available parts from recipe: {availableParts.Count}");
-
-            // Filter by side if specified
-            if (!string.IsNullOrEmpty(sideFilter))
-            {
-                var beforeFilterCount = availableParts.Count;
-                availableParts = availableParts
-                    .Where(part => GetBodyPartSide(part).ToLower().Contains(sideFilter.ToLower()))
-                    .ToList();
-                Logger.Debug($"After side filter '{sideFilter}': {beforeFilterCount} -> {availableParts.Count}");
-            }
-
-            // Remove parts that already have this surgery scheduled or the implant already installed
-            var beforeDedupeCount = availableParts.Count;
-            availableParts = availableParts
-                .Where(part => !HasSurgeryScheduled(pawn, recipe, part) && !HasImplantAlready(pawn, part, recipe))
-                .ToList();
-            Logger.Debug($"After deduplication: {beforeDedupeCount} -> {availableParts.Count}");
-
-            // Log available parts for debugging
-            if (availableParts.Count > 0)
-            {
-                Logger.Debug($"Available body parts: {string.Join(", ", availableParts.Select(p => $"{GetBodyPartDisplayName(p)}"))}");
-            }
-            else
-            {
-                Logger.Debug("No available body parts found after all filters");
-            }
-
-            // Limit to requested quantity
-            return availableParts.Take(maxQuantity).ToList();
-        }
-
-        private static string GetBodyPartDisplayName(BodyPartRecord part)
-        {
-            return !string.IsNullOrEmpty(part.customLabel) ? part.customLabel : part.Label;
-        }
-
-        private static string GetBodyPartSide(BodyPartRecord part)
-        {
-            // Use customLabel if available, otherwise use label
-            var label = (!string.IsNullOrEmpty(part.customLabel) ? part.customLabel : part.Label).ToLower();
-
-            if (label.Contains("left")) return "left";
-            if (label.Contains("right")) return "right";
-            return "center";
-        }
-
-        private static string GetAvailableBodyPartsDescription(RecipeDef recipe, Verse.Pawn pawn)
-        {
-            var availableParts = recipe.Worker.GetPartsToApplyOn(pawn, recipe).ToList();
-            if (availableParts.Count == 0) return "none";
-
-            // Group by side and get unique part types
-            var partGroups = availableParts
-                .GroupBy(p => GetBodyPartSide(p))
-                .Select(g => $"{g.Count()} {g.Key} parts")
-                .ToList();
-
-            return string.Join(", ", partGroups);
-        }
-
-        private static bool IsSideKeyword(string arg)
-        {
-            return arg.ToLower() switch
-            {
-                "left" or "right" or "l" or "r" => true,
-                _ => false
-            };
-        }
-
-        private static bool HasSurgeryScheduled(Verse.Pawn pawn, RecipeDef recipe, BodyPartRecord part)
-        {
-            return pawn.health.surgeryBills.Bills.Any(bill =>
-                bill is Bill_Medical medicalBill &&
-                medicalBill.recipe == recipe &&
-                medicalBill.Part == part);
-        }
-
-        private static bool HasImplantAlready(Verse.Pawn pawn, BodyPartRecord part, RecipeDef recipe)
-        {
-            // Check if the pawn already has the hediff that this surgery would add
-            if (recipe.addsHediff != null)
-            {
-                return pawn.health.hediffSet.hediffs.Any(h =>
-                    h.def == recipe.addsHediff && h.Part == part);
-            }
-            return false;
-        }
-
-        private static void ScheduleSurgeries(Verse.Pawn pawn, RecipeDef recipe, List<BodyPartRecord> bodyParts)
-        {
-            foreach (var bodyPart in bodyParts)
-            {
-                var bill = new Bill_Medical(recipe, null) { Part = bodyPart };
-                pawn.health.surgeryBills.AddBill(bill);
-                Logger.Debug($"Scheduled {recipe.defName} on {bodyPart.Label} for pawn {pawn.Name}");
-            }
-        }
-
-        private static string CreateRimazonSurgeryInvoice(string username, string itemName, int quantity, int price, string currencySymbol, List<BodyPartRecord> bodyParts)
-        {
-            string invoice = $"RIMAZON SURGERY SERVICE\n";
-            invoice += $"====================\n";
-            invoice += $"Customer: {username}\n";
-            invoice += $"Procedure: {itemName} x{quantity}\n";
-
-            if (bodyParts.Count > 0)
-            {
-                invoice += $"Body Parts: {string.Join(", ", bodyParts.Select(bp => bp.Label))}\n";
-            }
-
-            invoice += $"Service: Surgical Implantation\n";
-            invoice += $"====================\n";
-            invoice += $"Total: {price}{currencySymbol}\n";
-            invoice += $"====================\n";
-            invoice += $"Thank you for using Rimazon Surgery!\n";
-            invoice += $"Implant delivered to pawn's inventory.\n";
-            invoice += $"Surgery scheduled with colony doctors.";
-
-            return invoice;
-        }
+        // ===== ITEM USAGE & SURGERY METHODS =====
 
         private static void UseItemImmediately(ThingDef thingDef, int quantity, Verse.Pawn pawn)
         {
@@ -934,58 +637,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 Logger.Debug($"Used item {thingDef.defName}, played sound effect");
             }
-        }
-
-        private static void PlayIngestSoundSafely(ThingDef thingDef, Verse.Pawn pawn)
-        {
-            try
-            {
-                // Try to use the ingest sound from the thing definition first
-                if (thingDef.ingestible.ingestSound != null)
-                {
-                    // Check if this is a sustainer sound that shouldn't be played as one-shot
-                    string soundName = thingDef.ingestible.ingestSound.defName;
-                    if (IsSustainerSound(soundName))
-                    {
-                        Logger.Debug($"Skipping sustainer sound: {soundName}, using fallback");
-                        PlayFallbackIngestSound(thingDef, pawn);
-                    }
-                    else
-                    {
-                        // It's safe to play as one-shot
-                        thingDef.ingestible.ingestSound.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
-                    }
-                }
-                else
-                {
-                    // No specific ingest sound defined, use fallback
-                    PlayFallbackIngestSound(thingDef, pawn);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Debug($"Error playing ingest sound for {thingDef.defName}: {ex.Message}");
-                PlayFallbackIngestSound(thingDef, pawn);
-            }
-        }
-
-        private static bool IsSustainerSound(string soundDefName)
-        {
-            if (string.IsNullOrEmpty(soundDefName)) return false;
-
-            // Common sustainer sound names that shouldn't be played as one-shot
-            string[] sustainerKeywords = {
-        "Sustain", "Loop", "Ambient", "Meal_Eat", "Ingest_", "Burning",
-        "Wind", "Engine", "Working", "Charging", "Ritual"
-    };
-
-            foreach (string keyword in sustainerKeywords)
-            {
-                if (soundDefName.Contains(keyword))
-                    return true;
-            }
-
-            return false;
         }
 
         private static void UseCompUseEffectItem(Thing thing, Verse.Pawn pawn)
@@ -1101,6 +752,98 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
+        private static void ScheduleSurgeries(Verse.Pawn pawn, RecipeDef recipe, List<BodyPartRecord> bodyParts)
+        {
+            foreach (var bodyPart in bodyParts)
+            {
+                var bill = new Bill_Medical(recipe, null) { Part = bodyPart };
+                pawn.health.surgeryBills.AddBill(bill);
+                Logger.Debug($"Scheduled {recipe.defName} on {bodyPart.Label} for pawn {pawn.Name}");
+            }
+        }
+
+        private static RecipeDef FindSurgeryRecipeForImplant(ThingDef implantDef, Verse.Pawn pawn)
+        {
+            return DefDatabase<RecipeDef>.AllDefs
+                .Where(r => r.IsSurgery && r.AvailableOnNow(pawn))
+                .FirstOrDefault(r => r.ingredients.Any(i => i.filter.AllowedThingDefs.Contains(implantDef)));
+        }
+
+        private static List<BodyPartRecord> FindBodyPartsForSurgery(RecipeDef recipe, Verse.Pawn pawn, string sideFilter, int maxQuantity)
+        {
+            Logger.Debug($"FindBodyPartsForSurgery - Recipe: {recipe.defName}, SideFilter: {sideFilter}, MaxQuantity: {maxQuantity}");
+
+            // Let RimWorld tell us which parts this surgery applies to
+            var availableParts = recipe.Worker.GetPartsToApplyOn(pawn, recipe).ToList();
+            Logger.Debug($"Initial available parts from recipe: {availableParts.Count}");
+
+            // Filter by side if specified
+            if (!string.IsNullOrEmpty(sideFilter))
+            {
+                var beforeFilterCount = availableParts.Count;
+                availableParts = availableParts
+                    .Where(part => GetBodyPartSide(part).ToLower().Contains(sideFilter.ToLower()))
+                    .ToList();
+                Logger.Debug($"After side filter '{sideFilter}': {beforeFilterCount} -> {availableParts.Count}");
+            }
+
+            // Remove parts that already have this surgery scheduled or the implant already installed
+            var beforeDedupeCount = availableParts.Count;
+            availableParts = availableParts
+                .Where(part => !HasSurgeryScheduled(pawn, recipe, part) && !HasImplantAlready(pawn, part, recipe))
+                .ToList();
+            Logger.Debug($"After deduplication: {beforeDedupeCount} -> {availableParts.Count}");
+
+            // Log available parts for debugging
+            if (availableParts.Count > 0)
+            {
+                Logger.Debug($"Available body parts: {string.Join(", ", availableParts.Select(p => $"{GetBodyPartDisplayName(p)}"))}");
+            }
+            else
+            {
+                Logger.Debug("No available body parts found after all filters");
+            }
+
+            // Limit to requested quantity
+            return availableParts.Take(maxQuantity).ToList();
+        }
+
+        // ===== VALIDATION METHODS =====
+
+        private static bool IsValidSurgeryItem(ThingDef thingDef)
+        {
+            // Check if this is an implant, bionic part, or other surgical item
+            if (thingDef.isTechHediff) return true;
+            if (thingDef.defName.Contains("Bionic") || thingDef.defName.Contains("Prosthetic")) return true;
+            if (thingDef.defName.Contains("Implant")) return true;
+
+            // Check if there are any recipes that use this item as an ingredient for surgery
+            var surgeryRecipes = DefDatabase<RecipeDef>.AllDefs
+                .Where(r => r.IsSurgery && r.ingredients.Any(i => i.filter.AllowedThingDefs.Contains(thingDef)))
+                .ToList();
+
+            return surgeryRecipes.Count > 0;
+        }
+
+        private static bool HasSurgeryScheduled(Verse.Pawn pawn, RecipeDef recipe, BodyPartRecord part)
+        {
+            return pawn.health.surgeryBills.Bills.Any(bill =>
+                bill is Bill_Medical medicalBill &&
+                medicalBill.recipe == recipe &&
+                medicalBill.Part == part);
+        }
+
+        private static bool HasImplantAlready(Verse.Pawn pawn, BodyPartRecord part, RecipeDef recipe)
+        {
+            // Check if the pawn already has the hediff that this surgery would add
+            if (recipe.addsHediff != null)
+            {
+                return pawn.health.hediffSet.hediffs.Any(h =>
+                    h.def == recipe.addsHediff && h.Part == part);
+            }
+            return false;
+        }
+
         private static bool HasPsylink(Verse.Pawn pawn)
         {
             if (pawn?.health?.hediffSet?.hediffs == null)
@@ -1112,24 +855,150 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 hediff.def?.defName?.Contains("Psychic") == true);
         }
 
-        private static SkillDef GetSkillDefFromNeurotrainer(string defName)
+        // ===== BODY PART METHODS =====
+        private static string GetBodyPartDisplayName(BodyPartRecord part)
         {
-            return defName.ToLower() switch
+            return !string.IsNullOrEmpty(part.customLabel) ? part.customLabel : part.Label;
+        }
+
+        private static string GetBodyPartSide(BodyPartRecord part)
+        {
+            // Use customLabel if available, otherwise use label
+            var label = (!string.IsNullOrEmpty(part.customLabel) ? part.customLabel : part.Label).ToLower();
+
+            if (label.Contains("left")) return "left";
+            if (label.Contains("right")) return "right";
+            return "center";
+        }
+
+        private static string GetAvailableBodyPartsDescription(RecipeDef recipe, Verse.Pawn pawn)
+        {
+            var availableParts = recipe.Worker.GetPartsToApplyOn(pawn, recipe).ToList();
+            if (availableParts.Count == 0) return "none";
+
+            // Group by side and get unique part types
+            var partGroups = availableParts
+                .GroupBy(p => GetBodyPartSide(p))
+                .Select(g => $"{g.Count()} {g.Key} parts")
+                .ToList();
+
+            return string.Join(", ", partGroups);
+        }
+
+        // ===== RESURRECTION METHODS =====
+        public static void ResurrectPawn(Verse.Pawn pawn)
+        {
+            try
             {
-                string s when s.Contains("melee") => SkillDefOf.Melee,
-                string s when s.Contains("shooting") => SkillDefOf.Shooting,
-                string s when s.Contains("construction") => SkillDefOf.Construction,
-                string s when s.Contains("mining") => SkillDefOf.Mining,
-                string s when s.Contains("cooking") => SkillDefOf.Cooking,
-                string s when s.Contains("plants") => SkillDefOf.Plants,
-                string s when s.Contains("animals") => SkillDefOf.Animals,
-                string s when s.Contains("crafting") => SkillDefOf.Crafting,
-                string s when s.Contains("artistic") => SkillDefOf.Artistic,
-                string s when s.Contains("medical") => SkillDefOf.Medicine,
-                string s when s.Contains("social") => SkillDefOf.Social,
-                string s when s.Contains("intellectual") => SkillDefOf.Intellectual,
-                _ => null
-            };
+                Logger.Debug($"Attempting to resurrect pawn: {pawn?.Name}");
+
+                // Safety check - ensure pawn exists and is actually dead
+                if (pawn == null)
+                {
+                    Logger.Error("Cannot resurrect - pawn is null");
+                    return;
+                }
+
+                if (!pawn.Dead)
+                {
+                    Logger.Warning($"Pawn {pawn.Name} is not dead, cannot resurrect");
+                    return;
+                }
+
+                // Check if pawn is completely destroyed (no corpse exists)
+                if (IsPawnCompletelyDestroyed(pawn))
+                {
+                    Logger.Error($"Cannot resurrect {pawn.Name} - pawn is completely destroyed (no corpse exists)");
+                    return;
+                }
+
+                Logger.Debug($"Resurrecting pawn: {pawn.Name}");
+
+                // Use RimWorld's built-in resurrection method with side effects
+                try
+                {
+                    ResurrectionUtility.TryResurrectWithSideEffects(pawn);
+                }
+                catch (NullReferenceException)
+                {
+                    Logger.Warning("Failed to revive with side effects -- falling back to regular revive");
+                    ResurrectionUtility.TryResurrect(pawn);
+                }
+
+                Logger.Debug($"Successfully resurrected pawn: {pawn.Name}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error resurrecting pawn: {ex}");
+                throw;
+            }
+        }
+
+        public static bool IsPawnCompletelyDestroyed(Verse.Pawn pawn)
+        {
+            try
+            {
+                // Check if the pawn exists as a corpse in any map
+                foreach (var map in Find.Maps)
+                {
+                    foreach (var thing in map.listerThings.AllThings)
+                    {
+                        if (thing is Corpse corpse && corpse.InnerPawn == pawn)
+                        {
+                            return false; // Corpse exists, not completely destroyed
+                        }
+                    }
+                }
+
+                // Check if pawn exists in world pawns (dead)
+                if (Find.WorldPawns.AllPawnsDead.Contains(pawn))
+                {
+                    return false; // Pawn exists in world pawns
+                }
+
+                // If we get here, the pawn is completely gone
+                Logger.Debug($"Pawn {pawn.Name} is completely destroyed - no corpse found in any map or world pawns");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error checking if pawn is destroyed: {ex}");
+                return true; // Assume destroyed if we can't check
+            }
+        }
+
+        // ===== SOUND METHODS =====
+        private static void PlayIngestSoundSafely(ThingDef thingDef, Verse.Pawn pawn)
+        {
+            try
+            {
+                // Try to use the ingest sound from the thing definition first
+                if (thingDef.ingestible.ingestSound != null)
+                {
+                    // Check if this is a sustainer sound that shouldn't be played as one-shot
+                    string soundName = thingDef.ingestible.ingestSound.defName;
+                    if (IsSustainerSound(soundName))
+                    {
+                        Logger.Debug($"Skipping sustainer sound: {soundName}, using fallback");
+                        PlayFallbackIngestSound(thingDef, pawn);
+                    }
+                    else
+                    {
+                        // It's safe to play as one-shot
+                        thingDef.ingestible.ingestSound.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+                    }
+                }
+                else
+                {
+                    // No specific ingest sound defined, use fallback
+                    PlayFallbackIngestSound(thingDef, pawn);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Error playing ingest sound for {thingDef.defName}: {ex.Message}");
+                PlayFallbackIngestSound(thingDef, pawn);
+            }
         }
 
         private static void PlayFallbackIngestSound(ThingDef thingDef, Verse.Pawn pawn)
@@ -1186,17 +1055,47 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        private static bool IsMajorPurchase(int price, QualityCategory? quality)
+        private static bool IsSustainerSound(string soundDefName)
         {
-            // Legendary quality items
-            if (quality.HasValue && quality.Value == QualityCategory.Legendary)
-                return true;
+            if (string.IsNullOrEmpty(soundDefName)) return false;
 
-            // Very expensive items (adjust threshold as needed)
-            if (price >= 5000)
-                return true;
+            // Common sustainer sound names that shouldn't be played as one-shot
+            string[] sustainerKeywords = {
+        "Sustain", "Loop", "Ambient", "Meal_Eat", "Ingest_", "Burning",
+        "Wind", "Engine", "Working", "Charging", "Ritual"
+    };
+
+            foreach (string keyword in sustainerKeywords)
+            {
+                if (soundDefName.Contains(keyword))
+                    return true;
+            }
 
             return false;
+        }
+
+        // ===== INVOICE CREATION METHODS =====
+        private static string CreateRimazonSurgeryInvoice(string username, string itemName, int quantity, int price, string currencySymbol, List<BodyPartRecord> bodyParts)
+        {
+            string invoice = $"RIMAZON SURGERY SERVICE\n";
+            invoice += $"====================\n";
+            invoice += $"Customer: {username}\n";
+            invoice += $"Procedure: {itemName} x{quantity}\n";
+
+            if (bodyParts.Count > 0)
+            {
+                invoice += $"Body Parts: {string.Join(", ", bodyParts.Select(bp => bp.Label))}\n";
+            }
+
+            invoice += $"Service: Surgical Implantation\n";
+            invoice += $"====================\n";
+            invoice += $"Total: {price}{currencySymbol}\n";
+            invoice += $"====================\n";
+            invoice += $"Thank you for using Rimazon Surgery!\n";
+            invoice += $"Implant delivered to pawn's inventory.\n";
+            invoice += $"Surgery scheduled with colony doctors.";
+
+            return invoice;
         }
 
         private static string CreateRimazonInvoice(string username, string itemName, int quantity, int price, string currencySymbol, QualityCategory? quality, ThingDef material)
@@ -1305,139 +1204,39 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return invoice;
         }
 
-        public static void ResurrectPawn(Verse.Pawn pawn)
+        // ===== UTILITY METHODS =====
+        private static bool IsMajorPurchase(int price, QualityCategory? quality)
         {
-            try
-            {
-                Logger.Debug($"Attempting to resurrect pawn: {pawn?.Name}");
-
-                // Safety check - ensure pawn exists and is actually dead
-                if (pawn == null)
-                {
-                    Logger.Error("Cannot resurrect - pawn is null");
-                    return;
-                }
-
-                if (!pawn.Dead)
-                {
-                    Logger.Warning($"Pawn {pawn.Name} is not dead, cannot resurrect");
-                    return;
-                }
-
-                // Check if pawn is completely destroyed (no corpse exists)
-                if (IsPawnCompletelyDestroyed(pawn))
-                {
-                    Logger.Error($"Cannot resurrect {pawn.Name} - pawn is completely destroyed (no corpse exists)");
-                    return;
-                }
-
-                Logger.Debug($"Resurrecting pawn: {pawn.Name}");
-
-                // Use RimWorld's built-in resurrection method with side effects
-                try
-                {
-                    ResurrectionUtility.TryResurrectWithSideEffects(pawn);
-                }
-                catch (NullReferenceException)
-                {
-                    Logger.Warning("Failed to revive with side effects -- falling back to regular revive");
-                    ResurrectionUtility.TryResurrect(pawn);
-                }
-
-                Logger.Debug($"Successfully resurrected pawn: {pawn.Name}");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error resurrecting pawn: {ex}");
-                throw;
-            }
-        }
-
-        public static bool IsPawnCompletelyDestroyed(Verse.Pawn pawn)
-        {
-            try
-            {
-                // Check if the pawn exists as a corpse in any map
-                foreach (var map in Find.Maps)
-                {
-                    foreach (var thing in map.listerThings.AllThings)
-                    {
-                        if (thing is Corpse corpse && corpse.InnerPawn == pawn)
-                        {
-                            return false; // Corpse exists, not completely destroyed
-                        }
-                    }
-                }
-
-                // Check if pawn exists in world pawns (dead)
-                if (Find.WorldPawns.AllPawnsDead.Contains(pawn))
-                {
-                    return false; // Pawn exists in world pawns
-                }
-
-                // If we get here, the pawn is completely gone
-                Logger.Debug($"Pawn {pawn.Name} is completely destroyed - no corpse found in any map or world pawns");
+            // Legendary quality items
+            if (quality.HasValue && quality.Value == QualityCategory.Legendary)
                 return true;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error checking if pawn is destroyed: {ex}");
-                return true; // Assume destroyed if we can't check
-            }
+
+            // Very expensive items (adjust threshold as needed)
+            if (price >= 5000)
+                return true;
+
+            return false;
         }
 
-        private static bool IsQualityKeyword(string arg)
+        private static SkillDef GetSkillDefFromNeurotrainer(string defName)
         {
-            return arg.ToLower() switch
+            return defName.ToLower() switch
             {
-                "awful" or "poor" or "normal" or "good" or "excellent" or "masterwork" or "legendary" => true,
-                _ => false
+                string s when s.Contains("melee") => SkillDefOf.Melee,
+                string s when s.Contains("shooting") => SkillDefOf.Shooting,
+                string s when s.Contains("construction") => SkillDefOf.Construction,
+                string s when s.Contains("mining") => SkillDefOf.Mining,
+                string s when s.Contains("cooking") => SkillDefOf.Cooking,
+                string s when s.Contains("plants") => SkillDefOf.Plants,
+                string s when s.Contains("animals") => SkillDefOf.Animals,
+                string s when s.Contains("crafting") => SkillDefOf.Crafting,
+                string s when s.Contains("artistic") => SkillDefOf.Artistic,
+                string s when s.Contains("medical") => SkillDefOf.Medicine,
+                string s when s.Contains("social") => SkillDefOf.Social,
+                string s when s.Contains("intellectual") => SkillDefOf.Intellectual,
+                _ => null
             };
         }
 
-        private static HashSet<string> _materialKeywords = null;
-
-        private static void InitializeMaterialKeywords()
-        {
-            if (_materialKeywords != null) return;
-
-            _materialKeywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            try
-            {
-                var allStuffDefs = DefDatabase<ThingDef>.AllDefs.Where(def => def.IsStuff);
-                foreach (var stuffDef in allStuffDefs)
-                {
-                    // Add def name
-                    _materialKeywords.Add(stuffDef.defName);
-
-                    // Add label without spaces
-                    if (!string.IsNullOrEmpty(stuffDef.label))
-                    {
-                        _materialKeywords.Add(stuffDef.label.Replace(" ", ""));
-                    }
-
-                    // Add raw label
-                    _materialKeywords.Add(stuffDef.label);
-                }
-
-                Logger.Debug($"Initialized material keywords with {_materialKeywords.Count} entries");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error initializing material keywords: {ex}");
-                // Fallback to common materials
-                _materialKeywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "wood", "steel", "plasteel", "cloth", "leather", "synthread", "hyperweave",
-            "gold", "silver", "uranium", "jade", "component", "components"
-        };
-            }
-        }
-        public static bool IsMaterialKeyword(string arg)
-        {
-            InitializeMaterialKeywords();
-            return _materialKeywords.Contains(arg);
-        }
     }
 }

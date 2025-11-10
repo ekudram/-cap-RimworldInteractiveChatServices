@@ -203,7 +203,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 else
                 {
-                    return $"{initiator.Name} tried to {interaction.label.ToLower()} with {target.Name}, but it failed.";
+                    return $"{initiator.Name} tried to {interaction.label.ToLower()} with {target.Name}, but it was unable.";
                 }
             }
             catch (Exception ex)
