@@ -63,7 +63,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static string ReviveSelf(ChatMessageWrapper user, Viewer viewer, int pricePerRevive, string currencySymbol)
         {
-            var viewerPawn = StoreCommandHelper.GetViewerPawn(user.Username);
+            var viewerPawn = StoreCommandHelper.GetViewerPawn(user);
 
             if (viewerPawn == null)
             {

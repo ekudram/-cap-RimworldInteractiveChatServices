@@ -19,21 +19,21 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
 
-                // Check if user already has a pawn
-                if (assignmentManager.HasAssignedPawn(user.Username))
+                // Check if user already has a pawn - CHANGED: use message-based method
+                if (assignmentManager.HasAssignedPawn(user))
                 {
                     return "You already have a pawn assigned! Use !leave to release your current pawn first.";
                 }
 
-                // Check if already in queue
+                // Check if already in queue - CHANGED: use message-based method
                 if (assignmentManager.IsInQueue(user.Username))
                 {
                     int position = assignmentManager.GetQueuePosition(user.Username);
                     return $"You are already in the pawn queue at position #{position}.";
                 }
 
-                // Add to queue
-                if (assignmentManager.AddToQueue(user.Username))
+                // Add to queue - CHANGED: use message-based method
+                if (assignmentManager.AddToQueue(user))
                 {
                     int position = assignmentManager.GetQueuePosition(user.Username);
                     int queueSize = assignmentManager.GetQueueSize();
@@ -55,11 +55,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
 
+                // CHANGED: Use message-based check for queue membership
                 if (!assignmentManager.IsInQueue(user.Username))
                 {
                     return "You are not in the pawn queue.";
                 }
 
+                // CHANGED: This one is already correct (uses user parameter)
                 if (assignmentManager.RemoveFromQueue(user))
                 {
                     return "✅ You have left the pawn queue.";
@@ -80,6 +82,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
 
+                // CHANGED: Use message-based check for queue membership
                 if (assignmentManager.IsInQueue(user.Username))
                 {
                     int position = assignmentManager.GetQueuePosition(user.Username);

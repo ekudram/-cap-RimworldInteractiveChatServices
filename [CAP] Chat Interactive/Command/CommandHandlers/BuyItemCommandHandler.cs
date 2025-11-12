@@ -140,7 +140,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (requireEquippable || requireWearable || addToInventory)
                 {
-                    viewerPawn = StoreCommandHelper.GetViewerPawn(user.Username);
+                    viewerPawn = StoreCommandHelper.GetViewerPawn(user);
                     if (viewerPawn == null)
                     {
                         return "You need to have a pawn in the colony. Use !buy pawn first.";
@@ -154,7 +154,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 else
                 {
                     // For regular buy commands, try to get the pawn but don't require it
-                    viewerPawn = StoreCommandHelper.GetViewerPawn(user.Username);
+                    viewerPawn = StoreCommandHelper.GetViewerPawn(user);
                     // Log if no pawn found for debugging
                     if (viewerPawn == null)
                     {
@@ -347,7 +347,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // Get viewer's pawn
-                var viewerPawn = StoreCommandHelper.GetViewerPawn(user.Username);
+                var viewerPawn = StoreCommandHelper.GetViewerPawn(user);
                 Verse.Pawn rimworldPawn = viewerPawn; // This is already a Verse.Pawn
                 Logger.Debug($"Viewer pawn for {user.Username}: {(viewerPawn != null ? viewerPawn.Name.ToString() : "null")}");
                 Logger.Debug($"Viewer pawn dead status: {(viewerPawn != null ? viewerPawn.Dead.ToString() : "N/A")}");
@@ -522,7 +522,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // Get viewer's pawn
-                Verse.Pawn viewerPawn = StoreCommandHelper.GetViewerPawn(user.Username);
+                Verse.Pawn viewerPawn = StoreCommandHelper.GetViewerPawn(user);
                 if (viewerPawn == null)
                 {
                     return "You need to have a pawn in the colony to perform surgery. Use !buy pawn first.";

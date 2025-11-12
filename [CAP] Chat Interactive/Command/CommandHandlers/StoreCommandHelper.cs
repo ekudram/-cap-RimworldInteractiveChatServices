@@ -220,6 +220,24 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return null;
         }
 
+        public static Pawn GetViewerPawn(ChatMessageWrapper user)
+        {
+            try
+            {
+                var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+                if (assignmentManager != null && assignmentManager.HasAssignedPawn(user))
+                {
+                    return assignmentManager.GetAssignedPawn(user);
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error getting viewer pawn for {user.Username}: {ex}");
+                return null;
+            }
+        }
+
         public static (List<Thing> spawnedThings, IntVec3 deliveryPos) SpawnItemForPawn(ThingDef thingDef, int quantity, QualityCategory? quality,
             ThingDef material, Pawn pawn, bool addToInventory = false)
         {

@@ -31,7 +31,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             try
             {
                 // Get viewer data
-                var viewer = Viewers.GetViewer(user);
+                var viewer = Viewers.GetViewer(user);  // This is correct - uses platform ID lookup
+                if (viewer == null)
+                {
+                    return "Could not find your viewer data.";
+                }
+
                 if (viewer == null)
                 {
                     return "Could not find your viewer data.";
@@ -70,7 +75,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "Pawn assignment system not available.";
                 }
 
-                var pawn = assignmentManager.GetAssignedPawn(user);
+                var pawn = assignmentManager.GetAssignedPawn(user);  // CHANGED: user instead of user.Username
                 if (pawn == null)
                 {
                     return "You don't have an active pawn. Use !pawn to purchase one!";
@@ -128,18 +133,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     targetQuery = targetQuery.Substring(1);
                 }
 
-                // Try to find by username
+                // Try to find by username - FIXED: Only use assignment manager, don't create new viewers
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
                 if (assignmentManager != null)
                 {
-                    var targetPawn = assignmentManager.GetAssignedPawn(targetQuery);
-                    if (targetPawn != null && targetPawn != initiator)
+                    // Check if the target actually has an assigned pawn before creating a viewer
+                    if (assignmentManager.HasAssignedPawn(targetQuery))
                     {
-                        return targetPawn;
+                        var targetPawn = assignmentManager.GetAssignedPawn(targetQuery);
+                        if (targetPawn != null && targetPawn != initiator)
+                        {
+                            return targetPawn;
+                        }
                     }
                 }
 
-                // Try to find by pawn name
+                // Try to find by pawn name (existing colonists only, no viewer creation)
                 var namedPawn = FindPawnByName(targetQuery);
                 if (namedPawn != null && namedPawn != initiator)
                 {
@@ -211,6 +220,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Error($"Error executing interaction: {ex}");
                 return $"Failed to execute {interaction.label} interaction.";
             }
+        }
+
+        private static bool HasAssignedPawn(string username)
+        {
+            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+            return assignmentManager != null && assignmentManager.HasAssignedPawn(username);
         }
 
         private static string GetSuccessMessage(Pawn initiator, Pawn target, InteractionDef interaction)

@@ -76,7 +76,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static string HealSelf(ChatMessageWrapper user, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
         {
-            var viewerPawn = StoreCommandHelper.GetViewerPawn(user.Username);
+            var viewerPawn = StoreCommandHelper.GetViewerPawn(user);
 
             if (viewerPawn == null)
             {
