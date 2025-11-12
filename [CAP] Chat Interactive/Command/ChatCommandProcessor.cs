@@ -129,19 +129,18 @@ namespace CAP_ChatInteractive
 
             var commandText = parts[0];
             var args = parts.Skip(1).ToArray();
-
-            // Prefix check (already have this)
             var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings as CAPGlobalChatSettings;
-            if (commandText.StartsWith(globalSettings.Prefix) ||
-                commandText.StartsWith(globalSettings.BuyPrefix))
-            {
-                commandText = commandText.Substring(1);
-            }
-            else
-            {
-                return;
-            }
 
+            //// Prefix check (already have this)
+            //if (commandText.StartsWith(globalSettings.Prefix) ||
+            //    commandText.StartsWith(globalSettings.BuyPrefix))
+            //{
+            //    commandText = commandText.Substring(1);
+            //}
+            //else
+            //{
+            //    return;
+            //}
 
             commandText = commandText.ToLowerInvariant();
             Logger.Debug($"Identified command: {commandText} with args: {string.Join(", ", args)}");
@@ -158,7 +157,7 @@ namespace CAP_ChatInteractive
             // Fast exit: Unknown command
             if (!_commands.TryGetValue(commandText, out var command))
             {
-                SendMessageToUser(message, $"Unknown command: {commandText}. Type {globalSettings.Prefix}help for available commands.");
+                // SendMessageToUser(message, $"Unknown command: {commandText}. Type {globalSettings.Prefix}help for available commands.");
                 return;
             }
 
