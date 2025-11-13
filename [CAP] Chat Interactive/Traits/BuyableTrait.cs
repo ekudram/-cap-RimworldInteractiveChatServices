@@ -91,9 +91,9 @@ namespace CAP_ChatInteractive.Traits
 
         private void SetDefaultPrices(TraitDef traitDef, TraitDegreeData degreeData)
         {
-            // Base prices for a typical trait - adjusted for your economy
-            int baseAddPrice = 300;  // Reduced from 500
-            int baseRemovePrice = 500; // Reduced from 800
+            // Base prices for a typical trait - FURTHER REDUCED for chat economy
+            int baseAddPrice = 150;  // Reduced from 300
+            int baseRemovePrice = 250; // Reduced from 500
 
             float impactFactor = 1.0f;
 
@@ -111,7 +111,7 @@ namespace CAP_ChatInteractive.Traits
             }
 
             // Adjust for degree (higher absolute degree = more impact)
-            impactFactor += Math.Abs(Degree) * 0.3f; // Reduced from 0.5f
+            impactFactor += Math.Abs(Degree) * 0.3f;
 
             // Negative traits should be cheaper to add and more expensive to remove
             float addMultiplier = impactFactor;
@@ -127,14 +127,14 @@ namespace CAP_ChatInteractive.Traits
             AddPrice = (int)(baseAddPrice * addMultiplier);
             RemovePrice = (int)(baseRemovePrice * removeMultiplier);
 
-            // Ensure minimum prices
-            AddPrice = Math.Max(50, AddPrice);  // Reduced minimum
-            RemovePrice = Math.Max(80, RemovePrice); // Reduced minimum
+            // Ensure minimum prices - REDUCED
+            AddPrice = Math.Max(30, AddPrice);  // Reduced from 50
+            RemovePrice = Math.Max(50, RemovePrice); // Reduced from 80
         }
 
         private float GetStatWeight(StatDef stat)
         {
-            // High importance stats
+            // High importance stats - REDUCED WEIGHTS
             if (stat.defName.Contains("GlobalLearningFactor") ||
                 stat.defName.Contains("WorkSpeedGlobal") ||
                 stat.defName.Contains("MoveSpeed") ||
@@ -142,29 +142,29 @@ namespace CAP_ChatInteractive.Traits
                 stat.defName.Contains("AimingDelayFactor") ||
                 stat.defName.Contains("ShootingAccuracyPawn"))
             {
-                return 25f; // High weight for important stats
+                return 2.5f; // REDUCED from 25f to 2.5f (10x reduction)
             }
 
-            // Medium importance stats  
+            // Medium importance stats - REDUCED WEIGHTS  
             if (stat.defName.Contains("HungerRate") ||
                 stat.defName.Contains("RestRate") ||
                 stat.defName.Contains("PsychicSensitivity") ||
                 stat.defName.Contains("ToxicResistance") ||
                 stat.defName.Contains("PainShockThreshold"))
             {
-                return 15f;
+                return 1.5f; // REDUCED from 15f to 1.5f (10x reduction)
             }
 
-            // Low importance stats
+            // Low importance stats - REDUCED WEIGHTS
             if (stat.defName.Contains("Beauty") ||
                 stat.defName.Contains("ComfyTemperatureMin") ||
                 stat.defName.Contains("ComfyTemperatureMax"))
             {
-                return 5f;
+                return 0.5f; // REDUCED from 5f to 0.5f (10x reduction)
             }
 
-            // Default weight
-            return 10f;
+            // Default weight - REDUCED
+            return 1.0f; // REDUCED from 10f to 1.0f (10x reduction)
         }
 
         private bool IsGenerallyNegativeTrait(TraitDef traitDef, TraitDegreeData degreeData)
