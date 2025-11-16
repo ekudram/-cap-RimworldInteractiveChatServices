@@ -113,10 +113,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return $"The trait '{buyableTrait.Name}' cannot be added to pawns.";
                 }
 
-                // Check if pawn already has max traits
+                // Check if pawn already has max traits (unless trait bypasses limit)
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 int maxTraits = settings?.MaxTraits ?? 4;
-                if (pawn.story.traits.allTraits.Count >= maxTraits)
+                if (pawn.story.traits.allTraits.Count >= maxTraits && !buyableTrait.BypassLimit)
                 {
                     return $"Your pawn already has the maximum of {maxTraits} traits. Use !removetrait to remove one first.";
                 }
