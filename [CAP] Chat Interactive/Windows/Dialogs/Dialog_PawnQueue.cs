@@ -620,7 +620,7 @@ namespace CAP_ChatInteractive
             queueManager.RemoveFromQueue(platformID);
 
             // Directly assign the pawn using platform ID
-            queueManager.AssignPawnToViewer(platformID, pawn);
+            queueManager.AssignPawnToViewerDialog( username,  platformID, pawn);
 
             // Send confirmation message to chat (user-facing)
             string assignMessage = $"🎉 You have been assigned {pawn.Name}! Use !mypawn to check your pawn's status.";

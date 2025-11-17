@@ -85,7 +85,7 @@ namespace CAP_ChatInteractive
         }
 
         // NEW: Direct assignment method for dialog use
-        public void AssignPawnToViewer(string username, Pawn pawn)
+        public void AssignPawnToViewerDialog(string username, string platformID, Pawn pawn)
         {
             string identifier = GetLegacyIdentifier(username);
             viewerPawnAssignments[identifier] = pawn.ThingID;
