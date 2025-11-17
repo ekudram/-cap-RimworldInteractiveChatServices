@@ -317,6 +317,19 @@ namespace CAP_ChatInteractive
             Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f);
             float rowHeight = 130f; // Increased from 120f to 130f for better text display
 
+            // FIX: Check if filteredTraits is empty to prevent index out of range
+            if (filteredTraits.Count == 0)
+            {
+                Rect noResultsRect = new Rect(listRect.x, listRect.y, listRect.width, 50f);
+                Text.Anchor = TextAnchor.MiddleCenter;
+                GUI.color = Color.gray;
+                Widgets.Label(noResultsRect, "No traits match your search criteria");
+                GUI.color = Color.white;
+                Text.Anchor = TextAnchor.UpperLeft;
+                return;
+            }
+
+            // FIX: Only calculate visible indices when we actually have items
             int firstVisibleIndex = Mathf.FloorToInt(scrollPosition.y / rowHeight);
             int lastVisibleIndex = Mathf.CeilToInt((scrollPosition.y + listRect.height) / rowHeight);
             firstVisibleIndex = Mathf.Clamp(firstVisibleIndex, 0, filteredTraits.Count - 1);
@@ -329,6 +342,10 @@ namespace CAP_ChatInteractive
                 float y = firstVisibleIndex * rowHeight;
                 for (int i = firstVisibleIndex; i <= lastVisibleIndex; i++)
                 {
+                    // FIX: Additional safety check
+                    if (i < 0 || i >= filteredTraits.Count)
+                        continue;
+
                     Rect traitRect = new Rect(0f, y, viewRect.width, rowHeight - 2f);
                     if (i % 2 == 1)
                     {

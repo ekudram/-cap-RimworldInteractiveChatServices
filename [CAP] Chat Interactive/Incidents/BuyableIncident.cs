@@ -395,7 +395,7 @@ namespace CAP_ChatInteractive.Incidents
             }
 
             BaseCost = (int)(basePrice * impactFactor);
-            BaseCost = Math.Max(75, Math.Min(7500, BaseCost)); // Wider range for economy flexibility
+            BaseCost = Math.Max(150, Math.Min(7500, BaseCost)); // Wider range for economy flexibility
         }
 
         private string CleanIncidentName(string originalName)

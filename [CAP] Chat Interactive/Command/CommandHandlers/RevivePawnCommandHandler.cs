@@ -114,10 +114,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return $"You need {StoreCommandHelper.FormatCurrencyMessage(pricePerRevive, currencySymbol)} to revive {targetUsername}'s pawn! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
             }
 
-            var targetPawn = StoreCommandHelper.GetViewerPawn(targetUsername);
+            // FIXED: Use assignment manager directly for better debugging
+            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+            var targetPawn = assignmentManager.GetAssignedPawn(targetUsername);
+
+            Logger.Debug($"ReviveSpecificUser: Looking for pawn for '{targetUsername}'");
+            Logger.Debug($"ReviveSpecificUser: Assignment manager found pawn: {targetPawn != null}");
 
             if (targetPawn == null)
             {
+                Logger.Debug($"ReviveSpecificUser: No pawn found for username '{targetUsername}'");
                 return $"{targetUsername} doesn't have a pawn assigned.";
             }
 
@@ -131,7 +137,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return $"{targetUsername}'s pawn body has been completely destroyed and cannot be revived.";
             }
 
-            // Deduct coins and revive
+            // Rest of the method remains the same...
             viewer.TakeCoins(pricePerRevive);
             BuyItemCommandHandler.ResurrectPawn(targetPawn);
 
@@ -158,16 +164,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             var deadPawns = new List<(string username, Verse.Pawn pawn)>();
 
-            // Find all dead assigned pawns
+            // Find all dead assigned pawns - FIXED: Use assignment manager directly
             foreach (var username in allAssignedUsernames)
             {
-                var pawn = StoreCommandHelper.GetViewerPawn(username);
+                var pawn = assignmentManager.GetAssignedPawn(username);
                 if (pawn != null && pawn.Dead && !BuyItemCommandHandler.IsPawnCompletelyDestroyed(pawn))
                 {
                     deadPawns.Add((username, pawn));
                 }
             }
 
+            // Rest of the method remains the same...
             if (deadPawns.Count == 0)
             {
                 return "No dead pawns found to revive.";

@@ -58,8 +58,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (target == "all")
                 {
+                    return HealAllSelf(user, viewer, pricePerHeal, currencySymbol, quantity);
+                }
+                if (target == "allpawns")
+                {
                     // Heal all pawns
-                    return HealAll(user, viewer, pricePerHeal, currencySymbol, quantity);
+                    return HealAllPawns(user, viewer, pricePerHeal, currencySymbol, quantity);
                 }
                 else
                 {
@@ -73,6 +77,67 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return "Error processing heal command. Please try again.";
             }
         }
+
+        private static string HealAllSelf(ChatMessageWrapper user, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
+        {
+            var viewerPawn = StoreCommandHelper.GetViewerPawn(user);
+
+            if (viewerPawn == null)
+            {
+                return "You don't have a pawn assigned. Use !buy pawn first.";
+            }
+
+            if (viewerPawn.Dead)
+            {
+                return "Your pawn is dead. Use !revivepawn first.";
+            }
+
+            if (!HasInjuriesToHeal(viewerPawn))
+            {
+                return "Your pawn doesn't have any injuries to heal.";
+            }
+
+            // Count all healable injuries
+            int totalInjuries = CountHealableInjuries(viewerPawn);
+            int maxAffordableHeals = viewer.Coins / pricePerHeal;
+            int injuriesToHeal = Math.Min(totalInjuries, maxAffordableHeals);
+
+            if (injuriesToHeal == 0)
+            {
+                return $"You need {StoreCommandHelper.FormatCurrencyMessage(pricePerHeal, currencySymbol)} to heal any injuries! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            }
+
+            int totalCost = injuriesToHeal * pricePerHeal;
+
+            // Deduct coins and heal all affordable injuries
+            viewer.TakeCoins(totalCost);
+            int injuriesHealed = ApplyCompleteHealing(viewerPawn);
+
+            int karmaEarned = totalCost / 100;
+            if (karmaEarned > 0)
+            {
+                viewer.GiveKarma(karmaEarned);
+                Logger.Debug($"Awarded {karmaEarned} karma for {totalCost} coin purchase");
+            }
+
+            // Send healing invoice
+            string invoiceLabel = $"💚 Rimazon Complete Healing - {user.Username}";
+            string invoiceMessage = CreateCompleteHealingInvoice(user.Username, injuriesHealed, totalCost, currencySymbol);
+            MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
+
+            Logger.Debug($"Heal all self successful: {user.Username} healed {injuriesHealed} injuries for {totalCost}{currencySymbol}");
+
+            if (injuriesHealed < totalInjuries)
+            {
+                return $"💚 COMPLETE HEALING! Healed {injuriesHealed} injuries on your pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! {totalInjuries - injuriesHealed} injuries remain (insufficient funds). Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            }
+            else
+            {
+                return $"💚 COMPLETE HEALING! Healed all {injuriesHealed} injuries on your pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            }
+        }
+
+
 
         private static string HealSelf(ChatMessageWrapper user, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
         {
@@ -131,7 +196,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return $"You need {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)} to heal {targetUsername}'s pawn {quantity} time(s)! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
             }
 
-            var targetPawn = StoreCommandHelper.GetViewerPawn(targetUsername);
+            // FIXED: Use the assignment manager directly to find the pawn by username
+            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+            var targetPawn = assignmentManager.GetAssignedPawn(targetUsername);
 
             if (targetPawn == null)
             {
@@ -168,7 +235,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return $"💚 HEALING! Healed {injuriesHealed} injuries on {targetUsername}'s pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
         }
 
-        private static string HealAll(ChatMessageWrapper user, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
+        private static string HealAllPawns(ChatMessageWrapper user, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
         {
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
             var allAssignedUsernames = assignmentManager.GetAllAssignedUsernames().ToList();
@@ -303,6 +370,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             invoice += $"====================\n";
             invoice += $"Thank you for using Rimazon Healing!\n";
             invoice += $"Your pawn is feeling better! 💚";
+
+            return invoice;
+        }
+
+        private static string CreateCompleteHealingInvoice(string username, int injuriesHealed, int totalPrice, string currencySymbol)
+        {
+            string invoice = $"RIMAZON COMPLETE HEALING SERVICE\n";
+            invoice += $"====================\n";
+            invoice += $"Patient: {username}\n";
+            invoice += $"Service: Complete Healing\n";
+            invoice += $"Injuries Healed: {injuriesHealed}\n";
+            invoice += $"====================\n";
+            invoice += $"Total: {totalPrice}{currencySymbol}\n";
+            invoice += $"====================\n";
+            invoice += $"Thank you for using Rimazon Complete Healing!\n";
+            invoice += $"Your pawn is now completely healed! 💚";
 
             return invoice;
         }
