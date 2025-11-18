@@ -65,17 +65,24 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // Check research requirements
+                Logger.Debug($"Checking research requirements for {itemName}");
                 if (!StoreCommandHelper.HasRequiredResearch(storeItem))
                 {
+                    Logger.Debug($"Research requirement failed for {itemName}");
                     return $"{itemName} requires research that hasn't been completed yet.";
                 }
+                Logger.Debug($"Research requirements met for {itemName}");
 
                 // Parse quality
                 var quality = StoreCommandHelper.ParseQuality(qualityStr);
+                Logger.Debug($"Parsed quality: {qualityStr} -> {quality}");
+
                 if (!StoreCommandHelper.IsQualityAllowed(quality))
                 {
+                    Logger.Debug($"Quality {qualityStr} is not allowed for purchases");
                     return $"Quality '{qualityStr}' is not allowed for purchases.";
                 }
+                Logger.Debug($"Quality {qualityStr} is allowed");
 
                 // Get thing def
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
@@ -1341,6 +1348,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 _ => null
             };
         }
+
+        // ===== DEBUG METHODS =====
+
+
 
     }
 }

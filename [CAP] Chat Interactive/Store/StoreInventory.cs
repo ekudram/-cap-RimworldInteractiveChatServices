@@ -291,10 +291,6 @@ namespace CAP_ChatInteractive.Store
             return GetEnabledItems().Where(item => item.Category == category);
         }
 
-        public static void OpenQualitySettings()
-        {
-            Find.WindowStack.Add(new Dialog_QualityResearchSettings());
-        }
     }
     public static class ThingDefExtensions
     {

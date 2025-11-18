@@ -113,6 +113,20 @@ namespace CAP_ChatInteractive
         public bool LootBoxShowWelcomeMessage = true;
         public bool LootBoxForceOpenAllAtOnce = false;
 
+
+        // Quality settings
+        public bool AllowAwfulQuality = true;
+        public bool AllowPoorQuality = true;
+        public bool AllowNormalQuality = true;
+        public bool AllowGoodQuality = true;
+        public bool AllowExcellentQuality = true;
+        public bool AllowMasterworkQuality = true;
+        public bool AllowLegendaryQuality = true;
+
+        // Research settings
+        public bool RequireResearch = false;
+        public bool AllowUnresearchedItems = true;
+
         public void ExposeData()
         {
             Scribe_Values.Look(ref EnableDebugLogging, "enableDebugLogging", false);
@@ -155,6 +169,19 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref LootBoxesPerDay, "lootBoxesPerDay", 1);
             Scribe_Values.Look(ref LootBoxShowWelcomeMessage, "lootBoxShowWelcomeMessage", true);
             Scribe_Values.Look(ref LootBoxForceOpenAllAtOnce, "lootBoxForceOpenAllAtOnce", false);
+
+            // Quality settings
+            Scribe_Values.Look(ref AllowAwfulQuality, "allowAwfulQuality", true);
+            Scribe_Values.Look(ref AllowPoorQuality, "allowPoorQuality", true);
+            Scribe_Values.Look(ref AllowNormalQuality, "allowNormalQuality", true);
+            Scribe_Values.Look(ref AllowGoodQuality, "allowGoodQuality", true);
+            Scribe_Values.Look(ref AllowExcellentQuality, "allowExcellentQuality", true);
+            Scribe_Values.Look(ref AllowMasterworkQuality, "allowMasterworkQuality", true);
+            Scribe_Values.Look(ref AllowLegendaryQuality, "allowLegendaryQuality", true);
+
+            // Research settings
+            Scribe_Values.Look(ref RequireResearch, "requireResearch", false);
+            Scribe_Values.Look(ref AllowUnresearchedItems, "allowUnresearchedItems", true);
         }
     }
 

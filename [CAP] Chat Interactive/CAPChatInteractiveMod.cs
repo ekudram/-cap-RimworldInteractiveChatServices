@@ -249,6 +249,17 @@ namespace CAP_ChatInteractive
         {
             return Current.Game?.GetComponent<GameComponent_PawnAssignmentManager>();
         }
+        public static void OpenQualitySettings()
+        {
+            if (Instance != null && Instance.Settings != null)
+            {
+                Find.WindowStack.Add(new Dialog_QualityResearchSettings(Instance.Settings));
+            }
+            else
+            {
+                Logger.Error("Cannot open quality settings - mod instance or settings not available");
+            }
+        }
     }
 
 }

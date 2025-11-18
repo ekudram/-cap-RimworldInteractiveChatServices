@@ -9,6 +9,7 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Management.Instrumentation;
 using UnityEngine;
 using Verse;
 
@@ -236,7 +237,7 @@ namespace CAP_ChatInteractive
             // NEW: Quality & Research Settings
             options.Add(new FloatMenuOption("Quality & Research Settings", () =>
             {
-                Find.WindowStack.Add(new Store.Dialog_QualityResearchSettings());
+                CAPChatInteractiveMod.OpenQualitySettings();
             }));
 
             // Store Management Tools

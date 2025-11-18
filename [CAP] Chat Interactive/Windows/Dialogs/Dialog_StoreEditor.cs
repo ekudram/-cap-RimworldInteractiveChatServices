@@ -192,7 +192,7 @@ namespace CAP_ChatInteractive
             // Quality & Research Settings button
             if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth + 60f, 30f), "Quality/Research"))
             {
-                StoreInventory.OpenQualitySettings();
+                CAPChatInteractiveMod.OpenQualitySettings();
             }
 
             Widgets.EndGroup();

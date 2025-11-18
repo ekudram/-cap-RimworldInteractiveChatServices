@@ -95,25 +95,66 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return viewer.Coins >= price;
         }
 
+        // In StoreCommandHelper.cs - FIX HasRequiredResearch method
         public static bool HasRequiredResearch(StoreItem storeItem)
         {
-            if (!Dialog_QualityResearchSettings.RequireResearch)
-                return true;
-
-            if (Dialog_QualityResearchSettings.AllowUnresearchedItems)
-                return true;
-
-            // Check if any research prerequisites are unmet
-            var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
-            if (thingDef?.researchPrerequisites == null)
-                return true;
-
-            foreach (var research in thingDef.researchPrerequisites)
+            // Get settings from the mod instance
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings == null)
             {
-                if (!research.IsFinished)
-                    return false;
+                Logger.Debug($"HasRequiredResearch: No settings found, allowing purchase");
+                return true;
             }
 
+            // If research requirement is disabled, allow purchase
+            if (!settings.RequireResearch)
+            {
+                Logger.Debug($"HasRequiredResearch: Research requirement disabled, allowing purchase");
+                return true;
+            }
+
+            // If allowing unresearched items, allow purchase
+            if (settings.AllowUnresearchedItems)
+            {
+                Logger.Debug($"HasRequiredResearch: Unresearched items allowed, allowing purchase");
+                return true;
+            }
+
+            // Get the thing definition
+            var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
+            if (thingDef == null)
+            {
+                Logger.Debug($"HasRequiredResearch: ThingDef not found for {storeItem.DefName}, allowing purchase");
+                return true;
+            }
+
+            // DEBUG METHOD
+            DebugResearchPrerequisites(thingDef);
+
+            // Check research prerequisites
+            if (thingDef.researchPrerequisites != null && thingDef.researchPrerequisites.Count > 0)
+            {
+                foreach (var research in thingDef.researchPrerequisites)
+                {
+                    if (research != null && !research.IsFinished)
+                    {
+                        Logger.Debug($"HasRequiredResearch: Research prerequisite {research.defName} not completed for {storeItem.DefName}");
+                        return false;
+                    }
+                }
+            }
+
+            // Also check recipe prerequisites if this is a building or complex item
+            if (thingDef.recipeMaker != null && thingDef.recipeMaker.researchPrerequisite != null)
+            {
+                if (!thingDef.recipeMaker.researchPrerequisite.IsFinished)
+                {
+                    Logger.Debug($"HasRequiredResearch: Recipe research prerequisite {thingDef.recipeMaker.researchPrerequisite.defName} not completed for {storeItem.DefName}");
+                    return false;
+                }
+            }
+
+            Logger.Debug($"HasRequiredResearch: All research prerequisites met for {storeItem.DefName}");
             return true;
         }
 
@@ -135,21 +176,37 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             };
         }
 
+        // In StoreCommandHelper.cs - FIX IsQualityAllowed method
         public static bool IsQualityAllowed(QualityCategory? quality)
         {
-            if (!quality.HasValue) return true;
-
-            return quality.Value switch
+            if (!quality.HasValue)
             {
-                QualityCategory.Awful => Dialog_QualityResearchSettings.AllowAwfulQuality,
-                QualityCategory.Poor => Dialog_QualityResearchSettings.AllowPoorQuality,
-                QualityCategory.Normal => Dialog_QualityResearchSettings.AllowNormalQuality,
-                QualityCategory.Good => Dialog_QualityResearchSettings.AllowGoodQuality,
-                QualityCategory.Excellent => Dialog_QualityResearchSettings.AllowExcellentQuality,
-                QualityCategory.Masterwork => Dialog_QualityResearchSettings.AllowMasterworkQuality,
-                QualityCategory.Legendary => Dialog_QualityResearchSettings.AllowLegendaryQuality,
+                Logger.Debug($"IsQualityAllowed: No quality specified, allowing");
+                return true;
+            }
+
+            // Get settings from the mod instance
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings == null)
+            {
+                Logger.Debug($"IsQualityAllowed: No settings found, allowing quality {quality.Value}");
+                return true;
+            }
+
+            bool isAllowed = quality.Value switch
+            {
+                QualityCategory.Awful => settings.AllowAwfulQuality,
+                QualityCategory.Poor => settings.AllowPoorQuality,
+                QualityCategory.Normal => settings.AllowNormalQuality,
+                QualityCategory.Good => settings.AllowGoodQuality,
+                QualityCategory.Excellent => settings.AllowExcellentQuality,
+                QualityCategory.Masterwork => settings.AllowMasterworkQuality,
+                QualityCategory.Legendary => settings.AllowLegendaryQuality,
                 _ => true
             };
+
+            Logger.Debug($"IsQualityAllowed: Quality {quality.Value} - Allowed: {isAllowed}");
+            return isAllowed;
         }
 
         public static ThingDef ParseMaterial(string materialStr, ThingDef thingDef)
@@ -1108,6 +1165,58 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Debug($"Dropping item at trade spot {dropPos}");
                 GenDrop.TryDropSpawn(thing, dropPos, map, ThingPlaceMode.Near, out Thing resultingThing);
             }
+        }
+
+        // === DEBUG METHODS ===
+        public static void DebugResearchPrerequisites(ThingDef thingDef)
+        {
+            if (thingDef == null)
+            {
+                Logger.Debug("DebugResearchPrerequisites: ThingDef is null");
+                return;
+            }
+
+            Logger.Debug($"=== RESEARCH DEBUG for {thingDef.defName} ===");
+
+            if (thingDef.researchPrerequisites != null)
+            {
+                Logger.Debug($"Research prerequisites count: {thingDef.researchPrerequisites.Count}");
+                foreach (var research in thingDef.researchPrerequisites)
+                {
+                    if (research != null)
+                    {
+                        Logger.Debug($"  - {research.defName}: Finished={research.IsFinished}");
+                    }
+                }
+            }
+            else
+            {
+                Logger.Debug($"No research prerequisites found");
+            }
+
+            if (thingDef.recipeMaker != null && thingDef.recipeMaker.researchPrerequisite != null)
+            {
+                Logger.Debug($"Recipe research: {thingDef.recipeMaker.researchPrerequisite.defName}: Finished={thingDef.recipeMaker.researchPrerequisite.IsFinished}");
+            }
+
+            Logger.Debug($"=== END RESEARCH DEBUG ===");
+        }
+
+        // Add to StoreCommandHelper.cs
+        public static void DebugSettings()
+        {
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings == null)
+            {
+                Logger.Debug("DebugSettings: No settings found");
+                return;
+            }
+
+            Logger.Debug($"=== SETTINGS DEBUG ===");
+            Logger.Debug($"RequireResearch: {settings.RequireResearch}");
+            Logger.Debug($"AllowUnresearchedItems: {settings.AllowUnresearchedItems}");
+            Logger.Debug($"Quality Settings - Awful:{settings.AllowAwfulQuality}, Poor:{settings.AllowPoorQuality}, Normal:{settings.AllowNormalQuality}, Good:{settings.AllowGoodQuality}, Excellent:{settings.AllowExcellentQuality}, Masterwork:{settings.AllowMasterworkQuality}, Legendary:{settings.AllowLegendaryQuality}");
+            Logger.Debug($"=== END SETTINGS DEBUG ===");
         }
     }
 }
