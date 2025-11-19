@@ -19,6 +19,8 @@ namespace CAP_ChatInteractive
         private Dictionary<string, float> queueJoinTimes; // PlatformID -> join time (ticks)
         private Dictionary<string, PendingPawnOffer> pendingOffers; // PlatformID -> offer data
         private List<string> expiredOffers; // Offers that timed out
+        private Dictionary<string, string> pawnOriginalNicknames = new Dictionary<string, string>(); // ThingID -> OriginalNickname
+
 
         public GameComponent_PawnAssignmentManager(Game game)
         {
@@ -81,6 +83,23 @@ namespace CAP_ChatInteractive
         {
             string identifier = GetViewerIdentifier(message);
             viewerPawnAssignments[identifier] = pawn.ThingID;
+
+            // Store original nickname before changing it
+            if (pawn.Name is NameTriple nameTriple && !pawnOriginalNicknames.ContainsKey(pawn.ThingID))
+            {
+                pawnOriginalNicknames[pawn.ThingID] = nameTriple.Nick;
+            }
+
+            // Set pawn nickname to username (keeping first/last names)
+            if (pawn.Name is NameTriple currentName)
+            {
+                pawn.Name = new NameTriple(currentName.First, message.Username, currentName.Last);
+            }
+            else
+            {
+                pawn.Name = new NameSingle(message.Username);
+            }
+
             Logger.Debug($"Assigned pawn {pawn.ThingID} to viewer {identifier}");
         }
 
@@ -89,6 +108,12 @@ namespace CAP_ChatInteractive
         {
             string identifier = GetLegacyIdentifier(username);
             viewerPawnAssignments[identifier] = pawn.ThingID;
+
+            // Store original nickname before changing it
+            if (pawn.Name is NameTriple nameOldTriple && !pawnOriginalNicknames.ContainsKey(pawn.ThingID))
+            {
+                pawnOriginalNicknames[pawn.ThingID] = nameOldTriple.Nick;
+            }
 
             // Set pawn name to username
             if (pawn.Name is NameTriple nameTriple)
@@ -215,24 +240,109 @@ namespace CAP_ChatInteractive
         public void UnassignPawn(ChatMessageWrapper message)
         {
             string identifier = GetViewerIdentifier(message);
-            if (viewerPawnAssignments.Remove(identifier))
+
+            // Reset nickname for platform ID assignment
+            if (viewerPawnAssignments.TryGetValue(identifier, out string thingId))
             {
-                Logger.Debug($"Removed pawn assignment for {identifier}");
+                Pawn pawn = FindPawnByThingId(thingId);
+                if (pawn != null)
+                {
+                    ResetPawnNickname(pawn, thingId);
+                }
+                viewerPawnAssignments.Remove(identifier);
+                Logger.Debug($"Removed pawn assignment for {identifier} and reset nickname");
             }
 
-            // Also remove any legacy username assignment
+            // Also remove any legacy username assignment and reset nickname
             string legacyId = GetLegacyIdentifier(message.Username);
-            viewerPawnAssignments.Remove(legacyId);
+            if (viewerPawnAssignments.TryGetValue(legacyId, out thingId))
+            {
+                Pawn pawn = FindPawnByThingId(thingId);
+                if (pawn != null)
+                {
+                    ResetPawnNickname(pawn, thingId);
+                }
+                viewerPawnAssignments.Remove(legacyId);
+                Logger.Debug($"Removed legacy pawn assignment for {legacyId} and reset nickname");
+            }
         }
 
         // NEW: Legacy overload for username-only calls
-        public void UnassignPawn(string username)
+        public void UnassignPawn(string platformId)
         {
-            string legacyId = GetLegacyIdentifier(username);
-            if (viewerPawnAssignments.Remove(legacyId))
+            if (viewerPawnAssignments.TryGetValue(platformId, out string thingId))
             {
-                Logger.Debug($"Removed pawn assignment for {legacyId}");
+                // Restore original nickname before removing assignment
+                Pawn pawn = FindPawnByThingId(thingId);
+                if (pawn != null)
+                {
+                    ResetPawnNickname(pawn, thingId);
+                }
+
+                viewerPawnAssignments.Remove(platformId);
+                Logger.Debug($"Removed pawn assignment for platform ID: {platformId} and restored nickname");
             }
+            else
+            {
+                // Also try legacy username format as fallback
+                string legacyId = GetLegacyIdentifier(platformId);
+                if (viewerPawnAssignments.TryGetValue(legacyId, out thingId))
+                {
+                    Pawn pawn = FindPawnByThingId(thingId);
+                    if (pawn != null)
+                    {
+                        ResetPawnNickname(pawn, thingId);
+                    }
+
+                    viewerPawnAssignments.Remove(legacyId);
+                    Logger.Debug($"Removed pawn assignment using legacy ID: {legacyId} and restored nickname");
+                }
+                else
+                {
+                    Logger.Debug($"No pawn assignment found for: {platformId}");
+                }
+            }
+        }
+
+        private void ResetPawnNickname(Pawn pawn, string thingId)
+        {
+            if (pawn.Name is NameTriple currentName)
+            {
+                string newNickname;
+
+                if (pawnOriginalNicknames.TryGetValue(thingId, out string originalNickname))
+                {
+                    // Restore original nickname
+                    newNickname = originalNickname;
+                    pawnOriginalNicknames.Remove(thingId);
+                    Logger.Debug($"Restored original nickname: '{newNickname}'");
+                }
+                else
+                {
+                    // Generate new RimWorld-style nickname
+                    newNickname = GenerateRimWorldNickname(pawn);
+                    Logger.Debug($"Generated new nickname: '{newNickname}'");
+                }
+
+                pawn.Name = new NameTriple(currentName.First, newNickname, currentName.Last);
+            }
+        }
+
+        // Generate a RimWorld-appropriate nickname
+        private string GenerateRimWorldNickname(Pawn pawn)
+        {
+            // Use RimWorld's name generation for nicknames
+            // You could also use specific nickname lists based on pawn traits, background, etc.
+
+            // Simple approach - use first name as nickname (common in RimWorld)
+            if (pawn.Name is NameTriple nameTriple && !string.IsNullOrEmpty(nameTriple.First))
+            {
+                return nameTriple.First;
+            }
+
+            // Fallback - generate a simple nickname
+            string[] simpleNicks = { "Buddy", "Chief", "Mate", "Pal", "Friend", "Traveler" };
+            return simpleNicks[Rand.Range(0, simpleNicks.Length)];
         }
 
         public IEnumerable<string> GetAllAssignedUsernames()
@@ -561,7 +671,7 @@ namespace CAP_ChatInteractive
             {
                 return $"{message.Platform.ToLowerInvariant()}:{message.PlatformUserId}";
             }
-
+            
             // Priority 2: Username (fallback for backwards compatibility)
             if (!string.IsNullOrEmpty(message.Username))
             {

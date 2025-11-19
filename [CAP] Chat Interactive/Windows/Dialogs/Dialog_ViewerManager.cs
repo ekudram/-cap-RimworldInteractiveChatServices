@@ -168,7 +168,7 @@ namespace CAP_ChatInteractive
 
             Widgets.EndGroup();
         }
-
+        // fix this to force order
         private void ShowMassActionsMenu()
         {
             var options = new List<FloatMenuOption>
@@ -904,8 +904,20 @@ namespace CAP_ChatInteractive
 
         private void UnassignPawn(Viewer viewer)
         {
+            Logger.Debug($"Unassign pawn for viewer: {viewer.Username}");
             var assignmentManager = Current.Game?.GetComponent<GameComponent_PawnAssignmentManager>();
-            assignmentManager?.UnassignPawn(viewer.Username);
+
+            if (assignmentManager != null)
+            {
+                // Get the platform ID that matches how pawns are stored
+                string platformId = viewer.GetPrimaryPlatformIdentifier();
+                Logger.Debug($"Using platform ID for unassignment: {platformId}");
+
+                assignmentManager.UnassignPawn(platformId);
+
+                // Also remove from queue if present
+                assignmentManager.RemoveFromQueue(viewer.Username);
+            }
         }
     }
 
