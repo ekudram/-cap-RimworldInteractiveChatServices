@@ -1,13 +1,7 @@
 ﻿// InteractionCommands.cs
-// Copyright (c) Captolamia. All rights reserved.
-// Licensed under the AGPLv3 License. See LICENSE file in the project root for full license information.
-
 using CAP_ChatInteractive.Commands.CommandHandlers;
 using RimWorld;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using Verse;
 
 namespace CAP_ChatInteractive.Commands.InteractionCommands
 {
@@ -17,7 +11,7 @@ namespace CAP_ChatInteractive.Commands.InteractionCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.Chitchat, args);
+            return EnhancedInteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.Chitchat, args);
         }
     }
 
@@ -27,7 +21,7 @@ namespace CAP_ChatInteractive.Commands.InteractionCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.DeepTalk, args);
+            return EnhancedInteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.DeepTalk, args);
         }
     }
 
@@ -37,7 +31,7 @@ namespace CAP_ChatInteractive.Commands.InteractionCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.Insult, args);
+            return EnhancedInteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.Insult, args);
         }
     }
 
@@ -47,7 +41,7 @@ namespace CAP_ChatInteractive.Commands.InteractionCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.RomanceAttempt, args);
+            return EnhancedInteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.RomanceAttempt, args);
         }
     }
 
@@ -57,12 +51,9 @@ namespace CAP_ChatInteractive.Commands.InteractionCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            // Check if Ideology is available
             if (InteractionDefOf.Reassure == null)
-            {
                 return "The 'reassure' interaction requires the Ideology DLC.";
-            }
-            return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.Reassure, args);
+            return EnhancedInteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.Reassure, args);
         }
     }
 
@@ -72,7 +63,7 @@ namespace CAP_ChatInteractive.Commands.InteractionCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.Nuzzle, args);
+            return EnhancedInteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.Nuzzle, args);
         }
     }
 
@@ -82,7 +73,7 @@ namespace CAP_ChatInteractive.Commands.InteractionCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.AnimalChat, args);
+            return EnhancedInteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.AnimalChat, args);
         }
     }
 
@@ -92,7 +83,7 @@ namespace CAP_ChatInteractive.Commands.InteractionCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.MarriageProposal, args);
+            return EnhancedInteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.MarriageProposal, args);
         }
     }
 
@@ -102,7 +93,7 @@ namespace CAP_ChatInteractive.Commands.InteractionCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.BuildRapport, args);
+            return EnhancedInteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.BuildRapport, args);
         }
     }
 
@@ -112,12 +103,9 @@ namespace CAP_ChatInteractive.Commands.InteractionCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            // Check if Ideology is available
             if (InteractionDefOf.ConvertIdeoAttempt == null)
-            {
                 return "The 'convert' interaction requires the Ideology DLC.";
-            }
-            return InteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.ConvertIdeoAttempt, args);
+            return EnhancedInteractionCommandHandler.HandleInteractionCommand(user, InteractionDefOf.ConvertIdeoAttempt, args);
         }
     }
 }

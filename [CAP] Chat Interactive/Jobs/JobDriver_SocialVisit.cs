@@ -1,4 +1,4 @@
-﻿// JobDriver_SocialVisit.cs
+﻿// JobDriver_SocialVisit.cs - Enhanced version
 using RimWorld;
 using System.Collections.Generic;
 using Verse;
@@ -12,6 +12,7 @@ namespace CAP_ChatInteractive
         private const int CheckInterval = 60; // Check every second
 
         private Pawn TargetPawn => job.targetA.Thing as Pawn;
+        private InteractionDef Interaction => job.interaction;
         private int waitTicks;
 
         public override bool TryMakePreToilReservations(bool errorOnFailed)
@@ -56,9 +57,10 @@ namespace CAP_ChatInteractive
             {
                 initAction = () =>
                 {
-                    if (CanInteractNow(TargetPawn))
+                    if (CanInteractNow(TargetPawn) && Interaction != null)
                     {
-                        pawn.interactions.TryInteractWith(TargetPawn, InteractionDefOf.Chitchat);
+                        bool success = pawn.interactions.TryInteractWith(TargetPawn, Interaction);
+                        Logger.Debug($"Social interaction {Interaction.defName} result: {success}");
                     }
                 },
                 defaultCompleteMode = ToilCompleteMode.Instant
@@ -79,11 +81,34 @@ namespace CAP_ChatInteractive
             if (!CanInteractWithTarget(target)) return false;
 
             // Check if target is sleeping, in mental break, etc.
+            if (target.jobs.curDriver != null && target.jobs.curDriver.asleep) return false;
             if (target.CurJob != null && target.CurJob.def == JobDefOf.LayDown) return false;
             if (target.InMentalState) return false;
-            if (target.jobs.curDriver != null && target.jobs.curDriver.asleep) return false;
+            if (target.Drafted && target.CurJob != null && target.CurJob.def == JobDefOf.AttackStatic) return false;
 
             return true;
+        }
+
+        public override string GetReport()
+        {
+            if (Interaction != null)
+            {
+                return Interaction.defName switch
+                {
+                    "Chitchat" => "Having a chat with " + TargetPawn?.Name,
+                    "DeepTalk" => "Having a deep talk with " + TargetPawn?.Name,
+                    "Insult" => "Insulting " + TargetPawn?.Name,
+                    "RomanceAttempt" => "Flirting with " + TargetPawn?.Name,
+                    "MarriageProposal" => "Proposing to " + TargetPawn?.Name,
+                    "BuildRapport" => "Building rapport with " + TargetPawn?.Name,
+                    "ConvertIdeoAttempt" => "Converting " + TargetPawn?.Name,
+                    "Reassure" => "Reassuring " + TargetPawn?.Name,
+                    "Nuzzle" => "Nuzzling with " + TargetPawn?.Name,
+                    "AnimalChat" => "Chatting with animal " + TargetPawn?.Name,
+                    _ => "Visiting " + TargetPawn?.Name
+                };
+            }
+            return base.GetReport();
         }
     }
 }
