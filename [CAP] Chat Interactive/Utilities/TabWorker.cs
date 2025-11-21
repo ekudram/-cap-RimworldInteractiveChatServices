@@ -66,7 +66,7 @@ namespace CAP_ChatInteractive
 
                 if (paneled)
                 {
-                    GUI.color = Color.grey;
+                    GUI.color = Color.gray;
                     Widgets.DrawLineHorizontal(tabRegion.x, tabRegion.yMax - 1f, tabRegion.width);
                     GUI.color = Color.white;
                 }
@@ -85,7 +85,7 @@ namespace CAP_ChatInteractive
             Widgets.DrawBox(buttonRect);
 
             // Draw label
-            var labelColor = active ? Color.white : Color.gray;
+            var labelColor = active ? Color.green : Color.gray;
             var textRect = buttonRect.ContractedBy(4f);
             Widgets.Label(textRect, label);
 

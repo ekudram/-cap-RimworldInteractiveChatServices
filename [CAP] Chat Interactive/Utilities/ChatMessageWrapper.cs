@@ -15,6 +15,8 @@ namespace CAP_ChatInteractive
         public string Message { get; }
         public string Platform { get; } // "Twitch" or "YouTube"
         public bool IsWhisper { get; }
+        public string CustomRewardId { get; }
+        public int Bits { get; }
 
         // Platform-specific IDs
         public string PlatformUserId { get; } // Unique ID from the platform
@@ -25,10 +27,11 @@ namespace CAP_ChatInteractive
 
         public DateTime Timestamp { get; }
 
-        // Constructor for Twitch messages
+        // Constructor for messages
         public ChatMessageWrapper(string username, string message, string platform,
                                 string platformUserId = null, string channelId = null,
-                                object platformMessage = null, bool isWhisper = false)
+                                object platformMessage = null, bool isWhisper = false,
+                                string customRewardId = null, int bits = 0)  // Add new parameters
         {
             Username = username?.ToLowerInvariant() ?? "";
             DisplayName = username ?? "";
@@ -38,6 +41,8 @@ namespace CAP_ChatInteractive
             ChannelId = channelId;
             PlatformMessage = platformMessage;
             IsWhisper = isWhisper;
+            CustomRewardId = customRewardId;  // Initialize new property
+            Bits = bits;                      // Initialize new property
             Timestamp = DateTime.Now;
         }
 
@@ -57,6 +62,8 @@ namespace CAP_ChatInteractive
             ChannelId = original.ChannelId;
             PlatformMessage = original.PlatformMessage;
             IsWhisper = original.IsWhisper;
+            CustomRewardId = original.CustomRewardId;  // Copy the reward ID
+            Bits = original.Bits;                      // Copy the bits
             Timestamp = original.Timestamp;
         }
         public string GetUniqueId()

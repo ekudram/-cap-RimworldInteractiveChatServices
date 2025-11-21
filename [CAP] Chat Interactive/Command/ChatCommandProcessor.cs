@@ -251,8 +251,21 @@ namespace CAP_ChatInteractive
 
         private static void ProcessChatMessage(ChatMessageWrapper message)
         {
-            // TODO: Handle regular chat messages (for chat-to-game features)  (this is done in the chat interface now)
-            // This could include voting systems, chat interactions, etc.
+            try
+            {
+                // Check if this is a Twitch channel points reward redemption
+                if (message.Platform == "Twitch" && !string.IsNullOrEmpty(message.CustomRewardId))
+                {
+                    ProcessChannelPointsReward(message);
+                }
+
+                // TODO: Handle other regular chat messages (for chat-to-game features)
+                // This could include voting systems, chat interactions, etc.
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error processing chat message: {ex.Message}");
+            }
         }
 
         private static bool IsOnCooldown(string username, ChatCommand command)
@@ -440,6 +453,83 @@ namespace CAP_ChatInteractive
         {
             var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
             return isBuyCommand ? settings.BuyPrefix : settings.Prefix;
+        }
+
+        private static void ProcessChannelPointsReward(ChatMessageWrapper message)
+        {
+            try
+            {
+                var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings as CAPGlobalChatSettings;
+
+                // Fast exit if channel points are disabled or RewardSettings is null
+                if (!globalSettings.ChannelPointsEnabled)
+                {
+                    Logger.Debug("Channel points processing disabled in settings");
+                    return;
+                }
+
+                if (globalSettings.RewardSettings == null)
+                {
+                    Logger.Debug("RewardSettings list is null - channel points processing skipped");
+                    return;
+                }
+                string rewardId = message.CustomRewardId;
+
+                // Find the reward configuration
+                var reward = globalSettings.RewardSettings.FirstOrDefault(r => r.RewardUUID == rewardId && r.Enabled);
+
+                if (reward != null)
+                {
+                    // Award coins to the user
+                    if (int.TryParse(reward.CoinsToAward, out int coins))
+                    {
+                        var viewer = Viewers.GetViewer(message);
+                        viewer.Coins += coins;
+
+                        if (globalSettings.ShowChannelPointsDebugMessages)
+                        {
+                            Logger.Debug($"Awarded {coins} coins to {message.Username} for reward: {reward.RewardName}");
+                        }
+
+                        // Optional: Send confirmation message
+                        SendMessageToUser(message, $"Thank you for redeeming '{reward.RewardName}'! You received {coins} coins.");
+                    }
+                }
+                else
+                {
+                    // Handle unconfigured reward with automatic capture
+                    if (globalSettings.ShowChannelPointsDebugMessages)
+                    {
+                        Logger.Debug($"Detected a custom reward that wasn't configured: {rewardId}");
+                    }
+
+                    var autoReward = globalSettings.RewardSettings.FirstOrDefault(r => r.AutomaticallyCaptureUUID && r.Enabled);
+                    if (autoReward != null)
+                    {
+                        if (globalSettings.ShowChannelPointsDebugMessages)
+                        {
+                            Logger.Debug($"A reward with Automatic UUID capture enabled was found. Configuring this reward to use {rewardId}.");
+                        }
+
+                        autoReward.AutomaticallyCaptureUUID = false;
+                        autoReward.RewardUUID = rewardId;
+
+                        // Optional: Notify about auto-configuration
+                        SendMessageToUser(message, $"Automatically configured '{autoReward.RewardName}' with this reward ID.");
+                    }
+                    else
+                    {
+                        if (globalSettings.ShowChannelPointsDebugMessages)
+                        {
+                            Logger.Debug("If this is the reward you would like to use, add this UUID to the mod settings.");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error processing channel points reward: {ex.Message}");
+            }
         }
     }
 }

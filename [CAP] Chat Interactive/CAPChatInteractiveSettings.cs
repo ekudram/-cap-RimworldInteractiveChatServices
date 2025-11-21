@@ -5,6 +5,7 @@
 // including per-streaming-service settings and global chat settings.
 
 using RimWorld;
+using System.Collections.Generic;
 using Verse;
 
 namespace CAP_ChatInteractive
@@ -51,9 +52,9 @@ namespace CAP_ChatInteractive
                                  !string.IsNullOrEmpty(ChannelName);
 
                 //Logger.Debug($"CanConnect check - BotUsername: {!string.IsNullOrEmpty(BotUsername)}, " +
-                            //$"AccessToken: {!string.IsNullOrEmpty(AccessToken)}, " +
-                            //$"ChannelName: {!string.IsNullOrEmpty(ChannelName)}, " +
-                           // $"Result: {canConnect}");
+                //$"AccessToken: {!string.IsNullOrEmpty(AccessToken)}, " +
+                //$"ChannelName: {!string.IsNullOrEmpty(ChannelName)}, " +
+                // $"Result: {canConnect}");
 
                 return canConnect;
             }
@@ -79,7 +80,7 @@ namespace CAP_ChatInteractive
         public int MinutesForActive = 30;
         public int MaxTraits = 4;
         public string CurrencyName = " 💰 ";
-        
+
 
         // Global event settings
         public bool EventCooldownsEnabled = true;
@@ -133,6 +134,23 @@ namespace CAP_ChatInteractive
         public float BasePassionSuccessChance = 15.0f; // 15% base chance
         public float MaxPassionSuccessChance = 60.0f; // 60% max chance
 
+        // Channel Points settings
+        public bool ChannelPointsEnabled = true;
+        public bool ShowChannelPointsDebugMessages = false;
+        public List<ChannelPoints_RewardSettings> RewardSettings = new List<ChannelPoints_RewardSettings>();
+
+        public CAPGlobalChatSettings()
+        {
+            RewardSettings = new List<ChannelPoints_RewardSettings>();
+            // Optionally add a default reward
+            RewardSettings.Add(new ChannelPoints_RewardSettings(
+                "Example Reward",
+                "",
+                "300",
+                false,
+                true
+            ));
+        }
         public void ExposeData()
         {
             Scribe_Values.Look(ref EnableDebugLogging, "enableDebugLogging", false);
@@ -170,7 +188,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref Prefix, "prefix", "!");
             Scribe_Values.Look(ref BuyPrefix, "buyPrefix", "$");
 
-            // New lootbox settings
+            // lootbox settings
             Scribe_Values.Look(ref LootBoxRandomCoinRange, "lootBoxRandomCoinRange", new IntRange(250, 750));
             Scribe_Values.Look(ref LootBoxesPerDay, "lootBoxesPerDay", 1);
             Scribe_Values.Look(ref LootBoxShowWelcomeMessage, "lootBoxShowWelcomeMessage", true);
@@ -194,6 +212,47 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref MaxPassionWager, "maxPassionWager", 1000);
             Scribe_Values.Look(ref BasePassionSuccessChance, "basePassionSuccessChance", 15.0f);
             Scribe_Values.Look(ref MaxPassionSuccessChance, "maxPassionSuccessChance", 60.0f);
+
+            // Channel Points settings
+            Scribe_Values.Look(ref ChannelPointsEnabled, "channelPointsEnabled", true);
+            Scribe_Values.Look(ref ShowChannelPointsDebugMessages, "showChannelPointsDebugMessages", false);
+            Scribe_Collections.Look(ref RewardSettings, "rewardSettings", LookMode.Deep);
         }
     }
- }
+
+    public class ChannelPoints_RewardSettings : IExposable
+    {
+        public string RewardName = "";
+        public string RewardUUID = "";
+        public string CoinsToAward = "300";
+        public bool AutomaticallyCaptureUUID = false;
+        public bool Enabled = true;
+
+        public ChannelPoints_RewardSettings()
+        {
+            RewardName = "";
+            RewardUUID = "";
+            CoinsToAward = "300";
+            AutomaticallyCaptureUUID = false;
+            Enabled = true;
+        }
+
+        public ChannelPoints_RewardSettings(string rewardName, string rewardUUID, string coinsToAward, bool autoCapture = false, bool enabled = true)
+        {
+            RewardName = rewardName;
+            RewardUUID = rewardUUID;
+            CoinsToAward = coinsToAward;
+            AutomaticallyCaptureUUID = autoCapture;
+            Enabled = enabled;
+        }
+
+        public void ExposeData()
+        {
+            Scribe_Values.Look(ref RewardName, "RewardName", "");
+            Scribe_Values.Look(ref RewardUUID, "RewardUUID", "");
+            Scribe_Values.Look(ref CoinsToAward, "CoinsToAward", "300");
+            Scribe_Values.Look(ref AutomaticallyCaptureUUID, "AutomaticallyCaptureUUID", false);
+            Scribe_Values.Look(ref Enabled, "RewardEnabled", true);
+        }
+    }
+}

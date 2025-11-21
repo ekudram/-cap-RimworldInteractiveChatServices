@@ -227,7 +227,9 @@ namespace CAP_ChatInteractive
                     platform: "YouTube",
                     platformUserId: message.AuthorDetails.ChannelId,
                     channelId: _settings.ChannelName,
-                    platformMessage: message
+                    platformMessage: message,
+                    customRewardId: null,  // YouTube doesn't have channel points rewards
+                    bits: 0                // YouTube doesn't have bits
                 );
 
                 // Use RimWorld's thread-safe event handler - NO POPUP BOX  

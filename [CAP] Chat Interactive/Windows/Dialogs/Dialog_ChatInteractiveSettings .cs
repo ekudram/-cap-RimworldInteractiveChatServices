@@ -23,7 +23,7 @@ namespace CAP_ChatInteractive
             absorbInputAroundWindow = true;
             closeOnAccept = false;
             closeOnCancel = true;
-            optionalTitle = "[CAP] Chat Interactive Settings";
+            optionalTitle = "[CAP] Rimworld Interactive Chat Service";
             forceCatchAcceptAndCancelEventEvenIfUnfocused = true;
         }
 
@@ -76,27 +76,12 @@ namespace CAP_ChatInteractive
                 ContentDrawer = TabDrawer_GameEvents.Draw
             });
 
-            //_tabWorker.AddTab(new TabItem
-            //{
-            //    Label = "Incidents",
-            //    Tooltip = "Manage weather and other game incidents",
-            //    ContentDrawer = TabDrawer_Incidents.Draw
-            //});
-
-            //_tabWorker.AddTab(new TabItem
-            //{
-            //    Label = "Store",
-            //    Tooltip = "Manage store items, prices, and availability",
-            //    ContentDrawer = TabDrawer_Store.Draw
-            //});
-
-            //_tabWorker.AddTab(new TabItem
-            //{
-            //    Label = "Traits",
-            //    Tooltip = "Manage trait prices and availability",
-            //    ContentDrawer = TabDrawer_Traits.Draw
-            //});
-
+            _tabWorker.AddTab(new TabItem
+            {
+                Label = "Rewards",
+                Tooltip = "Configure channel points and lootbox rewards",
+                ContentDrawer = TabDrawer_Rewards.Draw
+            });
         }
 
         public override void DoWindowContents(Rect inRect)

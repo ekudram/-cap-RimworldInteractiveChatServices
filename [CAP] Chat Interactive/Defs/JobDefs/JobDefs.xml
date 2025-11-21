@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- JobDefs.xml - Add to your Defs folder -->
+<Defs>
+  <JobDef>
+    <defName>CAP_SocialVisit</defName>
+    <driverClass>CAP_ChatInteractive.JobDriver_SocialVisit</driverClass>
+    <reportString>Visiting {0}</reportString>
+    <playerInterruptible>true</playerInterruptible>
+  </JobDef>
+</Defs>

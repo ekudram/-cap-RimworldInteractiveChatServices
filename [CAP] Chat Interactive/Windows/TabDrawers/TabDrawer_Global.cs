@@ -92,9 +92,6 @@ namespace _CAP__Chat_Interactive
             }
 
             listing.Gap(24f);
-
-
-
             listing.End();
             Widgets.EndScrollView();
         }
@@ -105,17 +102,6 @@ namespace _CAP__Chat_Interactive
             if (prefix.Contains(" ")) return false;
             if (prefix.StartsWith("/") || prefix.StartsWith(".") || prefix.StartsWith("\\")) return false;
             return true;
-        }
-
-        private static void NumericField(Listing_Standard listing, string label, ref int value, int min, int max)
-        {
-            Rect rect = listing.GetRect(Text.LineHeight);
-            Rect leftRect = rect.LeftPart(0.6f).Rounded();
-            Rect rightRect = rect.RightPart(0.4f).Rounded();
-
-            Widgets.Label(leftRect, label);
-            string buffer = value.ToString();
-            Widgets.TextFieldNumeric(rightRect, ref value, ref buffer, min, max);
         }
     }
 }

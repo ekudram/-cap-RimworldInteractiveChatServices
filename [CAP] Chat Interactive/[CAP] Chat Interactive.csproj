@@ -88,8 +88,4 @@
     </Reference>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Defs\JobDefs\" />
-  </ItemGroup>
-
 </Project>

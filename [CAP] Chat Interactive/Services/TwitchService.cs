@@ -250,7 +250,9 @@ namespace CAP_ChatInteractive
                 platform: "Twitch",
                 platformUserId: message.UserId,
                 channelId: _settings.ChannelName,
-                platformMessage: message
+                platformMessage: message,
+                customRewardId: message.CustomRewardId,  // Add reward ID
+                bits: message.Bits                       // Add bits
             );
 
             // Use RimWorld's thread-safe event handler - NO POPUP BOX
