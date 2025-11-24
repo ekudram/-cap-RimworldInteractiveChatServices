@@ -216,7 +216,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
             var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
-            string response = $"👋 Coins: {settings.BaseCoinReward}{currencySymbol} | Karma Max: {settings.MaxKarma} 🎯";
+            string response = $"👋 Coins: {settings.BaseCoinReward}{currencySymbol}/2 min | Karma Max: {settings.MaxKarma} 🎯";
 
             if (settings.EventCooldownsEnabled)
             {
