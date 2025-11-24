@@ -16,12 +16,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class MyPawnCommandHandler
     {
-        public static string HandleMyPawnCommand(ChatMessageWrapper user, string subCommand, string[] args)
+        public static string HandleMyPawnCommand(ChatMessageWrapper messageWrapper, string subCommand, string[] args)
         {
             try
             {
                 // Get the viewer and their pawn
-                var viewer = Viewers.GetViewer(user);
+                var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
                 {
                     return "Could not find your viewer data.";
@@ -32,14 +32,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Check if viewer already has a pawn assigned using the new manager
                 if (assignmentManager != null)
                 {
-                    Pawn existingPawn = assignmentManager.GetAssignedPawn(user);
+                    Pawn existingPawn = assignmentManager.GetAssignedPawn(messageWrapper);
                     if (existingPawn == null)
                     {
                         return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
                     }
                 }
 
-                var pawn = assignmentManager.GetAssignedPawn(user);
+                var pawn = assignmentManager.GetAssignedPawn(messageWrapper);
 
                 // Route to appropriate handler based on subcommand
                 switch (subCommand)
@@ -841,15 +841,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Show a few key stats as examples
             var keyStats = new[]
             {
-        StatDefOf.MoveSpeed,
-        StatDefOf.ShootingAccuracyPawn,
-        StatDefOf.MeleeHitChance,
-        StatDefOf.MeleeDPS,
-        StatDefOf.WorkSpeedGlobal,
-        StatDefOf.MedicalTendQuality,
-        StatDefOf.SocialImpact,
-        StatDefOf.TradePriceImprovement
-    };
+                StatDefOf.MoveSpeed,
+                StatDefOf.ShootingAccuracyPawn,
+                StatDefOf.MeleeHitChance,
+                StatDefOf.MeleeDPS,
+                StatDefOf.WorkSpeedGlobal,
+                StatDefOf.MedicalTendQuality,
+                StatDefOf.SocialImpact,
+                StatDefOf.TradePriceImprovement
+            };
 
             foreach (var statDef in keyStats)
             {
@@ -1031,6 +1031,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return report.ToString();
         }
 
+        // === Work ===
         private static string HandleWorkInfo(Pawn pawn, string[] args)
         {
             // Check if pawn can work

@@ -16,15 +16,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class HealPawnCommandHandler
     {
-        public static string HandleHealPawn(ChatMessageWrapper user, string[] args)
+        public static string HandleHealPawn(ChatMessageWrapper messageWrapper, string[] args)
         {
             try
             {
-                Logger.Debug($"HandleHealPawn called for user: {user.Username}, args: {string.Join(", ", args)}");
+                Logger.Debug($"HandleHealPawn called for user: {messageWrapper.Username}, args: {string.Join(", ", args)}");
 
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
-                var viewer = Viewers.GetViewer(user);
+                var viewer = Viewers.GetViewer(messageWrapper);
 
                 // Get the Healer Mech Serum store item for pricing
                 var healerSerum = StoreInventory.GetStoreItem("MechSerumHealer");
@@ -39,7 +39,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (args.Length == 0)
                 {
                     // Heal self
-                    return HealSelf(user, viewer, pricePerHeal, currencySymbol, 1);
+                    return HealSelf(messageWrapper, viewer, pricePerHeal, currencySymbol, 1);
                 }
 
                 string target = args[0].ToLowerInvariant();
@@ -49,7 +49,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (int.TryParse(target, out int parsedQuantity) && parsedQuantity > 0)
                 {
                     quantity = parsedQuantity;
-                    target = args.Length > 1 ? args[1].ToLowerInvariant() : user.Username.ToLowerInvariant();
+                    target = args.Length > 1 ? args[1].ToLowerInvariant() : messageWrapper.Username.ToLowerInvariant();
                 }
                 else if (args.Length > 1 && int.TryParse(args[1], out parsedQuantity) && parsedQuantity > 0)
                 {
@@ -58,17 +58,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (target == "all")
                 {
-                    return HealAllSelf(user, viewer, pricePerHeal, currencySymbol, quantity);
+                    return HealAllSelf(messageWrapper, viewer, pricePerHeal, currencySymbol, quantity);
                 }
                 if (target == "allpawns")
                 {
                     // Heal all pawns
-                    return HealAllPawns(user, viewer, pricePerHeal, currencySymbol, quantity);
+                    return HealAllPawns(messageWrapper, viewer, pricePerHeal, currencySymbol, quantity);
                 }
                 else
                 {
                     // Heal specific user's pawn
-                    return HealSpecificUser(user, viewer, target, pricePerHeal, currencySymbol, quantity);
+                    return HealSpecificUser(messageWrapper, viewer, target, pricePerHeal, currencySymbol, quantity);
                 }
             }
             catch (Exception ex)
@@ -78,9 +78,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        private static string HealAllSelf(ChatMessageWrapper user, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
+        private static string HealAllSelf(ChatMessageWrapper messageWrapper, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
         {
-            var viewerPawn = StoreCommandHelper.GetViewerPawn(user);
+            var viewerPawn = StoreCommandHelper.GetViewerPawn(messageWrapper);
 
             if (viewerPawn == null)
             {
@@ -121,11 +121,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // Send healing invoice
-            string invoiceLabel = $"💚 Rimazon Complete Healing - {user.Username}";
-            string invoiceMessage = CreateCompleteHealingInvoice(user.Username, injuriesHealed, totalCost, currencySymbol);
+            string invoiceLabel = $"💚 Rimazon Complete Healing - {messageWrapper.Username}";
+            string invoiceMessage = CreateCompleteHealingInvoice(messageWrapper.Username, injuriesHealed, totalCost, currencySymbol);
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
 
-            Logger.Debug($"Heal all self successful: {user.Username} healed {injuriesHealed} injuries for {totalCost}{currencySymbol}");
+            Logger.Debug($"Heal all self successful: {messageWrapper.Username} healed {injuriesHealed} injuries for {totalCost}{currencySymbol}");
 
             if (injuriesHealed < totalInjuries)
             {
@@ -137,11 +137,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-
-
-        private static string HealSelf(ChatMessageWrapper user, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
+        private static string HealSelf(ChatMessageWrapper messageWrapper, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
         {
-            var viewerPawn = StoreCommandHelper.GetViewerPawn(user);
+            var viewerPawn = StoreCommandHelper.GetViewerPawn(messageWrapper);
 
             if (viewerPawn == null)
             {
@@ -161,7 +159,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             int totalCost = pricePerHeal * quantity;
 
             // Check if user can afford
-            if (!StoreCommandHelper.CanUserAfford(user, totalCost))
+            if (!StoreCommandHelper.CanUserAfford(messageWrapper, totalCost))
             {
                 return $"You need {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)} to heal your pawn {quantity} time(s)! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
             }
@@ -178,20 +176,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // Send healing invoice
-            string invoiceLabel = $"💚 Rimazon Healing - {user.Username}";
-            string invoiceMessage = CreateHealingInvoice(user.Username, user.Username, injuriesHealed, totalCost, currencySymbol);
+            string invoiceLabel = $"💚 Rimazon Healing - {messageWrapper.Username}";
+            string invoiceMessage = CreateHealingInvoice(messageWrapper.Username, messageWrapper.Username, injuriesHealed, totalCost, currencySymbol);
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
 
-            Logger.Debug($"Heal self successful: {user.Username} healed {injuriesHealed} injuries for {totalCost}{currencySymbol}");
+            Logger.Debug($"Heal self successful: {messageWrapper.Username} healed {injuriesHealed} injuries for {totalCost}{currencySymbol}");
             return $"💚 HEALING! Healed {injuriesHealed} injuries on your pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
         }
 
-        private static string HealSpecificUser(ChatMessageWrapper user, Viewer viewer, string targetUsername, int pricePerHeal, string currencySymbol, int quantity)
+        private static string HealSpecificUser(ChatMessageWrapper messageWrapper, Viewer viewer, string targetUsername, int pricePerHeal, string currencySymbol, int quantity)
         {
             int totalCost = pricePerHeal * quantity;
 
             // Check if user can afford
-            if (!StoreCommandHelper.CanUserAfford(user, totalCost))
+            if (!StoreCommandHelper.CanUserAfford(messageWrapper, totalCost))
             {
                 return $"You need {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)} to heal {targetUsername}'s pawn {quantity} time(s)! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
             }
@@ -227,15 +225,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // Send healing invoice
-            string invoiceLabel = $"💚 Rimazon Healing - {user.Username} → {targetUsername}";
-            string invoiceMessage = CreateMultiUserHealingInvoice(user.Username, targetUsername, injuriesHealed, totalCost, currencySymbol);
+            string invoiceLabel = $"💚 Rimazon Healing - {messageWrapper.Username} → {targetUsername}";
+            string invoiceMessage = CreateMultiUserHealingInvoice(messageWrapper.Username, targetUsername, injuriesHealed, totalCost, currencySymbol);
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
 
-            Logger.Debug($"Heal specific user successful: {user.Username} healed {targetUsername}'s pawn ({injuriesHealed} injuries) for {totalCost}{currencySymbol}");
+            Logger.Debug($"Heal specific user successful: {messageWrapper.Username} healed {targetUsername}'s pawn ({injuriesHealed} injuries) for {totalCost}{currencySymbol}");
             return $"💚 HEALING! Healed {injuriesHealed} injuries on {targetUsername}'s pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
         }
 
-        private static string HealAllPawns(ChatMessageWrapper user, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
+        private static string HealAllPawns(ChatMessageWrapper messageWrapper, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
         {
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
             var allAssignedUsernames = assignmentManager.GetAllAssignedUsernames().ToList();
@@ -266,7 +264,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             int totalCost = totalInjuries * pricePerHeal;
 
             // Check if user can afford all heals
-            if (!StoreCommandHelper.CanUserAfford(user, totalCost))
+            if (!StoreCommandHelper.CanUserAfford(messageWrapper, totalCost))
             {
                 return $"You need {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)} to heal all {totalInjuries} injuries across {injuredPawns.Count} pawns! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
             }
@@ -290,11 +288,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // Send healing invoice
-            string invoiceLabel = $"💚 Rimazon Complete Healing - {user.Username}";
-            string invoiceMessage = CreateMassHealingInvoice(user.Username, injuredPawns.Count, totalInjuriesHealed, totalCost, currencySymbol);
+            string invoiceLabel = $"💚 Rimazon Complete Healing - {messageWrapper.Username}";
+            string invoiceMessage = CreateMassHealingInvoice(messageWrapper.Username, injuredPawns.Count, totalInjuriesHealed, totalCost, currencySymbol);
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
 
-            Logger.Debug($"Heal all successful: {user.Username} healed {totalInjuriesHealed} injuries across {injuredPawns.Count} pawns for {totalCost}{currencySymbol}");
+            Logger.Debug($"Heal all successful: {messageWrapper.Username} healed {totalInjuriesHealed} injuries across {injuredPawns.Count} pawns for {totalCost}{currencySymbol}");
             return $"💚 COMPLETE HEALING! Healed all {totalInjuriesHealed} injuries across {injuredPawns.Count} pawns for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
         }
 

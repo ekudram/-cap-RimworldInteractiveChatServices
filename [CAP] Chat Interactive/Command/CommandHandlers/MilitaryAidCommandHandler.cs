@@ -16,14 +16,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class MilitaryAidCommandHandler
     {
-        public static string HandleMilitaryAid(ChatMessageWrapper user, int wager)
+        public static string HandleMilitaryAid(ChatMessageWrapper messageWrapper, int wager)
         {
             try
             {
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
-                var viewer = Viewers.GetViewer(user);
+                var viewer = Viewers.GetViewer(messageWrapper);
 
                 // NEW: Check global cooldowns for military aid (always "good" karma type)
                 var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
@@ -38,7 +38,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
                         Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
                         MessageHandler.SendFailureLetter("Military Aid Blocked",
-                            $"{user.Username} tried to call military aid but global limit reached\n\n{totalEvents}/{settings.EventsperCooldown} events used");
+                            $"{messageWrapper.Username} tried to call military aid but global limit reached\n\n{totalEvents}/{settings.EventsperCooldown} events used");
                         return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
                     }
 
@@ -52,7 +52,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             string cooldownMessage = $"❌ GOOD event limit reached! ({goodUsed}/{settings.MaxGoodEvents} used this period)";
                             Logger.Debug($"Good event limit reached: {goodUsed}/{settings.MaxGoodEvents}");
                             MessageHandler.SendFailureLetter("Military Aid Blocked",
-                                $"{user.Username} tried to call military aid but good event limit reached\n\n{goodUsed}/{settings.MaxGoodEvents} good events used");
+                                $"{messageWrapper.Username} tried to call military aid but good event limit reached\n\n{goodUsed}/{settings.MaxGoodEvents} good events used");
                             return cooldownMessage;
                         }
                     }
@@ -63,18 +63,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (viewer.Coins < wager)
                 {
                     MessageHandler.SendFailureLetter("Military Aid Failed",
-                        $"{user.Username} doesn't have enough {currencySymbol} for military aid\n\nNeeded: {wager}{currencySymbol}, Has: {viewer.Coins}{currencySymbol}");
+                        $"{messageWrapper.Username} doesn't have enough {currencySymbol} for military aid\n\nNeeded: {wager}{currencySymbol}, Has: {viewer.Coins}{currencySymbol}");
                     return $"You need {wager}{currencySymbol} to call for military aid! You have {viewer.Coins}{currencySymbol}.";
                 }
 
                 if (!IsGameReadyForMilitaryAid())
                 {
                     MessageHandler.SendFailureLetter("Military Aid Failed",
-                        $"{user.Username} tried to call for military aid but the game isn't ready");
+                        $"{messageWrapper.Username} tried to call for military aid but the game isn't ready");
                     return "Game not ready for military aid (no colony, in menu, etc.)";
                 }
 
-                var result = TriggerMilitaryAid(user.Username, wager);
+                var result = TriggerMilitaryAid(messageWrapper.Username, wager);
 
                 if (result.Success)
                 {
@@ -106,8 +106,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         "\nReinforcements: Arriving soon";
 
                     MessageHandler.SendGreenLetter(
-                        $"Military Aid Called by {user.Username}",
-                        $"{user.Username} has called for military reinforcements!\n\nCost: {wager}{currencySymbol}\n{result.Message}{factionInfo}{reinforcementInfo}"
+                        $"Military Aid Called by {messageWrapper.Username}",
+                        $"{messageWrapper.Username} has called for military reinforcements!\n\nCost: {wager}{currencySymbol}\n{result.Message}{factionInfo}{reinforcementInfo}"
                     );
 
                     return result.Message;
@@ -115,7 +115,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 else
                 {
                     MessageHandler.SendFailureLetter("Military Aid Failed",
-                        $"{user.Username} failed to call for military aid\n\n{result.Message}");
+                        $"{messageWrapper.Username} failed to call for military aid\n\n{result.Message}");
                     return $"{result.Message} No {currencySymbol} were deducted.";
                 }
             }

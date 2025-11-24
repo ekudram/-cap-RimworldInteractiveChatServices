@@ -17,27 +17,27 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class BuyPawnCommandHandler
     {
-        private static string HandleBuyPawnCommandInternal(ChatMessageWrapper user, string raceName, string xenotypeName = "Baseliner", string genderName = "Random", string ageString = "Random")
+        private static string HandleBuyPawnCommandInternal(ChatMessageWrapper messageWrapper, string raceName, string xenotypeName = "Baseliner", string genderName = "Random", string ageString = "Random")
         {
             try
             {
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
-                var viewer = Viewers.GetViewer(user);
+                var viewer = Viewers.GetViewer(messageWrapper);
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
 
                 // Check if viewer already has a pawn assigned using the new manager
-                if (assignmentManager != null && assignmentManager.HasAssignedPawn(user))
+                if (assignmentManager != null && assignmentManager.HasAssignedPawn(messageWrapper))
                 {
-                    Pawn existingPawn = assignmentManager.GetAssignedPawn(user);
+                    Pawn existingPawn = assignmentManager.GetAssignedPawn(messageWrapper);
                     if (existingPawn != null && !existingPawn.Dead && existingPawn.Spawned)
                     {
                         return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
                     }
                 }
                 // Additionally, check if viewer has any pawns by name in the colony
-                if (DoesViewerHavePawnByName(user.Username))
+                if (DoesViewerHavePawnByName(messageWrapper.Username))
                 {
                     return $"You already have a pawn in the colony with your name! Use !mypawn to check on them.";
                 }
@@ -101,7 +101,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "Game not ready for pawn purchase (no colony, in menu, etc.)";
                 }
 
-                var result = GenerateAndSpawnPawn(user.Username, raceName, xenotypeName, genderName, age, raceSettings);
+                var result = GenerateAndSpawnPawn(messageWrapper.Username, raceName, xenotypeName, genderName, age, raceSettings);
 
                 if (result.Success)
                 {
@@ -112,7 +112,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     // Save pawn assignment to viewer
                     if (result.Pawn != null && assignmentManager != null)
                     {
-                        assignmentManager.AssignPawnToViewer(user, result.Pawn);
+                        assignmentManager.AssignPawnToViewer(messageWrapper, result.Pawn);
                     }
 
                     // Send notification
@@ -121,11 +121,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                     // Send gold letter for pawn purchases (always considered major)
                     MessageHandler.SendGoldLetter(
-                        $"New Colonist - {user.Username}",
-                        $"{user.Username} has purchased a {raceName}{xenotypeInfo} pawn!{ageInfo}\n\nCost: {finalPrice}{currencySymbol}\nPawn: {result.Pawn?.Name?.ToStringFull ?? "Unknown"}"
+                        $"New Colonist - {messageWrapper.Username}",
+                        $"{messageWrapper.Username} has purchased a {raceName}{xenotypeInfo} of {ageInfo} years.\n\nCost: {finalPrice:N0}{currencySymbol}\nPawn: {result.Pawn?.Name?.ToStringFull ?? "Unknown"}"
                     );
 
-                    return $"Successfully purchased {raceName} pawn for {finalPrice}{currencySymbol}! Welcome to the colony!";
+                    return $"Successfully purchased {raceName} pawn for {finalPrice:N0}{currencySymbol}! Welcome to the colony!";
                 }
                 else
                 {
@@ -241,12 +241,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return new BuyPawnResult(false, "Could not find valid spawn location for pawn.");
                 }
 
-                // Send letter notification
-                TaggedString letterTitle = $"{username} Joins Colony";
-                TaggedString letterText = $"{username} has purchased a {raceName} pawn and joined the colony!";
-                PawnRelationUtility.TryAppendRelationsWithColonistsInfo(ref letterText, ref letterTitle, pawn);
+                // Send letter notification we do this when we reture
+                // TaggedString letterTitle = $"{username} Joins Colony";
+                // TaggedString letterText = $"{username} has purchased a {raceName} pawn and joined the colony!";
+                // PawnRelationUtility.TryAppendRelationsWithColonistsInfo(ref letterText, ref letterTitle, pawn);
 
-                Find.LetterStack.ReceiveLetter(letterTitle, letterText, LetterDefOf.PositiveEvent, pawn);
+                // Find.LetterStack.ReceiveLetter(letterTitle, letterText, LetterDefOf.PositiveEvent, pawn);
 
                 return new BuyPawnResult(true, "Pawn purchased successfully!", pawn);
             }
@@ -727,7 +727,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
 
         // New method to handle the command with argument parsing
-        public static string HandleBuyPawnCommand(ChatMessageWrapper user, string[] args)
+        public static string HandleBuyPawnCommand(ChatMessageWrapper messageWrapper, string[] args)
         {
             try
             {
@@ -743,7 +743,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // Call the existing handler with parsed parameters
-                return HandleBuyPawnCommandInternal(user, raceName, xenotypeName, genderName, ageString);
+                return HandleBuyPawnCommandInternal(messageWrapper, raceName, xenotypeName, genderName, ageString);
             }
             catch (Exception ex)
             {
@@ -908,12 +908,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         // MyPawn command
-        public static string HandleMyPawnCommand(ChatMessageWrapper user)
+        public static string HandleMyPawnCommand(ChatMessageWrapper messageWrapper)
         {
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
 
             // UPDATED: Use platform ID-based lookup
-            var pawn = assignmentManager?.GetAssignedPawn(user);
+            var pawn = assignmentManager?.GetAssignedPawn(messageWrapper);
 
             if (pawn != null)  // Found assigned pawn even pawn.Dead 
             {
@@ -947,31 +947,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                    $"MinAge: {settings.MinAge}, MaxAge: {settings.MaxAge}";
         }
 
-        // Add this debug method to help troubleshoot
-        private static string DebugPawnKindsForRace(string raceName)
-        {
-            var raceDef = RaceUtils.FindRaceByName(raceName);
-            if (raceDef == null) return $"Race not found: {raceName}";
-
-            var allPawnKinds = DefDatabase<PawnKindDef>.AllDefs
-                .Where(pk => pk.race == raceDef)
-                .OrderBy(pk => pk.defName)
-                .ToList();
-
-            var results = new List<string>();
-            results.Add($"Pawn kinds for {raceDef.defName}:");
-
-            foreach (var pk in allPawnKinds)
-            {
-                string factionInfo = pk.defaultFactionDef != null
-                    ? $"{pk.defaultFactionDef.defName} (isPlayer: {pk.defaultFactionDef.isPlayer})"
-                    : "No faction def";
-
-                results.Add($"  {pk.defName}: {factionInfo}, CombatPower: {pk.combatPower}, isFighter: {pk.isFighter}");
-            }
-
-            return string.Join("\n", results);
-        }
         public static string TestPawnKindSelection(string raceName)
         {
             var raceDef = RaceUtils.FindRaceByName(raceName);

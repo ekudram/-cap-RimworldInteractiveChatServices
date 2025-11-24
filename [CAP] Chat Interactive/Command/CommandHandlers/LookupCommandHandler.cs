@@ -17,7 +17,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class LookupCommandHandler
     {
-        public static string HandleLookupCommand(ChatMessageWrapper user, string searchTerm, string searchType)
+        public static string HandleLookupCommand(ChatMessageWrapper messageWrapper, string searchTerm, string searchType)
         {
             try
             {

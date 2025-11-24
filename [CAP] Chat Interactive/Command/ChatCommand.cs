@@ -194,11 +194,8 @@ namespace CAP_ChatInteractive
     {
         public override string Name => "help";
 
-        public override string Execute(ChatMessageWrapper user, string[] args)
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
-            var availableCommands = ChatCommandProcessor.GetAvailableCommands(user);
-            var commandList = string.Join(", ", availableCommands.Select(cmd => $"!{cmd.Name}"));
-
             return $"Github Wiki: https://github.com/ekudram/-cap-RimworldInteractiveChatServices/wiki";
         }
     }

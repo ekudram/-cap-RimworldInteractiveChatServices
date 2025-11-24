@@ -27,10 +27,13 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
+                // Format coins with commas for thousands
+                var formattedCoins = viewer.Coins.ToString("N0");
+
                 // Use the shared karma emoji method
                 string karmaEmoji = GetKarmaEmoji(viewer.Karma);
 
-                return $"You have {viewer.Coins}{currencySymbol} and {viewer.Karma} karma! {karmaEmoji}";
+                return $"You have {formattedCoins} {currencySymbol} and {viewer.Karma} karma! {karmaEmoji}";
             }
             return "Could not find your viewer data.";
         }
@@ -176,7 +179,11 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             // Check if sender has enough coins
             if (sender.GetCoins() < coinAmount)
             {
-                return $"You don't have enough coins. You have {sender.GetCoins()} coins but tried to give {coinAmount}.";
+                var formattedSenderCoins = sender.GetCoins().ToString("N0");
+                var formattedCoinAmount = coinAmount.ToString("N0");
+                return $"You don't have enough coins. You have {formattedSenderCoins} coins but tried to give {formattedCoinAmount}.";
+
+
             }
 
             // Get the target viewer - USING STATIC METHOD

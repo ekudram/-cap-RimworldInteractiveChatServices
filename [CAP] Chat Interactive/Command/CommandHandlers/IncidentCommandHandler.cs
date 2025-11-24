@@ -17,7 +17,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class IncidentCommandHandler
     {
-        public static string HandleIncidentCommand(ChatMessageWrapper user, string incidentType)
+        public static string HandleIncidentCommand(ChatMessageWrapper messageWrapper, string incidentType)
         {
             try
             {
@@ -39,11 +39,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // Check if viewer exists
-                var viewer = Viewers.GetViewer(user);
+                var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
                 {
                     MessageHandler.SendFailureLetter("Incident Failed",
-                        $"Could not find viewer data for {user.Username}");
+                        $"Could not find viewer data for {messageWrapper.Username}");
                     return "Error: Could not find your viewer data.";
                 }
 
@@ -53,7 +53,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     var availableTypes = GetAvailableIncidents().Take(5).Select(i => i.Key);
                     MessageHandler.SendFailureLetter("Incident Failed",
-                        $"{user.Username} tried unknown incident: {incidentType}");
+                        $"{messageWrapper.Username} tried unknown incident: {incidentType}");
                     return $"Unknown incident type: {incidentType}. Try !event list";
                 }
 
@@ -61,7 +61,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!buyableIncident.Enabled)
                 {
                     MessageHandler.SendFailureLetter("Incident Failed",
-                        $"{user.Username} tried disabled incident: {buyableIncident.Label}");
+                        $"{messageWrapper.Username} tried disabled incident: {buyableIncident.Label}");
                     return $"{buyableIncident.Label} is currently disabled.";
                 }
 
@@ -106,12 +106,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (viewer.Coins < cost)
                 {
                     MessageHandler.SendFailureLetter("Incident Failed",
-                        $"{user.Username} can't afford {buyableIncident.Label}");
+                        $"{messageWrapper.Username} can't afford {buyableIncident.Label}");
                     return $"You need {cost}{currencySymbol} for {buyableIncident.Label}!";
                 }
 
                 // Try to trigger the incident
-                bool success = TriggerIncident(buyableIncident, user.Username, out string resultMessage);
+                bool success = TriggerIncident(buyableIncident, messageWrapper.Username, out string resultMessage);
 
                 // Handle result
                 if (success)

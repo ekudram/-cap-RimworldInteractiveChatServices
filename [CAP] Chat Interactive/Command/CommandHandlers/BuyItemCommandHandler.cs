@@ -20,11 +20,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
     public static class BuyItemCommandHandler
     {
         // ===== MAIN COMMAND HANDLERS =====
-        public static string HandleBuyItem(ChatMessageWrapper user, string[] args, bool requireEquippable = false, bool requireWearable = false, bool addToInventory = false)
+        public static string HandleBuyItem(ChatMessageWrapper messageWrapper, string[] args, bool requireEquippable = false, bool requireWearable = false, bool addToInventory = false)
         {
             try
             {
-                Logger.Debug($"HandleBuyItem called for user: {user.Username}, args: {string.Join(", ", args)}, requireEquippable: {requireEquippable}, requireWearable: {requireWearable}, addToInventory: {addToInventory}");
+                Logger.Debug($"HandleBuyItem called for user: {messageWrapper.Username}, args: {string.Join(", ", args)}, requireEquippable: {requireEquippable}, requireWearable: {requireWearable}, addToInventory: {addToInventory}");
 
 
                 // REPLACE all the parsing code (about 80 lines) with just:
@@ -39,7 +39,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
-                var viewer = Viewers.GetViewer(user);
+                var viewer = Viewers.GetViewer(messageWrapper);
 
                 // Get store item
                 var storeItem = StoreCommandHelper.GetStoreItemByName(itemName);
@@ -138,7 +138,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 int finalPrice = StoreCommandHelper.CalculateFinalPrice(storeItem, quantity, quality, material);
 
                 // Check if user can afford
-                if (!StoreCommandHelper.CanUserAfford(user, finalPrice))
+                if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
                 {
                     return $"You need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} to purchase {quantity}x {itemName}! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
                 }
@@ -148,7 +148,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (requireEquippable || requireWearable || addToInventory)
                 {
-                    viewerPawn = StoreCommandHelper.GetViewerPawn(user);
+                    viewerPawn = StoreCommandHelper.GetViewerPawn(messageWrapper);
                     if (viewerPawn == null)
                     {
                         return "You need to have a pawn in the colony. Use !buy pawn first.";
@@ -162,11 +162,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 else
                 {
                     // For regular buy commands, try to get the pawn but don't require it
-                    viewerPawn = StoreCommandHelper.GetViewerPawn(user);
+                    viewerPawn = StoreCommandHelper.GetViewerPawn(messageWrapper);
                     // Log if no pawn found for debugging
                     if (viewerPawn == null)
                     {
-                        Logger.Debug($"No pawn assigned to {user.Username}, using colony-wide delivery");
+                        Logger.Debug($"No pawn assigned to {messageWrapper.Username}, using colony-wide delivery");
                     }
                     else
                     {
@@ -251,7 +251,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Debug($"Final LookTargets: {lookTargets?.ToString() ?? "null"}");
 
                 // Log success
-                Logger.Debug($"Purchase successful: {user.Username} bought {quantity}x {itemName} for {finalPrice}{currencySymbol}");
+                Logger.Debug($"Purchase successful: {messageWrapper.Username} bought {quantity}x {itemName} for {finalPrice}{currencySymbol}");
 
                 // Send appropriate letter notification
                 string itemLabel = thingDef?.LabelCap ?? itemName;
@@ -264,8 +264,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (thingDef.thingClass == typeof(Verse.Pawn) || tClass == "Verse.Pawn")
                 {
                     string emoji = "🐾";
-                    invoiceLabel = $"{emoji} Rimazon Pet Delivery - {user.Username}";
-                    invoiceMessage = CreateRimazonPetInvoice(user.Username, itemLabel, quantity, finalPrice, currencySymbol);
+                    invoiceLabel = $"{emoji} Rimazon Pet Delivery - {messageWrapper.Username}";
+                    invoiceMessage = CreateRimazonPetInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol);
 
                 }
                 // Then check for backpack/equip/wear
@@ -275,14 +275,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     string serviceType = requireEquippable ? "Equip" : requireWearable ? "Wear" : "Backpack";
                     string emoji = requireEquippable ? "⚔️" : requireWearable ? "👕" : "🎒";
 
-                    invoiceLabel = $"{emoji} Rimazon {serviceType} - {user.Username}";
-                    invoiceMessage = CreateRimazonDirectInvoice(user.Username, itemLabel, quantity, finalPrice, currencySymbol, serviceType);
+                    invoiceLabel = $"{emoji} Rimazon {serviceType} - {messageWrapper.Username}";
+                    invoiceMessage = CreateRimazonDirectInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol, serviceType);
                 }
                 else
                 {
                     // Regular drop pod delivery
-                    invoiceLabel = $"🟡 Rimazon Delivery - {user.Username}";
-                    invoiceMessage = CreateRimazonInvoice(user.Username, itemLabel, quantity, finalPrice, currencySymbol, quality, material);
+                    invoiceLabel = $"🟡 Rimazon Delivery - {messageWrapper.Username}";
+                    invoiceMessage = CreateRimazonInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol, quality, material);
                 }
 
                 // Send the letter
@@ -311,11 +311,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        public static string HandleUseItem(ChatMessageWrapper user, string[] args)
+        public static string HandleUseItem(ChatMessageWrapper messageWrapper, string[] args)
         {
             try
             {
-                Logger.Debug($"HandleUseItem called for user: {user.Username}, args: {string.Join(", ", args)}");
+                Logger.Debug($"HandleUseItem called for user: {messageWrapper.Username}, args: {string.Join(", ", args)}");
 
                 if (args.Length == 0)
                 {
@@ -324,7 +324,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
-                var viewer = Viewers.GetViewer(user.Username);
+                var viewer = Viewers.GetViewer(messageWrapper.Username);
 
                 // REPLACE the parsing code (about 30 lines) with:
                 var parsed = CommandParserUtility.ParseCommandArguments(args, allowQuality: false, allowMaterial: false, allowSide: false, allowQuantity: true);
@@ -371,11 +371,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // Get viewer's pawn
-                var viewerPawn = StoreCommandHelper.GetViewerPawn(user);
+                var viewerPawn = StoreCommandHelper.GetViewerPawn(messageWrapper);
                 Verse.Pawn rimworldPawn = viewerPawn; // This is already a Verse.Pawn
-                Logger.Debug($"Viewer pawn for {user.Username}: {(viewerPawn != null ? viewerPawn.Name.ToString() : "null")}");
+                Logger.Debug($"Viewer pawn for {messageWrapper.Username}: {(viewerPawn != null ? viewerPawn.Name.ToString() : "null")}");
                 Logger.Debug($"Viewer pawn dead status: {(viewerPawn != null ? viewerPawn.Dead.ToString() : "N/A")}");
-                Logger.Debug($"Rimworld pawn for {user.Username}: {(rimworldPawn != null ? rimworldPawn.Name.ToString() : "null")}");
+                Logger.Debug($"Rimworld pawn for {messageWrapper.Username}: {(rimworldPawn != null ? rimworldPawn.Name.ToString() : "null")}");
                 Logger.Debug($"Rimworld pawn dead status: {(rimworldPawn != null ? rimworldPawn.Dead.ToString() : "N/A")}");
 
                 if (viewerPawn == null)
@@ -402,7 +402,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 int finalPrice = storeItem.BasePrice * quantity;
 
                 // Check if user can afford
-                if (!StoreCommandHelper.CanUserAfford(user, finalPrice))
+                if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
                 {
                     return $"You need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} to use {quantity}x {itemName}! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
                 }
@@ -448,33 +448,33 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (isResurrectorSerum && viewerPawn.Dead)
                 {
                     // Pink letter for resurrection
-                    invoiceLabel = $"💖 Rimazon Resurrection - {user.Username}";
-                    invoiceMessage = CreateRimazonResurrectionInvoice(user.Username, itemLabel, finalPrice, currencySymbol);
+                    invoiceLabel = $"💖 Rimazon Resurrection - {messageWrapper.Username}";
+                    invoiceMessage = CreateRimazonResurrectionInvoice(messageWrapper.Username, itemLabel, finalPrice, currencySymbol);
                     LookTargets resurrectionLookTargets = new LookTargets(viewerPawn);
-                    Logger.Debug($"Sending resurrection letter to {user.Username} for pawn {viewerPawn.Name}");
+                    Logger.Debug($"Sending resurrection letter to {messageWrapper.Username} for pawn {viewerPawn.Name}");
                     Logger.Debug($"Resurrection look targets: {resurrectionLookTargets}");
                     MessageHandler.SendPinkLetter(invoiceLabel, invoiceMessage, resurrectionLookTargets);
                 }
                 else if (IsMajorPurchase(finalPrice, null)) // Don't check quality for use commands
                 {
-                    invoiceLabel = $"🔵 Rimazon Instant - {user.Username}";
-                    invoiceMessage = CreateRimazonInstantInvoice(user.Username, itemLabel, quantity, finalPrice, currencySymbol);
+                    invoiceLabel = $"🔵 Rimazon Instant - {messageWrapper.Username}";
+                    invoiceMessage = CreateRimazonInstantInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol);
                     LookTargets useLookTargets = new LookTargets(rimworldPawn);
-                    Logger.Debug($"Sending major use letter to {user.Username} for pawn {rimworldPawn.Name}");
+                    Logger.Debug($"Sending major use letter to {messageWrapper.Username} for pawn {rimworldPawn.Name}");
                     Logger.Debug($"Use look targets: {useLookTargets}");
                     MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, useLookTargets);
                 }
                 else
                 {
-                    invoiceLabel = $"🔵 Rimazon Instant - {user.Username}";
-                    invoiceMessage = CreateRimazonInstantInvoice(user.Username, itemLabel, quantity, finalPrice, currencySymbol);
+                    invoiceLabel = $"🔵 Rimazon Instant - {messageWrapper.Username}";
+                    invoiceMessage = CreateRimazonInstantInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol);
                     LookTargets useLookTargets = new LookTargets(rimworldPawn);
-                    Logger.Debug($"Sending regular use letter to {user.Username} for pawn {rimworldPawn.Name}");
+                    Logger.Debug($"Sending regular use letter to {messageWrapper.Username} for pawn {rimworldPawn.Name}");
                     Logger.Debug($"Use look targets: {useLookTargets}");
                     MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, useLookTargets);
                 }
 
-                Logger.Debug($"Use item successful: {user.Username} used {quantity}x {itemName} for {finalPrice}{currencySymbol}");
+                Logger.Debug($"Use item successful: {messageWrapper.Username} used {quantity}x {itemName} for {finalPrice}{currencySymbol}");
 
                 // Return appropriate success message
                 if (isResurrectorSerum && viewerPawn.Dead)
@@ -493,11 +493,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        public static string HandleSurgery(ChatMessageWrapper user, string[] args)
+        public static string HandleSurgery(ChatMessageWrapper messageWrapper, string[] args)
         {
             try
             {
-                Logger.Debug($"HandleSurgery called for user: {user.Username}, args: {string.Join(", ", args)}");
+                Logger.Debug($"HandleSurgery called for user: {messageWrapper.Username}, args: {string.Join(", ", args)}");
 
                 if (args.Length == 0)
                 {
@@ -506,7 +506,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
-                var viewer = Viewers.GetViewer(user);
+                var viewer = Viewers.GetViewer(messageWrapper);
 
                 // REPLACE the parsing code (about 40 lines) with:
                 var parsed = CommandParserUtility.ParseCommandArguments(args, allowQuality: false, allowMaterial: false, allowSide: true, allowQuantity: true);
@@ -550,7 +550,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // Get viewer's pawn
-                Verse.Pawn viewerPawn = StoreCommandHelper.GetViewerPawn(user);
+                Verse.Pawn viewerPawn = StoreCommandHelper.GetViewerPawn(messageWrapper);
                 if (viewerPawn == null)
                 {
                     return "You need to have a pawn in the colony to perform surgery. Use !buy pawn first.";
@@ -578,7 +578,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 int finalPrice = storeItem.BasePrice * quantity;
 
                 // Check if user can afford
-                if (!StoreCommandHelper.CanUserAfford(user, finalPrice))
+                if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
                 {
                     return $"You need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} for {quantity}x {itemName} surgery! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
                 }
@@ -621,12 +621,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 ScheduleSurgeries(viewerPawn, recipe, bodyParts.Take(quantity).ToList());
 
                 // In HandleSurgery method, after scheduling surgeries:
+
+
                 LookTargets surgeryLookTargets = new LookTargets(viewerPawn);
-                string invoiceLabel = $"🏥 Rimazon Surgery - {user.Username}";
-                string invoiceMessage = CreateRimazonSurgeryInvoice(user.Username, itemName, quantity, finalPrice, currencySymbol, bodyParts.Take(quantity).ToList());
+                string invoiceLabel = $"🏥 Rimazon Surgery - {messageWrapper.Username}";
+                string invoiceMessage = CreateRimazonSurgeryInvoice(messageWrapper.Username, itemName, quantity, finalPrice, currencySymbol, bodyParts.Take(quantity).ToList());
                 MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, surgeryLookTargets);
 
-                Logger.Debug($"Surgery scheduled: {user.Username} scheduled {quantity}x {itemName} for {finalPrice}{currencySymbol}");
+                Logger.Debug($"Surgery scheduled: {messageWrapper.Username} scheduled {quantity}x {itemName} for {finalPrice}{currencySymbol}");
 
                 return $"Scheduled {quantity}x {itemName} surgery for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)}! Implant delivered to pawn's inventory please give them to the doctor. Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
 
@@ -1178,7 +1180,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             invoice += $"Service: Surgical Implantation\n";
             invoice += $"====================\n";
-            invoice += $"Total: {price}{currencySymbol}\n";
+            invoice += $"Total: {price:N0}{currencySymbol}\n";
             invoice += $"====================\n";
             invoice += $"Thank you for using Rimazon Surgery!\n";
             invoice += $"Implant delivered to pawn's inventory.\n";
@@ -1214,7 +1216,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             invoice += $"====================\n";
-            invoice += $"Total: {price}{currencySymbol}\n";
+            invoice += $"Total: {price:N0}{currencySymbol}\n";
             invoice += $"====================\n";
             invoice += $"Thank you for shopping with Rimazon!\n";
             invoice += $"Delivery: Standard Drop Pod\n";
@@ -1231,7 +1233,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             invoice += $"Item: {itemName} x{quantity}\n";
             invoice += $"Service: Immediate Use\n";
             invoice += $"====================\n";
-            invoice += $"Total: {price}{currencySymbol}\n";
+            invoice += $"Total: {price:N0}{currencySymbol}\n";
             invoice += $"====================\n";
             invoice += $"Thank you for using Rimazon Instant!\n";
             invoice += $"No delivery required - instant satisfaction!";
@@ -1255,7 +1257,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             invoice += $"Item: {itemName} x{quantity}\n";
             invoice += $"Service: Direct {serviceType}\n";
             invoice += $"====================\n";
-            invoice += $"Total: {price}{currencySymbol}\n";
+            invoice += $"Total: {price:N0}{currencySymbol}\n";
             invoice += $"====================\n";
             invoice += $"Thank you for using Rimazon {serviceType}!\n";
 
@@ -1284,7 +1286,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             invoice += $"Service: Pawn Resurrection\n";
             invoice += $"Item: {itemName}\n";
             invoice += $"====================\n";
-            invoice += $"Total: {price}{currencySymbol}\n";
+            invoice += $"Total: {price:N0}{currencySymbol}\n";
             invoice += $"====================\n";
             invoice += $"Thank you for using Rimazon Resurrection!\n";
             invoice += $"Your pawn has been restored to life!\n";
@@ -1301,7 +1303,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             invoice += $"Pet: {itemName} x{quantity}\n";
             invoice += $"Service: Live Animal Delivery\n";
             invoice += $"====================\n";
-            invoice += $"Total: {price}{currencySymbol}\n";
+            invoice += $"Total: {price:N0}{currencySymbol}\n";
             invoice += $"====================\n";
             invoice += $"Thank you for using Rimazon Pets!\n";
 
@@ -1452,8 +1454,5 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         // ===== DEBUG METHODS =====
-
-
-
     }
 }
