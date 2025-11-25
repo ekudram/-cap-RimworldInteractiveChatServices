@@ -26,11 +26,6 @@ namespace CAP_ChatInteractive
         public List<ChatCommandDef> filteredCommands = new List<ChatCommandDef>();
         public Dictionary<string, CommandSettings> commandSettings = new Dictionary<string, CommandSettings>();
 
-        private bool IsEventCommand(ChatCommandDef command)
-        {
-            return true; // command.isEventCommand;
-        }
-
         public override Vector2 InitialSize => new Vector2(1000f, 700f);
 
         public Dialog_CommandManager()
