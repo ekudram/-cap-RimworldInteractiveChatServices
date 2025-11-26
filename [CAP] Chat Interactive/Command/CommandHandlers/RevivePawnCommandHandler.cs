@@ -3,9 +3,8 @@
 // Licensed under the AGPLv3 License. See LICENSE file in the project root for full license information.
 //
 // Handles the !revivepawn command to resurrect dead pawns for viewers using in-game currency.
-using CAP_ChatInteractive.Commands.ViewerCommands;
+using CAP_ChatInteractive.Commands.Cooldowns;
 using CAP_ChatInteractive.Store;
-using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -97,6 +96,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Debug($"Awarded {karmaEarned} karma for {pricePerRevive} coin purchase");
             }
 
+            // Record the purchase for cooldown tracking
+            var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
+            if (cooldownManager != null)
+            {
+                cooldownManager.RecordItemPurchase("revive"); // or "heal" for healpawn
+            }
+
             // Send resurrection invoice
             string invoiceLabel = $"💖 Rimazon Resurrection - {user.Username}";
             string invoiceMessage = BuyItemCommandHandler.CreateRimazonResurrectionInvoice(user.Username, "Pawn Resurrection", pricePerRevive, currencySymbol);
@@ -146,6 +152,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 viewer.GiveKarma(karmaEarned);
                 Logger.Debug($"Awarded {karmaEarned} karma for {pricePerRevive} coin purchase");
+            }
+
+            // Record the purchase for cooldown tracking
+            var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
+            if (cooldownManager != null)
+            {
+                cooldownManager.RecordItemPurchase("revive"); // or "heal" for healpawn
             }
 
             // Send resurrection invoice
@@ -208,6 +221,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 viewer.GiveKarma(karmaEarned);
                 Logger.Debug($"Awarded {karmaEarned} karma for {pricePerRevive} coin purchase");
+            }
+
+            // Record the purchase for cooldown tracking
+            var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
+            if (cooldownManager != null)
+            {
+                cooldownManager.RecordItemPurchase("revive"); // or "heal" for healpawn
             }
 
             // Send resurrection invoice

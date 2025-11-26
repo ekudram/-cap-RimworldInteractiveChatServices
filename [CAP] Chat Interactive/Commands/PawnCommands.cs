@@ -5,6 +5,7 @@
 // Handles pawn-related chat commands: !pawn, !mypawn, trait commands, and queue management.
 using _CAP__Chat_Interactive.Utilities;
 using CAP_ChatInteractive.Commands.CommandHandlers;
+using CAP_ChatInteractive.Commands.Cooldowns;
 using CAP_ChatInteractive.Traits;
 using RimWorld;
 using System;
@@ -267,7 +268,28 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
-            return RevivePawnCommandHandler.HandleRevivePawn(messageWrapper, args);
+            try
+            {
+                var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
+                if (cooldownManager == null)
+                {
+                    cooldownManager = new GlobalCooldownManager(Current.Game);
+                    Current.Game.components.Add(cooldownManager);
+                }
+                var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+
+                if (!cooldownManager.CanPurchaseItem())
+                {
+                    return $"Store purchase limit reached ({globalSettings.MaxItemPurchases} per {globalSettings.EventCooldownDays} days)";
+                }
+
+                return RevivePawnCommandHandler.HandleRevivePawn(messageWrapper, args);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in revivepawn command: {ex}");
+                return $"Error reviving pawn: {ex.Message}";
+            }
         }
     }
 
@@ -277,7 +299,28 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
-            return HealPawnCommandHandler.HandleHealPawn(messageWrapper, args);
+            try
+            {
+                var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
+                if (cooldownManager == null)
+                {
+                    cooldownManager = new GlobalCooldownManager(Current.Game);
+                    Current.Game.components.Add(cooldownManager);
+                }
+                var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+
+                if (!cooldownManager.CanPurchaseItem())
+                {
+                    return $"Store purchase limit reached ({globalSettings.MaxItemPurchases} per {globalSettings.EventCooldownDays} days)";
+                }
+
+                return HealPawnCommandHandler.HandleHealPawn(messageWrapper, args);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in healpawn command: {ex}");
+                return $"Error healing pawn: {ex.Message}";
+            }
         }
     }
 

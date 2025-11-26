@@ -52,8 +52,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (buyableIncident == null)
                 {
                     var availableTypes = GetAvailableIncidents().Take(5).Select(i => i.Key);
-                    MessageHandler.SendFailureLetter("Incident Failed",
-                        $"{messageWrapper.Username} tried unknown incident: {incidentType}");
+                    // removed to much letter spam, just tell the viewer
+                    // MessageHandler.SendFailureLetter("Incident Failed", $"{messageWrapper.Username} tried unknown incident: {incidentType}");
                     return $"Unknown incident type: {incidentType}. Try !event list";
                 }
 
@@ -76,29 +76,36 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
                 if (cooldownManager != null)
                 {
-                    string eventType = GetKarmaTypeForIncident(buyableIncident.KarmaType);
-                    Logger.Debug($"Converted event type: {eventType}");
-
-                    // First check global event limit (if enabled)
-                    if (settings.EventCooldownsEnabled && !cooldownManager.CanUseGlobalEvents(settings))
+                    // Get command settings for the "event" command
+                    var commandSettings = CommandSettingsManager.GetSettings("event");
+                    if (commandSettings == null)
                     {
-                        int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
-                        Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
-                        return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
-                    }
-
-                    // Then check karma-type specific limit (if enabled)
-                    if (settings.KarmaTypeLimitsEnabled)
-                    {
-                        if (!cooldownManager.CanUseEvent(eventType, settings))
+                        // Fallback settings if specific command settings aren't found
+                        commandSettings = new CommandSettings
                         {
-                            string cooldownMessage = GetCooldownMessage(eventType, settings, cooldownManager);
-                            Logger.Debug($"Karma type limit reached: {cooldownMessage}");
-                            return cooldownMessage;
-                        }
+                            useCommandCooldown = true,
+                            MaxUsesPerCooldownPeriod = 0 // Use global event system
+                        };
                     }
 
-                    Logger.Debug($"Event cooldown check passed for type: {eventType}");
+                    // Use the corrected cooldown check
+                    if (!cooldownManager.CanUseCommand("event", commandSettings, settings))
+                    {
+                        // Provide appropriate feedback based on what failed
+                        if (!cooldownManager.CanUseGlobalEvents(settings))
+                        {
+                            int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
+                            return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
+                        }
+
+                        string eventType = GetKarmaTypeForIncident(buyableIncident.KarmaType);
+                        if (settings.KarmaTypeLimitsEnabled && !cooldownManager.CanUseEvent(eventType, settings))
+                        {
+                            return GetCooldownMessage(eventType, settings, cooldownManager);
+                        }
+
+                        return $"❌ Command cooldown active for {buyableIncident.Label}";
+                    }
                 }
 
                 // Check if viewer can afford it

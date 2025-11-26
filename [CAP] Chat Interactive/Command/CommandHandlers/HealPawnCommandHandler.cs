@@ -3,6 +3,7 @@
 // Licensed under the AGPLv3 License. See LICENSE file in the project root for full license information.
 //
 // Command handler for the !healpawn command
+using CAP_ChatInteractive.Commands.Cooldowns;
 using CAP_ChatInteractive.Commands.ViewerCommands;
 using CAP_ChatInteractive.Store;
 using RimWorld;
@@ -120,6 +121,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Debug($"Awarded {karmaEarned} karma for {totalCost} coin purchase");
             }
 
+            // Record the purchase for cooldown tracking
+            var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
+            if (cooldownManager != null)
+            {
+                cooldownManager.RecordItemPurchase("heal"); // or "heal" for healpawn
+            }
+
             // Send healing invoice
             string invoiceLabel = $"💚 Rimazon Complete Healing - {messageWrapper.Username}";
             string invoiceMessage = CreateCompleteHealingInvoice(messageWrapper.Username, injuriesHealed, totalCost, currencySymbol);
@@ -175,6 +183,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Debug($"Awarded {karmaEarned} karma for {totalCost} coin purchase");
             }
 
+            // Record the purchase for cooldown tracking
+            var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
+            if (cooldownManager != null)
+            {
+                cooldownManager.RecordItemPurchase("heal"); // or "heal" for healpawn
+            }
+
             // Send healing invoice
             string invoiceLabel = $"💚 Rimazon Healing - {messageWrapper.Username}";
             string invoiceMessage = CreateHealingInvoice(messageWrapper.Username, messageWrapper.Username, injuriesHealed, totalCost, currencySymbol);
@@ -222,6 +237,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 viewer.GiveKarma(karmaEarned);
                 Logger.Debug($"Awarded {karmaEarned} karma for {totalCost} coin purchase");
+            }
+
+            // Record the purchase for cooldown tracking
+            var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
+            if (cooldownManager != null)
+            {
+                cooldownManager.RecordItemPurchase("heal"); // or "heal" for healpawn
             }
 
             // Send healing invoice
@@ -285,6 +307,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 viewer.GiveKarma(karmaEarned);
                 Logger.Debug($"Awarded {karmaEarned} karma for {totalCost} coin purchase");
+            }
+
+            // Record the purchase for cooldown tracking
+            var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
+            if (cooldownManager != null)
+            {
+                cooldownManager.RecordItemPurchase("heal"); // or "heal" for healpawn
             }
 
             // Send healing invoice

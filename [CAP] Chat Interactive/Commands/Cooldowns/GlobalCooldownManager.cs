@@ -110,7 +110,7 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
 
         public bool CanUseCommand(string commandName, CommandSettings settings, CAPGlobalChatSettings globalSettings)
         {
-            // Check per-command game days cooldown first (applies in both modes)
+            // Always check per-command game days cooldown first (if enabled)
             if (settings.useCommandCooldown && settings.MaxUsesPerCooldownPeriod > 0)
             {
                 var cmdRecord = GetOrCreateCommandRecord(commandName);
@@ -120,36 +120,32 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
                     return false;
             }
 
-            // If per-command limit is 0 (unlimited), we break out here
+            // If per-command limit is 0 (unlimited), skip further checks for this command
             if (settings.useCommandCooldown && settings.MaxUsesPerCooldownPeriod == 0)
             {
-                return true; // Unlimited uses for this command
+                return true;
             }
 
-            // Main event cooldown logic
-            if (globalSettings.EventCooldownsEnabled)
+            // If event cooldowns are disabled globally, we're done
+            if (!globalSettings.EventCooldownsEnabled)
             {
-                // Traditional event cooldown system
-                // 1. Check total event limit
-                if (!CanUseGlobalEvents(globalSettings))
+                return true;
+            }
+
+            // EVENT COOLDOWN SYSTEM: Only for commands that should count toward event limits
+            // 1. Check total global event limit first
+            if (!CanUseGlobalEvents(globalSettings))
+                return false;
+
+            // 2. Check karma-type specific limits if enabled
+            if (globalSettings.KarmaTypeLimitsEnabled)
+            {
+                string eventType = GetEventTypeForCommand(commandName);
+                if (!CanUseEvent(eventType, globalSettings))
                     return false;
-
-                // 2. Check type-specific limits if enabled
-                if (globalSettings.KarmaTypeLimitsEnabled)
-                {
-                    string eventType = GetEventTypeForCommand(commandName);
-                    if (!CanUseEvent(eventType, globalSettings))
-                        return false;
-                }
-
-                return true;
             }
-            else
-            {
-                // Event cooldowns disabled - only use per-command game day limits
-                // (which we already checked above)
-                return true;
-            }
+
+            return true;
         }
 
         // NEW: Check global event count limit

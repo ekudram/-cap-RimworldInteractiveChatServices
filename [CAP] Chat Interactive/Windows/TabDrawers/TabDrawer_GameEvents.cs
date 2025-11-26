@@ -6,6 +6,7 @@ using CAP_ChatInteractive.Incidents;
 using CAP_ChatInteractive.Incidents.Weather;
 using CAP_ChatInteractive.Store;
 using CAP_ChatInteractive.Traits;
+using RimWorld;
 using System.Linq;
 using UnityEngine;
 using Verse;
@@ -41,6 +42,9 @@ namespace CAP_ChatInteractive
             // COOLDOWN SETTINGS SECTION (Always available - no game required)
             DrawCooldownSettings(listing, settings);
 
+            // Add reset button
+            DrawResetButton(listing, settings);
+
             listing.Gap(24f);
 
             // OTHER SETTINGS SECTION
@@ -66,41 +70,64 @@ namespace CAP_ChatInteractive
 
             // Event cooldown toggle
             listing.CheckboxLabeled("Enable event cooldowns", ref settings.EventCooldownsEnabled,
-                "When enabled, events will go on cooldown after being purchased");
+                "Turn on/off all event cooldowns. When off, events can be purchased without limits.");
 
-            // Cooldown days
-            NumericField(listing, "Event cooldown duration in game days:", ref settings.EventCooldownDays, 1, 90);
-            Text.Font = GameFont.Tiny;
-            listing.Label($"All events will be unavailable for {settings.EventCooldownDays} in-game days.");
-            Text.Font = GameFont.Small;
-
-            // Events per cooldown period
-            NumericField(listing, "Events per cooldown period:", ref settings.EventsperCooldown, 1, 1000);
-            Text.Font = GameFont.Tiny;
-            listing.Label($"Limit of {settings.EventsperCooldown} event purchases per cooldown period");
-            Text.Font = GameFont.Small;
-
-            listing.Gap(12f);
-
-            // Karma type limits toggle
-            listing.CheckboxLabeled("Limit events by karma type", ref settings.KarmaTypeLimitsEnabled,
-                "Restrict how many events of each karma type can be purchased within the ");
-
-            if (settings.KarmaTypeLimitsEnabled)
+            // Only show the rest if event cooldowns are enabled
+            if (settings.EventCooldownsEnabled)
             {
-                listing.Gap(4f);
-                NumericField(listing, "Maximum bad event purchases:", ref settings.MaxBadEvents, 1, 100);
-                NumericField(listing, "Maximum good event purchases:", ref settings.MaxGoodEvents, 1, 100);
-                NumericField(listing, "Maximum neutral event purchases:", ref settings.MaxNeutralEvents, 1, 100);
+                // Cooldown days
+                NumericField(listing, "Event cooldown duration in game days:", ref settings.EventCooldownDays, 1, 90);
+                GUI.color = ColorLibrary.LightGray;
+                listing.Label($"How many in-game days to count events. Affects: !event, !raid, !militaryaid, !weather");
+                GUI.color = ColorLibrary.White;
+
+                // Events per cooldown period
+                NumericField(listing, "Events per cooldown period:", ref settings.EventsperCooldown, 1, 1000);
+                GUI.color = ColorLibrary.LightGray;
+                listing.Label($"Maximum events allowed in {settings.EventCooldownDays} days. 0 = unlimited");
+                GUI.color = ColorLibrary.White;
+
+                listing.Gap(12f);
+
+                // Karma type limits toggle
+                listing.CheckboxLabeled("Limit events by karma type", ref settings.KarmaTypeLimitsEnabled,
+                    "Set different limits for good, bad, and neutral events");
+
+                if (settings.KarmaTypeLimitsEnabled)
+                {
+                    listing.Gap(4f);
+                    NumericField(listing, "Maximum bad event purchases:", ref settings.MaxBadEvents, 1, 100);
+                    GUI.color = ColorLibrary.LightGray;
+                    listing.Label($"Bad events: !raid and other harmful events");
+                    GUI.color = ColorLibrary.White;
+
+                    NumericField(listing, "Maximum good event purchases:", ref settings.MaxGoodEvents, 1, 100);
+                    GUI.color = ColorLibrary.LightGray;
+                    listing.Label($"Good events: !militaryaid and other helpful events");
+                    GUI.color = ColorLibrary.White;
+
+                    NumericField(listing, "Maximum neutral event purchases:", ref settings.MaxNeutralEvents, 1, 100);
+                    GUI.color = ColorLibrary.LightGray;
+                    listing.Label($"Neutral events: !weather and other neutral events");
+                    GUI.color = ColorLibrary.White;
+                }
+
+                listing.Gap(12f);
+
+                // Store purchase limits
+                NumericField(listing, "Maximum item purchases per period:", ref settings.MaxItemPurchases, 1, 1000);
+                GUI.color = ColorLibrary.LightGray;
+                listing.Label($"Maximum !buy, !equip, !wear, !healpawn, !revivepawn commands in {settings.EventCooldownDays} days");
+                GUI.color = ColorLibrary.White;
             }
-
-            listing.Gap(12f);
-
-            // Store purchase limits
-            NumericField(listing, "Maximum item purchases per period:", ref settings.MaxItemPurchases, 1, 1000);
-            Text.Font = GameFont.Tiny;
-            listing.Label($"Viewers can purchase up to {settings.MaxItemPurchases} items before cooldown");
-            Text.Font = GameFont.Small;
+            else
+            {
+                // Show a message when cooldowns are disabled
+                listing.Gap(8f);
+                GUI.color = ColorLibrary.LightGray;
+                listing.Label("Event cooldowns are disabled. All events can be purchased without limits.");
+                GUI.color = ColorLibrary.White;
+            }
         }
 
         private static void DrawOtherSettings(Listing_Standard listing, CAPGlobalChatSettings settings)
@@ -226,6 +253,48 @@ namespace CAP_ChatInteractive
             Widgets.Label(leftRect, label);
             string buffer = value.ToString();
             Widgets.TextFieldNumeric(rightRect, ref value, ref buffer, min, max);
+        }
+
+        private static void DrawResetButton(Listing_Standard listing, CAPGlobalChatSettings settings)
+        {
+            listing.Gap(12f);
+
+            Rect buttonRect = listing.GetRect(30f);
+            if (Widgets.ButtonText(buttonRect, "Reset to Default Values"))
+            {
+                // Create confirmation dialog
+                Find.WindowStack.Add(new Dialog_MessageBox(
+                    "Reset all cooldown settings to default values?\n\nThis will reset:\n• Event cooldown days\n• Event limits\n• Karma type limits\n• Purchase limits",
+                    "Reset",
+                    () => ResetToDefaults(settings),
+                    "Cancel"
+                ));
+            }
+
+            GUI.color = ColorLibrary.LightGray;
+            listing.Label("Reset all cooldown settings back to default values");
+            GUI.color = ColorLibrary.White;
+        }
+
+        private static void ResetToDefaults(CAPGlobalChatSettings settings)
+        {
+            // Reset all cooldown-related settings to defaults
+            settings.EventCooldownsEnabled = true;
+            settings.EventCooldownDays = 5;
+            settings.EventsperCooldown = 25;
+            settings.KarmaTypeLimitsEnabled = false;
+            settings.MaxBadEvents = 3;
+            settings.MaxGoodEvents = 10;
+            settings.MaxNeutralEvents = 10;
+            settings.MaxItemPurchases = 50;
+
+            // Optional: Also reset MaxTraits if you want
+            settings.MaxTraits = 4;
+
+            // Save the changes
+            CAPChatInteractiveMod.Instance.Settings.Write();
+
+            Messages.Message("Cooldown settings reset to defaults", MessageTypeDefOf.PositiveEvent);
         }
     }
 }

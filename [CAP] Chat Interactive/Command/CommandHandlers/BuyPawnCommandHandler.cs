@@ -257,7 +257,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-
         public static PawnKindDef GetPawnKindDefForRace(string raceName)
         {
             // Use centralized race lookup

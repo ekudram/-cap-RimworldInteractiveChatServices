@@ -200,13 +200,6 @@ namespace CAP_ChatInteractive
                 return;
             }
 
-            // 3. Global cooldowns (more expensive)
-            if (!cooldownManager.CanUseCommand(command.Name, commandSettings, globalSettings))
-            {
-                SendGlobalCooldownMessage(message, command, cooldownManager);
-                return;
-            }
-
             // EXECUTE - we've passed all checks
             try
             {

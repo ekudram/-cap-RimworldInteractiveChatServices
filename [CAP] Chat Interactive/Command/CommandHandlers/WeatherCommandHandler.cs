@@ -44,8 +44,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var viewer = Viewers.GetViewer(user);
                 if (viewer == null)
                 {
-                    MessageHandler.SendFailureLetter("Weather Change Failed",
-                        $"Could not find viewer data for {user.Username}\n\nPlease try again or contact the streamer.");
                     return "Error: Could not find your viewer data.";
                 }
 
@@ -54,20 +52,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (buyableWeather == null)
                 {
                     var availableTypes = GetAvailableWeatherTypes().Take(8).Select(w => w.Key);
-                    MessageHandler.SendFailureLetter("Weather Change Failed",
-                        $"{user.Username} tried unknown weather type: {weatherType}\n\nAvailable types: {string.Join(", ", availableTypes)}...");
                     return $"Unknown weather type: {weatherType}. Available: {string.Join(", ", availableTypes)}...";
                 }
 
                 // Check if weather is enabled
                 if (!buyableWeather.Enabled)
                 {
-                    MessageHandler.SendFailureLetter("Weather Change Failed",
-                        $"{user.Username} tried to use disabled weather: {buyableWeather.Label}\n\nThis weather type is currently disabled in the settings.");
                     return $"The {buyableWeather.Label} weather type is currently disabled.";
                 }
 
-                // NEW: Check global cooldowns for weather (uses weather's karma type)
+                // NEW: Check global cooldowns using the unified system
                 var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
                 if (cooldownManager != null)
                 {
@@ -76,40 +70,45 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     Logger.Debug($"DefName: {buyableWeather.DefName}");
                     Logger.Debug($"KarmaType: {buyableWeather.KarmaType}");
 
-                    // First check global event limit (if enabled)
-                    if (settings.EventCooldownsEnabled && !cooldownManager.CanUseGlobalEvents(settings))
-                    {
-                        int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
-                        Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
-                        MessageHandler.SendFailureLetter("Weather Change Blocked",
-                            $"{user.Username} tried to change weather but global limit reached\n\n{totalEvents}/{settings.EventsperCooldown} events used");
-                        return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
-                    }
+                    // Get command settings for weather command
+                    var commandSettings = CommandSettingsManager.GetSettings("weather");
 
-                    // Then check karma-type specific limit (if enabled)
-                    if (settings.KarmaTypeLimitsEnabled)
+                    // Use the unified cooldown check
+                    if (!cooldownManager.CanUseCommand("weather", commandSettings, settings))
                     {
-                        string eventType = GetKarmaTypeForWeather(buyableWeather.KarmaType);
-                        Logger.Debug($"Converted event type: {eventType}");
-
-                        if (!cooldownManager.CanUseEvent(eventType, settings))
+                        // Provide appropriate feedback based on what failed
+                        if (!cooldownManager.CanUseGlobalEvents(settings))
                         {
-                            var record = cooldownManager.data.EventUsage.GetValueOrDefault(eventType);
-                            int used = record?.CurrentPeriodUses ?? 0;
-                            int max = eventType switch
-                            {
-                                "good" => settings.MaxGoodEvents,
-                                "bad" => settings.MaxBadEvents,
-                                "neutral" => settings.MaxNeutralEvents,
-                                "doom" => 1,
-                                _ => 10
-                            };
-                            string cooldownMessage = $"❌ {eventType.ToUpper()} event limit reached! ({used}/{max} used this period)";
-                            Logger.Debug($"Karma type limit reached: {used}/{max}");
-                            MessageHandler.SendFailureLetter("Weather Change Blocked",
-                                $"{user.Username} tried to change weather but {eventType} limit reached\n\n{used}/{max} {eventType} events used");
-                            return cooldownMessage;
+                            int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
+                            Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
+                            return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
                         }
+
+                        // Check karma-type specific limit
+                        if (settings.KarmaTypeLimitsEnabled)
+                        {
+                            string eventType = GetKarmaTypeForWeather(buyableWeather.KarmaType);
+                            Logger.Debug($"Converted event type: {eventType}");
+
+                            if (!cooldownManager.CanUseEvent(eventType, settings))
+                            {
+                                var record = cooldownManager.data.EventUsage.GetValueOrDefault(eventType);
+                                int used = record?.CurrentPeriodUses ?? 0;
+                                int max = eventType switch
+                                {
+                                    "good" => settings.MaxGoodEvents,
+                                    "bad" => settings.MaxBadEvents,
+                                    "neutral" => settings.MaxNeutralEvents,
+                                    "doom" => 1,
+                                    _ => 10
+                                };
+                                string cooldownMessage = $"❌ {eventType.ToUpper()} event limit reached! ({used}/{max} used this period)";
+                                Logger.Debug($"Karma type limit reached: {used}/{max}");
+                                return cooldownMessage;
+                            }
+                        }
+
+                        return $"❌ Weather command is on cooldown.";
                     }
 
                     Logger.Debug($"Weather cooldown check passed");
@@ -143,9 +142,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (success)
                 {
                     viewer.TakeCoins(cost);
-
-                    // Record weather usage for cooldowns
-                    if (cooldownManager != null)
+                    // Record weather usage for cooldowns ONLY ON SUCCESS
+                    if (success && cooldownManager != null)
                     {
                         string eventType = GetKarmaTypeForWeather(buyableWeather.KarmaType);
                         cooldownManager.RecordEventUse(eventType);
@@ -165,8 +163,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 else
                 {
                     resultMessage = $"{resultMessage} No {currencySymbol} were deducted.";
-                    MessageHandler.SendFailureLetter("Weather Change Failed",
-                        $"{user.Username} failed to change weather to {buyableWeather.Label}\n\n{resultMessage}");
                 }
                 return resultMessage;
             }

@@ -46,11 +46,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
                 var viewer = Viewers.GetViewer(user);
+                if (viewer == null)
+                {
+                    MessageHandler.SendFailureLetter("Raid Failed",
+                        $"Could not find viewer data for {user.Username}");
+                    return "Error: Could not find your viewer data.";
+                }
 
                 // NEW: Get raid command settings
                 var raidSettings = GetRaidCommandSettings();
 
-                // NEW: Check global cooldowns for raids (always "bad" karma type)
+                // NEW: Check global cooldowns using the unified system
                 var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
                 if (cooldownManager != null)
                 {
@@ -59,20 +65,21 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     Logger.Debug($"Strategy: {strategy}");
                     Logger.Debug($"Wager: {wager}");
 
-                    // First check global event limit (if enabled)
-                    if (settings.EventCooldownsEnabled && !cooldownManager.CanUseGlobalEvents(settings))
+                    // Use the unified cooldown check
+                    if (!cooldownManager.CanUseCommand("raid", raidSettings, settings))
                     {
-                        int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
-                        Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
-                        MessageHandler.SendFailureLetter("Raid Blocked",
-                            $"{user.Username} tried to call raid but global limit reached\n\n{totalEvents}/{settings.EventsperCooldown} events used");
-                        return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
-                    }
+                        // Provide appropriate feedback based on what failed
+                        if (!cooldownManager.CanUseGlobalEvents(settings))
+                        {
+                            int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
+                            Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
+                            MessageHandler.SendFailureLetter("Raid Blocked",
+                                $"{user.Username} tried to call raid but global limit reached\n\n{totalEvents}/{settings.EventsperCooldown} events used");
+                            return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
+                        }
 
-                    // Then check bad event limit (if enabled) - raids are always "bad"
-                    if (settings.KarmaTypeLimitsEnabled)
-                    {
-                        if (!cooldownManager.CanUseEvent("bad", settings))
+                        // Check bad event limit specifically
+                        if (settings.KarmaTypeLimitsEnabled && !cooldownManager.CanUseEvent("bad", settings))
                         {
                             var badRecord = cooldownManager.data.EventUsage.GetValueOrDefault("bad");
                             int badUsed = badRecord?.CurrentPeriodUses ?? 0;
@@ -82,6 +89,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                 $"{user.Username} tried to call raid but bad event limit reached\n\n{badUsed}/{settings.MaxBadEvents} bad events used");
                             return cooldownMessage;
                         }
+
+                        return $"❌ Raid command is on cooldown.";
                     }
 
                     Logger.Debug($"Raid cooldown check passed");
@@ -90,16 +99,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Validate wager amount against settings
                 if (wager < raidSettings.MinRaidWager || wager > raidSettings.MaxRaidWager)
                 {
-                    MessageHandler.SendFailureLetter("Raid Failed",
-                        $"{user.Username} tried invalid wager amount\n\nMin: {raidSettings.MinRaidWager}{currencySymbol}, Max: {raidSettings.MaxRaidWager}{currencySymbol}");
                     return $"Wager must be between {raidSettings.MinRaidWager} and {raidSettings.MaxRaidWager}{currencySymbol}.";
                 }
 
                 // Validate wager amount
                 if (viewer.Coins < wager)
                 {
-                    MessageHandler.SendFailureLetter("Raid Failed",
-                        $"{user.Username} doesn't have enough {currencySymbol} for raid\n\nNeeded: {wager}{currencySymbol}, Has: {viewer.Coins}{currencySymbol}");
                     return $"You need {wager}{currencySymbol} to call a raid! You have {viewer.Coins}{currencySymbol}.";
                 }
 
@@ -107,8 +112,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (raidSettings.AllowedRaidTypes != null && raidSettings.AllowedRaidTypes.Count > 0 &&
                     !raidSettings.AllowedRaidTypes.Contains(raidType.ToLower()))
                 {
-                    MessageHandler.SendFailureLetter("Raid Failed",
-                        $"{user.Username} tried disabled raid type: {raidType}");
                     return $"Raid type '{raidType}' is not allowed. Allowed types: {string.Join(", ", raidSettings.AllowedRaidTypes)}";
                 }
 
@@ -117,15 +120,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     raidSettings.AllowedRaidStrategies != null && raidSettings.AllowedRaidStrategies.Count > 0 &&
                     !raidSettings.AllowedRaidStrategies.Contains(strategy.ToLower()))
                 {
-                    MessageHandler.SendFailureLetter("Raid Failed",
-                        $"{user.Username} tried disabled strategy: {strategy}");
                     return $"Strategy '{strategy}' is not allowed. Allowed strategies: {string.Join(", ", raidSettings.AllowedRaidStrategies)}";
                 }
 
                 if (!IsGameReadyForRaid())
                 {
-                    MessageHandler.SendFailureLetter("Raid Failed",
-                        $"{user.Username} tried to call a raid but the game isn't ready");
                     return "Game not ready for raid (no colony, in menu, etc.)";
                 }
 
@@ -133,7 +132,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var validationResult = ValidateRaidType(raidType);
                 if (!validationResult.IsValid)
                 {
-                    MessageHandler.SendFailureLetter("Raid Failed", validationResult.Message);
                     return validationResult.Message;
                 }
 
@@ -144,7 +142,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     viewer.TakeCoins(wager);
                     viewer.GiveKarma(CalculateKarmaChange(wager, raidType, strategy));
 
-                    // Record raid usage for cooldowns
+                    // Record raid usage for cooldowns ONLY ON SUCCESS
                     if (cooldownManager != null)
                     {
                         cooldownManager.RecordEventUse("bad"); // Raids are always bad events
@@ -169,16 +167,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 else
                 {
-                    MessageHandler.SendFailureLetter("Raid Failed",
-                        $"{user.Username} failed to call a raid\n\n{result.Message}");
                     return $"{result.Message} No {currencySymbol} were deducted.";
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error handling raid command: {ex}");
-                MessageHandler.SendFailureLetter("Raid Error",
-                    $"Error calling raid: {ex.Message}");
                 return "Error calling raid. Please try again.";
             }
         }
@@ -390,20 +384,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     parms.points *= 1.2f; // Increase for easiest type
                     break;
 
-                //case "manhunter":
-                //    config.ArrivalMode = PawnsArrivalModeDefOf.EdgeWalkIn;
-                //    config.IncidentWorker = new IncidentWorker_Ambush_ManhunterPack();
-                //    config.IncidentWorker.def = IncidentDefOf.ManhunterPack;
-                //    parms.faction = null;
-                //    break;
-
-                //case "infestation":
-                //    config.ArrivalMode = null;
-                //    config.IncidentWorker = new IncidentWorker_Infestation();
-                //    config.IncidentWorker.def = IncidentDefOf.Infestation;
-                //    parms.faction = null;
-                //    break;
-
                 case "water":
                 case "wateredge":
                     var waterMode = DefDatabase<PawnsArrivalModeDef>.GetNamedSilentFail("EmergeFromWater");
@@ -582,53 +562,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             config.Params = parms;
-            config.Faction = parms.faction;
-            return config;
-        }
-
-        private static RaidConfiguration ConfigureSiegeRaid(IncidentParms parms, Map map)
-        {
-            var config = new RaidConfiguration();
-
-            // Try to use Siege incident def if available
-            var siegeIncident = DefDatabase<IncidentDef>.GetNamedSilentFail("Siege");
-            if (siegeIncident != null)
-            {
-                config.IncidentWorker = (IncidentWorker)Activator.CreateInstance(siegeIncident.Worker.GetType());
-                config.IncidentWorker.def = siegeIncident;
-                config.Strategy = null; // Siege incident handles its own strategy
-            }
-            else
-            {
-                // Fallback to standard raid with siege strategy
-                config.IncidentWorker = new IncidentWorker_RaidEnemy();
-                config.IncidentWorker.def = IncidentDefOf.RaidEnemy;
-
-                var siegeStrategy = DefDatabase<RaidStrategyDef>.GetNamedSilentFail("Siege");
-                if (siegeStrategy != null)
-                {
-                    parms.raidStrategy = siegeStrategy;
-                    config.Strategy = siegeStrategy;
-                }
-                else
-                {
-                    // Ultimate fallback - immediate attack
-                    parms.raidStrategy = RaidStrategyDefOf.ImmediateAttack;
-                    config.Strategy = RaidStrategyDefOf.ImmediateAttack;
-                }
-            }
-
-            config.ArrivalMode = PawnsArrivalModeDefOf.EdgeWalkIn;
-            config.Params = parms;
-
-            // Siege needs enemy faction with siege capability
-            // Exclude mechanoids since they can't build
-            parms.faction = Find.FactionManager.AllFactions
-                .Where(f => f.HostileTo(Faction.OfPlayer) &&
-                           f.def != FactionDefOf.Mechanoid &&
-                           f.def.techLevel >= TechLevel.Industrial)
-                .RandomElementWithFallback();
-
             config.Faction = parms.faction;
             return config;
         }

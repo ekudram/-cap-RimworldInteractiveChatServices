@@ -1,4 +1,4 @@
-﻿// MilitaryAidCommandHandler.cs - Cleaned up version
+﻿// MilitaryAidCommandHandler.cs - Updated version
 // Copyright (c) Captolamia. All rights reserved.
 // Licensed under the AGPLv3 License. See LICENSE file in the project root for full license information.
 //
@@ -24,28 +24,38 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
                 var viewer = Viewers.GetViewer(messageWrapper);
+                if (viewer == null)
+                {
+                    MessageHandler.SendFailureLetter("Military Aid Failed",
+                        $"Could not find viewer data for {messageWrapper.Username}");
+                    return "Error: Could not find your viewer data.";
+                }
 
-                // NEW: Check global cooldowns for military aid (always "good" karma type)
+                // NEW: Check global cooldowns using the unified system
                 var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
                 if (cooldownManager != null)
                 {
                     Logger.Debug($"=== MILITARY AID COOLDOWN DEBUG ===");
                     Logger.Debug($"Wager: {wager}");
 
-                    // First check global event limit (if enabled)
-                    if (settings.EventCooldownsEnabled && !cooldownManager.CanUseGlobalEvents(settings))
-                    {
-                        int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
-                        Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
-                        MessageHandler.SendFailureLetter("Military Aid Blocked",
-                            $"{messageWrapper.Username} tried to call military aid but global limit reached\n\n{totalEvents}/{settings.EventsperCooldown} events used");
-                        return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
-                    }
+                    // Get command settings for militaryaid command
+                    var commandSettings = CommandSettingsManager.GetSettings("militaryaid");
 
-                    // Then check good event limit (if enabled) - military aid is always "good"
-                    if (settings.KarmaTypeLimitsEnabled)
+                    // Use the unified cooldown check
+                    if (!cooldownManager.CanUseCommand("militaryaid", commandSettings, settings))
                     {
-                        if (!cooldownManager.CanUseEvent("good", settings))
+                        // Provide appropriate feedback based on what failed
+                        if (!cooldownManager.CanUseGlobalEvents(settings))
+                        {
+                            int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
+                            Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
+                            MessageHandler.SendFailureLetter("Military Aid Blocked",
+                                $"{messageWrapper.Username} tried to call military aid but global limit reached\n\n{totalEvents}/{settings.EventsperCooldown} events used");
+                            return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
+                        }
+
+                        // Check good event limit specifically
+                        if (settings.KarmaTypeLimitsEnabled && !cooldownManager.CanUseEvent("good", settings))
                         {
                             var goodRecord = cooldownManager.data.EventUsage.GetValueOrDefault("good");
                             int goodUsed = goodRecord?.CurrentPeriodUses ?? 0;
@@ -55,6 +65,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                 $"{messageWrapper.Username} tried to call military aid but good event limit reached\n\n{goodUsed}/{settings.MaxGoodEvents} good events used");
                             return cooldownMessage;
                         }
+
+                        return $"❌ Military aid command is on cooldown.";
                     }
 
                     Logger.Debug($"Military aid cooldown check passed");
@@ -81,7 +93,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     viewer.TakeCoins(wager);
                     viewer.GiveKarma(CalculateKarmaChange(wager));
 
-                    // Record military aid usage for cooldowns
+                    // Record military aid usage for cooldowns ONLY ON SUCCESS
                     if (cooldownManager != null)
                     {
                         cooldownManager.RecordEventUse("good"); // Military aid is always good events

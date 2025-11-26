@@ -188,16 +188,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 (List<Thing> spawnedItems, IntVec3 deliveryPos) spawnResult;
 
                 // Spawn the item
+                var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
                 if (requireEquippable || requireWearable)
                 {
                     spawnResult = StoreCommandHelper.SpawnItemForPawn(thingDef, quantity, quality, material, viewerPawn, false, requireEquippable, requireWearable);
-                    var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
                     cooldownManager.RecordItemPurchase(storeItem.DefName); // or "apparel", "item", etc.
                 }
                 else
                 {
                     spawnResult = StoreCommandHelper.SpawnItemForPawn(thingDef, quantity, quality, material, viewerPawn, addToInventory);
-                    var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
                     cooldownManager.RecordItemPurchase(storeItem.DefName); // or "apparel", "item", etc.
                 }
                 List<Thing> spawnedItems = spawnResult.spawnedItems;
