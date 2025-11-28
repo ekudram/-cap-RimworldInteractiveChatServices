@@ -103,6 +103,16 @@ namespace _CAP__Chat_Interactive
             }
 
             listing.Gap(24f);
+
+            // Price List URL setting
+            listing.Label("RICS.Global.PriceListUrlDescription".Translate());
+            string newPriceListUrl = listing.TextEntryLabeled("RICS.Global.PriceListUrlLabel".Translate(), settings.priceListUrl);
+            if (!string.IsNullOrEmpty(newPriceListUrl))
+            {
+                settings.priceListUrl = newPriceListUrl;
+            }
+
+            listing.Gap(24f);
             listing.End();
             Widgets.EndScrollView();
         }

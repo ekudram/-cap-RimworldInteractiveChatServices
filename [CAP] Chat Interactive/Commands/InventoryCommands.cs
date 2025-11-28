@@ -169,7 +169,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            return $"Use lookup command, purchase list site under construction.";
+            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            return $"Check out the item prices and purchase list here: {settings.priceListUrl}";
         }
     }
 

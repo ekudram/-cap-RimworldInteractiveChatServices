@@ -67,6 +67,8 @@ namespace CAP_ChatInteractive
     {
         // Existing properties...
         public string modVersion = "1.0.9";
+        public string modVersionSaved = "";
+        public string priceListUrl = "https://github.com/ekudram/RICS-Pricelist";
         public bool EnableDebugLogging = false;
         public bool LogAllMessages = true;
         public int MessageCooldownSeconds = 1;
@@ -113,7 +115,7 @@ namespace CAP_ChatInteractive
         public string BuyPrefix = "$";
 
         // Lootbox settings
-        public IntRange LootBoxRandomCoinRange = new IntRange(1, 10000);
+        public IntRange LootBoxRandomCoinRange = new IntRange(250, 750);
         public int LootBoxesPerDay = 1;
         public bool LootBoxShowWelcomeMessage = true;
         public bool LootBoxForceOpenAllAtOnce = false;
@@ -157,6 +159,8 @@ namespace CAP_ChatInteractive
         }
         public void ExposeData()
         {
+            Scribe_Values.Look(ref modVersionSaved, "modVersionSaved", "");
+            Scribe_Values.Look(ref priceListUrl, "priceListUrl", "https://github.com/ekudram/RICS-Pricelist");
             Scribe_Values.Look(ref EnableDebugLogging, "enableDebugLogging", false);
             Scribe_Values.Look(ref LogAllMessages, "logAllMessages", true);
             Scribe_Values.Look(ref MessageCooldownSeconds, "messageCooldownSeconds", 1);
