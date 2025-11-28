@@ -15,6 +15,7 @@ namespace _CAP__Chat_Interactive.Utilities
 {
     public class RaceSettings
     {
+        public string DisplayName { get; set; } = string.Empty;
         public bool Enabled { get; set; } = true;
         public int BasePrice { get; set; } = 1000;
         public int MinAge { get; set; } = 16;
@@ -130,8 +131,11 @@ namespace _CAP__Chat_Interactive.Utilities
 
         private static RaceSettings CreateDefaultSettings(ThingDef race)
         {
+            string displayName = !string.IsNullOrEmpty(race.label) ? race.label.CapitalizeFirst() : race.defName;
+
             var settings = new RaceSettings
             {
+                DisplayName = race.label ?? race.defName,
                 Enabled = true,
                 BasePrice = CalculateDefaultPrice(race),
                 MinAge = 16,

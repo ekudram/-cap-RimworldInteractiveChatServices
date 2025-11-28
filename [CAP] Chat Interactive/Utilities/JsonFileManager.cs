@@ -415,6 +415,8 @@ namespace CAP_ChatInteractive
                 MinAge = 16,
                 MaxAge = 65,
                 AllowCustomXenotypes = true,
+                // ADD THIS LINE for default display name
+                DisplayName = raceDefName, // Use defName as fallback
                 XenotypePrices = new Dictionary<string, float>(),
                 EnabledXenotypes = new Dictionary<string, bool>()
             };
