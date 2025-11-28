@@ -3,12 +3,13 @@
 // Licensed under the AGPLv3 License. See LICENSE file in the project root for full license information.
 //
 // Processes chat messages and commands from viewers.
+using CAP_ChatInteractive.Commands.Cooldowns;
 using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Verse;
-using CAP_ChatInteractive.Commands.Cooldowns;
 
 namespace CAP_ChatInteractive
 {
@@ -347,6 +348,23 @@ namespace CAP_ChatInteractive
         {
             try
             {
+                // Check if text is empty or whitespace
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    Logger.Warning("Attempted to send empty message to user");
+                    return;
+                }
+
+                // Remove any markup tags like <color>, <b>, <i>, etc.
+                string cleanText = RemoveMarkupTags(text);
+
+                // Check again if the cleaned text is empty
+                if (string.IsNullOrWhiteSpace(cleanText))
+                {
+                    Logger.Warning("Message contained only markup tags, nothing to send");
+                    return;
+                }
+
                 var mod = CAPChatInteractiveMod.Instance;
                 if (mod == null) return;
 
@@ -354,19 +372,19 @@ namespace CAP_ChatInteractive
 
                 if (service is TwitchService twitchService)
                 {
-                    twitchService.SendMessage($"{message.Username} {text}");
+                    twitchService.SendMessage($"{message.Username} {cleanText}");
                 }
                 else if (service is YouTubeChatService youtubeService)
                 {
                     // YouTube has API limitations, use fallback
                     if (youtubeService.CanSendMessages)
                     {
-                        youtubeService.SendMessage(text);
+                        youtubeService.SendMessage(cleanText);
                     }
                     else
                     {
                         // Fallback to in-game notification for YouTube
-                        Messages.Message($"[YouTube] @{message.Username} {text}", MessageTypeDefOf.NeutralEvent);
+                        Messages.Message($"[YouTube] @{message.Username} {cleanText}", MessageTypeDefOf.NeutralEvent);
                     }
                 }
             }
@@ -376,10 +394,41 @@ namespace CAP_ChatInteractive
             }
         }
 
+        /// <summary>
+        /// Removes common markup tags from text for chat compatibility
+        /// </summary>
+        private static string RemoveMarkupTags(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            // Remove common XML-style tags: <color=...>, </color>, <b>, </b>, <i>, </i>, etc.
+            string cleaned = Regex.Replace(text, @"<[^>]+>", string.Empty);
+
+            return cleaned;
+        }
+
         public static void SendMessageToUsername(string username, string text)
         {
             try
             {
+                // Check if text is empty or whitespace
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    Logger.Warning($"Attempted to send empty message to user {username}");
+                    return;
+                }
+
+                // Remove any markup tags like <color>, <b>, <i>, etc.
+                string cleanText = RemoveMarkupTags(text);
+
+                // Check again if the cleaned text is empty
+                if (string.IsNullOrWhiteSpace(cleanText))
+                {
+                    Logger.Warning($"Message to {username} contained only markup tags, nothing to send");
+                    return;
+                }
+
                 var viewer = Viewers.GetViewer(username);
                 if (viewer == null) return;
 
@@ -391,25 +440,25 @@ namespace CAP_ChatInteractive
 
                 if (platform == "twitch" && mod.TwitchService?.IsConnected == true)
                 {
-                    mod.TwitchService.SendMessage($"@{username} {text}");
+                    mod.TwitchService.SendMessage($"@{username} {cleanText}");
                 }
                 else if (platform == "youtube" && mod.YouTubeService?.IsConnected == true)
                 {
                     // YouTube has API limitations
                     if (mod.YouTubeService.CanSendMessages)
                     {
-                        mod.YouTubeService.SendMessage($"@{username} {text}");
+                        mod.YouTubeService.SendMessage($"@{username} {cleanText}");
                     }
                     else
                     {
                         // Fallback to in-game notification for YouTube
-                        Messages.Message($"[YouTube] @{username} {text}", MessageTypeDefOf.NeutralEvent);
+                        Messages.Message($"[YouTube] @{username} {cleanText}", MessageTypeDefOf.NeutralEvent);
                     }
                 }
                 else
                 {
                     // Fallback - user platform unknown or service not connected
-                    Messages.Message($"[Chat] @{username} {text}", MessageTypeDefOf.NeutralEvent);
+                    Messages.Message($"[Chat] @{username} {cleanText}", MessageTypeDefOf.NeutralEvent);
                 }
             }
             catch (Exception ex)
