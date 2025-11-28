@@ -397,7 +397,7 @@ namespace CAP_ChatInteractive
         /// <summary>
         /// Removes common markup tags from text for chat compatibility
         /// </summary>
-        private static string RemoveMarkupTags(string text)
+        public static string RemoveMarkupTags(string text)
         {
             if (string.IsNullOrEmpty(text))
                 return text;

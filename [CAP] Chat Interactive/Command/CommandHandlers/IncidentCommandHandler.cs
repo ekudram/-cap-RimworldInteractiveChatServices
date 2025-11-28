@@ -24,20 +24,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
-                // Handle list commands first
-                if (incidentType.Equals("list", StringComparison.OrdinalIgnoreCase))
-                {
-                    return GetIncidentList();
-                }
-                else if (incidentType.StartsWith("list", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (int.TryParse(incidentType.Substring(4), out int page) && page > 0)
-                    {
-                        return GetIncidentListPage(page);
-                    }
-                    return GetIncidentList();
-                }
-
                 // Check if viewer exists
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
@@ -328,106 +314,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 _ => $"{incident.Label} occurs!"
             };
-        }
-
-        private static string GetIncidentList()
-        {
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
-            var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
-
-            var availableIncidents = GetAvailableIncidents()
-                .Select(kvp =>
-                {
-                    string status = "✅";
-                    if (cooldownManager != null && settings.KarmaTypeLimitsEnabled)
-                    {
-                        string eventType = GetKarmaTypeForIncident(kvp.Value.KarmaType);
-                        if (!cooldownManager.CanUseEvent(eventType, settings))
-                        {
-                            status = "❌";
-                        }
-                    }
-                    return $"{kvp.Value.Label} ({kvp.Value.BaseCost}{currencySymbol}){status}";
-                })
-                .Take(6)
-                .ToList();
-
-            // Add cooldown summary if limits are enabled
-            string cooldownSummary = "";
-            if (settings.KarmaTypeLimitsEnabled && cooldownManager != null)
-            {
-                cooldownSummary = GetCooldownSummary(settings, cooldownManager);
-            }
-
-            var message = "Available events: " + string.Join(", ", availableIncidents);
-
-            if (!string.IsNullOrEmpty(cooldownSummary))
-            {
-                message += $" | {cooldownSummary}";
-            }
-
-            if (GetAvailableIncidents().Count > 6)
-            {
-                message += "... (see more with !event list2)";
-            }
-
-            return message;
-        }
-
-        private static string GetCooldownSummary(CAPGlobalChatSettings settings, GlobalCooldownManager cooldownManager)
-        {
-            var summaries = new List<string>();
-
-            // Global event limit
-            if (settings.EventCooldownsEnabled && settings.EventsperCooldown > 0)
-            {
-                int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
-                summaries.Add($"Total: {totalEvents}/{settings.EventsperCooldown}");
-            }
-
-            if (settings.MaxGoodEvents > 0)
-            {
-                var goodRecord = cooldownManager.data.EventUsage.GetValueOrDefault("good");
-                int goodUsed = goodRecord?.CurrentPeriodUses ?? 0;
-                summaries.Add($"Good: {goodUsed}/{settings.MaxGoodEvents}");
-            }
-
-            if (settings.MaxBadEvents > 0)
-            {
-                var badRecord = cooldownManager.data.EventUsage.GetValueOrDefault("bad");
-                int badUsed = badRecord?.CurrentPeriodUses ?? 0;
-                summaries.Add($"Bad: {badUsed}/{settings.MaxBadEvents}");
-            }
-
-            if (settings.MaxNeutralEvents > 0)
-            {
-                var neutralRecord = cooldownManager.data.EventUsage.GetValueOrDefault("neutral");
-                int neutralUsed = neutralRecord?.CurrentPeriodUses ?? 0;
-                summaries.Add($"Neutral: {neutralUsed}/{settings.MaxNeutralEvents}");
-            }
-
-            return string.Join(" | ", summaries);
-        }
-
-        private static string GetIncidentListPage(int page)
-        {
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
-
-            var availableIncidents = GetAvailableIncidents()
-                .Select(kvp => $"{kvp.Value.Label} ({kvp.Value.BaseCost}{currencySymbol})")
-                .ToList();
-
-            int itemsPerPage = 6;
-            int startIndex = (page - 1) * itemsPerPage;
-            int endIndex = Math.Min(startIndex + itemsPerPage, availableIncidents.Count);
-
-            if (startIndex >= availableIncidents.Count)
-                return "No more events to display.";
-
-            var pageItems = availableIncidents.Skip(startIndex).Take(itemsPerPage);
-            return $"Available events (page {page}): " + string.Join(", ", pageItems);
         }
 
         [DebugAction("CAP", "List Filtered Incidents", allowedGameStates = AllowedGameStates.Playing)]

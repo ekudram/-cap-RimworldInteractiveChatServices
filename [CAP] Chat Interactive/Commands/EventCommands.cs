@@ -17,7 +17,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             if (args.Length == 0)
             {
-                return "Usage: !event <event_name> or !event list. Examples: !event resourcepod, !event heatwave, !event psychicsoothe";
+                return "Usage: !event <event_name> or !lookup event <name>.";
             }
 
             string incidentType = string.Join(" ", args).Trim();
