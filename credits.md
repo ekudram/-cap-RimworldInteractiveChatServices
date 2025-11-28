@@ -2,10 +2,13 @@
 
 This project stands on the shoulders of the open source community and the RimWorld modding ecosystem.
 
+## Assets
+- **RimWorld Font**: Used for iconography with permission from Tynan Sylvester/Ludeon Studios. [Forum Link](https://ludeon.com/forums/index.php?topic=11022.0)
+
 ## Open Source Dependencies
 This project uses the following NuGet packages:
 - **TwitchLib.Client** (MIT License) - Twitch chat integration
-- **Newtonsoft.Json** (MIT License) - JSON serialization  
+- **Newtonsoft.Json** (MIT License) - JSON serialization
 - **Google.Apis.YouTube.v3** (Apache 2.0 License) - YouTube Live Chat integration
 - **Krafs.Rimworld.Ref** - RimWorld API references
 
