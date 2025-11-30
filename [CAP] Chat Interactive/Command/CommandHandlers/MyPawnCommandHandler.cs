@@ -16,7 +16,8 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Handles the !mypawn command and its subcommands to provide detailed information about the viewer's assigned pawn.
-using CAP_ChatInteractive;
+
+
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -57,9 +58,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Route to appropriate handler based on subcommand
                 switch (subCommand)
                 {
-                    case "health":
                     case "body":
                         return HandleBodyInfo(pawn, args);
+                    case "health":
+                        return HandlehealthInfo(pawn, args);
                     case "gear":
                         return HandleGearInfo(pawn, args);
                     case "kills":
@@ -89,7 +91,110 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return "An error occurred while processing your pawn information.";
             }
         }
+        // === health ===
+        // Viewer requested feature
+        private static string HandlehealthInfo(Pawn pawn, string[] args)
+        {
+            var report = new StringBuilder();
+            report.AppendLine("❤️ Health:");
 
+            try
+            {
+                // Core health capacities - only the most important ones
+                var capacities = new[]
+                {
+            PawnCapacityDefOf.Consciousness,
+            PawnCapacityDefOf.Sight,
+            PawnCapacityDefOf.Hearing,
+            PawnCapacityDefOf.Moving,
+            PawnCapacityDefOf.Manipulation,
+            PawnCapacityDefOf.Talking,
+            PawnCapacityDefOf.Breathing,
+            PawnCapacityDefOf.BloodFiltration,
+            PawnCapacityDefOf.BloodPumping,
+        };
+
+                foreach (var capacity in capacities)
+                {
+                    if (capacity == null) continue;
+
+                    var capacityValue = pawn.health.capacities.GetLevel(capacity);
+                    // string status = GetCapacityStatus(capacityValue);
+                    // string emoji = GetCapacityEmoji(capacityValue);
+                    report.AppendLine($"• {capacity.LabelCap}:  ({capacityValue.ToStringPercent()})");
+                    //report.AppendLine($"• {capacity.LabelCap}: {emoji} {status} ({capacityValue.ToStringPercent()})");
+                    // alt
+                    // report.AppendLine($"• {capacity.LabelCap}: {emoji} ({capacityValue.ToStringPercent()})");
+                }
+
+                // Add pain
+                float pain = pawn.health.hediffSet.PainTotal;
+                string painStatus = GetPainStatus(pain);
+                string painEmoji = GetPainEmoji(pain);
+                report.AppendLine($"• Pain: {painEmoji} {painStatus} ({pain.ToStringPercent()})");
+
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in health info: {ex}");
+                return "Error retrieving health information.";
+            }
+
+            return report.ToString();
+        }
+
+        private static string GetCapacityStatus(float level)
+        {
+            return level switch
+            {
+                >= 0.95f => "Perfect",
+                >= 0.85f => "Excellent",
+                >= 0.70f => "Good",
+                >= 0.50f => "Impaired",
+                >= 0.30f => "Poor",
+                >= 0.10f => "Very Poor",
+                > 0f => "Critical",
+                _ => "None"
+            };
+        }
+
+        private static string GetCapacityEmoji(float level)
+        {
+            return level switch
+            {
+                >= 0.85f => "🟢",
+                >= 0.60f => "🟡",
+                >= 0.30f => "🟠",
+                > 0f => "🔴",
+                _ => "⚫"
+            };
+        }
+
+        private static string GetPainStatus(float painLevel)
+        {
+            return painLevel switch
+            {
+                >= 0.80f => "Extreme",
+                >= 0.60f => "Severe",
+                >= 0.40f => "Moderate",
+                >= 0.20f => "Minor",
+                >= 0.05f => "Negligible",
+                _ => "None"
+            };
+        }
+
+        private static string GetPainEmoji(float painLevel)
+        {
+            return painLevel switch
+            {
+                >= 0.60f => "😫",
+                >= 0.40f => "😣",
+                >= 0.20f => "😐",
+                >= 0.05f => "🙂",
+                _ => "😊"
+            };
+        }
+        // === Body ===
         private static string HandleBodyInfo(Pawn pawn, string[] args)
         {
             if (pawn.health?.hediffSet?.hediffs == null || pawn.health.hediffSet.hediffs.Count == 0)
@@ -220,7 +325,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (healthPercent >= 0.3f) return "Poor 🟠";
             return "Critical 🔴";
         }
-
+        // === Gear ===
         private static string HandleGearInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
@@ -253,7 +358,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                     // Add hit points if damaged
                     string hitPoints = item.HitPoints != item.MaxHitPoints ?
-                        $" 🩹{((float)item.HitPoints / item.MaxHitPoints).ToStringPercent()}" : "";
+                        $" {((float)item.HitPoints / item.MaxHitPoints).ToStringPercent()}" : "";
 
                     report.AppendLine($"  • {baseName}{quality}{hitPoints}");
                 }
@@ -688,9 +793,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            // Viewer friends (top 5 by opinion)
+            // Viewer friends (top 5 by opinion) - EXCLUDE family members
             var viewerFriends = assignmentManager.GetAllViewerPawns()
-                .Where(p => p != pawn && pawn.relations.OpinionOf(p) > 10)
+                .Where(p => p != pawn &&
+                       pawn.relations.OpinionOf(p) > 10 &&
+                       !family.Contains(p)) // Exclude family members
                 .OrderByDescending(p => pawn.relations.OpinionOf(p))
                 .Take(5)
                 .ToList();
@@ -706,9 +813,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            // Viewer rivals (top 5 by negative opinion)
+            // Viewer rivals (top 5 by negative opinion) - EXCLUDE family members
             var viewerRivals = assignmentManager.GetAllViewerPawns()
-                .Where(p => p != pawn && pawn.relations.OpinionOf(p) < -10)
+                .Where(p => p != pawn &&
+                       pawn.relations.OpinionOf(p) < -10 &&
+                       !family.Contains(p)) // Exclude family members
                 .OrderBy(p => pawn.relations.OpinionOf(p))
                 .Take(5)
                 .ToList();
@@ -724,11 +833,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            // Overall social summary
-            int totalFriends = assignmentManager.GetAllViewerPawns().Count(p => p != pawn && pawn.relations.OpinionOf(p) > 10);
-            int totalRivals = assignmentManager.GetAllViewerPawns().Count(p => p != pawn && pawn.relations.OpinionOf(p) < -10);
+            // Overall social summary - EXCLUDE family members from counts
+            int totalFriends = assignmentManager.GetAllViewerPawns()
+                .Count(p => p != pawn && pawn.relations.OpinionOf(p) > 10 && !family.Contains(p));
+            int totalRivals = assignmentManager.GetAllViewerPawns()
+                .Count(p => p != pawn && pawn.relations.OpinionOf(p) < -10 && !family.Contains(p));
 
-            report.AppendLine($"📊 Social Summary: {totalFriends} viewer friends, {totalRivals} viewer rivals");
+            report.AppendLine($"📊 Social Summary: {family.Count} family, {totalFriends} viewer friends, {totalRivals} viewer rivals");
 
             if (family.Count == 0 && viewerFriends.Count == 0 && viewerRivals.Count == 0)
             {
@@ -749,7 +860,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (pawn.relations.DirectRelationExists(PawnRelationDefOf.ExSpouse, relative)) return "Ex-Spouse 💔";
             if (pawn.relations.DirectRelationExists(PawnRelationDefOf.ExLover, relative)) return "Ex-Lover 💔";
 
-            return "Relative";
+            // Check for indirect relations if no direct relation found
+            if (pawn.relations.FamilyByBlood.Contains(relative)) return "Blood Relative 👨‍👩‍👧‍👦";
+            if (pawn.GetRelations(relative).Any()) return "Relative";
+
+            return "Relation"; // Fallback
         }
 
         private static string GetViewerNameFromPawn(Pawn pawn)
@@ -802,25 +917,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 string skillName = StripTags(skill.def.LabelCap);
                 string passionEmoji = GetPassionEmoji(skill.passion);
-                string levelDescription = GetSkillLevelDescriptionDetailed(skill.Level);
-
-                report.AppendLine($"• {passionEmoji}{skillName}: {skill.Level} {levelDescription}");
+                // Remove extra emote
+                // string levelDescription = GetSkillLevelDescriptionDetailed(skill.Level);
+                // report.AppendLine($"• {passionEmoji}{skillName}: {skill.Level} {levelDescription}");
+                report.AppendLine($"• {passionEmoji}{skillName}: {skill.Level} ");
             }
 
-            // Add learning summary
-            var burningPassions = skills.Count(s => s.passion == Passion.Major);
-            var minorPassions = skills.Count(s => s.passion == Passion.Minor);
+            //// Add learning summary
+            //var burningPassions = skills.Count(s => s.passion == Passion.Major);
+            //var minorPassions = skills.Count(s => s.passion == Passion.Minor);
 
-            if (burningPassions > 0 || minorPassions > 0)
-            {
-                report.AppendLine($"📚 Passions: {burningPassions} 🔥🔥, {minorPassions} 🔥");
-            }
+            //if (burningPassions > 0 || minorPassions > 0)
+            //{
+            //    report.AppendLine($"📚 Passions: {burningPassions} 🔥🔥, {minorPassions} 🔥");
+            //}
 
             // Top 3 skills
             var topSkills = skills.OrderByDescending(s => s.Level).Take(3);
             if (topSkills.Any(s => s.Level >= 10))
             {
-                report.Append("🏆 Best Skills: ");
+                report.Append("🏆 Top Skills: ");
                 var topSkillNames = topSkills.Select(s => $"{StripTags(s.def.LabelCap)} ({s.Level})");
                 report.AppendLine(string.Join(", ", topSkillNames));
             }
@@ -1030,21 +1146,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return report.ToString();
         }
 
-        private static string TruncateDescription(string description, int maxLength)
-        {
-            if (string.IsNullOrEmpty(description) || description.Length <= maxLength)
-                return description;
-
-            // Find the last space before maxLength to avoid breaking words
-            int lastSpace = description.LastIndexOf(' ', maxLength - 3);
-            if (lastSpace > 0)
-            {
-                return description.Substring(0, lastSpace) + "...";
-            }
-
-            return description.Substring(0, maxLength - 3) + "...";
-        }
-
         private static string HandleTraitsInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
@@ -1090,197 +1191,114 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 pawn.workSettings.EnableAndInitialize();
             }
 
-            // Handle priority changes if arguments provided
-            if (args.Length > 0)
+            // If no args, show top 5 highest priority work types
+            if (args.Length == 0)
             {
-                return HandleWorkPriorityChanges(pawn, args);
+                return GetTopWorkPriorities(pawn);
             }
 
-            // Default: show work priority summary
-            return GetWorkPrioritySummary(pawn);
+            // Handle individual work type lookups and changes
+            return HandleIndividualWorkCommands(pawn, args);
         }
 
-        private static string HandleWorkPriorityChanges(Pawn pawn, string[] args)
+        private static string GetTopWorkPriorities(Pawn pawn)
         {
-            // Check if work settings are enabled and initialized
-            if (pawn.workSettings == null || !pawn.workSettings.EverWork)
+            var report = new StringBuilder();
+            report.AppendLine("💼 Top Work Priorities:");
+
+            // Get work types with priority 1 (highest)
+            var topPriorityWork = WorkTypeDefsUtility.WorkTypeDefsInPriorityOrder
+                .Where(w => !pawn.WorkTypeIsDisabled(w) && pawn.workSettings.GetPriority(w) == 1)
+                .Take(5)
+                .ToList();
+
+            if (topPriorityWork.Count > 0)
             {
-                return $"{pawn.Name} is not capable of work.";
+                report.AppendLine("🔥 Highest (1):");
+                foreach (var workType in topPriorityWork)
+                {
+                    string label = StripTags(workType.pawnLabel);
+                    report.AppendLine($"  • {label}");
+                }
+            }
+            else
+            {
+                report.AppendLine("No work set to highest priority");
             }
 
-            // Ensure work settings are initialized
-            if (!pawn.workSettings.Initialized)
+            report.AppendLine();
+            report.AppendLine("💡 Usage: !mypawn work <worktype> [1-4]");
+            // report.AppendLine("Examples: !mypawn work doctor | !mypawn work firefight 1 | !mypawn work growing 2 cleaning 1");
+
+            return report.ToString();
+        }
+
+        private static string HandleIndividualWorkCommands(Pawn pawn, string[] args)
+        {
+            var results = new List<string>();
+
+            // Process args in pairs (worktype, priority) or single (worktype lookup)
+            for (int i = 0; i < args.Length; i++)
             {
-                pawn.workSettings.EnableAndInitialize();
-            }
+                string workTypeName = args[i];
 
-            var changes = new List<string>();
-
-            foreach (var arg in args)
-            {
-                // Parse worktype=priority format (e.g., "firefight=1" or "doctor=3")
-                var parts = arg.Split('=');
-                if (parts.Length != 2)
-                {
-                    return $"Invalid format: {arg}. Use: worktype=priority (e.g., firefight=1)";
-                }
-
-                string workTypeName = parts[0].ToLower().Trim();
-                if (!int.TryParse(parts[1], out int newPriority) || newPriority < 0 || newPriority > 4)
-                {
-                    return $"Invalid priority: {parts[1]}. Must be 0-4.";
-                }
-
-                // Find the work type with proper null checking
-                var workType = DefDatabase<WorkTypeDef>.AllDefs
-                    .Where(w => w != null) // Ensure workType is not null
-                    .FirstOrDefault(w =>
-                        (!string.IsNullOrEmpty(w.defName) && w.defName.Equals(workTypeName, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrEmpty(w.defName) && w.defName.ToLower().Contains(workTypeName)) ||
-                        (!string.IsNullOrEmpty(w.label) && w.label.ToLower().Contains(workTypeName)));
-
+                // Find the work type
+                var workType = FindWorkType(workTypeName);
                 if (workType == null)
                 {
-                    // Try a more flexible search
-                    workType = DefDatabase<WorkTypeDef>.AllDefs
-                        .Where(w => w != null)
-                        .FirstOrDefault(w =>
-                            (!string.IsNullOrEmpty(w.defName) && w.defName.ToLower().Replace("_", "").Replace(" ", "").Contains(workTypeName)) ||
-                            (!string.IsNullOrEmpty(w.label) && w.label.ToLower().Replace(" ", "").Contains(workTypeName)));
-                }
-
-                if (workType == null)
-                {
-                    // Get some available work types for the error message
-                    var sampleWorkTypes = WorkTypeDefsUtility.WorkTypeDefsInPriorityOrder
-                        .Where(w => w != null && !string.IsNullOrEmpty(w.defName))
-                        .Take(5)
-                        .Select(w => w.defName)
-                        .ToList();
-
-                    return $"Unknown work type: '{workTypeName}'. Available types include: {string.Join(", ", sampleWorkTypes)}. Use !mypawn work to see all available work types.";
+                    results.Add($"❌ Unknown work: {workTypeName}");
+                    continue;
                 }
 
                 // Check if work type is disabled for this pawn
                 if (pawn.WorkTypeIsDisabled(workType))
                 {
-                    return $"{workType.label} is disabled for {pawn.Name}.";
+                    results.Add($"❌ {workType.label} disabled");
+                    continue;
                 }
 
-                // Change the priority using RimWorld's API
-                int oldPriority = pawn.workSettings.GetPriority(workType);
-                pawn.workSettings.SetPriority(workType, newPriority);
+                // If next arg exists and is a number 1-4, set priority
+                if (i + 1 < args.Length && int.TryParse(args[i + 1], out int newPriority) && newPriority >= 0 && newPriority <= 4)
+                {
+                    int oldPriority = pawn.workSettings.GetPriority(workType);
+                    pawn.workSettings.SetPriority(workType, newPriority);
 
-                string workLabel = string.IsNullOrEmpty(workType.label) ? workType.defName : workType.label;
-                changes.Add($"{workLabel}: {oldPriority}→{newPriority}");
+                    string priorityName = GetPriorityName(newPriority);
+                    results.Add($"✅ {workType.label}: {oldPriority}→{newPriority} ({priorityName})");
+                    i++; // Skip the priority arg since we used it
+                }
+                else
+                {
+                    // Just show current priority
+                    int currentPriority = pawn.workSettings.GetPriority(workType);
+                    string priorityName = GetPriorityName(currentPriority);
+                    results.Add($"📋 {workType.label}: {currentPriority} ({priorityName})");
+                }
             }
 
-            return $"Work priorities updated: {string.Join(", ", changes)}";
+            return string.Join(" | ", results);
         }
 
-        private static string GetWorkPrioritySummary(Pawn pawn)
+        private static WorkTypeDef FindWorkType(string workTypeName)
         {
-            var report = new StringBuilder();
-            report.AppendLine($"💼 Work Priorities: ");
+            string searchName = workTypeName.ToLower().Replace("_", "").Replace(" ", "");
 
-            // Get all work types in priority order
-            var workTypes = WorkTypeDefsUtility.WorkTypeDefsInPriorityOrder
-                .Where(w => !pawn.WorkTypeIsDisabled(w))
-                .ToList();
-
-            if (workTypes.Count == 0)
-            {
-                return $"{pawn.Name} has no available work types.";
-            }
-
-            // Group by priority level (4=highest, 0=disabled)
-            var byPriority = workTypes
-                .Select(w => new { WorkType = w, Priority = pawn.workSettings.GetPriority(w) })
-                .Where(x => x.Priority > 0) // Only show enabled work
-                .GroupBy(x => x.Priority)
-                .OrderByDescending(g => g.Key) // Highest priority first
-                .ToList();
-
-            foreach (var priorityGroup in byPriority)
-            {
-                string priorityName = GetPriorityName(priorityGroup.Key);
-                var workNames = priorityGroup.Select(x =>
-                {
-                    string label = StripTags(x.WorkType.LabelCap);
-                    return string.IsNullOrEmpty(label) ? x.WorkType.defName : label;
-                })
-                .Where(name => !string.IsNullOrEmpty(name))
-                .OrderBy(n => n)
-                .ToList();
-
-                if (workNames.Count > 0)
-                {
-                    report.AppendLine($"• {priorityName}: {string.Join(", ", workNames)}");
-                }
-            }
-
-            // Show disabled work types
-            var disabledWork = workTypes
-                .Where(w => pawn.workSettings.GetPriority(w) == 0)
-                .Select(w =>
-                {
-                    string label = StripTags(w.LabelCap);
-                    return string.IsNullOrEmpty(label) ? w.defName : label;
-                })
-                .Where(name => !string.IsNullOrEmpty(name))
-                .OrderBy(n => n)
-                .ToList();
-
-            if (disabledWork.Count > 0)
-            {
-                report.AppendLine($"• Disabled: {string.Join(", ", disabledWork.Take(5))}");
-                if (disabledWork.Count > 5)
-                {
-                    report.AppendLine($"  ... and {disabledWork.Count - 5} more");
-                }
-            }
-
-            report.AppendLine();
-            report.AppendLine("💡 Usage: !mypawn work worktype=priority (e.g., !mypawn work doctor=3 firefight=1)");
-            report.AppendLine("Priorities: 4=🔥, 3=💪, 2=👍, 1=👌, 0=❌");
-
-            return report.ToString();
+            return DefDatabase<WorkTypeDef>.AllDefs
+                .FirstOrDefault(w => w != null &&
+                    (!string.IsNullOrEmpty(w.defName) && w.defName.ToLower().Replace("_", "").Contains(searchName)) ||
+                    (!string.IsNullOrEmpty(w.label) && w.label.ToLower().Replace(" ", "").Contains(searchName)));
         }
 
         private static string GetPriorityName(int priority)
         {
             return priority switch
             {
-                4 => "🔥 Highest",
-                3 => "💪 High",
-                2 => "👍 Medium",
-                1 => "👌 Low",
+                1 => "🔥 Highest",
+                2 => "💪 High",
+                3 => "👍 Medium",
+                4 => "👌 Low",
                 _ => "❌ Disabled"
             };
-        }
-
-        private static string GetAvailableWorkTypes(Pawn pawn)
-        {
-            var availableWorkTypes = WorkTypeDefsUtility.WorkTypeDefsInPriorityOrder
-                .Where(w => w != null && !pawn.WorkTypeIsDisabled(w))
-                .Select(w => $"{w.defName} ({w.label})")
-                .ToList();
-
-            return string.Join(", ", availableWorkTypes.Take(10)); // Show first 10
-        }
-
-        // Helper method to check if pawn is valid and accessible
-        private static bool IsPawnValid(Pawn pawn)
-        {
-            return pawn != null && !pawn.Dead && pawn.Spawned;
-        }
-
-        // Helper method to format health percentage with color coding
-        private static string FormatHealthPercentage(float percent)
-        {
-            if (percent >= 0.8f) return $"<color=green>{percent.ToStringPercent()}</color>";
-            if (percent >= 0.5f) return $"<color=yellow>{percent.ToStringPercent()}</color>";
-            return $"<color=red>{percent.ToStringPercent()}</color>";
         }
     }
 }

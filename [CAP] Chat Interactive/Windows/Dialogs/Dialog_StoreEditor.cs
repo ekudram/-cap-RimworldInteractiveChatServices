@@ -1041,7 +1041,7 @@ namespace CAP_ChatInteractive
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
                 if (thingDef != null)
                 {
-                    item.BasePrice = (int)(thingDef.BaseMarketValue * 1.67f);
+                    item.BasePrice = (int)(thingDef.BaseMarketValue);
                     item.Enabled = true;
                 }
             }

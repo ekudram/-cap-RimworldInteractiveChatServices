@@ -57,12 +57,20 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return $"'{args[0]}' is not a valid color. Use color names or hex codes like #FF0000.";
             }
 
+            // Debug: Log what color we're trying to set
+            Log.Message($"Setting favorite color: {args[0]} -> RGBA({color.Value.r}, {color.Value.g}, {color.Value.b}, {color.Value.a})");
+
             // Set the favorite color
             bool success = SetPawnFavoriteColor(viewerPawn, color.Value);
 
             if (success)
             {
                 string colorName = GetColorName(color.Value);
+                // Also log what ColorDef was actually set
+                if (viewerPawn.story.favoriteColor != null)
+                {
+                    Log.Message($"Successfully set favorite color to: {viewerPawn.story.favoriteColor.defName} - RGBA({viewerPawn.story.favoriteColor.color.r}, {viewerPawn.story.favoriteColor.color.g}, {viewerPawn.story.favoriteColor.color.b}, {viewerPawn.story.favoriteColor.color.a})");
+                }
                 return $"Your pawn's favorite color has been set to {colorName}!";
             }
             else
@@ -95,9 +103,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             if (GeneratedColors.TryGetValue(colorHex, out ColorDef colorDef))
                 return colorDef;
 
-            // Always use closest existing ColorDef - never create new ones
+            // Search through ALL ColorDefs, not just Misc and Hair
             colorDef = DefDatabase<ColorDef>.AllDefs
-                .Where(def => def.colorType == ColorType.Misc || def.colorType == ColorType.Hair)
                 .OrderBy(def => ColorDistance(def.color, color))
                 .FirstOrDefault();
 
@@ -107,14 +114,29 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return colorDef;
             }
 
-            // Fallback to a safe default
-            return DefDatabase<ColorDef>.GetNamed("White");
+            // Better fallback - find the closest color from all available ColorDefs
+            // This should never happen since DefDatabase should always have colors, but just in case
+            Log.Warning($"No ColorDef found for color {colorHex}, using closest available color");
+
+            // Try to find any color def that exists
+            var fallback = DefDatabase<ColorDef>.AllDefs.FirstOrDefault();
+            if (fallback != null)
+            {
+                GeneratedColors[colorHex] = fallback;
+                return fallback;
+            }
+
+            // Absolute last resort
+            return DefDatabase<ColorDef>.GetNamedSilentFail("White") ?? new ColorDef() { color = Color.white };
         }
 
         private static float ColorDistance(Color a, Color b)
         {
-            // Calculate a simple color distance (Manhattan distance)
-            return Math.Abs(a.r - b.r) + Math.Abs(a.g - b.g) + Math.Abs(a.b - b.b);
+            // Use Euclidean distance for better color matching
+            float rDiff = a.r - b.r;
+            float gDiff = a.g - b.g;
+            float bDiff = a.b - b.b;
+            return Mathf.Sqrt(rDiff * rDiff + gDiff * gDiff + bDiff * bDiff);
         }
 
 
