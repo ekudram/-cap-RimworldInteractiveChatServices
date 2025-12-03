@@ -43,7 +43,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             int count = lootboxComponent.HowManyLootboxesDoesViewerHave(messageWrapper.Username);
             string plural = count != 1 ? "es" : "";
-            return $"@{messageWrapper.Username} you currently have {count} lootbox{plural}.";
+            return $" you currently have {count} lootbox{plural}.";
         }
 
         private static string HandleOpenLootboxCommand(ChatMessageWrapper messageWrapper, LootBoxComponent lootboxComponent)
@@ -71,11 +71,13 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 viewer.GiveCoins(coins);
                 lootboxComponent.ViewersLootboxes[viewer.Username]--;
 
-                return $"@{messageWrapper.Username} you open a lootbox and discover: {coins} coins!";
+                var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
+
+                return $" you open a lootbox and discover: {coins} {currencySymbol}!";
             }
             else
             {
-                return $"@{messageWrapper.Username} you do not have any lootboxes.";
+                return $" you do not have any lootboxes.";
             }
         }
 
@@ -83,7 +85,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             int lootboxCount = lootboxComponent.HowManyLootboxesDoesViewerHave(messageWrapper.Username);
             if (lootboxCount <= 0)
-                return $"@{messageWrapper.Username} you do not have any lootboxes.";
+                return $" you do not have any lootboxes.";
 
             int totalCoins = 0;
             for (int i = 0; i < lootboxCount; i++)
@@ -95,7 +97,9 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             viewer.GiveCoins(totalCoins);
             lootboxComponent.ViewersLootboxes[viewer.Username] = 0;
 
-            return $"@{messageWrapper.Username} you open all your lootboxes and discover: {totalCoins} coins!";
+            var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
+
+            return $"@ you open all your lootboxes and discover: {totalCoins} {currencySymbol}!";
         }
     }
 }

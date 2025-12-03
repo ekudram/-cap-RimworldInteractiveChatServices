@@ -945,7 +945,7 @@ namespace CAP_ChatInteractive
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
                 if (thingDef != null)
                 {
-                    item.BasePrice = (int)(thingDef.BaseMarketValue * 1.67f);
+                    item.BasePrice = (int)(thingDef.BaseMarketValue);  // Rimworld Base Market value
                     SoundDefOf.Checkbox_TurnedOn.PlayOneShotOnCamera(); // ✅ RimWorld native sound
                     StoreInventory.SaveStoreToJson();
                 }
