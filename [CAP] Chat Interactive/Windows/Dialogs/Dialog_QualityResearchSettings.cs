@@ -16,16 +16,18 @@
 using CAP_ChatInteractive;
 using RimWorld;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Verse;
 using Verse.Sound;
+using ColorLibrary = CAP_ChatInteractive.ColorLibrary;
 
 public class Dialog_QualityResearchSettings : Window
 {
     private Vector2 scrollPosition = Vector2.zero;
     private CAPChatInteractiveSettings settings;
 
-    public override Vector2 InitialSize => new Vector2(452f, 600f);
+    public override Vector2 InitialSize => new Vector2(600f, 650f); // Increased from 600f to 650f
 
     public Dialog_QualityResearchSettings(CAPChatInteractiveSettings settings)
     {
@@ -52,7 +54,7 @@ public class Dialog_QualityResearchSettings : Window
 
     private void DrawContent(Rect rect)
     {
-        Rect viewRect = new Rect(0f, 0f, rect.width - 20f, 400f);
+        Rect viewRect = new Rect(0f, 0f, rect.width - 20f, 420f); // Increased height for the button
 
         Widgets.BeginScrollView(rect, ref scrollPosition, viewRect);
         {
@@ -67,6 +69,10 @@ public class Dialog_QualityResearchSettings : Window
             // Info text
             Rect infoRect = new Rect(0f, y + 210f, viewRect.width, 60f);
             DrawInfoText(infoRect);
+
+            // Reset to defaults button
+            Rect buttonRect = new Rect(0f, y + 270f, 200f, 30f);
+            DrawResetButton(buttonRect);
         }
         Widgets.EndScrollView();
     }
@@ -109,6 +115,9 @@ public class Dialog_QualityResearchSettings : Window
         return rect.height;
     }
 
+    // Add this dictionary to store buffers for each quality type
+    private Dictionary<string, string> qualityMultiplierBuffers = new Dictionary<string, string>();
+
     private void DrawQualityCheckbox(Rect rect, string label, ref bool value, Color color, string qualityType)
     {
         float y = rect.y + 5f;
@@ -150,11 +159,21 @@ public class Dialog_QualityResearchSettings : Window
         // Input field for multiplier
         Rect inputRect = new Rect(multiplierLabelRect.xMax + 5f, rect.y, 60f, rect.height);
 
-        // Convert multiplier to percentage for display (0.5 -> 50)
-        string buffer = (multiplier * 100).ToString("F0");
+        // Initialize buffer for this quality type if it doesn't exist
+        if (!qualityMultiplierBuffers.ContainsKey(qualityType))
+        {
+            // Convert multiplier to percentage for display (0.5 -> 50)
+            qualityMultiplierBuffers[qualityType] = (multiplier * 100).ToString("F0");
+        }
 
-        // Draw input field
+        // Get the buffer for this quality type
+        string buffer = qualityMultiplierBuffers[qualityType];
+
+        // Draw input field - this will update both multiplier and buffer
         Widgets.TextFieldNumeric(inputRect, ref multiplier, ref buffer, 0f, 99999f);
+
+        // Store the updated buffer back
+        qualityMultiplierBuffers[qualityType] = buffer;
 
         // Save back to the correct setting
         switch (qualityType)
@@ -200,12 +219,13 @@ public class Dialog_QualityResearchSettings : Window
     private void DrawInfoText(Rect rect)
     {
         Text.Font = GameFont.Tiny;
-        GUI.color = Color.gray;
+        GUI.color = ColorLibrary.LightGray;
 
         string infoText = "These settings affect the purchase commands:\n" +
                          "• Quality levels determine what qualities viewers can request\n" +
                          "• Multipliers affect the price of items (100% = normal price)\n" +
                          "• Research settings control whether items require research\n" +
+                         "• Use 'Reset Multipliers' button to restore defaults\n" +
                          "Changes take effect immediately for new purchases.";
 
         Widgets.Label(rect, infoText);
@@ -213,6 +233,44 @@ public class Dialog_QualityResearchSettings : Window
         Text.Font = GameFont.Small;
         GUI.color = Color.white;
     }
+
+    private void DrawResetButton(Rect rect)
+    {
+        if (Widgets.ButtonText(rect, "Reset Multipliers to Defaults"))
+        {
+            SoundDefOf.Click.PlayOneShotOnCamera();
+
+            // Reset all multipliers to default values
+            settings.GlobalSettings.AwfulQuality = 0.5f;
+            settings.GlobalSettings.PoorQuality = 0.75f;
+            settings.GlobalSettings.NormalQuality = 1.0f;
+            settings.GlobalSettings.GoodQuality = 1.5f;
+            settings.GlobalSettings.ExcellentQuality = 2.0f;
+            settings.GlobalSettings.MasterworkQuality = 3.0f;
+            settings.GlobalSettings.LegendaryQuality = 5.0f;
+
+            // Clear the buffers so they'll be re-initialized with the new values
+            qualityMultiplierBuffers.Clear();
+
+            // Show a confirmation message
+            Messages.Message("Quality multipliers reset to default values", MessageTypeDefOf.PositiveEvent);
+
+            // Force a UI refresh
+            Find.WindowStack.TryRemove(this, true);
+            Find.WindowStack.Add(new Dialog_QualityResearchSettings(settings));
+        }
+
+        // Add a tooltip
+        TooltipHandler.TipRegion(rect, "Reset all quality price multipliers to their default values:\n" +
+                                      "• Awful: 50%\n" +
+                                      "• Poor: 75%\n" +
+                                      "• Normal: 100%\n" +
+                                      "• Good: 150%\n" +
+                                      "• Excellent: 200%\n" +
+                                      "• Masterwork: 300%\n" +
+                                      "• Legendary: 500%");
+    }
+
     public override void PostClose()
     {
         base.PostClose();
