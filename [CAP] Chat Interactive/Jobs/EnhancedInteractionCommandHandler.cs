@@ -94,7 +94,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 Viewers.SaveViewers();
 
-                return $"{initiatorPawn.Name} is going to visit {targetPawn.Name} for a {interaction.label}...";
+                return $" is going to visit {targetPawn.Name} for a {interaction.label}...";
             }
             catch (Exception ex)
             {
