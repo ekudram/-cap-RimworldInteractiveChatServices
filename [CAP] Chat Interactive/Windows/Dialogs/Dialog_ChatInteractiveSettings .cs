@@ -16,7 +16,6 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // A dialog window for configuring Chat Interactive settings with multiple tabs
 using _CAP__Chat_Interactive;
-using System.Collections.Generic;
 using UnityEngine;
 using Verse;
 

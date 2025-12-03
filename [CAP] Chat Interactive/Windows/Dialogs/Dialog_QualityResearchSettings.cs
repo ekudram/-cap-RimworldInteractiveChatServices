@@ -13,6 +13,9 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+//
+// Dialog window for Quality and Research settings 
+//
 using CAP_ChatInteractive;
 using RimWorld;
 using System;
@@ -26,8 +29,8 @@ public class Dialog_QualityResearchSettings : Window
 {
     private Vector2 scrollPosition = Vector2.zero;
     private CAPChatInteractiveSettings settings;
-
-    public override Vector2 InitialSize => new Vector2(600f, 650f); // Increased from 600f to 650f
+    private Dictionary<string, string> qualityMultiplierBuffers = new Dictionary<string, string>();
+    public override Vector2 InitialSize => new Vector2(452f, 600f); // Increased from 600f to 650f
 
     public Dialog_QualityResearchSettings(CAPChatInteractiveSettings settings)
     {
@@ -67,11 +70,11 @@ public class Dialog_QualityResearchSettings : Window
             y = DrawResearchSection(new Rect(0f, y + 10f, viewRect.width, 120f));
 
             // Info text
-            Rect infoRect = new Rect(0f, y + 210f, viewRect.width, 60f);
+            Rect infoRect = new Rect(0f, y + 210f, viewRect.width, 90f);
             DrawInfoText(infoRect);
 
             // Reset to defaults button
-            Rect buttonRect = new Rect(0f, y + 270f, 200f, 30f);
+            Rect buttonRect = new Rect(0f, y + 300f, 200f, 30f);
             DrawResetButton(buttonRect);
         }
         Widgets.EndScrollView();
@@ -91,10 +94,10 @@ public class Dialog_QualityResearchSettings : Window
         float checkboxHeight = 30f;
 
         // Quality checkboxes with MMO colors and multiplier inputs
-        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "Awful", ref settings.GlobalSettings.AllowAwfulQuality, Color.gray, "Awful");
+        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "Awful", ref settings.GlobalSettings.AllowAwfulQuality, Color.red, "Awful");
         y += checkboxHeight;
 
-        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "Poor", ref settings.GlobalSettings.AllowPoorQuality, new Color(0.8f, 0.8f, 0.8f), "Poor");
+        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "Poor", ref settings.GlobalSettings.AllowPoorQuality, new Color(0.65f, 0.50f, 0.39f), "Poor");
         y += checkboxHeight;
 
         DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "Normal", ref settings.GlobalSettings.AllowNormalQuality, Color.white, "Normal");
@@ -115,8 +118,6 @@ public class Dialog_QualityResearchSettings : Window
         return rect.height;
     }
 
-    // Add this dictionary to store buffers for each quality type
-    private Dictionary<string, string> qualityMultiplierBuffers = new Dictionary<string, string>();
 
     private void DrawQualityCheckbox(Rect rect, string label, ref bool value, Color color, string qualityType)
     {
@@ -156,35 +157,41 @@ public class Dialog_QualityResearchSettings : Window
         string multiplierText = $"Multiplier: {multiplier * 100:F0}%";
         Widgets.Label(multiplierLabelRect, multiplierText);
 
-        // Input field for multiplier
+        // Input field for multiplier - CHANGED: We'll work with percentage in the UI
         Rect inputRect = new Rect(multiplierLabelRect.xMax + 5f, rect.y, 60f, rect.height);
 
         // Initialize buffer for this quality type if it doesn't exist
         if (!qualityMultiplierBuffers.ContainsKey(qualityType))
         {
-            // Convert multiplier to percentage for display (0.5 -> 50)
+            // Store as percentage (0.5 multiplier = 50%)
             qualityMultiplierBuffers[qualityType] = (multiplier * 100).ToString("F0");
         }
 
         // Get the buffer for this quality type
         string buffer = qualityMultiplierBuffers[qualityType];
 
-        // Draw input field - this will update both multiplier and buffer
-        Widgets.TextFieldNumeric(inputRect, ref multiplier, ref buffer, 0f, 99999f);
+        // Create a temporary variable to hold the percentage value from the UI
+        float percentageValue = multiplier * 100;
+
+        // Draw input field - user enters percentage (500 = 500%)
+        Widgets.TextFieldNumeric(inputRect, ref percentageValue, ref buffer, 0f, 99999f);
 
         // Store the updated buffer back
         qualityMultiplierBuffers[qualityType] = buffer;
 
+        // Convert percentage back to multiplier (500% = 5.0)
+        float newMultiplier = percentageValue / 100f;
+
         // Save back to the correct setting
         switch (qualityType)
         {
-            case "Awful": settings.GlobalSettings.AwfulQuality = multiplier; break;
-            case "Poor": settings.GlobalSettings.PoorQuality = multiplier; break;
-            case "Normal": settings.GlobalSettings.NormalQuality = multiplier; break;
-            case "Good": settings.GlobalSettings.GoodQuality = multiplier; break;
-            case "Excellent": settings.GlobalSettings.ExcellentQuality = multiplier; break;
-            case "Masterwork": settings.GlobalSettings.MasterworkQuality = multiplier; break;
-            case "Legendary": settings.GlobalSettings.LegendaryQuality = multiplier; break;
+            case "Awful": settings.GlobalSettings.AwfulQuality = newMultiplier; break;
+            case "Poor": settings.GlobalSettings.PoorQuality = newMultiplier; break;
+            case "Normal": settings.GlobalSettings.NormalQuality = newMultiplier; break;
+            case "Good": settings.GlobalSettings.GoodQuality = newMultiplier; break;
+            case "Excellent": settings.GlobalSettings.ExcellentQuality = newMultiplier; break;
+            case "Masterwork": settings.GlobalSettings.MasterworkQuality = newMultiplier; break;
+            case "Legendary": settings.GlobalSettings.LegendaryQuality = newMultiplier; break;
         }
     }
 
@@ -224,7 +231,8 @@ public class Dialog_QualityResearchSettings : Window
         string infoText = "These settings affect the purchase commands:\n" +
                          "• Quality levels determine what qualities viewers can request\n" +
                          "• Multipliers affect the price of items (100% = normal price)\n" +
-                         "• Research settings control whether items require research\n" +
+                         "• Research setting controls whether items can by bought before\n"+
+                         "    items are researched. ✔️ means research required.\n" +
                          "• Use 'Reset Multipliers' button to restore defaults\n" +
                          "Changes take effect immediately for new purchases.";
 

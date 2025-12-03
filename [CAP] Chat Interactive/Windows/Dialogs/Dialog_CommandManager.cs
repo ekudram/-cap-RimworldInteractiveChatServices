@@ -38,6 +38,9 @@ namespace CAP_ChatInteractive
         public ChatCommandDef selectedCommand = null;
         public List<ChatCommandDef> filteredCommands = new List<ChatCommandDef>();
         public Dictionary<string, CommandSettings> commandSettings = new Dictionary<string, CommandSettings>();
+        private Dictionary<string, string> numericBuffers = new Dictionary<string, string>();
+        private Dictionary<CommandSettings, Dictionary<string, string>> commandSpecificBuffers = new Dictionary<CommandSettings, Dictionary<string, string>>();
+        private CAPGlobalChatSettings settingsGlobalChat;
 
         public override Vector2 InitialSize => new Vector2(1000f, 700f);
 
@@ -396,18 +399,24 @@ namespace CAP_ChatInteractive
                 }
                 y += sectionHeight;
 
-                // Cooldown setting
+                // Cooldown setting - FIXED and simplified
                 Rect cooldownLabelRect = new Rect(leftPadding + 10f, y, 250f, sectionHeight);
                 Widgets.Label(cooldownLabelRect, "Command Cooldown (seconds):");
 
-                Rect cooldownSliderRect = new Rect(leftPadding + 260f, y, 150f, sectionHeight);
-                settings.CooldownSeconds = (int)Widgets.HorizontalSlider(cooldownSliderRect, settings.CooldownSeconds, 1f, 60f);
+                Rect cooldownInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
 
-                Rect cooldownInputRect = new Rect(leftPadding + 420f, y, 60f, sectionHeight);
-                string cooldownBuffer = settings.CooldownSeconds.ToString();
+                // Create a unique key for this setting
+                string cooldownKey = $"cooldown_{settings.GetHashCode()}";
 
-                //Widgets.TextFieldNumeric(cooldownInputRect, ref settings.CooldownSeconds, ref cooldownBuffer, 1, 60);
-                UIUtilities.TextFieldNumericFlexible(cooldownInputRect, ref settings.CooldownSeconds, ref cooldownBuffer, 1, 60);
+                // Initialize buffer if needed
+                if (!numericBuffers.ContainsKey(cooldownKey))
+                {
+                    numericBuffers[cooldownKey] = settings.CooldownSeconds.ToString();
+                }
+
+                string cooldownBuffer = numericBuffers[cooldownKey];
+                Widgets.TextFieldNumeric(cooldownInputRect, ref settings.CooldownSeconds, ref cooldownBuffer, 1, 60);
+                numericBuffers[cooldownKey] = cooldownBuffer;
 
                 // Description below
                 Rect cooldownDescRect = new Rect(leftPadding + 10f, y + sectionHeight - 8f, viewRect.width - leftPadding, 14f);
@@ -425,11 +434,19 @@ namespace CAP_ChatInteractive
                 if (settings.SupportsCost)
                 {
                     Rect costRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(costRect, "Cost (coins):");
+                    Widgets.Label(costRect, $"Cost ({settingsGlobalChat.CurrencyName}):");
                     Rect costInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string costBuffer = settings.Cost.ToString();
-                    //Widgets.TextFieldNumeric(costInputRect, ref settings.Cost, ref costBuffer, 0, 10000);
-                    UIUtilities.TextFieldNumericFlexible(costInputRect, ref settings.Cost, ref costBuffer, 0, 10000);
+
+                    string costKey = $"cost_{settings.GetHashCode()}";
+                    if (!numericBuffers.ContainsKey(costKey))
+                    {
+                        numericBuffers[costKey] = settings.Cost.ToString();
+                    }
+
+                    string costBuffer = numericBuffers[costKey];
+                    Widgets.TextFieldNumeric(costInputRect, ref settings.Cost, ref costBuffer, 0, 10000);
+                    numericBuffers[costKey] = costBuffer; // Update the buffer
+
                     y += sectionHeight;
                 }
 
@@ -467,36 +484,12 @@ namespace CAP_ChatInteractive
                 // Description for alias
                 Rect aliasDescRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, 14f);
                 Text.Font = GameFont.Tiny;
-                GUI.color = new Color(0.7f, 0.7f, 0.7f);
+                GUI.color = new Color(0.8f, 0.8f, 0.8f);
                 Widgets.Label(aliasDescRect, $"Example: 'bp' for !backpack. Don't include '{globalSettings.Prefix}' or '{globalSettings.BuyPrefix}' prefix.");
                 Text.Font = GameFont.Small;
                 GUI.color = Color.white;
                 y += 20f;
-/*
-                if (settings.UseGameDaysCooldown)
-                {
-                    // Game days cooldown - IMPROVED: Combined slider and numeric input
-                    Rect daysLabelRect = new Rect(leftPadding + 20f, y, 250f, sectionHeight);
-                    Widgets.Label(daysLabelRect, "Cooldown (game days):");
 
-                    Rect daysSliderRect = new Rect(leftPadding + 260f, y, 150f, sectionHeight);
-                    settings.GameDaysCooldown = (int)Widgets.HorizontalSlider(daysSliderRect, settings.GameDaysCooldown, 0f, 30f);
-
-                    Rect daysInputRect = new Rect(leftPadding + 420f, y, 60f, sectionHeight);
-                    string daysBuffer = settings.GameDaysCooldown.ToString();
-                    UIUtilities.TextFieldNumericFlexible(daysInputRect, ref settings.GameDaysCooldown, ref daysBuffer, 0, 30);
-                    y += sectionHeight;
-
-                    // Description for game days cooldown
-                    Rect gameDaysDescRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding, 14f);
-                    Text.Font = GameFont.Tiny;
-                    GUI.color = new Color(0.7f, 0.7f, 0.7f);
-                    Widgets.Label(gameDaysDescRect, "Recommended: Off. Prevents command use for X game days. Use events settings for better control.");
-                    Text.Font = GameFont.Small;
-                    GUI.color = Color.white;
-                    y += 14f;
-                }
-*/
                 // Event Command Settings - Only show for commands like raid, militaryaid
                 Rect eventHeaderRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
                 Widgets.Label(eventHeaderRect, "Command Cooldown Settings:");
@@ -512,7 +505,7 @@ namespace CAP_ChatInteractive
                 Widgets.Label(eventUsesRect, "Max uses per cooldown period 0 = infinite use of command:");
                 Rect eventUsesInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
                 string eventUsesBuffer = settings.MaxUsesPerCooldownPeriod.ToString();
-                UIUtilities.TextFieldNumericFlexible(eventUsesInputRect, ref settings.MaxUsesPerCooldownPeriod, ref eventUsesBuffer, 0, 100);
+                UIUtilities.TextFieldNumericFlexible(eventUsesInputRect, ref settings.MaxUsesPerCooldownPeriod, ref eventUsesBuffer, 0, 10000);
                 y += sectionHeight;
 
 
@@ -611,43 +604,68 @@ namespace CAP_ChatInteractive
                     Widgets.Label(lootboxHeaderRect, "Loot Box Global Settings:");
                     y += sectionHeight;
 
-                    // Get global settings
-                    // var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-
                     // Coin range
                     Rect coinRangeRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
                     Widgets.Label(coinRangeRect, "Coin Range (1-10000):");
                     y += sectionHeight;
 
+                    // Min coin input
                     Rect coinMinRect = new Rect(leftPadding + 20f, y, 80f, sectionHeight);
                     Widgets.Label(coinMinRect, "Min:");
                     Rect coinMinInputRect = new Rect(leftPadding + 60f, y, 60f, sectionHeight);
-                    string coinMinBuffer = globalSettings.LootBoxRandomCoinRange.min.ToString();
-                    UIUtilities.TextFieldNumericFlexible(coinMinInputRect, ref globalSettings.LootBoxRandomCoinRange.min, ref coinMinBuffer, 1, 10000);
 
+                    // Use buffer pattern for min coin
+                    string coinMinKey = "lootbox_mincoin";
+                    if (!numericBuffers.ContainsKey(coinMinKey))
+                    {
+                        numericBuffers[coinMinKey] = settingsGlobalChat.LootBoxRandomCoinRange.min.ToString();
+                    }
+                    string coinMinBuffer = numericBuffers[coinMinKey];
+                    Widgets.TextFieldNumeric(coinMinInputRect, ref settingsGlobalChat.LootBoxRandomCoinRange.min, ref coinMinBuffer, 1, 10000);
+                    numericBuffers[coinMinKey] = coinMinBuffer;
+
+                    // Max coin input
                     Rect coinMaxRect = new Rect(leftPadding + 140f, y, 80f, sectionHeight);
                     Widgets.Label(coinMaxRect, "Max:");
                     Rect coinMaxInputRect = new Rect(leftPadding + 180f, y, 60f, sectionHeight);
-                    string coinMaxBuffer = globalSettings.LootBoxRandomCoinRange.max.ToString();
-                    UIUtilities.TextFieldNumericFlexible(coinMaxInputRect, ref globalSettings.LootBoxRandomCoinRange.max, ref coinMaxBuffer, 1, 10000);
+
+                    // Use buffer pattern for max coin
+                    string coinMaxKey = "lootbox_maxcoin";
+                    if (!numericBuffers.ContainsKey(coinMaxKey))
+                    {
+                        numericBuffers[coinMaxKey] = settingsGlobalChat.LootBoxRandomCoinRange.max.ToString();
+                    }
+                    string coinMaxBuffer = numericBuffers[coinMaxKey];
+                    Widgets.TextFieldNumeric(coinMaxInputRect, ref settingsGlobalChat.LootBoxRandomCoinRange.max, ref coinMaxBuffer, 1, 10000);
+                    numericBuffers[coinMaxKey] = coinMaxBuffer;
+
                     y += sectionHeight;
 
                     // Lootboxes per day
                     Rect perDayRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
                     Widgets.Label(perDayRect, "Lootboxes Per Day:");
                     Rect perDayInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string perDayBuffer = globalSettings.LootBoxesPerDay.ToString();
-                    UIUtilities.TextFieldNumericFlexible(perDayInputRect, ref globalSettings.LootBoxesPerDay, ref perDayBuffer, 1, 20);
+
+                    // Use buffer pattern for per day
+                    string perDayKey = "lootbox_perday";
+                    if (!numericBuffers.ContainsKey(perDayKey))
+                    {
+                        numericBuffers[perDayKey] = settingsGlobalChat.LootBoxesPerDay.ToString();
+                    }
+                    string perDayBuffer = numericBuffers[perDayKey];
+                    Widgets.TextFieldNumeric(perDayInputRect, ref settingsGlobalChat.LootBoxesPerDay, ref perDayBuffer, 1, 20);
+                    numericBuffers[perDayKey] = perDayBuffer;
+
                     y += sectionHeight;
 
                     // Show welcome message
                     Rect welcomeRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.CheckboxLabeled(welcomeRect, "Show Welcome Message", ref globalSettings.LootBoxShowWelcomeMessage);
+                    Widgets.CheckboxLabeled(welcomeRect, "Show Welcome Message", ref settingsGlobalChat.LootBoxShowWelcomeMessage);
                     y += sectionHeight;
 
                     // Force open all at once
                     Rect forceOpenRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.CheckboxLabeled(forceOpenRect, "Force Open All At Once", ref globalSettings.LootBoxForceOpenAllAtOnce);
+                    Widgets.CheckboxLabeled(forceOpenRect, "Force Open All At Once", ref settingsGlobalChat.LootBoxForceOpenAllAtOnce);
                     y += sectionHeight;
                 }
 
@@ -660,41 +678,70 @@ namespace CAP_ChatInteractive
                     Widgets.Label(passionHeaderRect, "Passion Command Settings:");
                     y += sectionHeight;
 
-                    // Get global settings
-                    // var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-
                     // Min wager
                     Rect minWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
                     Widgets.Label(minWagerRect, "Minimum wager:");
                     Rect minWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string minWagerBuffer = globalSettings.MinPassionWager.ToString();
-                    UIUtilities.TextFieldNumericFlexible(minWagerInputRect, ref globalSettings.MinPassionWager, ref minWagerBuffer, 1, 10000);
+
+                    string minWagerKey = "passion_minwager";
+                    if (!numericBuffers.ContainsKey(minWagerKey))
+                    {
+                        numericBuffers[minWagerKey] = settingsGlobalChat.MinPassionWager.ToString();
+                    }
+                    string minWagerBuffer = numericBuffers[minWagerKey];
+                    Widgets.TextFieldNumeric(minWagerInputRect, ref settingsGlobalChat.MinPassionWager, ref minWagerBuffer, 1, 10000);
+                    numericBuffers[minWagerKey] = minWagerBuffer;
+
                     y += sectionHeight;
 
                     // Max wager
                     Rect maxWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
                     Widgets.Label(maxWagerRect, "Maximum wager:");
                     Rect maxWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string maxWagerBuffer = globalSettings.MaxPassionWager.ToString();
-                    UIUtilities.TextFieldNumericFlexible(maxWagerInputRect, ref globalSettings.MaxPassionWager, ref maxWagerBuffer,
-                        globalSettings.MinPassionWager, 100000);
+
+                    string maxWagerKey = "passion_maxwager";
+                    if (!numericBuffers.ContainsKey(maxWagerKey))
+                    {
+                        numericBuffers[maxWagerKey] = settingsGlobalChat.MaxPassionWager.ToString();
+                    }
+                    string maxWagerBuffer = numericBuffers[maxWagerKey];
+                    Widgets.TextFieldNumeric(maxWagerInputRect, ref settingsGlobalChat.MaxPassionWager, ref maxWagerBuffer,
+                        settingsGlobalChat.MinPassionWager, 100000);
+                    numericBuffers[maxWagerKey] = maxWagerBuffer;
+
                     y += sectionHeight;
 
                     // Base success chance
                     Rect baseChanceRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
                     Widgets.Label(baseChanceRect, "Base success chance (%):");
                     Rect baseChanceInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string baseChanceBuffer = globalSettings.BasePassionSuccessChance.ToString();
-                    UIUtilities.TextFieldNumericFlexible(baseChanceInputRect, ref globalSettings.BasePassionSuccessChance, ref baseChanceBuffer, 1.0f, 100.0f);
+
+                    string baseChanceKey = "passion_basechance";
+                    if (!numericBuffers.ContainsKey(baseChanceKey))
+                    {
+                        numericBuffers[baseChanceKey] = settingsGlobalChat.BasePassionSuccessChance.ToString();
+                    }
+                    string baseChanceBuffer = numericBuffers[baseChanceKey];
+                    Widgets.TextFieldNumeric(baseChanceInputRect, ref settingsGlobalChat.BasePassionSuccessChance, ref baseChanceBuffer, 1.0f, 100.0f);
+                    numericBuffers[baseChanceKey] = baseChanceBuffer;
+
                     y += sectionHeight;
 
                     // Max success chance
                     Rect maxChanceRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
                     Widgets.Label(maxChanceRect, "Max success chance (%):");
                     Rect maxChanceInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string maxChanceBuffer = globalSettings.MaxPassionSuccessChance.ToString();
-                    UIUtilities.TextFieldNumericFlexible(maxChanceInputRect, ref globalSettings.MaxPassionSuccessChance, ref maxChanceBuffer,
-                        globalSettings.BasePassionSuccessChance, 100.0f);
+
+                    string maxChanceKey = "passion_maxchance";
+                    if (!numericBuffers.ContainsKey(maxChanceKey))
+                    {
+                        numericBuffers[maxChanceKey] = settingsGlobalChat.MaxPassionSuccessChance.ToString();
+                    }
+                    string maxChanceBuffer = numericBuffers[maxChanceKey];
+                    Widgets.TextFieldNumeric(maxChanceInputRect, ref settingsGlobalChat.MaxPassionSuccessChance, ref maxChanceBuffer,
+                        settingsGlobalChat.BasePassionSuccessChance, 100.0f);
+                    numericBuffers[maxChanceKey] = maxChanceBuffer;
+
                     y += sectionHeight;
 
                     // Description

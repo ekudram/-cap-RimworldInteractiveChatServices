@@ -13,8 +13,8 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-using CAP_ChatInteractive;
 using _CAP__Chat_Interactive.Utilities;
+using CAP_ChatInteractive;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -28,6 +28,10 @@ public class Dialog_DebugRaces : Window
     private List<ThingDef> availableRaces;
     private List<ThingDef> allHumanlikeRaces;
     private int totalHumanlike;
+
+    private CAPGlobalChatSettings settingsGlobalChat;
+    private Dictionary<string, string> numericBuffers = new Dictionary<string, string>();
+
 
     public override Vector2 InitialSize => new Vector2(900f, 700f);
 
