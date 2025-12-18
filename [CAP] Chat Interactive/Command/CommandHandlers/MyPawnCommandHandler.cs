@@ -102,36 +102,36 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return $"{pawn.Name} has no health records.";
             }
 
-            Logger.Debug("=== HandleInplantsInfo START ===");
-            Logger.Debug($"Pawn: {pawn.Name}, Total hediffs: {pawn.health.hediffSet.hediffs.Count}");
+            //Logger.Debug("=== HandleInplantsInfo START ===");
+            //Logger.Debug($"Pawn: {pawn.Name}, Total hediffs: {pawn.health.hediffSet.hediffs.Count}");
 
             var report = new StringBuilder();
-            report.AppendLine("🔧 Implants & Replacements:");
+            report.AppendLine("🔧 Implants:");
 
             // Get all visible implants (added parts)
             var allHediffs = pawn.health.hediffSet.hediffs.ToList();
-            Logger.Debug("All hediffs:");
-            foreach (var h in allHediffs)
-            {
-                Logger.Debug($"  - {h.def.defName}, Visible: {h.Visible}, Part: {h.Part?.def?.label}");
-            }
+            //Logger.Debug("All hediffs:");
+            //foreach (var h in allHediffs)
+            //{
+            //    Logger.Debug($"  - {h.def.defName}, Visible: {h.Visible}, Part: {h.Part?.def?.label}");
+            //}
 
             var implants = allHediffs
                 .Where(h =>
                 {
                     bool isVisible = h.Visible;
                     bool isImplant = IsImplantOrAddedPart(h);
-                    Logger.Debug($"Filtering: {h.def.defName}, Visible={isVisible}, IsImplant={isImplant}");
+                    //Logger.Debug($"Filtering: {h.def.defName}, Visible={isVisible}, IsImplant={isImplant}");
                     return isVisible && isImplant;
                 })
                 .ToList();
 
-            Logger.Debug($"Found {implants.Count} implants after filtering");
+            //Logger.Debug($"Found {implants.Count} implants after filtering");
 
             if (implants.Count == 0)
             {
                 report.AppendLine("No implants or bionic replacements found.");
-                Logger.Debug("=== HandleInplantsInfo END (no implants) ===");
+                //Logger.Debug("=== HandleInplantsInfo END (no implants) ===");
                 return report.ToString();
             }
 
@@ -150,17 +150,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 foreach (var implant in partGroup.OrderBy(h => h.def.label))
                 {
                     string implantName = StripTags(implant.LabelCap);
-                    string implantQuality = GetImplantQuality(implant);
+                    // string implantQuality = GetImplantQuality(implant);
 
-                    report.AppendLine($"  ◦ {implantName}{implantQuality}");
-                    Logger.Debug($"  - Found implant: {implantName} on {partName}");
+                    // report.AppendLine($"  ◦ {implantName}{implantQuality}");
+                    report.AppendLine($" ◦ {implantName}");
+                    //Logger.Debug($"  - Found implant: {implantName} on {partName}");
                 }
             }
 
             // Add summary
-            report.AppendLine($"📊 Total: {implants.Count} implant(s)");
+            report.AppendLine($"📊 {implants.Count} implant(s)");
 
-            Logger.Debug("=== HandleInplantsInfo END ===");
+            // Logger.Debug("=== HandleInplantsInfo END ===");
             return report.ToString();
         }
 
@@ -260,8 +261,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             return " (Implant)"; // Default fallback
         }
-
-
 
         // === health ===
         private static string HandlehealthInfo(Pawn pawn, string[] args)
@@ -545,19 +544,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return $"🩹 {display}"; // Tended wound
             }
 
+            return display;
             // Add severity indicators for injuries
-            if (hediff.Severity > 0.7f)
-            {
-                return $"🔴 {display}"; // Severe
-            }
-            else if (hediff.Severity > 0.3f)
-            {
-                return $"🟡 {display}"; // Moderate
-            }
-            else
-            {
-                return $"🟢 {display}"; // Mild
-            }
+            //if (hediff.Severity > 0.7f)
+            //{
+            //    return $"🔴 {display}"; // Severe
+            //}
+            //else if (hediff.Severity > 0.3f)
+            //{
+            //    return $"🟡 {display}"; // Moderate
+            //}
+            //else
+            //{
+            //    return $"🟢 {display}"; // Mild
+            //}
         }
 
         private static string GetBodyPartEmoji(BodyPartRecord part)
@@ -586,7 +586,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 string p when p.Contains("tongue") => "👅", // Tongue
                 string p when p.Contains("heart") => "❤️", // Heart
                 string p when p.Contains("lung") => "🫁", // Lungs
-                string p when p.Contains("intestine") || p.Contains("colon") || p.Contains("bowel") => "🟠", // Intestines
                 string p when p.Contains("rib") || p.Contains("ribcage") => "🦴", // Ribs
                 string p when p.Contains("spine") || p.Contains("vertebra") => "🦴", // Spine
                 string p when p.Contains("pelvis") || p.Contains("hip bone") => "🦴", // Pelvis

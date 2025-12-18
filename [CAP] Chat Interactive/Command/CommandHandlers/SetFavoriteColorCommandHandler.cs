@@ -51,7 +51,45 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return "Please specify a color. Usage: !setfavoritecolor <color> (e.g., !setfavoritecolor blue or !setfavoritecolor #FF0000)";
             }
 
-            Color? color = ColorHelper.ParseColor(args[0]);
+            // Combine args to handle multi-word color names (up to 3 words)
+            string colorInput = args[0];
+            if (args.Length > 1)
+            {
+                // Combine first 3 words at most for color names like "Dark Red" or "Sky Blue"
+                int wordsToCombine = Mathf.Min(args.Length, 3);
+                colorInput = string.Join(" ", args.Take(wordsToCombine));
+            }
+
+            // First try to find an exact match in ColorDefs by name
+            ColorDef colorDefFromName = FindColorDefByName(colorInput);
+            if (colorDefFromName != null)
+            {
+                // We found a ColorDef by name, use it directly
+                bool successColorDef = SetPawnFavoriteColor(viewerPawn, colorDefFromName.color);
+                if (successColorDef)
+                {
+                    return $"Your pawn's favorite color has been set to {colorDefFromName.label} HSV {colorDefFromName.color}!";
+                }
+            }
+
+            // If not found by name, try parsing as color value
+            Color? color = ColorHelper.ParseColor(colorInput);
+            if (!color.HasValue)
+            {
+                // Before giving up, check if there's a close ColorDef match by value
+                colorDefFromName = FindClosestColorDef(colorInput);
+                if (colorDefFromName != null)
+                {
+                    bool successParseColor = SetPawnFavoriteColor(viewerPawn, colorDefFromName.color);
+                    if (successParseColor)
+                    {
+                        return $"Your pawn's favorite color has been set to {colorDefFromName.label}!";
+                    }
+                }
+
+                return $"'{colorInput}' is not a valid color. Use color names or hex codes like #FF0000.";
+            }
+
             if (!color.HasValue)
             {
                 return $"'{args[0]}' is not a valid color. Use color names or hex codes like #FF0000.";
@@ -85,6 +123,20 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             {
                 // Create or get a ColorDef for this color
                 ColorDef colorDef = GetColorDef(color);
+                pawn.story.favoriteColor = colorDef;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Failed to set favorite color for pawn {pawn.Name}: {ex.Message}");
+                return false;
+            }
+        }
+
+        private static bool SetPawnFavoriteColor(Verse.Pawn pawn, ColorDef colorDef)
+        {
+            try
+            {
                 pawn.story.favoriteColor = colorDef;
                 return true;
             }
@@ -154,6 +206,45 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             // If no close match found, return hex code
             return "#" + ColorUtility.ToHtmlStringRGB(color);
+        }
+
+        private static ColorDef FindColorDefByName(string colorName)
+        {
+            // Clean up the color name for comparison
+            string cleanName = colorName.ToLower().Replace(" ", "");
+
+            // Search through ALL ColorDefs for exact or close name match
+            foreach (ColorDef def in DefDatabase<ColorDef>.AllDefs)
+            {
+                // Check exact match (case insensitive, no spaces)
+                if (def.defName.ToLower().Replace("_", "").Replace(" ", "") == cleanName)
+                    return def;
+
+                // Check if defName contains our color name
+                if (def.defName.ToLower().Contains(cleanName) && cleanName.Length > 2)
+                    return def;
+
+                // Also check label if available
+                if (!def.label.NullOrEmpty() && def.label.ToLower().Replace(" ", "").Contains(cleanName) && cleanName.Length > 2)
+                    return def;
+            }
+
+            return null;
+        }
+
+        private static ColorDef FindClosestColorDef(string colorInput)
+        {
+            // Try to parse as color first
+            Color? parsedColor = ColorHelper.ParseColor(colorInput);
+            if (parsedColor.HasValue)
+            {
+                // Find the closest ColorDef by color value
+                return DefDatabase<ColorDef>.AllDefs
+                    .OrderBy(def => ColorDistance(def.color, parsedColor.Value))
+                    .FirstOrDefault();
+            }
+
+            return null;
         }
 
         private static bool ColorsAreSimilar(Color a, Color b, float tolerance = 0.1f)

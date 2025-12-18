@@ -45,6 +45,16 @@ namespace CAP_ChatInteractive.Helpers
             {"teal", new Color(0f, 0.5f, 0.5f)},
             {"lime", new Color(0f, 1f, 0f)},
             {"olive", new Color(0.5f, 0.5f, 0f)},
+            {"darkred", new Color(0.5f, 0f, 0f)},
+            {"darkgreen", new Color(0f, 0.5f, 0f)},
+            {"darkblue", new Color(0f, 0f, 0.5f)},
+            {"lightblue", new Color(0.68f, 0.85f, 0.9f)},
+            {"skyblue", new Color(0.53f, 0.81f, 0.92f)},
+            {"forestgreen", new Color(0.13f, 0.55f, 0.13f)},
+            {"royalblue", new Color(0.25f, 0.41f, 0.88f)},
+            {"hotpink", new Color(1f, 0.41f, 0.71f)},
+            {"darkgray", new Color(0.66f, 0.66f, 0.66f)},
+            {"lightgray", new Color(0.83f, 0.83f, 0.83f)},
         };
 
         public static Color? ParseColor(string colorInput)
