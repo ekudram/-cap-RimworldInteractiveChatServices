@@ -50,6 +50,7 @@ namespace CAP_ChatInteractive
             forcePause = true;
             absorbInputAroundWindow = true;
             // optionalTitle = "Command Management"; Created in DrawHeader instead
+            settingsGlobalChat = CAPChatInteractiveMod.Instance.Settings.GlobalSettings; // <-- ADD THIS LINE
 
             LoadCommandSettings();
             FilterCommands();
@@ -374,6 +375,8 @@ namespace CAP_ChatInteractive
             float viewHeight = CalculateDetailsHeight(settings);
             Rect viewRect = new Rect(0f, 0f, contentWidth, Mathf.Max(viewHeight, rect.height));
 
+            Logger.Debug($"DrawCommandDetailsContent - rect.height: {rect.height}, viewHeight: {viewHeight}, viewRect.height: {viewRect.height}");
+
             Widgets.BeginScrollView(rect, ref detailsScrollPosition, viewRect);
             {
                 float y = 0f;
@@ -448,7 +451,7 @@ namespace CAP_ChatInteractive
 
                 y += sectionHeight + 10f; // Extra space for description
 
-                y += sectionHeight + 8f; // Extra space for description
+                // y += sectionHeight + 8f; // Extra space for description
 
                 // Cost setting (if applicable)
                 if (settings.SupportsCost)
@@ -815,7 +818,6 @@ namespace CAP_ChatInteractive
                 height += 28f; // Max wager
                 height += 28f; // Raid types button
                 height += 28f; // Strategies button
-                height += 28f; // Extra spacing
             }
 
             // MILITARY AID-SPECIFIC SETTINGS HEIGHT
@@ -826,7 +828,6 @@ namespace CAP_ChatInteractive
                 height += 28f; // Default wager
                 height += 28f; // Min wager
                 height += 28f; // Max wager
-                height += 28f; // Extra spacing
             }
 
             // LOOTBOX-SPECIFIC SETTINGS HEIGHT
@@ -835,11 +836,11 @@ namespace CAP_ChatInteractive
                 height += 10f; // Extra spacing
                 height += 28f; // Lootbox header
                 height += 28f; // Coin range label
-                height += 28f; // Coin range inputs
+                height += 28f; // Coin range inputs (min/max on same line)
                 height += 28f; // Lootboxes per day
                 height += 28f; // Show welcome message
-                height += 28f; // Force open all
-                height += 28f; // Extra spacing
+                height += 28f; // Force open all at once
+                height += 14f; // Extra spacing for description
             }
 
             // PASSION-SPECIFIC SETTINGS HEIGHT
@@ -851,11 +852,10 @@ namespace CAP_ChatInteractive
                 height += 28f; // Max wager
                 height += 28f; // Base success chance
                 height += 28f; // Max success chance
-                height += 20f; // Description
-                height += 28f; // Extra spacing
+                height += 28f; // Description (taller than normal)
             }
 
-            return height + 20f; // Extra padding
+            return height + 40f; // Extra padding for safety
         }
 
         private void FilterCommands()
