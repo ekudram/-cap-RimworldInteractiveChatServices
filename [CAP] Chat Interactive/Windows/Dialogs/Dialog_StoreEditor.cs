@@ -1120,6 +1120,22 @@ namespace CAP_ChatInteractive
             }
             x += 115f;
 
+            // NEW: Enable menu button (with dropdown arrow)
+            Rect enableMenuRect = new Rect(x, centerY, 120f, 30f);
+            if (Widgets.ButtonText(enableMenuRect, "Enable →"))
+            {
+                ShowCategoryEnableMenu();
+            }
+            x += 125f;
+
+            // NEW: Disable menu button (with dropdown arrow)
+            Rect disableMenuRect = new Rect(x, centerY, 120f, 30f);
+            if (Widgets.ButtonText(disableMenuRect, "Disable →"))
+            {
+                ShowCategoryDisableMenu();
+            }
+            x += 125f;
+
             // Reset Category button
             Rect resetButtonRect = new Rect(x, centerY, 110f, 30f);
             if (Widgets.ButtonText(resetButtonRect, "Reset All"))
@@ -1131,6 +1147,163 @@ namespace CAP_ChatInteractive
             }
 
             Widgets.EndGroup();
+        }
+
+        // Add these new methods for the category-specific enable/disable menus:
+        private void ShowCategoryEnableMenu()
+        {
+            var options = new List<FloatMenuOption>();
+
+            // Enable All in Category (this still uses the Enabled property)
+            options.Add(new FloatMenuOption($"Enable All Items in {selectedCategory}", () =>
+            {
+                EnableCategoryItems(selectedCategory);
+            }));
+
+            options.Add(new FloatMenuOption("--- Enable Usage Types ---", null)); // Separator
+
+            // Always show all three options
+            options.Add(new FloatMenuOption($"Enable Usable Items in {selectedCategory}", () =>
+            {
+                ToggleCategoryItemTypeFlag(selectedCategory, "Usable", true);
+            }));
+
+            options.Add(new FloatMenuOption($"Enable Wearable Items in {selectedCategory}", () =>
+            {
+                ToggleCategoryItemTypeFlag(selectedCategory, "Wearable", true);
+            }));
+
+            options.Add(new FloatMenuOption($"Enable Equippable Items in {selectedCategory}", () =>
+            {
+                ToggleCategoryItemTypeFlag(selectedCategory, "Equippable", true);
+            }));
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void ShowCategoryDisableMenu()
+        {
+            var options = new List<FloatMenuOption>();
+
+            // Disable All in Category (this still uses the Enabled property)
+            options.Add(new FloatMenuOption($"Disable All Items in {selectedCategory}", () =>
+            {
+                DisableCategoryItems(selectedCategory);
+            }));
+
+            options.Add(new FloatMenuOption("--- Disable Usage Types ---", null)); // Separator
+
+            // Always show all three options
+            options.Add(new FloatMenuOption($"Disable Usable Items in {selectedCategory}", () =>
+            {
+                ToggleCategoryItemTypeFlag(selectedCategory, "Usable", false);
+            }));
+
+            options.Add(new FloatMenuOption($"Disable Wearable Items in {selectedCategory}", () =>
+            {
+                ToggleCategoryItemTypeFlag(selectedCategory, "Wearable", false);
+            }));
+
+            options.Add(new FloatMenuOption($"Disable Equippable Items in {selectedCategory}", () =>
+            {
+                ToggleCategoryItemTypeFlag(selectedCategory, "Equippable", false);
+            }));
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        // In Dialog_StoreEditor class, add these new helper methods:
+        private void ToggleCategoryItemTypeFlag(string category, string flagType, bool enable)
+        {
+            int changedCount = 0;
+
+            foreach (var item in StoreInventory.AllStoreItems.Values)
+            {
+                if (item.Category == category)
+                {
+                    var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
+                    if (thingDef == null) continue;
+
+                    bool shouldHaveThisFlag = false;
+
+                    // Use the same logic as DrawItemTypeCheckboxes
+                    switch (flagType)
+                    {
+                        case "Usable":
+                            shouldHaveThisFlag = StoreItem.IsItemUsable(thingDef);
+                            break;
+
+                        case "Equippable":
+                            shouldHaveThisFlag = !StoreItem.IsItemUsable(thingDef) && thingDef.IsWeapon;
+                            break;
+
+                        case "Wearable":
+                            shouldHaveThisFlag = !StoreItem.IsItemUsable(thingDef) && !thingDef.IsWeapon && thingDef.IsApparel;
+                            break;
+                    }
+
+                    // Only toggle if this item should have this type of flag
+                    if (shouldHaveThisFlag)
+                    {
+                        bool changed = false;
+
+                        switch (flagType)
+                        {
+                            case "Usable":
+                                if (item.IsUsable != enable)
+                                {
+                                    item.IsUsable = enable;
+                                    changed = true;
+                                }
+                                break;
+
+                            case "Wearable":
+                                if (item.IsWearable != enable)
+                                {
+                                    item.IsWearable = enable;
+                                    changed = true;
+                                }
+                                break;
+
+                            case "Equippable":
+                                if (item.IsEquippable != enable)
+                                {
+                                    item.IsEquippable = enable;
+                                    changed = true;
+                                }
+                                break;
+                        }
+
+                        if (changed) changedCount++;
+                    }
+                }
+            }
+
+            if (changedCount > 0)
+            {
+                StoreInventory.SaveStoreToJson();
+                Messages.Message($"{(enable ? "Enabled" : "Disabled")} {changedCount} {flagType.ToLower()} items in {category}",
+                    MessageTypeDefOf.PositiveEvent);
+                SoundDefOf.Click.PlayOneShotOnCamera();
+                FilterItems(); // Refresh the view
+            }
+        }
+
+        // Add this method to check what type of flag an item SHOULD have based on its ThingDef
+        private string GetItemFlagType(StoreItem item)
+        {
+            var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
+            if (thingDef == null) return "None";
+
+            // Use the same logic as DrawItemTypeCheckboxes
+            if (StoreItem.IsItemUsable(thingDef))
+                return "Usable";
+            if (!StoreItem.IsItemUsable(thingDef) && thingDef.IsWeapon)
+                return "Equippable";
+            if (!StoreItem.IsItemUsable(thingDef) && !thingDef.IsWeapon && thingDef.IsApparel)
+                return "Wearable";
+
+            return "None";
         }
 
         // Add this method to set category price:

@@ -85,7 +85,13 @@ namespace CAP_ChatInteractive
             sb.AppendLine($"<b>Action Buttons:</b>");
             sb.AppendLine($"• <b>Reset All</b> - Reset all item prices to default market values");
             sb.AppendLine($"• <b>Enable →</b> - Bulk enable items by category or type");
+            sb.AppendLine($"   - Enable All Items: Enable all items in the store");
+            sb.AppendLine($"   - Enable by Category: Enable all items in specific categories");
+            sb.AppendLine($"   - Enable by Type: Enable all weapons, apparel, or usable items");
             sb.AppendLine($"• <b>Disable →</b> - Bulk disable items by category or type");
+            sb.AppendLine($"   - Disable All Items: Disable all items in the store");
+            sb.AppendLine($"   - Disable by Category: Disable all items in specific categories");
+            sb.AppendLine($"   - Disable by Type: Disable all weapons, apparel, or usable items");
             sb.AppendLine($"• <b>Quality/Research</b> - Open quality and research settings");
             sb.AppendLine($"");
 
@@ -100,6 +106,16 @@ namespace CAP_ChatInteractive
             sb.AppendLine($"• Only appears when a specific category is selected (not 'All')");
             sb.AppendLine($"• <b>Category Price:</b> - Set price for all items in the selected category");
             sb.AppendLine($"• <b>Set All</b> - Apply the entered price to all items in the category");
+            sb.AppendLine($"• <b>Enable →</b> - Enable items within the selected category");
+            sb.AppendLine($"   - Enable All Items: Enable all items in this category");
+            sb.AppendLine($"   - Enable Usable Items: Enable all usable items (food, medicine, drugs) in this category");
+            sb.AppendLine($"   - Enable Wearable Items: Enable all apparel items in this category");
+            sb.AppendLine($"   - Enable Equippable Items: Enable all weapons in this category");
+            sb.AppendLine($"• <b>Disable →</b> - Disable items within the selected category");
+            sb.AppendLine($"   - Disable All Items: Disable all items in this category");
+            sb.AppendLine($"   - Disable Usable Items: Disable all usable items in this category");
+            sb.AppendLine($"   - Disable Wearable Items: Disable all apparel items in this category");
+            sb.AppendLine($"   - Disable Equippable Items: Disable all weapons in this category");
             sb.AppendLine($"• <b>Reset All</b> - Reset all items in the category to default prices");
             sb.AppendLine($"");
 
@@ -187,6 +203,8 @@ namespace CAP_ChatInteractive
             sb.AppendLine($"• Changes are saved automatically when closing the window");
             sb.AppendLine($"• Use category filters to work with specific item types");
             sb.AppendLine($"• Set quantity limits for balance (prevent spamming expensive items)");
+            sb.AppendLine($"• Use the new category-specific Enable/Disable buttons to quickly manage modded items");
+            sb.AppendLine($"• Perfect for streamers with many mods - quickly disable entire categories");
             sb.AppendLine($"• Bulk operations save time when configuring many items");
             sb.AppendLine($"• Check Def information for delivery details on large items");
             sb.AppendLine($"• Usable/Wearable/Equippable flags affect chat store button display");
@@ -196,6 +214,8 @@ namespace CAP_ChatInteractive
             sb.AppendLine($"• Use custom names to create user-friendly names for technical items");
             sb.AppendLine($"• Custom names are preserved even if the mod updates or changes");
             sb.AppendLine($"• Duplicate name warnings help prevent confusion in chat commands");
+            sb.AppendLine($"• Enable/Disable → buttons apply only to items in the current category");
+            sb.AppendLine($"• Great for disabling all weapons from a specific weapon mod category");
 
             string fullText = sb.ToString();
 
