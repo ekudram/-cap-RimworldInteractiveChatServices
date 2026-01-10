@@ -35,21 +35,21 @@ namespace CAP_ChatInteractive
             closeOnClickedOutside = false;
         }
 
-        public override Vector2 InitialSize => new Vector2(700f, 650f); // Increased from 600f to 650f
+        public override Vector2 InitialSize => new Vector2(700f, 700f); // Increased from 600f to 650f
 
         public override void DoWindowContents(Rect inRect)
         {
             // Draw header
-            DrawHeader(new Rect(inRect.x, inRect.y, inRect.width, 40f));
+            DrawHeader(new Rect(inRect.x, inRect.y, inRect.width, 100f));
 
             // Main content area
             float closeButtonHeight = CloseButSize.y;
             float bottomMargin = 10f; // Extra margin at bottom
             Rect contentRect = new Rect(
                 inRect.x,
-                inRect.y + 45f, // Increased from 40f to 45f
+                inRect.y + 60f, // Increased from 40f to 45f
                 inRect.width,
-                inRect.height - 45f - closeButtonHeight - bottomMargin
+                inRect.height - 96f - closeButtonHeight - bottomMargin
             );
 
             Widgets.DrawMenuSection(contentRect);

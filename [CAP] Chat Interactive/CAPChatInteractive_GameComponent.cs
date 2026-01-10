@@ -85,10 +85,13 @@ namespace CAP_ChatInteractive
             {
                 // In CheckForVersionUpdate() - for testing only
                 // Force it to show the update dialog
+                /*
                 if (true) // Always show for testing
                 {
                     ShowUpdateNotification("1.0.14", "1.0.13");
                 }
+                */
+
 
                 var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
                 if (settings == null)
