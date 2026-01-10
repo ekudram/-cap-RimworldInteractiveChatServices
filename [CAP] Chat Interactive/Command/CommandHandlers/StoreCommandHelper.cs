@@ -380,9 +380,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // SPECIAL CASE: If this is a pawn (animal), use pawn delivery regardless of other parameters
-                if (thingDef.thingClass == typeof(Verse.Pawn))
+                if (thingDef.thingClass == typeof(Verse.Pawn) || thingDef.race != null)
                 {
-                    Logger.Debug($"Using special pawn delivery for {thingDef.defName}");
+                    Logger.Debug($"Using special pawn delivery for {thingDef.defName} (IsPawn: {thingDef.thingClass == typeof(Verse.Pawn)}, HasRace: {thingDef.race != null})");
 
                     Map targetMap = pawn?.Map ?? Find.CurrentMap ?? Find.Maps.FirstOrDefault(m => m.IsPlayerHome);
                     if (targetMap == null)
@@ -1081,6 +1081,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return false;
         }
 
+        // In StoreCommandHelper.cs - Update the TryPawnDelivery method
         private static (bool success, IntVec3 spawnPosition) TryPawnDelivery(ThingDef pawnDef, int quantity, QualityCategory? quality, ThingDef material, IntVec3 dropPos, Map map, Pawn viewerPawn = null)
         {
             IntVec3 spawnPosition = IntVec3.Invalid;
@@ -1108,7 +1109,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     // Create pawn using RimWorld's proper pawn generation
                     PawnGenerationRequest request = new PawnGenerationRequest(
                         kind: pawnDef.race.AnyPawnKind,
-                        faction: null,
+                        faction: null, // Keep as null initially, we'll set faction after creation
                         context: PawnGenerationContext.NonPlayer,
                         tile: -1,
                         forceGenerateNewPawn: true,
@@ -1140,8 +1141,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     );
 
                     Pawn pawn = PawnGenerator.GeneratePawn(request);
+
+                    // CRITICAL FIX: Handle mechanoids by setting faction to player
+                    if (pawn.RaceProps.IsMechanoid)
+                    {
+                        Logger.Debug($"Detected mechanoid: {pawn.def.defName}, setting faction to player");
+                        pawn.SetFaction(Faction.OfPlayer);
+                    }
+                    // Also handle animals (keeping existing logic)
+                    else if (pawn.RaceProps.Animal)
+                    {
+                        pawn.SetFaction(Faction.OfPlayer);
+                        Logger.Debug($"Tamed animal: {pawn.Name}");
+                    }
+
                     pawnsToDeliver.Add(pawn);
-                    Logger.Debug($"Created pawn: {pawn.Name} ({pawn.def.defName})");
+                    Logger.Debug($"Created pawn: {pawn.Name} ({pawn.def.defName}), Faction: {pawn.Faction?.Name ?? "null"}, IsMechanoid: {pawn.RaceProps.IsMechanoid}");
                 }
 
                 // Use a gentler delivery method for pawns - walk them in from the edge
@@ -1155,15 +1170,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         // Spawn the pawn properly
                         GenSpawn.Spawn(pawn, spawnPosition, map);
 
-                        // Make animals tame
-                        if (pawn.RaceProps.Animal)
-                        {
-                            pawn.SetFaction(Faction.OfPlayer);
-                            Logger.Debug($"Tamed animal: {pawn.Name}");
-                        }
-
                         // Add some arrival effects
                         FleckMaker.ThrowDustPuff(spawnPosition, map, 2f);
+
+                        // Debug logging
+                        Logger.Debug($"Spawned pawn {pawn.Name} ({pawn.def.defName}) with faction: {pawn.Faction?.Name ?? "null"}");
                     }
 
                     Logger.Debug($"Successfully delivered {pawnsToDeliver.Count}x {pawnDef.defName} at {spawnPosition}");
@@ -1178,7 +1189,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return (false, spawnPosition);
             }
         }
-
         private static IntVec3 FindPawnSpawnPosition(Map map, IntVec3 preferredPos, Pawn viewerPawn = null)
         {
             // First priority: try to spawn near the viewer's pawn if available
