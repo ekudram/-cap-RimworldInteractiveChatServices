@@ -46,12 +46,12 @@ namespace CAP_ChatInteractive
 
             Settings = GetSettings<CAPChatInteractiveSettings>();
 
-            //// Ensure modVersion is set in saved settings if it's empty
-            //if (string.IsNullOrEmpty(Settings.GlobalSettings.modVersionSaved))
-            //{
-            //    Settings.GlobalSettings.modVersionSaved = Settings.GlobalSettings.modVersion;
-            //    Logger.Debug($"Initialized modVersionSaved to {Settings.GlobalSettings.modVersion}");
-            //}
+            // Ensure modVersion is set in saved settings if it's empty
+            if (string.IsNullOrEmpty(Settings.GlobalSettings.modVersionSaved))
+            {
+                Settings.GlobalSettings.modVersionSaved = Settings.GlobalSettings.modVersion;
+                Logger.Debug($"Initialized modVersionSaved to {Settings.GlobalSettings.modVersion}");
+            }
 
             // INITIALIZE ALIEN PROVIDER HERE - AT MOD STARTUP
             Logger.Debug("=== INITIALIZING ALIEN COMPATIBILITY AT MOD STARTUP ===");
