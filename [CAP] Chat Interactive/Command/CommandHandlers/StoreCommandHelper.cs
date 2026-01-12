@@ -19,6 +19,7 @@
 using _CAP__Chat_Interactive.Utilities;
 using CAP_ChatInteractive.Store;
 using RimWorld;
+using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -108,7 +109,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return viewer.Coins >= price;
         }
 
-        // In StoreCommandHelper.cs - FIX HasRequiredResearch method
         public static bool HasRequiredResearch(StoreItem storeItem)
         {
             // Get settings from the mod instance
@@ -179,7 +179,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             };
         }
 
-        // In StoreCommandHelper.cs - FIX IsQualityAllowed method
         public static bool IsQualityAllowed(QualityCategory? quality)
         {
             if (!quality.HasValue)
@@ -501,8 +500,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     {
                         targetMap = pawn.Map;
 
+                        if (IsUndergroundMap(targetMap))
+                        {
+                            Map surfaceMap = Find.Maps.FirstOrDefault(m => m.IsPlayerHome && !IsUndergroundMap(m));
+                            if (surfaceMap != null)
+                            {
+                                Logger.Debug($"Underground delivery detected → redirecting to surface map {surfaceMap}");
+                                targetMap = surfaceMap;
+                            }
+                            else
+                            {
+                                Logger.Warning("No surface map found for underground delivery redirect");
+                            }
+                        }
                         // Get the trade spot once
-                        IntVec3 tradeSpot = DropCellFinder.TradeDropSpot(targetMap);
+                        IntVec3 tradeSpot = GetCustomDropSpot(targetMap);
+
 
                         // First try to find drop spot near trade spot (highest priority)
                         if (DropCellFinder.TryFindDropSpotNear(tradeSpot, targetMap, out deliveryPos,
@@ -592,7 +605,82 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return (spawnedThings, deliveryPos);
         }
 
-        // New helper method to create things for delivery
+        public static IntVec3 GetCustomDropSpot(Map map)
+        {
+            if (map == null)
+            {
+                Logger.Error("GetCustomDropSpot: Map is null");
+                return IntVec3.Invalid;
+            }
+
+            // 1. Highest priority: Ship landing beacon (tells shuttles exactly where to land)
+            Building shipBeacon = map.listerBuildings.AllBuildingsColonistOfDef(ThingDefOf.ShipLandingBeacon).FirstOrDefault();
+            if (shipBeacon != null)
+            {
+                Logger.Debug($"Using Ship Landing Beacon position: {shipBeacon.Position}");
+                return shipBeacon.Position;
+            }
+
+            // 2. Orbital trade beacon (good for drop pods/trade behavior)
+            Building tradeBeacon = map.listerBuildings.AllBuildingsColonistOfDef(ThingDefOf.OrbitalTradeBeacon).FirstOrDefault();
+            if (tradeBeacon != null)
+            {
+                Logger.Debug($"Using Orbital Trade Beacon position: {tradeBeacon.Position}");
+                return tradeBeacon.Position;
+            }
+
+            // 3. Caravan hitching spot (good general gathering point)
+            ThingDef hitchingDef = ThingDefOf.CaravanPackingSpot
+                                ?? DefDatabase<ThingDef>.GetNamedSilentFail("CaravanPackingSpot");
+
+            if (hitchingDef != null)
+            {
+                Building hitchingSpot = map.listerBuildings.AllBuildingsColonistOfDef(hitchingDef).FirstOrDefault();
+                if (hitchingSpot != null)
+                {
+                    Logger.Debug($"Using Caravan Hitching Spot position: {hitchingSpot.Position}");
+                    return hitchingSpot.Position;
+                }
+            }
+            else
+            {
+                Logger.Warning("Caravan Hitching Spot def not found");
+            }
+
+            // 4. Fallback: near average colonist position (mimics vanilla pod drop behavior)
+            var freeColonists = map.mapPawns.FreeColonistsSpawned;
+            if (freeColonists.Count == 0)
+            {
+                Logger.Debug("No free colonists → falling back to map center");
+                return map.Center;
+            }
+
+            IntVec3 average = IntVec3.Zero;
+            foreach (var colonist in freeColonists)
+                average += colonist.Position;
+
+            average /= freeColonists.Count;
+
+            if (CellFinder.TryFindRandomCellNear(average, map, 20,
+                c => c.Standable(map) && !c.Fogged(map),
+                out IntVec3 spot))
+            {
+                Logger.Debug($"Using central colonist area fallback: {spot}");
+                return spot;
+            }
+
+            if (IsUndergroundMap(map) && Find.Maps.Any(m => !IsUndergroundMap(m) && m.IsPlayerHome))
+            {
+                Map surface = Find.Maps.First(m => !IsUndergroundMap(m) && m.IsPlayerHome);
+                Logger.Debug("Forcing surface map fallback for drop position");
+                return GetCustomDropSpot(surface); // Recursive but safe (surface won't be underground)
+            }
+
+            // Last resort
+            Logger.Warning("No good fallback spot found → using map center");
+            return map.Center;
+        }
+
         private static List<Thing> CreateThingsForDelivery(ThingDef thingDef, int quantity, QualityCategory? quality, ThingDef material)
         {
             List<Thing> things = new List<Thing>();
@@ -636,7 +724,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return things;
         }
 
-        // Updated shuttle delivery to accept pre-created things
         private static bool TryShuttleDelivery(List<Thing> thingsToDeliver, IntVec3 dropPos, Map map)
         {
             try
@@ -713,7 +800,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return false;
 
             // First try trade spot
-            IntVec3 tradeSpot = DropCellFinder.TradeDropSpot(map);
+            IntVec3 tradeSpot = GetCustomDropSpot(map);
             if (IsValidDeliveryPosition(tradeSpot, map))
             {
                 dropPos = tradeSpot;
@@ -762,6 +849,48 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             Logger.Error("No safe drop position found after all attempts");
+            return false;
+        }
+
+        public static bool IsUndergroundMap(Map map)
+        {
+            if (map == null) return false;
+
+            int naturalThickRoofCount = 0;
+            int totalCells = 0;
+
+            foreach (IntVec3 cell in map.AllCells)
+            {
+                totalCells++;
+                RoofDef roof = map.roofGrid.RoofAt(cell);
+                if (roof != null && roof.isNatural && roof == RoofDefOf.RoofRockThick)
+                {
+                    naturalThickRoofCount++;
+                }
+            }
+
+            if (totalCells == 0) return false;
+
+            float thickNaturalPercentage = (float)naturalThickRoofCount / totalCells;
+
+            Logger.Debug($"Thick natural overhead mountain roof: {thickNaturalPercentage:P2} ({naturalThickRoofCount}/{totalCells})");
+
+            // Tune this threshold based on testing — 0.88–0.92 works well for most Anomaly pits
+            const float UNDERGROUND_THRESHOLD = 0.92f;
+
+            if (thickNaturalPercentage > UNDERGROUND_THRESHOLD)
+            {
+                Logger.Debug($"Detected underground map (> {UNDERGROUND_THRESHOLD:P0} thick natural roof)");
+                return true;
+            }
+
+            // Optional extra safety check for very small + very roofed maps
+            if (map.Size.z < 220 && thickNaturalPercentage > 0.80f)
+            {
+                Logger.Debug("Small map with high thick roof coverage → likely underground");
+                return true;
+            }
+
             return false;
         }
 
@@ -1081,7 +1210,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return false;
         }
 
-        // In StoreCommandHelper.cs - Update the TryPawnDelivery method
         private static (bool success, IntVec3 spawnPosition) TryPawnDelivery(ThingDef pawnDef, int quantity, QualityCategory? quality, ThingDef material, IntVec3 dropPos, Map map, Pawn viewerPawn = null)
         {
             IntVec3 spawnPosition = IntVec3.Invalid;
