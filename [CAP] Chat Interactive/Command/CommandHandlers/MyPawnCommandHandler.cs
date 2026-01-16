@@ -301,8 +301,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 float pain = pawn.health.hediffSet.PainTotal;
                 string painStatus = GetPainStatus(pain);
                 string painEmoji = GetPainEmoji(pain);
-                report.AppendLine($"• Pain: {painEmoji} {painStatus} ({pain.ToStringPercent()})");
+                var painDef = StatDef.Named("PainShockThreshold");
+                float maxPain = 0f;
+                if (painDef != null)
+                    maxPain = pawn.GetStatValue(painDef);
 
+                report.AppendLine($"• Pain: {painEmoji} {painStatus} ({pain.ToStringPercent()}/{maxPain.ToStringPercent()})");
+
+                // Add health
+                string hp = pawn.health.summaryHealth.SummaryHealthPercent.ToStringPercent();
+                report.AppendLine($"• Health: {hp}");
             }
             catch (Exception ex)
             {
@@ -365,6 +373,38 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             };
         }
 
+        private static bool IsChildOf(BodyPartRecord part, BodyPartRecord potentialParent)
+        {
+            if (part == null || potentialParent == null) return false;
+            if (part == potentialParent) return false;
+
+            BodyPartRecord childNode = part;
+            BodyPartRecord parentNode = part.parent;
+
+            while (parentNode != null)
+            {
+                if (parentNode == potentialParent)
+                {
+                    // === EXCEPTION FOR TORSO ===
+                    if (potentialParent.def.defName.Equals("Torso", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (childNode.depth != BodyPartDepth.Inside)
+                        {
+                            return false;
+                        }
+                    }
+                    // ===========================
+
+                    return true;
+                }
+
+                childNode = parentNode;
+                parentNode = parentNode.parent;
+            }
+
+            return false;
+        }
+
         // === Body ===
         private static string HandleBodyInfo(Pawn pawn, string[] args)
         {
@@ -378,21 +418,37 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Get all visible health conditions
             var healthConditions = GetVisibleHealthConditions(pawn);
 
-            // Count UNIQUE condition types (not individual instances)
+            // Check if user specified a body part filter
+            string bodyPartFilter = args.Length > 0 ? string.Join(" ", args).ToLower() : null;
+            BodyPartRecord targetPart = null;
+
+            if (!string.IsNullOrEmpty(bodyPartFilter))
+            {
+                // Find the body part
+                targetPart = pawn.RaceProps.body.AllParts
+                    .FirstOrDefault(p => p.def?.label?.ToLower().Contains(bodyPartFilter) == true ||
+                                        p.def?.defName?.ToLower().Contains(bodyPartFilter) == true);
+
+                if (targetPart == null)
+                {
+                    return $"❌ Body part '{bodyPartFilter}' not found. Try: torso, head, arm, leg, etc.";
+                }
+
+                // Filter to only show this part and its children
+                healthConditions = healthConditions
+                    .Where(g => g.Key == targetPart || IsChildOf(g.Key, targetPart))
+                    .ToList();
+            }
+
+            // Count UNIQUE condition types
             int uniqueConditionCount = 0;
             int totalHediffCount = 0;
-
-            // Build dictionary to count unique conditions
             var conditionGroups = new Dictionary<string, int>();
 
             foreach (var partGroup in healthConditions)
             {
                 var hediffsList = partGroup.ToList();
-
-                // Group by condition key
-                var groups = hediffsList
-                    .GroupBy(h => GetConditionKey(h))
-                    .ToList();
+                var groups = hediffsList.GroupBy(h => GetConditionKey(h)).ToList();
 
                 foreach (var group in groups)
                 {
@@ -411,145 +467,148 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            // Add summary at the front - count UNIQUE conditions, not total hediffs
-            report.AppendLine($"🏥 Health Report ({uniqueConditionCount} conditions):");
+            // Add summary at the front
+            if (targetPart != null)
+            {
+                report.AppendLine($"🏥 Health Report - {targetPart.LabelCap} ({uniqueConditionCount} conditions):");
+            }
+            else
+            {
+                report.AppendLine($"🏥 Health Report ({uniqueConditionCount} conditions):");
+            }
 
-            // Add temperature comfort range
-            float minComfy = pawn.GetStatValue(StatDefOf.ComfyTemperatureMin);
-            float maxComfy = pawn.GetStatValue(StatDefOf.ComfyTemperatureMax);
-            report.AppendLine($"🌡️ Comfort Range: {minComfy.ToStringTemperature()} ~ {maxComfy.ToStringTemperature()}");
+            // Add temperature comfort range (only in full report)
+            if (targetPart == null)
+            {
+                float minComfy = pawn.GetStatValue(StatDefOf.ComfyTemperatureMin);
+                float maxComfy = pawn.GetStatValue(StatDefOf.ComfyTemperatureMax);
+                report.AppendLine($"🌡️ Comfort Range: {minComfy.ToStringTemperature()} ~ {maxComfy.ToStringTemperature()}");
+            }
 
             if (healthConditions.Count == 0)
             {
-                report.AppendLine("No visible health issues. ✅");
-                return report.ToString();
-            }
-
-            // Separate critical vs non-critical conditions
-            var criticalConditions = new List<string>();
-            var regularConditions = new List<string>();
-
-            int maxUniqueConditionsToShow = 12; // Limit unique conditions, not total hediffs
-            int uniqueConditionsShown = 0;
-
-            // Process conditions in order: critical first, then by severity
-            var allGroups = new List<(BodyPartRecord part, IGrouping<string, Hediff> group, bool isCritical)>();
-
-            foreach (var partGroup in healthConditions)
-            {
-                var hediffsList = partGroup.ToList();
-
-                // Group by condition key
-                var groups = hediffsList
-                    .GroupBy(h => GetConditionKey(h))
-                    .ToList();
-
-                foreach (var group in groups)
+                if (targetPart != null)
                 {
-                    Hediff sample = group.First();
-                    bool isCritical = IsCriticalCondition(sample);
-                    allGroups.Add((partGroup.Key, group, isCritical));
-                }
-            }
-
-            // Sort: critical first, then by total severity
-            var sortedGroups = allGroups
-                .OrderByDescending(g => g.isCritical ? 1 : 0)
-                .ThenByDescending(g => g.group.Sum(h => h.Severity))
-                .ThenByDescending(g => g.part?.height ?? 0f)
-                .ToList();
-
-            foreach (var (part, group, isCritical) in sortedGroups)
-            {
-                if (uniqueConditionsShown >= maxUniqueConditionsToShow && criticalConditions.Count > 0)
-                    break;
-
-                int count = group.Count();
-                Hediff sample = group.First();
-                string conditionName = GetConditionDisplayName(sample);
-
-                if (string.IsNullOrEmpty(conditionName)) continue;
-
-                string partName = part?.LabelCap ?? "Whole Body";
-                string partEmoji = GetBodyPartEmoji(part);
-                string severityIndicator = GetSeverityIndicator(sample);
-
-                string display = count > 1 ?
-                    $"{partEmoji} {partName}: {severityIndicator}{conditionName} (x{count})" :
-                    $"{partEmoji} {partName}: {severityIndicator}{conditionName}";
-
-                if (isCritical)
-                {
-                    criticalConditions.Add(display);
+                    report.AppendLine($"No visible issues on {targetPart.LabelCap}. ✅");
                 }
                 else
                 {
-                    regularConditions.Add(display);
+                    report.AppendLine("No visible health issues. ✅");
                 }
-
-                uniqueConditionsShown++;
+                return report.ToString();
             }
 
-            // Build the report
-            if (criticalConditions.Count > 0 || regularConditions.Count > 0)
-            {
-                report.AppendLine("Health Conditions:");
+            // Group conditions by body part for display
+            report.AppendLine("Health Conditions:");
 
-                // Show critical conditions first
-                foreach (var condition in criticalConditions)
+            // Sort body parts by height (head to toe)
+            var sortedPartGroups = healthConditions
+                .OrderByDescending(g => g.Key?.height ?? 0f)
+                .ThenByDescending(g => g.Key?.coverageAbsWithChildren ?? 0f)
+                .ToList();
+
+            int maxPartsToShow = targetPart != null ? 25 : 10; // Show more for specific part, than for full body
+            int partsShown = 0;
+            int maxHediffsToShow = targetPart != null ? 15 : 20;
+            int hediffssShown = 0;
+
+            foreach (var partGroup in sortedPartGroups)
+            {
+                if (partsShown >= maxPartsToShow)
+                    break;
+
+                BodyPartRecord part = partGroup.Key;
+                string partName = part?.LabelCap ?? "Whole Body";
+                string partEmoji = GetBodyPartEmoji(part);
+                string healthStats = "";
+                if (part != null)
                 {
-                    report.AppendLine(condition);
+                    float partHealth = pawn.health.hediffSet.GetPartHealth(part);
+                    float partMaxHealth = part.def.GetMaxHealth(pawn);
+                    healthStats = $"({partHealth}/{partMaxHealth})";
                 }
 
-                // Show regular conditions next
-                foreach (var condition in regularConditions)
+                var hediffsList = partGroup.ToList();
+
+                // Group by condition type
+                var conditionsByType = hediffsList
+                    .GroupBy(h => GetConditionKey(h))
+                    .OrderByDescending(g => IsCriticalCondition(g.First()))
+                    .ThenByDescending(g => g.Sum(h => h.Severity))
+                    .ToList();
+
+                // Build conditions list for this body part
+                var conditionLines = new List<string>();
+
+                foreach (var group in conditionsByType)
                 {
-                    report.AppendLine(condition);
+                    if (hediffssShown >= maxHediffsToShow)
+                        break;
+                    int count = group.Count();
+                    Hediff sample = group.First();
+                    string conditionName = GetConditionDisplayName(sample);
+
+                    if (string.IsNullOrEmpty(conditionName)) continue;
+
+                    string severityIndicator = GetSeverityIndicator(sample);
+                    string display = count > 1 ?
+                        $"{severityIndicator}{conditionName} (x{count})" :
+                        $"{severityIndicator}{conditionName}";
+
+                    conditionLines.Add(display);
+                    hediffssShown++;
+                }
+
+                if (conditionLines.Count > 0)
+                {
+                    // Display body part with all its conditions
+                    report.AppendLine($"{partEmoji} {partName}{healthStats}:");
+                    foreach (var line in conditionLines)
+                    {
+                        report.AppendLine($"  • {line}");
+                    }
+
+                    partsShown++;
                 }
             }
 
-            // Add overflow message if we didn't show everything
-            int hiddenUniqueConditions = Math.Max(0, uniqueConditionCount - uniqueConditionsShown);
-            if (hiddenUniqueConditions > 0)
+            // Add overflow message if we didn't show everything (only for full body report)
+            if (targetPart == null)
             {
-                report.AppendLine($"... and {hiddenUniqueConditions} more conditions");
+                int hiddenParts = Math.Max(0, healthConditions.Count - partsShown);
+                if (hiddenParts > 0)
+                {
+                    report.AppendLine($"... and {hiddenParts} more body parts with conditions");
+                }
 
-                // Also show total hediff count for context
                 if (totalHediffCount > uniqueConditionCount)
                 {
-                    report.AppendLine($"(Total of {totalHediffCount} individual injuries)");
+                    report.AppendLine($"({totalHediffCount} individual injuries across all body)");
                 }
             }
-            else if (totalHediffCount > uniqueConditionCount)
-            {
-                // Even if showing all unique conditions, indicate multiple injuries
-                report.AppendLine($"(Total of {totalHediffCount} individual injuries)");
-            }
 
-            // Add health severity summary
-            string severity = GetOverallHealthSeverity(pawn);
-            report.AppendLine($"📊 Overall Status: {severity}");
+            if (targetPart == null)
+            {
+                // Add health severity summary
+                string severity = GetOverallHealthSeverity(pawn);
+                report.AppendLine($"📊 Overall Status: {severity}");
 
-            // Add immediate danger warnings
-            // Check for bleeding
-            float bleedRate = pawn.health.hediffSet.BleedRateTotal;
-            if (bleedRate > 2.0f)
-            {
-                report.AppendLine("🆘 CRITICAL: Bleeding out! Immediate medical attention required!");
+                // Add immediate danger warnings
+                // Check for bleeding
+                float bleedRate = pawn.health.hediffSet.BleedRateTotal;
+                if (bleedRate > 0f)
+                {
+                    int bleedoutTime = HealthUtility.TicksUntilDeathDueToBloodLoss(pawn);
+                    if (bleedoutTime < GenDate.TicksPerDay)
+                    {
+                        report.AppendLine($"Bleedout in {bleedoutTime.ToStringTicksToPeriod()}!");
+                    }
+                }
+                if (pawn.health.hediffSet.HasTendableHediff() || pawn.health.hediffSet.HasTendableNonInjuryNonMissingPartHediff())
+                {
+                    report.AppendLine("⚠️ Needs medical attention!");
+                }
             }
-            else if (bleedRate > 1.0f)
-            {
-                report.AppendLine("⚠️ DANGER: Severe bleeding! Needs urgent treatment!");
-            }
-            else if (bleedRate > 0.5f)
-            {
-                report.AppendLine("⚠️ Warning: Significant bleeding detected");
-            }
-            else if (pawn.health.hediffSet.HasTendedAndHealingInjury() || pawn.health.hediffSet.HasImmunizableNotImmuneHediff())
-            {
-                report.AppendLine("⚠️ Needs medical attention!");
-            }
-
             return report.ToString();
         }
 
@@ -559,28 +618,34 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (hediff == null) return false;
 
             // Missing body parts (amputations) - always critical
-            if (hediff is Hediff_MissingPart)
+            if (hediff is Hediff_MissingPart && hediff.Bleeding)
             {
                 return true;
             }
 
             // Bleeding injuries - always critical
-            if (hediff.Bleeding)
+            if (hediff.Bleeding && hediff.BleedRateScaled > 2.0f)
             {
                 return true;
             }
 
-            // High severity injuries
-            if (hediff.Severity > 0.6f)
+            // High severity diseases
+
+            if (hediff.def.isInfection && hediff.Severity > 0.5)
             {
                 return true;
             }
+            // High severity injuries
+            //if (hediff.Severity > 0.6f)
+            //{
+            //    return true;
+            //}
 
             // Infections and serious injuries
-            if (hediff.def.hediffClass == typeof(Hediff_Injury) && hediff.Severity > 0.4f)
-            {
-                return true;
-            }
+            //if (hediff.def.hediffClass == typeof(Hediff_Injury) && hediff.Severity > 0.4f)
+            //{
+            //    return true;
+            //}
 
             // Check if it's life-threatening
             if (hediff.IsLethal || hediff.IsCurrentlyLifeThreatening)
@@ -651,10 +716,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // Painful conditions that affect functionality
-            if (hediff.PainFactor > 1.5f || hediff.PainOffset > 0.3f)
-            {
-                return true;
-            }
+            //if (hediff.PainFactor > 1.5f || hediff.PainOffset > 0.3f)
+            //{
+            //    return true;
+            //}
 
             // Check summary health impact (conditions that significantly affect health)
             if (hediff.SummaryHealthPercentImpact < -0.2f) // Reduces health by more than 20%
@@ -721,23 +786,25 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return "🌀 ";
             }
 
+            bool isDisease = hediff.def.isInfection;
+
             // General severity indicators
-            if (hediff.Severity > 0.8f)
+            if (isDisease && hediff.Severity > 0.8f)
             {
                 return "⚠️ "; // Warning
             }
 
-            if (hediff.Severity > 0.6f)
+            if (isDisease && hediff.Severity > 0.6f)
             {
                 return "❗ "; // Exclamation
             }
 
-            if (hediff.Severity > 0.4f)
+            if (isDisease && hediff.Severity > 0.4f)
             {
                 return "🔸 "; // Orange diamond
             }
 
-            if (hediff.Severity > 0.2f)
+            if (isDisease && hediff.Severity > 0.2f)
             {
                 return "🔹 "; // Blue diamond
             }
@@ -1039,7 +1106,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (pawn.health.hediffSet.HasTendedAndHealingInjury() ||
                 pawn.health.hediffSet.HasImmunizableNotImmuneHediff())
             {
-                return "Poor 🟠 (Needs Treatment)";
+                return "Poor 🟠 (Needs Bed Rest)";
             }
 
             // Use RimWorld's summary health as baseline
@@ -1864,6 +1931,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string HandleBackstoriesInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
+            report.Append($"Age:🧬{pawn.ageTracker.AgeBiologicalYears}/⏳{pawn.ageTracker.AgeChronologicalYears} | ");
             report.AppendLine($"👤 Backstories:");  // for {pawn.Name}:
 
             // Childhood backstory - truncated to fit in one message

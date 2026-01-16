@@ -155,7 +155,17 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
-            return TraitsCommandHandler.HandleReplaceTraitCommand(messageWrapper, args);
+            return TraitsCommandHandler.HandleReplaceTraitCommand(messageWrapper, args); 
+        }
+    }
+
+    public class SetTraits : ChatCommand
+    {
+        public override string Name => "settraits";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            return TraitsCommandHandler.HandleSetTraitsCommand(messageWrapper, args);
         }
     }
 
