@@ -421,10 +421,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (args.Length == 0)
             {
-                var beard = pawn.style.beardDef.defName ?? "None";
+                var beard = pawn.style?.beardDef?.defName ?? "None";
                 return $"Current beard:{beard} | Usage: !setbeard <beard_name> OR !setbeard list";
             }
-                
 
             if (args[0].ToLower() == "list")
                 return ListAvailableBeardStyles(pawn);
@@ -454,10 +453,34 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static bool CanUseBeardStyle(Pawn pawn, BeardDef beardDef)
         {
+            // HAR race beard restrictions
+            if (ModsConfig.IsActive("erdelf.HumanoidAlienRaces")
+                && pawn?.def != null
+                && pawn.def.GetType().Name.Contains("AlienRace"))
+            {
+                var alienRace = Get(pawn.def, "alienRace");
+                var general = Get(alienRace, "generalSettings");
+                var partGen = Get(general, "alienPartGenerator");
+
+                var harBeards = Get(partGen, "beardTypes") as List<BeardDef>;
+
+                // If HAR race has no beard types defined, only allow NoBeard
+                if (harBeards == null || harBeards.Count == 0)
+                {
+                    return beardDef == BeardDefOf.NoBeard;
+                }
+
+                // If HAR race has defined beard types, only allow those
+                if (!harBeards.Contains(beardDef))
+                {
+                    return false;
+                }
+            }
+
             if (!ModsConfig.BiotechActive || pawn.genes == null)
                 return true;
 
-            if (beardDef.requiredGene != null && (!pawn.genes.Xenogenes.Any(g=> g.def == beardDef.requiredGene) || !pawn.genes.Endogenes.Any(g => g.def == beardDef.requiredGene)))
+            if (beardDef.requiredGene != null && !pawn.genes.HasActiveGene(beardDef.requiredGene))
                 return false;
 
             return pawn.genes.StyleItemAllowed(beardDef);
@@ -466,7 +489,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string ListAvailableBeardStyles(Pawn pawn)
         {
             var compatible = DefDatabase<BeardDef>.AllDefs
-                .Where(b => CanUseBeardStyle(pawn, b) == true)
+                .Where(b => CanUseBeardStyle(pawn, b))
                 .OrderBy(b => b.label ?? b.defName)
                 .Take(15)
                 .ToList();
@@ -478,7 +501,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             result += string.Join(", ", compatible.Select(b => b.label ?? b.defName));
 
             return result;
-        }
+        }   
 
         #endregion
 
