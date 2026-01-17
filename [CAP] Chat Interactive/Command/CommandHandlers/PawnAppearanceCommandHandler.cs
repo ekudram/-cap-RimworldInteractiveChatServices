@@ -34,7 +34,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 
 
             if (args[0].ToLower() == "list")
-                return ListAvailableHeadTypes(pawn);
+            {
+                List<HeadTypeDef> headList = new List<HeadTypeDef>();
+                return ListAvailableHeadTypes(pawn, ref headList);
+            }
 
             string headTypeName = string.Join(" ", args);
             var headTypeDef = FindHeadType(headTypeName);
@@ -42,8 +45,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (headTypeDef == null)
                 return $"Head type '{headTypeName}' not found. Use !sethead list to see available options.";
 
-            if (!CanUseHeadType(pawn, headTypeDef))
-                return $"'{headTypeDef.LabelCap}' is not compatible with your pawn's gender or genes.";
+            if (!CanUseHeadType(pawn, headTypeDef) && (pawn?.def != null && !pawn.def.GetType().Name.Contains("AlienRace")))
+                return $"'{headTypeDef.defName}' is not compatible with your pawn's gender or genes.";
+            else if (ModsConfig.IsActive("erdelf.HumanoidAlienRaces")
+                && pawn?.def != null
+                && pawn.def.GetType().Name.Contains("AlienRace"))
+            {
+                var alienHeads = new List<HeadTypeDef>();
+                ListAvailableHeadTypes(pawn, ref alienHeads);
+                if (!alienHeads.Any(h => h.defName == headTypeDef.defName))
+                    return $"Your pawns race doesnt allow {headTypeDef.defName}";
+
+            }
 
             pawn.story.headType = headTypeDef;
             pawn.Drawer.renderer.SetAllGraphicsDirty();
@@ -61,31 +74,57 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static bool CanUseHeadType(Pawn pawn, HeadTypeDef headType)
         {
-            // Check gender restriction
-            if (headType.gender != pawn.gender)
+
+            // Gender filter (Gender.None is allowed)
+            if (headType.gender != Gender.None && headType.gender != pawn.gender)
                 return false;
 
-            // Check required genes (Biotech)
-            if (ModsConfig.BiotechActive && !headType.requiredGenes.NullOrEmpty())
-            {
-                if (pawn.genes == null)
-                    return false;
+            if (!ModsConfig.BiotechActive || pawn.genes == null)
+                return true;
 
-                foreach (var requiredGene in headType.requiredGenes)
+            // Prefer xenogenes if any forced head genes exist
+            var activeXenoGenes = pawn.genes.Xenogenes
+                .Where(g => g.Active && g.def.forcedHeadTypes?.Count > 0)
+                .ToList();
+
+            if (activeXenoGenes.Count > 0)
+            {
+                int count = activeXenoGenes.Count;
+                foreach (var gene in activeXenoGenes)
                 {
-                    if (!pawn.genes.HasActiveGene(requiredGene))
-                        return false;
+                    if (gene.def.forcedHeadTypes.Contains(headType))
+                        count--;
                 }
+                if (count == 0)
+                    return true;
+                else return false;
+            }
+
+            // Otherwise fall back to germline genes
+            var activeEndoGenes = pawn.genes.Endogenes
+                .Where(g => g.Active && g.def.forcedHeadTypes?.Count > 0)
+                .ToList();
+
+            if (activeEndoGenes.Count > 0)
+            {
+                int count = activeEndoGenes.Count;
+                foreach (var gene in activeEndoGenes)
+                {
+                    if (gene.def.forcedHeadTypes.Contains(headType))
+                        count--;
+                }
+                if (count == 0)
+                    return true;
             }
 
             return true;
         }
 
-        private static string ListAvailableHeadTypes(Pawn pawn)
+        private static string ListAvailableHeadTypes(Pawn pawn, ref List<HeadTypeDef> headList)
         {           
             List<HeadTypeDef> compatible = null;
 
-            // HAR path (soft dependency)
+            // HAR
             if (ModsConfig.IsActive("erdelf.HumanoidAlienRaces")
                 && pawn?.def != null
                 && pawn.def.GetType().Name.Contains("AlienRace"))
@@ -95,20 +134,27 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var partGen = Get(general, "alienPartGenerator");
 
                 compatible = Get(partGen, "headTypes") as List<HeadTypeDef>;
+                if (compatible != null)
+                    headList.AddRange(compatible);
+                else
+                {
+                    return "No compatible AlienRace head types found.";
+                }
             }
-
-            // Vanilla / fallback
-            compatible ??= DefDatabase<HeadTypeDef>.AllDefs
-                .Where(h => CanUseHeadType(pawn, h) == true)
-                .OrderBy(h => h.label ?? h.defName)
-                .Take(10)
+            else
+            {
+                compatible = DefDatabase<HeadTypeDef>.AllDefs
+                .Where(h =>
+                    (h.gender == Gender.None || h.gender == pawn.gender)
+                    && CanUseHeadType(pawn, h))
                 .ToList();
+            }           
 
             if (compatible.Count == 0)
                 return "No compatible head types found.";
 
-            return "Available head types (showing first 10): "
-                + string.Join(", ", compatible.Select(h => h.label ?? h.defName));
+            return "Available head types: "
+                   + string.Join(", ", compatible.Select(h => h.defName));
         }
 
         #endregion
@@ -249,10 +295,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             else
             {
-                compatible = DefDatabase<BodyTypeDef>.AllDefs
-                .ToList();
 
-                compatible.RemoveAll(b => !CanUseBodyType(pawn, b));
+                foreach(var body in DefDatabase<BodyTypeDef>.AllDefs.ToList())
+                {
+                    if (CanUseBodyType(pawn, body))
+                        compatible.Add(body);                       
+                }
+
             }
 
             if (compatible.Count == 0)
