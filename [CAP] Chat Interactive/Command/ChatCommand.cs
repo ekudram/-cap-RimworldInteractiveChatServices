@@ -161,6 +161,37 @@ namespace CAP_ChatInteractive
             }
         }
 
+        // In CommandSettingsManager.cs (add this public static method)
+
+        public static void SaveSettings()
+        {
+            try
+            {
+                // Load existing JSON to modify (or create new)
+                string json = JsonFileManager.LoadFile("CommandSettings.json");
+                var allSettings = string.IsNullOrEmpty(json)
+                    ? new Dictionary<string, CommandSettings>()
+                    : JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(json);
+
+                // Update togglestore (or add if missing)
+                string key = "togglestore".ToLowerInvariant();
+                if (!allSettings.ContainsKey(key))
+                    allSettings[key] = new CommandSettings();
+
+                // No need to copy everything - but since we modified GetSettings() cache/dialog, assume it's in-memory
+                // For simplicity: re-save the whole thing (small file)
+
+                string newJson = JsonConvert.SerializeObject(allSettings, Formatting.Indented);
+                JsonFileManager.SaveFile("CommandSettings.json", newJson);
+
+                Logger.Debug("[CAP] CommandSettings.json saved (store toggle updated)");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to save CommandSettings: {ex}");
+            }
+        }
+
         private static CommandSettings LoadSettingsFromJson(string commandName)
         {
             // Load from JSON file directly
@@ -202,6 +233,24 @@ namespace CAP_ChatInteractive
 
             // Return default settings (Enabled = true)
             return new CommandSettings();
+        }
+    }
+
+    public static class CommandUtility
+    {
+        public static bool AreStoreCommandsEnabled()
+        {
+            // We use the settings of any well-known command (e.g. "buy") as the global holder
+            // This is simple and reuses your existing JSON infrastructure
+            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings; // or "raid", "backpack" etc.
+            return settings?.StoreCommandsEnabled ?? true;
+        }
+
+        public static string GetStoreStatusText()
+        {
+            return AreStoreCommandsEnabled()
+                ? "Store & interaction commands are **ENABLED**"
+                : "Store & interaction commands are **DISABLED** (emergency mode)";
         }
     }
 

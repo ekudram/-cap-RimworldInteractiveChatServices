@@ -90,16 +90,6 @@ namespace _CAP__Chat_Interactive
             // OLD: Widgets.Label(channelLabelRect, "Channel Name:");
             Widgets.Label(channelLabelRect,
                 "RICS.Twitch.ChannelNameLabel".Translate());
-            /* OLD:
-            TooltipHandler.TipRegion(channelLabelRect,
-                "<b>Your Twitch Channel Name</b>\n\n" +
-                "This is the name that appears in your stream URL:\n" +
-                "• https://twitch.tv/<color=orange>YOUR_CHANNEL_NAME</color>\n\n" +
-                "<b>Examples:</b>\n" +
-                "• If your URL is twitch.tv/superstreamer → enter 'superstreamer'\n" +
-                "• Case insensitive - 'SuperStreamer' same as 'superstreamer'\n\n" +
-                "🔍 <i>This is NOT your display name with capitals!</i>");
-            */
             TooltipHandler.TipRegion(channelLabelRect,
                 "<b>" + UIUtilities.Colorize("RICS.Twitch.ChannelNameTooltip.Title".Translate(),ColorLibrary.HeaderAccent) // orange
                 + "</b>\n\n" +
@@ -128,8 +118,10 @@ namespace _CAP__Chat_Interactive
             // Bot Account Section
             Text.Font = GameFont.Medium;
             // OLD: listing.Label("Bot Account (Optional)");
+            GUI.color = ColorLibrary.SubHeader;
             listing.Label("RICS.Twitch.BotAccountHeader".Translate());
             Text.Font = GameFont.Small;
+            GUI.color = Color.white;
             listing.GapLine(6f);
             listing.Gap(4f);
 
@@ -172,7 +164,6 @@ namespace _CAP__Chat_Interactive
 
             Rect botFieldRect = listing.GetRect(30f);
             settings.BotUsername = Widgets.TextField(botFieldRect, settings.BotUsername);
-            // OLD: TooltipHandler.TipRegion(botFieldRect, "Enter bot account username (or your main account)");
             TooltipHandler.TipRegion(botFieldRect,
                 "RICS.Twitch.BotUsernameFieldTooltip".Translate()
             );
@@ -195,60 +186,22 @@ namespace _CAP__Chat_Interactive
                 Widgets.Label(botStatusRect, "RICS.Twitch.BotAccountStatus.Main".Translate());
             }
             GUI.color = Color.white;
-            /*
-            if (!string.IsNullOrEmpty(settings.BotUsername) &&
-                !string.IsNullOrEmpty(settings.ChannelName))
-            {
-                Rect botStatusRect = listing.GetRect(20f);
-                if (settings.BotUsername.ToLower() != settings.ChannelName.ToLower())
-                {
-                    GUI.color = Color.green;
-                    // OLD: Widgets.Label(botStatusRect, "✓ Using separate bot account");
-                    Widgets.Label(botStatusRect,
-                        "RICS.Twitch.BotAccountStatus.Separate".Translate());
-                    GUI.color = Color.white;
-                }
-                else
-                {
-                    GUI.color = Color.yellow;
-                    // OLD: Widgets.Label(botStatusRect, "⚠ Using main streamer account as bot");
-                    Widgets.Label(botStatusRect,
-                        "RICS.Twitch.BotAccountStatus.Main".Translate());
-                    GUI.color = Color.white;
-                }
-            }
-            */
 
             listing.Gap(16f);
 
             // OAuth Token Section
             Text.Font = GameFont.Medium;
-            // OLD: listing.Label("Authentication");
+            GUI.color = ColorLibrary.SubHeader;
             listing.Label("RICS.Twitch.AuthenticationHeader".Translate());
             Text.Font = GameFont.Small;
+            GUI.color = Color.white;
             listing.GapLine(6f);
             listing.Gap(4f);
 
             // Access Token label with tooltip
             Rect tokenLabelRect = listing.GetRect(24f);
-            // OLD: Widgets.Label(tokenLabelRect, "Access Token:");
             Widgets.Label(tokenLabelRect,
                 "RICS.Twitch.AccessTokenLabel".Translate());
-            /* OLD:
-            TooltipHandler.TipRegion(tokenLabelRect,
-                "<b>Twitch OAuth Token</b>\n\n" +
-                "🔐 This is like a password for the bot account\n" +
-                "• Get it from Twitch Token Generator (button below)\n" +
-                "• Token starts with 'oauth:'\n" +
-                "• Keep this secret - never share it!\n\n" +
-                "<b>How it works:</b>\n" +
-                "1. Click 'Get Twitch Access Token' below\n" +
-                "2. Login with your bot account (or main account)\n" +
-                "3. Select 'Bot Chat Token'\n" +
-                "4. Copy the generated token\n" +
-                "5. Paste it here or use the Paste button\n\n" +
-                "🛡️ <i>This token only allows chat access, not stream control</i>");
-            */
             TooltipHandler.TipRegion(tokenLabelRect,
                 "RICS.Twitch.AccessTokenTooltip".Translate()
             );
@@ -257,19 +210,6 @@ namespace _CAP__Chat_Interactive
             Rect tokenFieldRect = listing.GetRect(30f);
 
             // Determine display text
-            /* OLD:
-                        string tokenDisplay = string.IsNullOrEmpty(settings.AccessToken) ?
-                "[Click Paste or Get Token below]" :
-                "oauth:••••••••••••••••";
-            Add to translation files:
-            <!-- Token display field -->
-                <RICS.Twitch.AccessTokenEmpty>[No token set - use buttons below]</RICS.Twitch.AccessTokenEmpty>
-                <RICS.Twitch.AccessTokenMasked>oauth:••••••••••••••••</RICS.Twitch.AccessTokenMasked>
-
-                <!-- Tooltip for the field -->
-                <RICS.Twitch.AccessTokenFieldTooltip>Twitch OAuth token (hidden for security).\nSelect text to copy, or use buttons below to paste/set.</RICS.Twitch.AccessTokenFieldTooltip>
-
-            */
             string tokenDisplay;
             if (string.IsNullOrEmpty(settings.AccessToken))
             {
@@ -292,15 +232,6 @@ namespace _CAP__Chat_Interactive
             Rect tokenButtonRect = listing.GetRect(35f);
             Rect pasteRect = new Rect(tokenButtonRect.x, tokenButtonRect.y, 140f, 30f);
             Rect getTokenRect = new Rect(pasteRect.xMax + 10f, tokenButtonRect.y, 160f, 30f);
-
-            /*  Add to translation files:
-            <RICS.Twitch.PasteTokenButton>Paste Token</RICS.Twitch.PasteTokenButton>
-            <RICS.Twitch.PasteTokenTooltip>Paste OAuth token from clipboard (auto-adds 'oauth:' if missing)</RICS.Twitch.PasteTokenTooltip>
-
-            <RICS.Twitch.AddedOAuthPrefix>Added 'oauth:' prefix to token</RICS.Twitch.AddedOAuthPrefix>
-            <RICS.Twitch.TokenPastedSuccess>Twitch token pasted successfully!</RICS.Twitch.TokenPastedSuccess>
-            <RICS.Twitch.ClipboardEmpty>Clipboard is empty!</RICS.Twitch.ClipboardEmpty>
-            */
 
             if (Widgets.ButtonText(pasteRect, "RICS.Twitch.PasteTokenButton".Translate()))
             {

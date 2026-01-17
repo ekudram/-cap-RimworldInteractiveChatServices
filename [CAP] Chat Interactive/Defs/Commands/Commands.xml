@@ -47,9 +47,9 @@
     <enabled>true</enabled>
     <commandClass>CAP_ChatInteractive.Commands.ModCommands.ToggleStore</commandClass>
     <requiresMod>true</requiresMod>
-    <commandDescription>Toggle coin earning on/off</commandDescription>
+    <commandDescription>Toggle purchases on/off</commandDescription>
     <permissionLevel>moderator</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>1</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -60,7 +60,33 @@
     <enabled>true</enabled>
     <commandClass>CAP_ChatInteractive.Commands.ModCommands.FixAllPawns</commandClass>
     <requiresMod>true</requiresMod>
-    <commandDescription>Fixes all pawns</commandDescription>
+    <commandDescription>Fixes all pawns assignments.</commandDescription>
+    <permissionLevel>moderator</permissionLevel>
+    <cooldownSeconds>1</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>CleanLootboxes</defName>
+    <commandText>cleanlootboxes</commandText>
+    <label>Clean loot boxes</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ModCommands.CleanLootboxes</commandClass>
+    <requiresMod>true</requiresMod>
+    <commandDescription>Cleans up Lootboxes.  Usage: !cleanlootboxes [dry|dryrun, all, orphans]/n dry/dryrun returns count only./nOrphans fixes lootboxes that have no viewer. </commandDescription>
+    <permissionLevel>moderator</permissionLevel>
+    <cooldownSeconds>1</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>CleanViewers</defName>
+    <commandText>cleanviewers</commandText>
+    <label>clean viwerers</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ModCommands.CleanViewers</commandClass>
+    <requiresMod>true</requiresMod>
+    <commandDescription>Clean viewer database. Usage: !cleanviewers [dry|noplat|all]/nUse noplat to clear users with no platform ID/nThis is safe todo.</commandDescription>
     <permissionLevel>moderator</permissionLevel>
     <cooldownSeconds>1</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>

@@ -26,6 +26,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
+
             if (args.Length == 0)
             {
                 return "Usage: !event <event_name> or !lookup event <name>.";

@@ -87,6 +87,7 @@ namespace CAP_ChatInteractive
         public int MessageCooldownSeconds = 1;
 
         // economy properties
+        public bool StoreCommandsEnabled  = true;   // ← global kill-switch for buying/interacting commands
         public int StartingCoins = 100;
         public int StartingKarma = 100;
         public int BaseCoinReward = 10;
@@ -98,6 +99,7 @@ namespace CAP_ChatInteractive
         public int MinutesForActive = 30;
         public int MaxTraits = 4;
         public string CurrencyName = " 💰 ";
+
 
 
         // Global event settings
@@ -197,6 +199,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref MinutesForActive, "minutesForActive", 30);
             Scribe_Values.Look(ref MaxTraits, "maxTraits", 4);
             Scribe_Values.Look(ref CurrencyName, "currencyName", " 💰 ");
+            Scribe_Values.Look(ref StoreCommandsEnabled, "storeCommandsEnabled", true);  // For !togglestore command
 
             // Cooldown settings
             Scribe_Values.Look(ref EventCooldownsEnabled, "eventCooldownsEnabled", true);

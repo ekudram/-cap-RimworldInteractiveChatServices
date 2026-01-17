@@ -110,13 +110,97 @@ namespace CAP_ChatInteractive.Commands.ModCommands
         }
     }
 
+    // In ToggleStore.cs (full class since it's new/simple)
+
     public class ToggleStore : ChatCommand
     {
         public override string Name => "togglestore";
+        public override string PermissionLevel => "moderator";
+        public override int CooldownSeconds => 1;
+
+        // Hardcoded list of store/interaction commands affected by the toggle
+        public static readonly HashSet<string> StoreCommands = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "backpack", "wear", "equip", "use",
+        "addtrait", "removetrait", "replacetrait", "settraits",
+        "pawn", "surgery", "event", "weather",
+        "militaryaid", "raid", "revivepawn", "healpawn", "passion"
+        // ← Add new store commands here when created
+    };
+
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            // TODO: Implement coin toggling logic
-            return "TODO:  Tell Capto to fix this and make it work!";
+            var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+
+            // Get current state
+            bool currentState = globalSettings.StoreCommandsEnabled;
+            bool newState = currentState;
+            bool changedState = false;
+            Logger.Debug($"[ToggleStore] Current store commands enabled state: {currentState}");
+
+            // Parse argument if provided
+            if (args.Length > 0)
+            {
+                string input = args[0].ToLowerInvariant();
+
+                if (input is "on" or "enable" or "1" or "true")
+                {
+                    newState = true;
+                }
+                else if (input is "off" or "disable" or "0" or "false")
+                {
+                    newState = false;
+                }
+                else
+                {
+                    return $"Invalid argument.\n" +
+                           $"Usage: !togglestore [on/off]  or just !togglestore to toggle\n" +
+                           $"Current store status: {(currentState ? "**ENABLED**" : "**DISABLED**")}";
+                }
+            }
+            else
+            {
+
+                // No argument → flip current state (most common emergency use)
+                newState = !currentState;
+                changedState = true;
+            }
+
+            // Only proceed if there's an actual change
+            if (newState != currentState || changedState)
+            {
+                // 1. Update global toggle
+                globalSettings.StoreCommandsEnabled = newState;
+
+                // 2. Sync to every affected command's individual Enabled setting
+                foreach (string cmdName in StoreCommands)
+                {
+                    var cmdSettings = CommandSettingsManager.GetSettings(cmdName);
+                    Logger.Debug($"[ToggleStore] Processing command '{cmdName}' for store toggle");
+                    if (cmdSettings != null)
+                    {
+                        cmdSettings.Enabled = newState;
+                        // Optional: more detailed logging
+                        Logger.Debug($"Store toggle → {cmdName} Enabled set to {newState}");
+                    }
+                    else
+                    {
+                        Logger.Warning($"No CommandSettings found for '{cmdName}' during store toggle");
+                    }
+                }
+
+                // 3. Save changes to disk
+                CommandSettingsManager.SaveSettings();  // ← Make sure this method exists and works!
+
+                string statusWord = newState ? "**ENABLED**" : "**DISABLED**";
+
+                Logger.Message($"[CAP] Store commands toggled to {statusWord} by {user.Username}");
+
+                return $"Store commands now {statusWord}!";
+            }
+
+            // No change occurred
+            return $"Store commands already {(currentState ? "**ENABLED**" : "**DISABLED**")}.";
         }
     }
 
@@ -131,9 +215,7 @@ namespace CAP_ChatInteractive.Commands.ModCommands
             return $"MOD {messageWrapper.Username} Fix all pawns executed.";
         }
     }
-    // Cleans up orphaned lootbox entries from viewers no longer present in chat.
-    // Usage: !cleanlootboxes [orphans|all|dryrun]
-    // TODO: Add to command registry
+
     public class CleanLootboxes : ChatCommand
     {
         public override string Name => "cleanlootboxes";
@@ -198,8 +280,6 @@ namespace CAP_ChatInteractive.Commands.ModCommands
     public class CleanViewers : ChatCommand
     {
         public override string Name => "cleanviewers";
-        public override string PermissionLevel => "moderator";
-        public override string Description => "Clean viewer database. Usage: !cleanviewers [dry|noplat|all]";
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {

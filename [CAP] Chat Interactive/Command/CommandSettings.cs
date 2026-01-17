@@ -30,6 +30,8 @@ public class CommandSettings
     public int Cost = 0;
     public bool SupportsCost = false;
 
+    
+
     public string PermissionLevel = "everyone"; // New field for permission level
 
     // Advanced settings that some commands might need

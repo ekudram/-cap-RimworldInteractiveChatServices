@@ -17,6 +17,7 @@
 //
 // Processes chat messages and commands from viewers.
 using CAP_ChatInteractive.Commands.Cooldowns;
+using CAP_ChatInteractive.Commands.ModCommands;
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -28,13 +29,18 @@ namespace CAP_ChatInteractive
 {
     public static class ChatCommandProcessor
     {
-        private static readonly Dictionary<string, ChatCommand> _commands = new Dictionary<string, ChatCommand>(StringComparer.OrdinalIgnoreCase);
+        public static readonly Dictionary<string, ChatCommand> _commands = new Dictionary<string, ChatCommand>(StringComparer.OrdinalIgnoreCase);
         private static readonly Dictionary<string, DateTime> _userCooldowns = new Dictionary<string, DateTime>();
 
         public static event Action<ChatMessageWrapper> OnMessageProcessed;
         public static event Action<ChatMessageWrapper, string> OnCommandExecuted;
 
-
+        // ========== MESSAGE PROCESSING ==========
+        /// <summary>
+        /// ALL chat messages funnel through here
+        /// From all platforms
+        /// </summary>
+        /// <param name="message"></param>
         public static void ProcessMessage(ChatMessageWrapper message)
         {
             Logger.Debug($"Processing message from {message.Username} on {message.Platform}: {message.Message}");
@@ -81,7 +87,7 @@ namespace CAP_ChatInteractive
             }
         }
 
-        // NEW: Check if the game is ready to process commands
+        // Do we check this in other places too?
         private static bool IsGameReady()
         {
             try
@@ -97,7 +103,15 @@ namespace CAP_ChatInteractive
             }
         }
 
-        // NEW: Send "please wait" message to user
+        private static bool IsCommand(string message)
+        {
+            if (string.IsNullOrEmpty(message)) return false;
+
+            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            return message.StartsWith(settings.Prefix) ||
+                   message.StartsWith(settings.BuyPrefix);
+        }
+
         private static void SendPleaseWaitMessage(ChatMessageWrapper message)
         {
             SendMessageToUser(message, "Please wait until the game has fully started before using commands.");
@@ -122,19 +136,12 @@ namespace CAP_ChatInteractive
                 Logger.Error($"Error processing lootbox welcome: {ex.Message}");
             }
         }
+        
 
-        private static bool IsCommand(string message)
-        {
-            if (string.IsNullOrEmpty(message)) return false;
 
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            return message.StartsWith(settings.Prefix) ||
-                   message.StartsWith(settings.BuyPrefix);
-        }
-
+        // ========== COMMAND PROCESSING ==========
         private static void ProcessCommand(ChatMessageWrapper message)
         {
-            // NEW: Check if game is ready before processing any messages
             if (!IsGameReady())
             {
                 SendPleaseWaitMessage(message);
@@ -183,6 +190,12 @@ namespace CAP_ChatInteractive
             {
                 Logger.Debug($"Resolved alias '{commandText}' to command '{resolvedCommandName}'");
                 commandText = resolvedCommandName;
+            }
+
+            if (IsStoreCommandDisabled(message, commandText))
+            {
+                SendMessageToUser(message, GetStoreDisabledMessage());
+                return;
             }
 
             // Fast exit: Unknown command
@@ -586,6 +599,24 @@ namespace CAP_ChatInteractive
             {
                 Logger.Error($"Error processing channel points reward: {ex.Message}");
             }
+        }
+
+        private static bool IsStoreCommandDisabled(ChatMessageWrapper message, string commandText)
+        {
+            // Early exit if global store is enabled → nothing to block
+            var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            if (globalSettings?.StoreCommandsEnabled ?? true)
+            {
+                return false; // not disabled
+            }
+
+            // Only block if it's one of our managed store commands
+            return ToggleStore.StoreCommands.Contains(commandText);
+        }
+
+        private static string GetStoreDisabledMessage()
+        {
+            return "Store and interaction commands are currently **DISABLED** (streamer emergency mode). Try again later!";
         }
     }
 }
