@@ -149,17 +149,29 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     // Deduct coins and process purchase
                     viewer.TakeCoins(cost);
 
-                    // Award karma based on purchase
-                    int karmaEarned = cost / 100;
-                    if (karmaEarned > 0)
+                    // Award karma based on purchase and event karma type
+                    int karmaAmount = cost / 100;
+                    if (karmaAmount > 0)
                     {
-                        viewer.GiveKarma(karmaEarned);
-                        Logger.Debug($"Awarded {karmaEarned} karma for {cost} coin purchase");
-                    }
-                    else if (karmaEarned < 0)
-                    {
-                        viewer.TakeKarma(Math.Abs(karmaEarned));
-                        Logger.Debug($"Deducted {Math.Abs(karmaEarned)} karma for {cost} coin purchase");
+                        // Apply karma based on event type
+                        string karmaType = buyableIncident.KarmaType?.ToLower() ?? "neutral";
+                        
+                        switch (karmaType)
+                        {
+                            case "good":
+                                viewer.GiveKarma(karmaAmount);
+                                Logger.Debug($"Awarded {karmaAmount} karma for {cost} coin Good event purchase");
+                                break;
+                            case "bad":
+                                viewer.TakeKarma(karmaAmount);
+                                Logger.Debug($"Deducted {karmaAmount} karma for {cost} coin Bad event purchase");
+                                break;
+                            case "neutral":
+                            default:
+                                // Neutral events don't change karma
+                                Logger.Debug($"No karma change for {cost} coin Neutral event purchase");
+                                break;
+                        }
                     }
 
                     // Record event usage for cooldowns

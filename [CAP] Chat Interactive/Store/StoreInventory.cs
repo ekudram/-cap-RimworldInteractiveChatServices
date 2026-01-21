@@ -302,20 +302,31 @@ namespace CAP_ChatInteractive.Store
 
         public static void SaveStoreToJson()
         {
+            SaveStoreToJsonImmediate();
+        }
+
+        public static void SaveStoreToJsonImmediate()
+        {
+            lock (lockObject)
+            {
+                try
+                {
+                    string jsonContent = JsonFileManager.SerializeStoreItems(AllStoreItems);
+                    JsonFileManager.SaveFile("StoreItems.json", jsonContent);
+                    Logger.Debug("Store data saved successfully");
+                }
+                catch (System.Exception e)
+                {
+                    Logger.Error($"Error saving store JSON: {e.Message}");
+                }
+            }
+        }
+
+        public static void SaveStoreToJsonAsync()
+        {
             LongEventHandler.QueueLongEvent(() =>
             {
-                lock (lockObject)
-                {
-                    try
-                    {
-                        string jsonContent = JsonFileManager.SerializeStoreItems(AllStoreItems);
-                        JsonFileManager.SaveFile("StoreItems.json", jsonContent);
-                    }
-                    catch (System.Exception e)
-                    {
-                        Logger.Error($"Error saving store JSON: {e.Message}");
-                    }
-                }
+                SaveStoreToJsonImmediate();
             }, null, false, null, showExtraUIInfo: false, forceHideUI: true);
         }
 
