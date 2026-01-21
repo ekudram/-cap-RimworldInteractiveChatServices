@@ -109,6 +109,8 @@ namespace CAP_ChatInteractive
                 }
             }
         }
+
+        private void PerformVersionCheckIfNeeded()
         {
             if (versionCheckDone) return;
             versionCheckDone = true;

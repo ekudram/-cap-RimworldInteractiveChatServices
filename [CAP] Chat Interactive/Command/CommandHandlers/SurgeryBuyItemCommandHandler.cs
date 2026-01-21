@@ -17,8 +17,11 @@ using CAP_ChatInteractive.Utilities;
 using RimWorld;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using UnityEngine;
 using Verse;
+using static Verse.ParseHelper;
 
 /// <summary>
 /// Surgery Command Handler for CAP Chat Interactive
@@ -30,6 +33,24 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
     /// </summary>
     internal static class SurgeryItemCommandHandler
     {
+        private static readonly Dictionary<string, string> BiotechSurgeryCommands = new()
+        {
+            { "hemogen", "ExtractHemogenPack" },
+            { "transfusion", "BloodTransfusion" },
+            { "blood", "BloodTransfusion" },
+            { "tubal", "TubalLigation" },
+            { "tuballigation", "TubalLigation" },
+            { "vasectomy", "Vasectomy" },
+            { "sterilize", "STERILIZE" }, // Special: auto-select based on gender
+            { "iud", "ImplantIUD" },
+            { "iudimplant", "ImplantIUD" },
+            { "iudremove", "RemoveIUD" },
+            { "vasreverse", "ReverseVasectomy" },
+            { "reversovasectomy", "ReverseVasectomy" },
+            { "terminate", "TerminatePregnancy" },
+            { "abortion", "TerminatePregnancy" }
+            // Add more as needed, e.g. "ovum" -> "ExtractOvum" if you want IVF chain
+        };
         /// <summary>
         /// Main handler for the !surgery command.
         /// </summary>
@@ -103,6 +124,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (surgeryType != null)
                 {
                     return HandleBodyChangeSurgery(messageWrapper, viewer, currencySymbol, surgeryType, recipeDefName, displayName);
+                }
+
+                if (BiotechSurgeryCommands.TryGetValue(itemName, out string recipeKey))
+                {
+                    displayName = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(itemName.ToLower());
+                    return HandleBiotechSurgery(messageWrapper, viewer, currencySymbol, recipeKey, displayName);
                 }
 
                 // Get store item
@@ -338,7 +365,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 return $"Sorry, gender swap surgery cannot be performed: {restrictionReason}";
             }
-            
+
             var recipe = DefDatabase<RecipeDef>.GetNamedSilentFail("GenderSwapSurgery");
             if (recipe == null)
             {
@@ -379,6 +406,81 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             Logger.Debug($"Gender swap scheduled for {messageWrapper.Username} - {finalPrice}{currencySymbol}");
 
             return $"Gender swap surgery scheduled for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)}! " +
+                   $"Your doctors will take care of it. Remaining balance: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+        }
+
+        private static string HandleBiotechSurgery(ChatMessageWrapper messageWrapper, Viewer viewer, string currencySymbol, string recipeKey, string displayName)
+        {
+            const int quantity = 1; // Fixed to 1 for misc surgeries
+
+            Verse.Pawn pawn = StoreCommandHelper.GetViewerPawn(messageWrapper);
+            if (pawn == null) return "You need a pawn. Use !buy pawn first.";
+            if (pawn.Dead) return "Pawn is dead.";
+
+            // Special handling for 'sterilize' → override key & name
+            if (recipeKey == "STERILIZE")
+            {
+                recipeKey = pawn.gender == Gender.Female ? "TubalLigation" : "Vasectomy";
+                displayName = pawn.gender == Gender.Female ? "Tubal Ligation" : "Vasectomy";
+            }
+
+            // Now look up the recipe (always done, after possible override)
+            RecipeDef recipe = DefDatabase<RecipeDef>.GetNamedSilentFail(recipeKey);
+            if (recipe == null)
+            {
+                Logger.Error($"Biotech recipe not found: {recipeKey}");
+                return $"Error: {displayName} not available (recipe missing).";
+            }
+
+            // Price (uses the possibly overridden recipe.defName)
+            int finalPrice = GetBiotechSurgeryCost(recipe.defName);
+
+            // Research check – correct way in RimWorld
+            if (recipe.researchPrerequisites != null &&
+                !recipe.researchPrerequisites.All(rp => rp.IsFinished))
+            {
+                return $"{displayName} requires research that hasn't been completed yet.";
+            }
+
+            // Validation
+            if (!IsSuitableForMiscSurgery(pawn, recipe, out string restrictionReason))
+            {
+                return $"Cannot perform {displayName}: {restrictionReason}";
+            }
+
+            // Affordability
+            if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
+            {
+                return $"Need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} for {displayName}! " +
+                       $"You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            }
+
+            // Spawn required ingredients (medicine + any fixed like HemogenPack)
+            SpawnSurgeryIngredients(pawn, recipe);
+
+            // Deduct coins & give karma
+            viewer.TakeCoins(finalPrice);
+            int karmaEarned = finalPrice / 200;
+            if (karmaEarned > 0) viewer.GiveKarma(karmaEarned);
+
+            // Body parts: most misc surgeries don't target parts → empty list
+            List<BodyPartRecord> bodyParts = recipe.targetsBodyPart
+                ? FindBodyPartsForSurgery(recipe, pawn, null, 1)   // 'parsed' must be in scope!
+                : new List<BodyPartRecord>();
+
+            // Schedule the bill(s)
+            ScheduleSurgeries(pawn, recipe, bodyParts);
+
+            // Invoice & notification
+            LookTargets targets = new LookTargets(pawn);
+            string invoiceLabel = $"🏥 Rimazon Surgery - {messageWrapper.Username}";
+            string invoiceMessage = CreateRimazonSurgeryInvoice(
+                messageWrapper.Username, displayName, quantity, finalPrice, currencySymbol, bodyParts);
+            MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, targets);
+
+            Logger.Debug($"{displayName} ({recipeKey}) scheduled for {messageWrapper.Username} - {finalPrice}{currencySymbol}");
+
+            return $"{displayName} surgery scheduled for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)}! " +
                    $"Your doctors will take care of it. Remaining balance: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
         }
 
@@ -497,6 +599,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static bool HasSurgeryScheduled(Verse.Pawn pawn, RecipeDef recipe, BodyPartRecord part)
         {
+            if(part == null)
+            {
+                return pawn.health.surgeryBills.Bills.OfType<Bill_Medical>()
+                .Any(b => b.recipe == recipe && (part == null || b.Part == part));
+            }
             return pawn.health.surgeryBills.Bills.Any(bill =>
                 bill is Bill_Medical medicalBill &&
                 medicalBill.recipe == recipe &&
@@ -520,15 +627,35 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return surgeryRecipes.Count > 0;
         }
 
+        //private static void ScheduleSurgeries(Verse.Pawn pawn, RecipeDef recipe, List<BodyPartRecord> bodyParts)
+        //{
+        //    foreach (var bodyPart in bodyParts)
+        //    {
+        //        var bill = new Bill_Medical(recipe, null) { Part = bodyPart };
+        //        pawn.health.surgeryBills.AddBill(bill);
+        //        Logger.Debug($"Scheduled {recipe.defName} on {bodyPart.Label} for pawn {pawn.Name}");
+        //    }
+        //}
+
         private static void ScheduleSurgeries(Verse.Pawn pawn, RecipeDef recipe, List<BodyPartRecord> bodyParts)
         {
-            foreach (var bodyPart in bodyParts)
+            if (bodyParts.Count == 0)
             {
-                var bill = new Bill_Medical(recipe, null) { Part = bodyPart };
+                var bill = new Bill_Medical(recipe, null);
+                // Part == null by default
                 pawn.health.surgeryBills.AddBill(bill);
-                Logger.Debug($"Scheduled {recipe.defName} on {bodyPart.Label} for pawn {pawn.Name}");
+                Logger.Debug($"Scheduled {recipe.defName} (no part) for {pawn.Name}");
             }
-        }
+            else
+            {
+                foreach (var bodyPart in bodyParts)
+                {
+                    var bill = new Bill_Medical(recipe, null) { Part = bodyPart };
+                    pawn.health.surgeryBills.AddBill(bill);
+                    Logger.Debug($"Scheduled {recipe.defName} on {bodyPart.Label} for {pawn.Name}");
+                }
+            }
+        } 
 
         private static bool IsSuitableForBodyChangingSurgery(Verse.Pawn pawn, out string reason)
         {
@@ -678,5 +805,158 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 default: return null;
             }
         }
+
+        private static int GetBiotechSurgeryCost(string recipeDefName)
+        {
+            return recipeDefName switch
+            {
+                "TubalLigation" or "Vasectomy" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgerySterilizeCost,
+                "ImplantIUD" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryIUDCost,
+                "RemoveIUD" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryIUDCost / 2, // Cheaper
+                "ReverseVasectomy" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryVasReverseCost,
+                "TerminatePregnancy" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryTerminateCost,
+                "ExtractHemogenPack" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryHemogenCost,
+                "BloodTransfusion" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryTransfusionCost,
+                _ => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryMiscBiotechCost
+            };
+        }
+
+        private static void SpawnSurgeryIngredients(Verse.Pawn pawn, RecipeDef recipe)
+        {
+            // Medicine (from ingredients) - sum the required counts
+            int medCount = 0;
+
+            foreach (IngredientCount ing in recipe.ingredients)
+            {
+                // Use CountFor(recipe) – safest and most correct for surgery recipes
+                float countFloat = ing.CountFor(recipe);
+
+                // Most surgery meds are whole numbers, but cast safely
+                if (countFloat > 0 && countFloat <= 10) // reasonable guard against weird defs
+                {
+                    medCount += Mathf.RoundToInt(countFloat);
+                }
+                else
+                {
+                    Logger.Warning($"Unexpected medicine count {countFloat} for ingredient in {recipe.defName}");
+                }
+            }
+
+            // Spawn the medicine stack(s)
+            if (medCount > 0)
+            {
+                // You could spawn one stack of medCount, but spawning individually matches your original loop
+                for (int i = 0; i < medCount; i++)
+                {
+                    Thing med = ThingMaker.MakeThing(ThingDefOf.MedicineIndustrial);
+                    if (!pawn.inventory.innerContainer.TryAdd(med))
+                    {
+                        // Optional: drop if inventory full (rare for pawn inventory)
+                        GenDrop.TryDropSpawn(med, pawn.Position, pawn.Map, ThingPlaceMode.Near, out _);
+                    }
+                }
+                Logger.Debug($"Spawned {medCount} MedicineIndustrial for {recipe.defName}");
+            }
+
+            // Special fixed ingredient (e.g. HemogenPack for BloodTransfusion)
+            if (recipe.fixedIngredientFilter?.AllowedThingDefs?.Any() == true)
+            {
+                // Most fixedIngredientFilter in Biotech surgeries allow exactly one ThingDef
+                ThingDef specialDef = recipe.fixedIngredientFilter.AllowedThingDefs.FirstOrDefault();
+                if (specialDef != null)
+                {
+                    Thing special = ThingMaker.MakeThing(specialDef);
+                    if (!pawn.inventory.innerContainer.TryAdd(special))
+                    {
+                        GenDrop.TryDropSpawn(special, pawn.Position, pawn.Map, ThingPlaceMode.Near, out _);
+                    }
+                    Logger.Debug($"Spawned special ingredient: {specialDef.defName} for {recipe.defName}");
+                }
+            }
+        }
+
+        private static bool IsSuitableForMiscSurgery(Verse.Pawn pawn, RecipeDef recipe, out string reason)
+        {
+            reason = null;
+
+            // Age
+            if (recipe.minAllowedAge > 0 && pawn.ageTracker?.AgeBiologicalYearsFloat < recipe.minAllowedAge)
+            {
+                reason = $"Minimum age {recipe.minAllowedAge} required.";
+                return false;
+            }
+
+            // Gender prerequisite (nullable Gender)
+            if (recipe.genderPrerequisite == Gender.Female && pawn.gender != Gender.Female)
+            {
+                reason = "Requires female pawn.";
+                return false;
+            }
+            if (recipe.genderPrerequisite == Gender.Male && pawn.gender != Gender.Male)
+            {
+                reason = "Requires male pawn.";
+                return false;
+            }
+
+            // Incompatible hediff tags  tags
+            foreach (string forbiddenTag in recipe.incompatibleWithHediffTags)
+            {
+                if (pawn.health.hediffSet.hediffs.Any(h =>
+                    h.def.tags != null && h.def.tags.Contains(forbiddenTag)))
+                {
+                    reason = $"Incompatible: {forbiddenTag} condition present (e.g. already sterilized or ovum extracted).";
+                    return false;
+                }
+            }
+
+            // Already scheduled (null part for most misc surgeries)
+            if (HasSurgeryScheduled(pawn, recipe, null))
+            {
+                reason = "Already scheduled for this pawn.";
+                return false;
+            }
+
+            // Specific checks
+            switch (recipe.defName)
+            {
+                case "TerminatePregnancy":
+                    bool isPregnant = pawn.health.hediffSet.hediffs.Any(h =>
+                        h.def.defName.ToLowerInvariant().Contains("pregnancy") ||
+                        h is Hediff_Pregnant);
+                    if (!isPregnant)
+                    {
+                        reason = "Pawn is not pregnant.";
+                        return false;
+                    }
+                    break;
+
+                case "ReverseVasectomy":
+                    if (!pawn.health.hediffSet.HasHediff(DefDatabase<HediffDef>.GetNamedSilentFail("Vasectomy")))
+                    {
+                        reason = "Pawn lacks vasectomy.";
+                        return false;
+                    }
+                    break;
+
+                case "RemoveIUD":
+                    if (!pawn.health.hediffSet.HasHediff(DefDatabase<HediffDef>.GetNamedSilentFail("ImplantedIUD")))
+                    {
+                        reason = "No IUD found.";
+                        return false;
+                    }
+                    break;
+            }
+
+            // Optional: Reuse body surgery adult check
+            if (!IsAdultForBodySurgery(pawn, out _))
+            {
+                reason = "Pawn is not suitable for this procedure (age/body type).";
+                return false;
+            }
+
+            return true;
+        }
+
+
     }
 }

@@ -79,7 +79,7 @@ namespace CAP_ChatInteractive
     public class CAPGlobalChatSettings : IExposable
     {
         // Existing properties...
-        public string modVersion = "1.0.15";
+        public string modVersion = "1.0.15a";  // Current mod version WE DONT SAVE THIS!
         public string modVersionSaved = "";
         public string priceListUrl = "https://github.com/ekudram/RICS-Pricelist";
         public bool EnableDebugLogging = false;
@@ -161,6 +161,13 @@ namespace CAP_ChatInteractive
         // Surgery Command Settings
         public int SurgeryGenderSwapCost = 1000;
         public int SurgeryBodyChangeCost = 800;
+        public int SurgerySterilizeCost = 400;
+        public int SurgeryIUDCost = 250;
+        public int SurgeryVasReverseCost = 500;
+        public int SurgeryTerminateCost = 300;
+        public int SurgeryHemogenCost = 100;
+        public int SurgeryTransfusionCost = 200;
+        public int SurgeryMiscBiotechCost = 350;
 
         // Passion Settings
         public int MinPassionWager = 10;
