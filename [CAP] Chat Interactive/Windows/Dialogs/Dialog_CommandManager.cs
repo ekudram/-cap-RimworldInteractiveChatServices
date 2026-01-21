@@ -410,8 +410,16 @@ namespace CAP_ChatInteractive
 
                 // Permission level
                 Rect permRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
-                string permLevelTranslated = selectedCommand.permissionLevel.Translate(); // RimWorld auto-translates Def values
-                Widgets.Label(permRect, "CAP.CommandManager.PermissionLevel".Translate() + $" {permLevelTranslated}");
+                string key = $"CAP.CommandManager.PermissionLevel.{selectedCommand.permissionLevel.ToString().ToLowerInvariant()}";
+                string permLevelTranslated = key.Translate();
+
+                // fallback in case someone removes the key (rare but nice)
+                if (permLevelTranslated == key)
+                {
+                    permLevelTranslated = selectedCommand.permissionLevel.ToString().CapitalizeFirst();
+                }
+
+                Widgets.Label(permRect, "CAP.CommandManager.PermissionLevel".Translate() + ": " + permLevelTranslated);
                 y += sectionHeight;
 
                 y += 10f;
@@ -547,7 +555,7 @@ namespace CAP_ChatInteractive
                 {
                     GUI.color = new Color(0.7f, 0.7f, 0.7f);
                     Rect noteRect = new Rect(leftPadding + 25f, y + sectionHeight + 2f, viewRect.width - leftPadding - 30f, 20f);
-                    Widgets.Label(noteRect, "(Unlimited for this command)".Translate());
+                    Widgets.Label(noteRect, "CAP.CommandManager.UnlimitedUses".Translate());
                     GUI.color = Color.white;
                 }
                 y += sectionHeight + 8f;  // Extra spacing before next section
@@ -801,10 +809,9 @@ namespace CAP_ChatInteractive
                 // SURGERY-SPECIFIC SETTINGS - Only show for surgery command
                 if (selectedCommand != null && selectedCommand.commandText.ToLower() == "surgery")
                 {
-                    y += 10f; // Extra spacing before section
+                    y += 10f; // Extra spacing
 
-                    // Surgery header
-                    Rect surgeryHeaderRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
+                    Rect surgeryHeaderRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
                     Text.Font = GameFont.Medium;
                     GUI.color = ColorLibrary.HeaderAccent;
                     Widgets.Label(surgeryHeaderRect, "CAP.CommandManager.SurgerySettings".Translate().Colorize(ColorLibrary.SubHeader));
@@ -820,27 +827,139 @@ namespace CAP_ChatInteractive
                     string genderCostKey = "surgery_gender_swap_cost";
                     if (!numericBuffers.ContainsKey(genderCostKey))
                     {
-                        numericBuffers[genderCostKey] = settingsGlobalChat.SurgeryGenderSwapCost.ToString();
+                        numericBuffers[genderCostKey] = globalSettings.SurgeryGenderSwapCost.ToString();
                     }
                     string genderCostBuffer = numericBuffers[genderCostKey];
-                    Widgets.TextFieldNumeric(genderCostInputRect, ref settingsGlobalChat.SurgeryGenderSwapCost, ref genderCostBuffer, 0f, 100000f);
+                    Widgets.TextFieldNumeric(genderCostInputRect, ref globalSettings.SurgeryGenderSwapCost, ref genderCostBuffer, -100000f, 100000f); // Allow negative
                     numericBuffers[genderCostKey] = genderCostBuffer;
 
                     y += sectionHeight;
 
                     // Body Change Cost
                     Rect bodyCostLabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(bodyCostLabelRect, "CAP.CommandManager.BodyChangeCost".Translate());
+                    Widgets.Label(bodyCostLabelRect, "CAP.CommandManager.SurgeryBodyChangeCost".Translate());
                     Rect bodyCostInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
 
                     string bodyCostKey = "surgery_body_change_cost";
                     if (!numericBuffers.ContainsKey(bodyCostKey))
                     {
-                        numericBuffers[bodyCostKey] = settingsGlobalChat.SurgeryBodyChangeCost.ToString();
+                        numericBuffers[bodyCostKey] = globalSettings.SurgeryBodyChangeCost.ToString();
                     }
                     string bodyCostBuffer = numericBuffers[bodyCostKey];
-                    Widgets.TextFieldNumeric(bodyCostInputRect, ref settingsGlobalChat.SurgeryBodyChangeCost, ref bodyCostBuffer, 0f, 100000f);
+                    Widgets.TextFieldNumeric(bodyCostInputRect, ref globalSettings.SurgeryBodyChangeCost, ref bodyCostBuffer, -100000f, 100000f); // Allow negative
                     numericBuffers[bodyCostKey] = bodyCostBuffer;
+
+                    y += sectionHeight;
+
+                    // Sterilize Cost
+                    Rect sterilizeCostLabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(sterilizeCostLabelRect, "CAP.CommandManager.SurgerySterilizeCost".Translate());
+                    Rect sterilizeCostInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+
+                    string sterilizeCostKey = "surgery_sterilize_cost";
+                    if (!numericBuffers.ContainsKey(sterilizeCostKey))
+                    {
+                        numericBuffers[sterilizeCostKey] = globalSettings.SurgerySterilizeCost.ToString();
+                    }
+                    string sterilizeCostBuffer = numericBuffers[sterilizeCostKey];
+                    Widgets.TextFieldNumeric(sterilizeCostInputRect, ref globalSettings.SurgerySterilizeCost, ref sterilizeCostBuffer, -100000f, 100000f);
+                    numericBuffers[sterilizeCostKey] = sterilizeCostBuffer;
+
+                    y += sectionHeight;
+
+                    // IUD Cost
+                    Rect iudCostLabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(iudCostLabelRect, "CAP.CommandManager.SurgeryIUDCost".Translate());
+                    Rect iudCostInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+
+                    string iudCostKey = "surgery_iud_cost";
+                    if (!numericBuffers.ContainsKey(iudCostKey))
+                    {
+                        numericBuffers[iudCostKey] = globalSettings.SurgeryIUDCost.ToString();
+                    }
+                    string iudCostBuffer = numericBuffers[iudCostKey];
+                    Widgets.TextFieldNumeric(iudCostInputRect, ref globalSettings.SurgeryIUDCost, ref iudCostBuffer, -100000f, 100000f);
+                    numericBuffers[iudCostKey] = iudCostBuffer;
+
+                    y += sectionHeight;
+
+                    // Vas Reverse Cost
+                    Rect vasReverseCostLabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(vasReverseCostLabelRect, "CAP.CommandManager.SurgeryVasReverseCost".Translate());
+                    Rect vasReverseCostInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+
+                    string vasReverseCostKey = "surgery_vas_reverse_cost";
+                    if (!numericBuffers.ContainsKey(vasReverseCostKey))
+                    {
+                        numericBuffers[vasReverseCostKey] = globalSettings.SurgeryVasReverseCost.ToString();
+                    }
+                    string vasReverseCostBuffer = numericBuffers[vasReverseCostKey];
+                    Widgets.TextFieldNumeric(vasReverseCostInputRect, ref globalSettings.SurgeryVasReverseCost, ref vasReverseCostBuffer, -100000f, 100000f);
+                    numericBuffers[vasReverseCostKey] = vasReverseCostBuffer;
+
+                    y += sectionHeight;
+
+                    // Terminate Cost
+                    Rect terminateCostLabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(terminateCostLabelRect, "CAP.CommandManager.SurgeryTerminateCost".Translate());
+                    Rect terminateCostInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+
+                    string terminateCostKey = "surgery_terminate_cost";
+                    if (!numericBuffers.ContainsKey(terminateCostKey))
+                    {
+                        numericBuffers[terminateCostKey] = globalSettings.SurgeryTerminateCost.ToString();
+                    }
+                    string terminateCostBuffer = numericBuffers[terminateCostKey];
+                    Widgets.TextFieldNumeric(terminateCostInputRect, ref globalSettings.SurgeryTerminateCost, ref terminateCostBuffer, -100000f, 100000f);
+                    numericBuffers[terminateCostKey] = terminateCostBuffer;
+
+                    y += sectionHeight;
+
+                    // Hemogen Cost
+                    Rect hemogenCostLabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(hemogenCostLabelRect, "CAP.CommandManager.SurgeryHemogenCost".Translate());
+                    Rect hemogenCostInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+
+                    string hemogenCostKey = "surgery_hemogen_cost";
+                    if (!numericBuffers.ContainsKey(hemogenCostKey))
+                    {
+                        numericBuffers[hemogenCostKey] = globalSettings.SurgeryHemogenCost.ToString();
+                    }
+                    string hemogenCostBuffer = numericBuffers[hemogenCostKey];
+                    Widgets.TextFieldNumeric(hemogenCostInputRect, ref globalSettings.SurgeryHemogenCost, ref hemogenCostBuffer, -100000f, 100000f);
+                    numericBuffers[hemogenCostKey] = hemogenCostBuffer;
+
+                    y += sectionHeight;
+
+                    // Transfusion Cost
+                    Rect transfusionCostLabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(transfusionCostLabelRect, "CAP.CommandManager.SurgeryTransfusionCost".Translate());
+                    Rect transfusionCostInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+
+                    string transfusionCostKey = "surgery_transfusion_cost";
+                    if (!numericBuffers.ContainsKey(transfusionCostKey))
+                    {
+                        numericBuffers[transfusionCostKey] = globalSettings.SurgeryTransfusionCost.ToString();
+                    }
+                    string transfusionCostBuffer = numericBuffers[transfusionCostKey];
+                    Widgets.TextFieldNumeric(transfusionCostInputRect, ref globalSettings.SurgeryTransfusionCost, ref transfusionCostBuffer, -100000f, 100000f);
+                    numericBuffers[transfusionCostKey] = transfusionCostBuffer;
+
+                    y += sectionHeight;
+
+                    // Misc Biotech Cost
+                    Rect miscCostLabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(miscCostLabelRect, "CAP.CommandManager.SurgeryMiscBiotechCost".Translate());
+                    Rect miscCostInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+
+                    string miscCostKey = "surgery_misc_biotech_cost";
+                    if (!numericBuffers.ContainsKey(miscCostKey))
+                    {
+                        numericBuffers[miscCostKey] = globalSettings.SurgeryMiscBiotechCost.ToString();
+                    }
+                    string miscCostBuffer = numericBuffers[miscCostKey];
+                    Widgets.TextFieldNumeric(miscCostInputRect, ref globalSettings.SurgeryMiscBiotechCost, ref miscCostBuffer, -100000f, 100000f);
+                    numericBuffers[miscCostKey] = miscCostBuffer;
 
                     y += sectionHeight;
 
@@ -848,7 +967,7 @@ namespace CAP_ChatInteractive
                     Rect surgeryDescRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, 28f);
                     Text.Font = GameFont.Tiny;
                     GUI.color = new Color(0.7f, 0.7f, 0.7f);
-                    Widgets.Label(surgeryDescRect, "CAP.CommandManager.SurgeryDescription".Translate());
+                    Widgets.Label(surgeryDescRect, "CAP.CommandManager.SurgeryDescription".Translate() + " (Negative costs give coins, e.g. for hemogen extraction)");
                     Text.Font = GameFont.Small;
                     GUI.color = Color.white;
                     y += 20f;
@@ -857,16 +976,6 @@ namespace CAP_ChatInteractive
 
             }
             Widgets.EndScrollView();
-        }
-
-        private void ShowCommandSettingsMenu()
-        {
-            List<FloatMenuOption> options = new List<FloatMenuOption>
-    {
-        new FloatMenuOption("CAP.CommandManager.ResetAll".Translate(), () => ShowResetConfirmationDialog())  // // Do Tranlslate
-    };
-
-            Find.WindowStack.Add(new FloatMenu(options));
         }
 
         private float CalculateDetailsHeight(CommandSettings settings)
@@ -940,11 +1049,30 @@ namespace CAP_ChatInteractive
                 height += 28f; // Surgery header
                 height += 28f; // Gender Swap Cost
                 height += 28f; // Body Change Cost
+                height += 28f; // Sterilize Cost
+                height += 28f; // IUD Cost
+                height += 28f; // Vas Reverse Cost
+                height += 28f; // Terminate Cost
+                height += 28f; // Hemogen Cost
+                height += 28f; // Transfusion Cost
+                height += 28f; // Misc Biotech Cost
                 height += 28f; // Description (taller than normal)
             }
 
             return height + 40f; // Extra padding for safety
         }
+
+        private void ShowCommandSettingsMenu()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>
+    {
+        new FloatMenuOption("CAP.CommandManager.ResetAll".Translate(), () => ShowResetConfirmationDialog())  // // Do Tranlslate
+    };
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+
 
         private void FilterCommands()
         {

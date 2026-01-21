@@ -126,6 +126,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return HandleBodyChangeSurgery(messageWrapper, viewer, currencySymbol, surgeryType, recipeDefName, displayName);
                 }
 
+                // Check for biotech/misc surgeries
+
                 if (BiotechSurgeryCommands.TryGetValue(itemName, out string recipeKey))
                 {
                     displayName = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(itemName.ToLower());
@@ -259,7 +261,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error in HandleSurgery: {ex}");
-                return "Error scheduling surgery. Please try again.";
+                return $"Error scheduling surgery. Please try again.{ex}";
             }
         }
 
@@ -465,7 +467,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             // Body parts: most misc surgeries don't target parts → empty list
             List<BodyPartRecord> bodyParts = recipe.targetsBodyPart
-                ? FindBodyPartsForSurgery(recipe, pawn, null, 1)   // 'parsed' must be in scope!
+                ? FindBodyPartsForSurgery(recipe, pawn, "", 1)   // 'parsed' must be in scope!
                 : new List<BodyPartRecord>();
 
             // Schedule the bill(s)
@@ -826,20 +828,28 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Medicine (from ingredients) - sum the required counts
             int medCount = 0;
 
+            // Revised: Separate medicine from other ingredients
             foreach (IngredientCount ing in recipe.ingredients)
             {
-                // Use CountFor(recipe) – safest and most correct for surgery recipes
                 float countFloat = ing.CountFor(recipe);
+                int count = Mathf.RoundToInt(countFloat);
+                if (count <= 0) continue;
 
-                // Most surgery meds are whole numbers, but cast safely
-                if (countFloat > 0 && countFloat <= 10) // reasonable guard against weird defs
+                ThingDef toSpawn = ing.FixedIngredient ?? ThingDefOf.MedicineIndustrial;
+                if (toSpawn == null)
                 {
-                    medCount += Mathf.RoundToInt(countFloat);
+                    Logger.Warning($"No spawnable ThingDef for ingredient {ing} in {recipe.defName}");
+                    continue;
                 }
-                else
+
+                Thing thing = ThingMaker.MakeThing(toSpawn);
+                thing.stackCount = count;  // Stack if possible (e.g., multiple medicine)
+
+                if (!pawn.inventory.innerContainer.TryAdd(thing))
                 {
-                    Logger.Warning($"Unexpected medicine count {countFloat} for ingredient in {recipe.defName}");
+                    GenDrop.TryDropSpawn(thing, pawn.Position, pawn.Map, ThingPlaceMode.Near, out _);
                 }
+                Logger.Debug($"Spawned {count} {toSpawn.defName} for {recipe.defName}");
             }
 
             // Spawn the medicine stack(s)
@@ -899,13 +909,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // Incompatible hediff tags  tags
-            foreach (string forbiddenTag in recipe.incompatibleWithHediffTags)
+            if (recipe.incompatibleWithHediffTags != null)
             {
-                if (pawn.health.hediffSet.hediffs.Any(h =>
-                    h.def.tags != null && h.def.tags.Contains(forbiddenTag)))
+                foreach (string forbiddenTag in recipe.incompatibleWithHediffTags)
                 {
-                    reason = $"Incompatible: {forbiddenTag} condition present (e.g. already sterilized or ovum extracted).";
-                    return false;
+                    if (pawn.health.hediffSet.hediffs.Any(h =>
+                        h.def.tags != null && h.def.tags.Contains(forbiddenTag)))
+                    {
+                        reason = $"Incompatible: {forbiddenTag} condition present (e.g. already sterilized or ovum extracted).";
+                        return false;
+                    }
                 }
             }
 
@@ -945,6 +958,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         return false;
                     }
                     break;
+                case "BloodTransfusion":
+                    bool needsBlood = pawn.health.hediffSet.HasHediff(HediffDefOf.BloodLoss);
+
+                    bool isHemogenic = pawn.genes != null &&
+                        pawn.genes.GenesListForReading.Any(g =>
+                            //g.def.hemogenOffset != 0 ||   // any gene affecting hemogen
+                            g.def == GeneDefOf.Bloodfeeder ||
+                            g.def == GeneDefOf.Hemogenic   // if your mod adds custom ones
+                        );
+
+                    if (!needsBlood && !isHemogenic)
+                    {
+                        reason = "Pawn has no blood loss and is not hemogenic—no benefit from transfusion.";
+                        return false;
+                    }
+                    break;
             }
 
             // Optional: Reuse body surgery adult check
@@ -956,7 +985,5 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             return true;
         }
-
-
     }
 }

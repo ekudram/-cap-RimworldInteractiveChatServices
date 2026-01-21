@@ -165,7 +165,7 @@ namespace CAP_ChatInteractive
         public int SurgeryIUDCost = 250;
         public int SurgeryVasReverseCost = 500;
         public int SurgeryTerminateCost = 300;
-        public int SurgeryHemogenCost = 100;
+        public int SurgeryHemogenCost = -100;
         public int SurgeryTransfusionCost = 200;
         public int SurgeryMiscBiotechCost = 350;
 

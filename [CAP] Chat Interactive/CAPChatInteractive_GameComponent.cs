@@ -46,13 +46,13 @@ namespace CAP_ChatInteractive
         public override void LoadedGame()
         {
             base.LoadedGame();
-            PerformVersionCheckIfNeeded();
+            PerformVersionCheckIfNeeded(); // Check version on game load as well
         }
 
         public override void StartedNewGame()
         {
             base.StartedNewGame();
-            PerformVersionCheckIfNeeded();
+            PerformVersionCheckIfNeeded(); // Check version on new game start as well
         }
 
         public override void GameComponentTick()
@@ -109,7 +109,7 @@ namespace CAP_ChatInteractive
                 }
             }
         }
-
+        // MOD VERSION CHECKING AND UPDATE NOTIFICATIONS
         private void PerformVersionCheckIfNeeded()
         {
             if (versionCheckDone) return;
@@ -117,7 +117,7 @@ namespace CAP_ChatInteractive
 
             CheckForVersionUpdate();
         }
-
+        // Check if the mod version has changed and show update notes if needed
         private void CheckForVersionUpdate()
         {
             var mod = CAPChatInteractiveMod.Instance;
