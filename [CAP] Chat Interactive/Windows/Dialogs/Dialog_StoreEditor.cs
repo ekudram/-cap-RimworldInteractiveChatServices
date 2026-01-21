@@ -1543,8 +1543,8 @@ namespace CAP_ChatInteractive
 
         public override void PostClose()
         {
-            // Auto-save any changes when window closes
-            StoreInventory.SaveStoreToJson();
+            // Immediate save when window closes to ensure data is saved
+            StoreInventory.SaveStoreToJsonImmediate();
             base.PostClose();
         }
 
