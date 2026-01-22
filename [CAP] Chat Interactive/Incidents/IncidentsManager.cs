@@ -42,11 +42,12 @@ namespace CAP_ChatInteractive.Incidents
             {
                 if (isInitialized) return;
 
-                Logger.Debug("Initializing Incidents System...");
+                Logger.Debug("Initializing Incidents/Events System...");
 
-                if (!LoadIncidentsFromJson())
+                bool loadedFromJson = LoadIncidentsFromJson();
+
+                if (!loadedFromJson)
                 {
-                    Logger.Debug("No incidents JSON found, creating default incidents...");
                     CreateDefaultIncidents();
                     SaveIncidentsToJson();
                 }
@@ -69,8 +70,17 @@ namespace CAP_ChatInteractive.Incidents
             try
             {
                 var loadedIncidents = JsonFileManager.DeserializeIncidents(jsonContent);
-                AllBuyableIncidents.Clear();
 
+                // Validation: Check if data is valid
+                if (loadedIncidents == null || loadedIncidents.Count == 0)
+                {
+                    Logger.Error("Incidents.json exists but contains no valid data - corrupted or empty");
+                    HandleIncidentsCorruption("File contains no valid data", jsonContent);
+                    return false;
+                }
+
+                // Success! Load into memory
+                AllBuyableIncidents.Clear();
                 foreach (var kvp in loadedIncidents)
                 {
                     AllBuyableIncidents[kvp.Key] = kvp.Value;
@@ -79,10 +89,72 @@ namespace CAP_ChatInteractive.Incidents
                 Logger.Debug($"Loaded {AllBuyableIncidents.Count} incidents from JSON");
                 return true;
             }
+            catch (Newtonsoft.Json.JsonException jsonEx)
+            {
+                Logger.Error($"JSON CORRUPTION in Incidents.json: {jsonEx.Message}\n" +
+                             $"File may be partially written, damaged, or from incompatible version.");
+                HandleIncidentsCorruption($"JSON parsing error: {jsonEx.Message}", jsonContent);
+                return false;
+            }
+            catch (System.IO.IOException ioEx)
+            {
+                // Disk-level failure - serious hardware issue
+                Logger.Error($"DISK ACCESS ERROR reading Incidents.json: {ioEx.Message}\n" +
+                             $"Streamer should check hard drive health immediately!");
+
+                // Show urgent in-game warning
+                if (Current.ProgramState == ProgramState.Playing && Find.LetterStack != null)
+                {
+                    Find.LetterStack.ReceiveLetter(
+                        "Chat Interactive: Critical Storage Error",
+                        "Chat Interactive cannot read incidents data due to a disk access error.\n\n" +
+                        "This may indicate hardware failure. Check your hard drive health!",
+                        LetterDefOf.NegativeEvent
+                    );
+                }
+                return false;
+            }
             catch (System.Exception e)
             {
-                Logger.Error($"Error loading incidents JSON: {e.Message}");
+                Logger.Error($"Unexpected error loading incidents JSON: {e.Message}");
                 return false;
+            }
+        }
+
+        private static void HandleIncidentsCorruption(string errorDetails, string corruptedJson)
+        {
+            // Backup corrupted file for debugging
+            if (!string.IsNullOrWhiteSpace(corruptedJson))
+            {
+                try
+                {
+                    string backupPath = JsonFileManager.GetBackupPath("Incidents.json");
+                    System.IO.File.WriteAllText(backupPath, corruptedJson);
+                    Logger.Debug($"Backed up corrupted Incidents.json to: {backupPath}");
+                }
+                catch (System.Exception ex)
+                {
+                    Logger.Error($"Failed to backup corrupted Incidents.json: {ex.Message}");
+                }
+            }
+
+            // Show in-game notification
+            if (Current.ProgramState == ProgramState.Playing)
+            {
+                string message = "Chat Interactive: Incidents configuration was corrupted.\n" +
+                                "Rebuilt with default incidents. Custom settings have been lost.\n" +
+                                "Check logs for details.";
+
+                Messages.Message(message, MessageTypeDefOf.NegativeEvent);
+            }
+
+            // Log the corrupted content (first 500 chars for debugging)
+            if (corruptedJson != null && corruptedJson.Length > 0)
+            {
+                string preview = corruptedJson.Length > 500 ?
+                    corruptedJson.Substring(0, 500) + "..." :
+                    corruptedJson;
+                Logger.Debug($"Corrupted Incidents JSON preview: {preview}");
             }
         }
 
