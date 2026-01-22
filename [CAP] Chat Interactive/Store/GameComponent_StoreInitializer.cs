@@ -15,6 +15,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // Initializes the in-game store when a game is loaded or started new.
+
+/*
+============================================================
+STORE INITIALIZATION ONLY
+============================================================
+
+PURPOSE:
+• Initialize store once when game loads
+• Ensure AllStoreItems Dictionary is populated
+• Handle validation/updates from JSON
+
+NOT FOR:
+• Store data saving (use StoreInventory.SaveStoreToJson())
+• Store operations (use StoreInventory.AllStoreItems)
+• Store UI logic (see Dialog_StoreEditor)
+============================================================
+*/
 using RimWorld;
 using Verse;
 

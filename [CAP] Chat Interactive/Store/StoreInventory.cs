@@ -14,7 +14,31 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-// Manages the store inventory for the chat interactive mod
+
+/*
+============================================================
+RICS STORE ARCHITECTURE - DATA FLOW
+============================================================
+
+DATA FLOW:
+1. STARTUP: JSON → LoadStoreFromJson() → AllStoreItems Dictionary
+2. RUNTIME: All commands use AllStoreItems Dictionary (37 references)
+3. CHANGES: UI edits → Update Dictionary → SaveStoreToJson()
+4. SHUTDOWN: Dictionary persists in memory/ until next load
+
+KEY PRINCIPLES:
+• JSON is PURELY PERSISTENCE - not runtime cache
+• All operations use in-memory Dictionary for performance
+• Save only on actual data changes (not timed intervals)
+• Async saving (LongEventHandler) prevents gameplay stutter
+
+DO NOT:
+• Add timed auto-saves (unnecessary disk I/O)
+• Read JSON during runtime operations
+• Remove async saving without performance testing
+• Add locks unless you prove thread contention exists
+============================================================
+*/
 using _CAP__Chat_Interactive.Utilities;
 using RimWorld;
 using System;
@@ -64,24 +88,104 @@ namespace CAP_ChatInteractive.Store
         private static bool LoadStoreFromJson()
         {
             string jsonContent = JsonFileManager.LoadFile("StoreItems.json");
+
+            // Case 1: No file exists (fresh install or deleted)
             if (string.IsNullOrEmpty(jsonContent))
+            {
+                Logger.Debug("No StoreItems.json found - will create defaults");
                 return false;
+            }
 
             try
             {
+                // Attempt to deserialize
                 var loadedItems = JsonFileManager.DeserializeStoreItems(jsonContent);
-                AllStoreItems.Clear();
 
+                // Case 2: File exists but is empty/whitespace
+                if (loadedItems == null || loadedItems.Count == 0)
+                {
+                    Logger.Error("StoreItems.json exists but contains no valid data - corrupted or empty");
+                    HandleJsonCorruption("File contains no valid data (empty or malformed JSON)", jsonContent);
+                    return false;
+                }
+
+                // Success! Load into memory
+                AllStoreItems.Clear();
                 foreach (var kvp in loadedItems)
                 {
                     AllStoreItems[kvp.Key] = kvp.Value;
                 }
+
+                Logger.Debug($"Successfully loaded {AllStoreItems.Count} store items from JSON");
                 return true;
+            }
+            catch (Newtonsoft.Json.JsonException jsonEx)  // If using Newtonsoft
+            {
+                Logger.Error($"JSON CORRUPTION in StoreItems.json: {jsonEx.Message}\n" +
+                             $"File may be partially written, damaged, or from incompatible version.\n" +
+                             $"Rebuilding with defaults...");
+                HandleJsonCorruption($"JSON parsing error: {jsonEx.Message}", jsonContent);
+                return false;
+            }
+            catch (System.IO.IOException ioEx)
+            {
+                // Disk-level failure - serious hardware issue
+                Logger.Error($"DISK ACCESS ERROR reading StoreItems.json: {ioEx.Message}\n" +
+                             $"Streamer should check hard drive health immediately!");
+
+                // Show urgent in-game warning
+                if (Current.ProgramState == ProgramState.Playing && Find.LetterStack != null)
+                {
+                    Find.LetterStack.ReceiveLetter(
+                        "Chat Interactive: Critical Storage Error",
+                        "Chat Interactive cannot read store data due to a disk access error.\n\n" +
+                        "This may indicate hardware failure. Check your hard drive health!",
+                        LetterDefOf.NegativeEvent
+                    );
+                }
+                return false;
             }
             catch (System.Exception e)
             {
-                Logger.Error($"Error loading store JSON: {e.Message}");
+                Logger.Error($"Unexpected error loading store JSON: {e}\n" +
+                             $"Rebuilding with defaults...");
+                HandleJsonCorruption($"Unexpected error: {e.Message}", jsonContent);
                 return false;
+            }
+        }
+
+        private static void HandleJsonCorruption(string errorDetails, string corruptedJson = null)
+        {
+            // Option 1: Backup corrupted file (recommended for debugging)
+            if (corruptedJson != null && !string.IsNullOrWhiteSpace(corruptedJson))
+            {
+                try
+                {
+                    string backupPath = JsonFileManager.GetBackupPath("StoreItems.json");
+                    System.IO.File.WriteAllText(backupPath, corruptedJson);
+                    Logger.Debug($"Backed up corrupted JSON to: {backupPath}");
+                }
+                catch { /* Silent fail on backup */ }
+            }
+
+            // Option 2: Show in-game notification
+            if (Current.ProgramState == ProgramState.Playing)
+            {
+                string message = "Chat Interactive: Store configuration was corrupted or unreadable.\n" +
+                                "Rebuilt with default items. Custom settings have been lost.\n" +
+                                "Check logs for details.";
+
+                // Use RimWorld's message system
+                Messages.Message(message, MessageTypeDefOf.NegativeEvent);
+            }
+
+            // Option 3: Log the corrupted content (first 500 chars for debugging)
+            if (corruptedJson != null && corruptedJson.Length > 0)
+            {
+                string preview = corruptedJson.Length > 500 ?
+                    corruptedJson.Substring(0, 500) + "..." :
+                    corruptedJson;
+                Logger.Debug($"Corrupted JSON preview: {preview}");
             }
         }
 
@@ -299,10 +403,13 @@ namespace CAP_ChatInteractive.Store
             Logger.Debug($"Found {tradeableItems.Count} tradeable items after filtering out humanlike races");
             return tradeableItems;
         }
-
+        // Background save method
         public static void SaveStoreToJson()
         {
-            SaveStoreToJsonImmediate();
+            LongEventHandler.QueueLongEvent(() =>
+            {
+                SaveStoreToJsonImmediate();
+            }, null, false, null, showExtraUIInfo: false, forceHideUI: true);
         }
 
         public static void SaveStoreToJsonImmediate()
@@ -321,7 +428,7 @@ namespace CAP_ChatInteractive.Store
                 }
             }
         }
-
+        // Background save method unused
         public static void SaveStoreToJsonAsync()
         {
             LongEventHandler.QueueLongEvent(() =>

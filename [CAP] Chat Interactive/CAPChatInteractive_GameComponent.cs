@@ -29,7 +29,6 @@ namespace CAP_ChatInteractive
         private int tickCounter = 0;
         private int saveCounter = 0;
         private const int TICKS_PER_REWARD = 120 * 60; // 2 minutes in ticks (60 ticks/sec * 120 sec)
-        private const int TICKS_PER_SAVE = 300 * 60; // 5 minutes in ticks - auto save store data
         private bool versionCheckDone = false;
 
         public CAPChatInteractive_GameComponent(Game game)
@@ -67,21 +66,6 @@ namespace CAP_ChatInteractive
 
                 Logger.Debug("2-minute coin reward tick executed - awarded coins to active viewers");
             }
-
-            // Auto-save store data every 5 minutes
-            if (saveCounter >= TICKS_PER_SAVE)
-            {
-                saveCounter = 0;
-                try
-                {
-                    Store.StoreInventory.SaveStoreToJsonImmediate();
-                    Logger.Debug("Auto-saved store data (5-minute interval)");
-                }
-                catch (System.Exception ex)
-                {
-                    Logger.Error($"Error during auto-save: {ex.Message}");
-                }
-            }
         }
 
         public override void FinalizeInit()
@@ -91,24 +75,6 @@ namespace CAP_ChatInteractive
             Store.StoreInventory.InitializeStore();
         }
 
-        public override void ExposeData()
-        {
-            base.ExposeData();
-            
-            // Save store data when game saves
-            if (Scribe.mode == LoadSaveMode.Saving)
-            {
-                try
-                {
-                    Store.StoreInventory.SaveStoreToJsonImmediate();
-                    Logger.Debug("Store data saved during game save");
-                }
-                catch (System.Exception ex)
-                {
-                    Logger.Error($"Error saving store data during game save: {ex.Message}");
-                }
-            }
-        }
         // MOD VERSION CHECKING AND UPDATE NOTIFICATIONS
         private void PerformVersionCheckIfNeeded()
         {

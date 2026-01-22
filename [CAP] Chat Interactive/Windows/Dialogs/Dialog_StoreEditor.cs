@@ -15,6 +15,24 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // A dialog window for editing store items in the Chat Interactive mod
+
+/*
+============================================================
+STORE EDITOR SAVE BEHAVIOR
+============================================================
+
+SAVE TRIGGERS:
+1. Automatically saves all changes to JSON and dictionary in real time.
+2. Window close (PostClose())
+3. Bulk operations (Enable/Disable all)
+4. Individual item toggles (with debounce)
+
+DESIGN:
+• Changes update in-memory Dictionary immediately
+• JSON save happens asynchronously (non-blocking)
+• Users see instant feedback, save happens in background
+============================================================
+*/
 using CAP_ChatInteractive.Store;
 using RimWorld;
 using System;
@@ -1541,10 +1559,10 @@ namespace CAP_ChatInteractive
             }
         }
 
+        // Override PostClose to save store data when the dialog is closed
         public override void PostClose()
         {
-            // Immediate save when window closes to ensure data is saved
-            StoreInventory.SaveStoreToJsonImmediate();
+            StoreInventory.SaveStoreToJson();
             base.PostClose();
         }
 

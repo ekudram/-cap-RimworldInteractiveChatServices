@@ -16,12 +16,13 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // Manages JSON file operations for the CAP Chat Interactive mod.
 // Handles loading, saving, and serialization/deserialization of various mod data types.
+using _CAP__Chat_Interactive.Utilities;
 using CAP_ChatInteractive.Incidents;
 using CAP_ChatInteractive.Store;
 using CAP_ChatInteractive.Traits;
-using _CAP__Chat_Interactive.Utilities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -223,7 +224,7 @@ namespace CAP_ChatInteractive
             var settings = new JsonSerializerSettings
             {
                 Formatting = Formatting.Indented,
-                NullValueHandling = NullValueHandling.Include  ,
+                NullValueHandling = NullValueHandling.Include,
                 DefaultValueHandling = DefaultValueHandling.Include
             };
 
@@ -447,6 +448,99 @@ namespace CAP_ChatInteractive
             {
                 Logger.Error($"Error saving race settings: {ex}");
             }
+        }
+
+        public static string GetBackupPath(string fileName)
+        {
+            string basePath = GetFilePath(fileName);
+            string dir = System.IO.Path.GetDirectoryName(basePath);
+            string name = System.IO.Path.GetFileNameWithoutExtension(basePath);
+            string ext = System.IO.Path.GetExtension(basePath);
+
+            // Add timestamp to backup filename
+            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            return System.IO.Path.Combine(dir, $"{name}_CORRUPTED_{timestamp}{ext}");
+        }
+
+        // Optional: Add a method to check if backup exists
+        public static bool HasCorruptedBackup(string fileName)
+        {
+            string dir = System.IO.Path.GetDirectoryName(GetFilePath(fileName));
+            return System.IO.Directory.GetFiles(dir, "*CORRUPTED*").Length > 0;
+        }
+
+        public static T LoadDataWithRecovery<T>(
+            string fileName,
+            Func<string, T> deserializeFunc,
+            Func<T> createDefaultFunc,
+            Action<string, string> onCorruption = null) where T : new()
+        {
+            string jsonContent = LoadFile(fileName);
+
+            if (string.IsNullOrEmpty(jsonContent))
+            {
+                Logger.Debug($"No {fileName} found - creating defaults");
+                return createDefaultFunc != null ? createDefaultFunc() : new T();
+            }
+
+            try
+            {
+                T data = deserializeFunc(jsonContent);
+                if (data == null)
+                {
+                    throw new Newtonsoft.Json.JsonException("Deserialization returned null");
+                }
+
+                Logger.Debug($"Successfully loaded {fileName}");
+                return data;
+            }
+            catch (Newtonsoft.Json.JsonException jsonEx)
+            {
+                Logger.Error($"JSON CORRUPTION in {fileName}: {jsonEx.Message}");
+
+                // Backup corrupted file
+                BackupCorruptedFile(fileName, jsonContent);
+
+                // Custom corruption handler
+                if (onCorruption != null)
+                {
+                    onCorruption(fileName, jsonEx.Message);
+                }
+
+                // Show in-game warning if applicable
+                if (Current.ProgramState == ProgramState.Playing && Find.LetterStack != null)
+                {
+                    Find.LetterStack.ReceiveLetter(
+                        $"Chat Interactive: {Path.GetFileNameWithoutExtension(fileName)} Data Corrupted",
+                        $"{Path.GetFileNameWithoutExtension(fileName)} data was corrupted and has been rebuilt with defaults.\n\n" +
+                        "If this happens frequently, check your hard drive health.",
+                        LetterDefOf.NegativeEvent
+                    );
+                }
+
+                return createDefaultFunc != null ? createDefaultFunc() : new T();
+            }
+            catch (System.IO.IOException ioEx)
+            {
+                Logger.Error($"DISK ACCESS ERROR reading {fileName}: {ioEx.Message}");
+                return createDefaultFunc != null ? createDefaultFunc() : new T();
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Error($"Error loading {fileName}: {ex.Message}");
+                return createDefaultFunc != null ? createDefaultFunc() : new T();
+            }
+        }
+
+        private static void BackupCorruptedFile(string fileName, string content)
+        {
+            try
+            {
+                string backupPath = GetBackupPath(fileName);
+                File.WriteAllText(backupPath, content);
+                Logger.Debug($"Backed up corrupted {fileName} to: {backupPath}");
+            }
+            catch { /* Silent fail */ }
         }
     }
 }

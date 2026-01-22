@@ -77,8 +77,16 @@ namespace CAP_ChatInteractive.Traits
             try
             {
                 var loadedTraits = JsonFileManager.DeserializeTraits(jsonContent);
-                AllBuyableTraits.Clear();
 
+                // Validation
+                if (loadedTraits == null || loadedTraits.Count == 0)
+                {
+                    Logger.Error("Traits.json exists but contains no valid data - corrupted");
+                    HandleTraitsCorruption("File contains no valid data", jsonContent);
+                    return false;
+                }
+
+                AllBuyableTraits.Clear();
                 foreach (var kvp in loadedTraits)
                 {
                     AllBuyableTraits[kvp.Key] = kvp.Value;
@@ -86,10 +94,42 @@ namespace CAP_ChatInteractive.Traits
 
                 return true;
             }
+            catch (Newtonsoft.Json.JsonException jsonEx)
+            {
+                Logger.Error($"JSON CORRUPTION in Traits.json: {jsonEx.Message}\n");
+                HandleTraitsCorruption($"JSON parsing error: {jsonEx.Message}", jsonContent);
+                return false;
+            }
+            catch (System.IO.IOException ioEx)
+            {
+                Logger.Error($"DISK ACCESS ERROR reading Traits.json: {ioEx.Message}");
+                return false;
+            }
             catch (System.Exception e)
             {
                 Logger.Error($"Error loading traits JSON: {e.Message}");
                 return false;
+            }
+        }
+
+        private static void HandleTraitsCorruption(string errorDetails, string corruptedJson)
+        {
+            // Backup corrupted file
+            try
+            {
+                string backupPath = JsonFileManager.GetBackupPath("Traits.json");
+                System.IO.File.WriteAllText(backupPath, corruptedJson);
+                Logger.Debug($"Backed up corrupted Traits.json to: {backupPath}");
+            }
+            catch { /* Silent fail */ }
+
+            // Show in-game notification
+            if (Current.ProgramState == ProgramState.Playing)
+            {
+                Messages.Message(
+                    "Chat Interactive: Traits data was corrupted. Rebuilt with defaults.",
+                    MessageTypeDefOf.NegativeEvent
+                );
             }
         }
 
