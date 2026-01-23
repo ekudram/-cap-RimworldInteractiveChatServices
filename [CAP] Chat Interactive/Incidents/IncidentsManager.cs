@@ -18,13 +18,29 @@
 // Manages the loading, saving, and updating of buyable incidents for the chat interactive mod.
 
 /*
- * Logic:
- * - On initialization, check if incidents JSON exists.
- * - If not, create default incidents from IncidentDefs and save to JSON.
- * - Data persistence: Uses Dictionary<string, BuyableIncident> to store incidents in memory.
- * - All other fuctions call Dictionary to get incident data.
- */
+============================================================
+RICS INCIDENTS DATA FLOW - CRITICAL ARCHITECTURE
+============================================================
+
+RUNTIME OPERATIONS:
+• All commands use AllBuyableIncidents Dictionary (in-memory cache)
+• JSON is ONLY for persistence, never read during normal operations
+• Changes update Dictionary → SaveIncidentsToJson() asynchronously
+
+PERFORMANCE NOTES:
+• LongEventHandler prevents UI stutter during saves
+• No auto-saves - only save on actual data changes
+• No locks needed except for save operation itself
+
+DO NOT CHANGE:
+• Do NOT add timed auto-saves (disk I/O waste)
+• Do NOT read JSON during runtime (use Dictionary)
+• Do NOT replace async saving (causes stutter)
+• Do NOT add redundant saves (PostClose handles it)
+============================================================
+*/
 using LudeonTK;
+using Newtonsoft.Json;
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -204,7 +220,7 @@ namespace CAP_ChatInteractive.Incidents
 
             Logger.Debug($"Created {AllBuyableIncidents.Count} store-suitable incidents");
         }
-
+        // Currently unused - for future roadmap logging
         private static void LogImplementationSummary()
         {
             var incidentsByMod = IncidentsManager.AllBuyableIncidents.Values
@@ -399,7 +415,6 @@ namespace CAP_ChatInteractive.Incidents
                 SaveIncidentsToJson(); // Save changes
             }
         }
-
         public static void SaveIncidentsToJson()
         {
             LongEventHandler.QueueLongEvent(() =>
@@ -410,14 +425,165 @@ namespace CAP_ChatInteractive.Incidents
                     {
                         string jsonContent = JsonFileManager.SerializeIncidents(AllBuyableIncidents);
                         JsonFileManager.SaveFile("Incidents.json", jsonContent);
-                        Logger.Debug("Incidents JSON saved successfully");
+                        Logger.Message($"Incidents JSON saved. Items: {AllBuyableIncidents?.Count ?? 0}");
                     }
-                    catch (System.Exception e)
+                    catch (JsonException jsonEx)
                     {
-                        Logger.Error($"Error saving incidents JSON: {e.Message}");
+                        HandleJsonException(jsonEx, "Incidents.json");
+                    }
+                    catch (IOException ioEx)
+                    {
+                        HandleIOException(ioEx, "Incidents.json", isCritical: false);
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error($"Error saving incidents JSON: {e}");
                     }
                 }
-            }, null, false, null, showExtraUIInfo: false, forceHideUI: true);
+            },
+            textKey: null,
+            doAsynchronously: true,
+            exceptionHandler: null,
+            showExtraUIInfo: false,
+            forceHideUI: true);
+        }
+
+        // For post-close saves (show feedback to user)
+        public static void SaveIncidentsToJsonPostClose()
+        {
+            LongEventHandler.QueueLongEvent(() =>
+            {
+                lock (lockObject)
+                {
+                    try
+                    {
+                        string jsonContent = JsonFileManager.SerializeIncidents(AllBuyableIncidents);
+                        JsonFileManager.SaveFile("Incidents.json", jsonContent);
+                        Logger.Message("Incidents JSON saved successfully");
+
+                        // Show success message in UI (brief, silent)
+                        Messages.Message("RICS: Incidents settings saved.",
+                            MessageTypeDefOf.SilentInput);
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        HandleJsonException(jsonEx, "Incidents.json");
+
+                        // Additional UI feedback for post-close
+                        Messages.Message("RICS: JSON error saving Incidents. Check logs.",
+                            MessageTypeDefOf.RejectInput);
+                    }
+                    catch (IOException ioEx)
+                    {
+                        HandleIOException(ioEx, "Incidents.json", isCritical: true);
+
+                        // Always show disk errors
+                        Messages.Message("RICS: Disk error! Incidents not saved.",
+                            MessageTypeDefOf.RejectInput);
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error($"Error saving incidents JSON: {e}");
+                        Messages.Message($"RICS: Save error: {e.GetType().Name}",
+                            MessageTypeDefOf.RejectInput);
+                    }
+                }
+            },
+            textKey: "RICS.SavingIncidentsSettings",    // Shows "Saving store settings..." in progress UI
+            doAsynchronously: true,
+            exceptionHandler: HandleSaveException,
+            showExtraUIInfo: true,
+            forceHideUI: false);
+        }
+
+        // Custom exception handler for LongEventHandler
+        private static void HandleSaveException(Exception ex)
+        {
+            Logger.Error($"LongEventHandler caught exception during save: {ex}");
+
+            // Only show message if not already handled in try/catch
+            if (ex is not JsonException && ex is not IOException)
+            {
+                Messages.Message($"RICS: Save failed! {ex.Message}",
+                    MessageTypeDefOf.RejectInput);
+            }
+        }
+
+        // Shared exception handlers
+        private static void HandleJsonException(JsonException jsonEx, string filename)
+        {
+            Logger.Error($"JSON CORRUPTION in {filename}: {jsonEx.Message}\n" +
+                        $"File may be corrupted or from incompatible version.\n" +
+                        $"Attempting to create backup and rebuild...");
+
+            // Create emergency backup
+            try
+            {
+                string backupPath = Path.Combine(JsonFileManager.GetFilePath(filename),
+                    $"{Path.GetFileNameWithoutExtension(filename)}_CORRUPTED_{DateTime.Now:yyyyMMdd_HHmmss}.json.bak");
+                string originalPath = Path.Combine(JsonFileManager.GetFilePath(filename));
+
+                if (File.Exists(originalPath))
+                {
+                    File.Copy(originalPath, backupPath, true);
+                    Logger.Message($"Corrupted file backed up to: {backupPath}");
+                }
+            }
+            catch (Exception backupEx)
+            {
+                Logger.Error($"Failed to create backup: {backupEx.Message}");
+            }
+
+            // Could add logic here to rebuild from defaults if needed
+            if (AllBuyableIncidents == null || AllBuyableIncidents.Count == 0)
+            {
+                Logger.Warning($"No incidents data available after JSON error. May need to reset to defaults.");
+            }
+        }
+
+        private static void HandleIOException(IOException ioEx, string filename, bool isCritical)
+        {
+            string errorType = isCritical ? "CRITICAL DISK ACCESS ERROR" : "Disk access error";
+            Logger.Error($"{errorType} reading {filename}: {ioEx.Message}\n" +
+                        $"Error Code: {ioEx.HResult}\n" +
+                        $"Check disk health and free space!");
+
+            if (isCritical && Current.ProgramState == ProgramState.Playing)
+            {
+                // Show urgent letter for critical disk errors
+                ShowCriticalDiskError(ioEx, filename);
+            }
+        }
+
+        private static void ShowCriticalDiskError(IOException ioEx, string filename)
+        {
+            try
+            {
+                if (Find.LetterStack != null)
+                {
+                    Find.LetterStack.ReceiveLetter(
+                        "RICS: Critical Storage Error",
+                        $"RICS cannot save incidents  data due to a disk error.\n\n" +
+                        $"File: {filename}\n" +
+                        $"Error: {ioEx.Message}\n\n" +
+                        $"This may indicate:\n" +
+                        $"• Hard drive failure\n" +
+                        $"• Disk full\n" +
+                        $"• File permission issues\n" +
+                        $"• Antivirus blocking access\n\n" +
+                        $"Check your storage device health immediately!",
+                        LetterDefOf.ThreatBig,
+                        lookTargets: null,
+                        debugInfo: null,
+                        relatedFaction: null,
+                        hyperlinkThingDefs: null
+                    );
+                }
+            }
+            catch (Exception letterEx)
+            {
+                Logger.Error($"Failed to show critical error letter: {letterEx.Message}");
+            }
         }
 
         private static void LogIncidentCategories()

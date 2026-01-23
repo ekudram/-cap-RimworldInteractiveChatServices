@@ -1001,7 +1001,7 @@ namespace CAP_ChatInteractive
             FilterEvents();
         }
 
-        // NEW: Calculate default cooldown based on incident type (similar to your BuyableIncident logic)
+        // Calculate default cooldown based on incident type (similar to your BuyableIncident logic)
         private int CalculateDefaultCooldown(BuyableIncident incident)
         {
             // This should match the logic in BuyableIncident.SetDefaultCooldown
@@ -1243,9 +1243,10 @@ namespace CAP_ChatInteractive
         }
         public override void PostClose()
         {
-            IncidentsManager.SaveIncidentsToJson();
+            IncidentsManager.SaveIncidentsToJsonPostClose();
             base.PostClose();
         }
+
         private void ShowDefInfoWindow(BuyableIncident incident)
         {
             Find.WindowStack.Add(new EventsDefInfoWindow(incident));
