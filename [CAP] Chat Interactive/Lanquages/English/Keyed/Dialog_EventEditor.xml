@@ -1,75 +1,96 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-  
+  <!-- This file contains translations for the Events Editor dialog in RICS. -->
   <!-- Dialog_EventsEditor.cs translations -->
-  <EventsEditor>Events Editor</EventsEditor>
-  <EventsSetttings>Settings</EventsSetttings>
-  <EventsEditorHelp.tooltip>Events Editor Help</EventsEditorHelp.tooltip>
-  <EventsEditorHelp>Help</EventsEditorHelp>
+  <RICS.EventsEditor>Events Editor</RICS.EventsEditor>
+  <RICS.EventsSearch>Search:</RICS.EventsSearch>
+  <RICS.EventsSettings>Settings</RICS.EventsSettings>
+  <RICS.EventsEditorHelp.tooltip>Events Editor Help</RICS.EventsEditorHelp.tooltip>
+  <RICS.EventsEditorHelp>Help</RICS.EventsEditorHelp>
+  <RICS.EventsEditor.HeaderWithCount>Events ({0})</RICS.EventsEditor.HeaderWithCount>
+  <RICS.EventInfo.UnavailableSuffix> - [UNAVAILABLE]</RICS.EventInfo.UnavailableSuffix>
   
   <!-- Sort buttons -->
-  <SortByName>Name</SortByName>
-  <SortByCost>Cost</SortByCost>
-  <SortByKarma>Karma</SortByKarma>
-  <SortedByX>Sorted by: {0}</SortedByX>
-  <DirectionX>Direction: {0}</DirectionX>
-  <Ascending>Ascending</Ascending>
-  <Descending>Descending</Descending>
+  <RICS.SortByName>Name</RICS.SortByName>
+  <RICS.SortByCost>Cost</RICS.SortByCost>
+  <RICS.SortByKarma>Karma</RICS.SortByKarma>
+  <RICS.SortedByX>Sorted by: {0}</RICS.SortedByX>
+  <RICS.DirectionX>Direction: {0}</RICS.DirectionX>
+  <RICS.Ascending>Ascending</RICS.Ascending>
+  <RICS.Descending>Descending</RICS.Descending>
   
   <!-- Action buttons -->
-  
-  <ResetPrices>Reset Prices</ResetPrices>
-  <CAP.EventsEditor.ResetPricesDialog>Reset all event prices to default? This cannot be undone.</CAP.EventsEditor.ResetPricesDialog>
-  <EnableEvents>Enable →</EnableEvents>
-  <DisableEvents>Disable →</DisableEvents>
-  <Cooldowns>Cooldowns →</Cooldowns>
+
+  <RICS.ResetPrices>Reset Prices</RICS.ResetPrices>
+  <RICS.EventsEditor.ResetPricesDialog>Reset all event prices to default? This cannot be undone.</RICS.EventsEditor.ResetPricesDialog>
+  <RICS.EnableEvents>Enable →</RICS.EnableEvents>
+  <RICS.DisableEvents>Disable →</RICS.DisableEvents>
+  <RICS.Cooldowns>Cooldowns →</RICS.Cooldowns>
   
   <!-- Cooldown menu -->
-  <NoCooldown>No Cooldown (∞)</NoCooldown>
-  <oneDay>1 Day</oneDay>
-  <threeDays>3 Days</threeDays>
-  <fiveDays>5 Days</fiveDays>
-  <sevenDays>7 Days</sevenDays>
-  <fourteenDays>14 Days</fourteenDays>
-  <ResetFilteredToDefaults>Reset filtered to defaults</ResetFilteredToDefaults>
-  <ResetFilteredToDefaults.Dialog>Reset cooldowns for filtered events to default?\n\nFilter: {0}</ResetFilteredToDefaults.Dialog>
-  <ResetAllToDefaults>Reset ALL to defaults</ResetAllToDefaults>
-  <ResetAllToDefaults.Dialog>Reset ALL event cooldowns to default? This cannot be undone.</ResetAllToDefaults.Dialog>
-  <Custom>Custom...</Custom>
-  
+  <RICS.NoCooldown>No Cooldown (∞)</RICS.NoCooldown>
+  <RICS.oneDay>1 Day</RICS.oneDay>
+  <RICS.threeDays>3 Days</RICS.threeDays>
+  <RICS.fiveDays>5 Days</RICS.fiveDays>
+  <RICS.sevenDays>7 Days</RICS.sevenDays>
+  <RICS.fourteenDays>14 Days</RICS.fourteenDays>
+  <RICS.ResetFilteredToDefaults>Reset filtered to defaults</RICS.ResetFilteredToDefaults>
+  <RICS.ResetFilteredToDefaults.Dialog>Reset cooldowns for filtered events to default?\n\nFilter: {0}</RICS.ResetFilteredToDefaults.Dialog>
+  <RICS.ResetAllToDefaults>Reset ALL to defaults</RICS.ResetAllToDefaults>
+  <RICS.ResetAllToDefaults.Dialog>Reset ALL event cooldowns to default? This cannot be undone.</RICS.ResetAllToDefaults.Dialog>
+  <RICS.Custom>Custom...</RICS.Custom>
+  <RICS.CooldownControl.Label>CD:</RICS.CooldownControl.Label>  <!-- CD: for Cooldown -->
+
   <!-- Lists -->
-  <Categories>Categories</Categories>
-  <ModSources>Mod Sources</ModSources>
+  <RICS.Categories>Categories</RICS.Categories>
+  <RICS.ModSources>Mod Sources</RICS.ModSources>
   
   <!-- Messages -->
-  <NoEventsFound>No events found matching current filters</NoEventsFound>
-  <CannotEnableNotAvailable>Cannot enable - not available via commands</CannotEnableNotAvailable>
-  <Enabled>Enabled</Enabled>
+  <RICS.NoEventsFound>No events found matching current filters</RICS.NoEventsFound>
+  <RICS.CannotEnableNotAvailable>Cannot enable - not available via commands</RICS.CannotEnableNotAvailable>
+  <RICS.Enabled>Enabled</RICS.Enabled>
+  <RICS.EventsEditor.HeaderWithCount>Events ({0})</RICS.EventsEditor.HeaderWithCount>
+  <RICS.EventInfo.UnavailableSuffix> - [UNAVAILABLE]</RICS.EventInfo.UnavailableSuffix>
+  <RICS.EventToggle.KarmaTooltip>Karma Type: {0}\nAffects karma-type limits if enabled in global settings</RICS.EventToggle.KarmaTooltip>
+  <RICS.CooldownControl.Label>CD:</RICS.CooldownControl.Label>
+  <RICS.Messages.SetNoCooldown>Set {0} events to have no cooldown</RICS.Messages.SetNoCooldown>
+  <RICS.Messages.SetCooldown>Set {0} events to {1} day{2} cooldown</RICS.Messages.SetCooldown>
+  <RICS.Messages.ResetCooldowns>Reset cooldowns for {0} events</RICS.Messages.ResetCooldowns>
+  <RICS.Messages.EventsEnabledFromMod>Enabled {0} events from {1}</RICS.Messages.EventsEnabledFromMod>
+  <RICS.Messages.EventsDisabledFromMod>Disabled {0} events from {1}</RICS.Messages.EventsDisabledFromMod>
+  <RICS.Categories.Uncategorized>Uncategorized</RICS.Categories.Uncategorized>
+  <RICS.Messages.SetNoCooldown>Set {0} events to have no cooldown</RICS.Messages.SetNoCooldown>
+  <RICS.Messages.SetCooldown>Set {0} events to {1} day{2} cooldown</RICS.Messages.SetCooldown>
+  <RICS.Messages.ResetCooldowns>Reset cooldowns for {0} events</RICS.Messages.ResetCooldowns>
+  <RICS.Messages.EventsEnabledFromMod>Enabled {0} events from {1}</RICS.Messages.EventsEnabledFromMod>
+  <RICS.Messages.EventsDisabledFromMod>Disabled {0} events from {1}</RICS.Messages.EventsDisabledFromMod>
+  <RICS.Categories.Uncategorized>Uncategorized</RICS.Categories.Uncategorized>
   
   <!-- Tooltips -->
-  <NoCooldownInfiniteTooltip>No cooldown (infinite)\nClick to set a cooldown</NoCooldownInfiniteTooltip>
-  <ResetToNoCooldown>Reset to no cooldown (infinite)</ResetToNoCooldown>
-  <CooldownDaysTooltip>Cooldown Days\nDays before this event can be triggered again\n0 = No cooldown (infinite)\nOnly applies if global event cooldowns are enabled</CooldownDaysTooltip>
+  <RICS.NoCooldownInfiniteTooltip>No cooldown (infinite)\nClick to set a cooldown</RICS.NoCooldownInfiniteTooltip>
+  <RICS.ResetToNoCooldown>Reset to no cooldown (infinite)</RICS.ResetToNoCooldown>
+  <RICS.CooldownDaysTooltip>Cooldown Days\nDays before this event can be triggered again\n0 = No cooldown (infinite)\nOnly applies if global event cooldowns are enabled</RICS.CooldownDaysTooltip>
+  <RICS.EventToggle.KarmaTooltip>Karma Type: {0}\nAffects karma-type limits if enabled in global settings</RICS.EventToggle.KarmaTooltip>
   
   <!-- Controls -->
-  <Cost>Cost</Cost>
-  <Karma>Karma</Karma>
-  <Reset>Reset</Reset>
-  <Good>Good</Good>
-  <Bad>Bad</Bad>
-  <Neutral>Neutral</Neutral>
+  <RICS.Cost>Cost</RICS.Cost>  <!-- Is not used.  Uses Rimworlds  -->
+  <RICS.Karma>Karma</RICS.Karma>
+  <RICS.Reset>Reset</RICS.Reset>
+  <RICS.Good>Good</RICS.Good>
+  <RICS.Bad>Bad</RICS.Bad>
+  <RICS.Neutral>Neutral</RICS.Neutral>
   
   <!-- Confirmation dialogs -->
-  <ResetCooldownsFilteredConfirm>Reset cooldowns for filtered events to default?\n\nFilter: {0}</ResetCooldownsFilteredConfirm>
-  <ResetAllCooldownsConfirm>Reset ALL event cooldowns to default? This cannot be undone.</ResetAllCooldownsConfirm>
-  <SetNoCooldownConfirm>Set {0} to have NO cooldown (infinite)?</SetNoCooldownConfirm>
-  <SetCooldownConfirm>Set {0} to have {1} day{2} cooldown?</SetCooldownConfirm>
+  <RICS.ResetCooldownsFilteredConfirm>Reset cooldowns for filtered events to default?\n\nFilter: {0}</RICS.ResetCooldownsFilteredConfirm>
+  <RICS.ResetAllCooldownsConfirm>Reset ALL event cooldowns to default? This cannot be undone.</RICS.ResetAllCooldownsConfirm>
+  <RICS.SetNoCooldownConfirm>Set {0} to have NO cooldown (infinite)?</RICS.SetNoCooldownConfirm>
+  <RICS.SetCooldownConfirm>Set {0} to have {1} day{2} cooldown?</RICS.SetCooldownConfirm>
   
   <!-- Add these for plural handling -->
-  <DaysPlural>s</DaysPlural>
-  <DaysSingular></DaysSingular>
+  <RICS.DaysPlural>s</RICS.DaysPlural>
+  <RICS.DaysSingular></RICS.DaysSingular>
   
   <!-- Floating Menu -->
-  <CAP.FloatingMenu.AllMods>All Mods</CAP.FloatingMenu.AllMods>
+  <RICS.FloatingMenu.AllMods>All Mods</RICS.FloatingMenu.AllMods>
   
 </LanguageData>

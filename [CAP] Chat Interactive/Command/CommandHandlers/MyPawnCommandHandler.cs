@@ -408,12 +408,25 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         // === Body ===
         private static string HandleBodyInfo(Pawn pawn, string[] args)
         {
+            // Add body type at the beginning
+            string bodyTypeInfo = "";
+            if (pawn.story?.bodyType != null)
+            {
+                bodyTypeInfo = $"🧬 Body Type: {pawn.story.bodyType.label} |";
+            }
+
             if (pawn.health?.hediffSet?.hediffs == null || pawn.health.hediffSet.hediffs.Count == 0)
             {
-                return $"{pawn.Name} has no health conditions. 🟢";
+                return $"{bodyTypeInfo}{pawn.Name} has no health conditions. 🟢";
             }
 
             var report = new StringBuilder();
+
+            // Add body type at the beginning of the report
+            if (!string.IsNullOrEmpty(bodyTypeInfo))
+            {
+                report.Append(bodyTypeInfo);
+            }
 
             // Get all visible health conditions
             var healthConditions = GetVisibleHealthConditions(pawn);

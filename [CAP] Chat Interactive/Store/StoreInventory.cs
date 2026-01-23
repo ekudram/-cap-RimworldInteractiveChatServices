@@ -392,7 +392,7 @@ namespace CAP_ChatInteractive.Store
             return false;
         }
 
-        private static bool ShouldRemoveStoreItem(string defName, ThingDef thingDef, List<ThingDef> tradeableItems, out string reason)
+        private static bool ShouldRemoveStoreItem(string defName, ThingDef thingDef, IEnumerable<ThingDef> tradeableItems, out string reason)
         {
             reason = null;
 
@@ -422,14 +422,13 @@ namespace CAP_ChatInteractive.Store
 
             return false;
         }
-
         private static bool IsLikelyProblematicItem(ThingDef thingDef)
         {
             // Skip items that are clearly vehicles or complex structures
             string defName = thingDef.defName ?? "";
 
             // Check for vehicle-related patterns in defName From Looking at Mods for vehicles
-            if (defName.Contains("VehiclePawn") // ||
+            if (defName.Contains("VehiclePawn")) // ||
                 //defName.Contains("VE_") ||
                 //defName.Contains("VVE_") ||
                 //defName.Contains("VanillaVehicles"))
