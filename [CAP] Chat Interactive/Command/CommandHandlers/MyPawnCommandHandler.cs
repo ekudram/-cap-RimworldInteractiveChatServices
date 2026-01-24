@@ -412,7 +412,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             string bodyTypeInfo = "";
             if (pawn.story?.bodyType != null)
             {
-                bodyTypeInfo = $"🧬 Body Type: {pawn.story.bodyType.label} |";
+                string displayName = GetBodyTypeDisplayName(pawn);
+                bodyTypeInfo = $"🧬 Body Type: {displayName} |";
+            }
+
+            if (pawn.story?.bodyType != null)
+            {
+                bodyTypeInfo = $"🧬 Body Type: {pawn.story.bodyType.defName} |";
             }
 
             if (pawn.health?.hediffSet?.hediffs == null || pawn.health.hediffSet.hediffs.Count == 0)
@@ -623,6 +629,119 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
             return report.ToString();
+        }
+
+        private static string GetBodyTypeDisplayName(Pawn pawn, bool includeModdedFlag = true)
+        {
+            if (pawn?.story?.bodyType == null)
+                return "Unknown Body";
+
+            string defName = pawn.story.bodyType.defName;
+
+            // Vanilla body types
+            Dictionary<string, string> vanillaMap = new Dictionary<string, string>
+    {
+        { "Female", "Female" },
+        { "Male", "Male" },
+        { "Thin", "Thin" },
+        { "Hulk", "Hulk" },
+        { "Fat", "Fat" },
+        { "Standard", "Standard" }
+    };
+
+            // Check vanilla first
+            if (vanillaMap.ContainsKey(defName))
+            {
+                return vanillaMap[defName];
+            }
+
+            // Common modded patterns with display names
+            List<(string pattern, string display)> patterns = new List<(string, string)>
+    {
+        ("female", "Female"),
+        ("male", "Male"),
+        ("thin", "Thin"),
+        ("slim", "Slim"),
+        ("hulk", "Hulk"),
+        ("muscular", "Muscular"),
+        ("fat", "Fat"),
+        ("chubby", "Chubby"),
+        ("curvy", "Curvy"),
+        ("athletic", "Athletic"),
+        ("average", "Average"),
+        ("normal", "Normal"),
+        ("standard", "Standard"),
+        
+        // Creature types
+        ("dragon", "Dragon"),
+        ("lizard", "Lizard"),
+        ("reptil", "Reptilian"),
+        ("insect", "Insectoid"),
+        ("bug", "Insectoid"),
+        ("arachnid", "Arachnid"),
+        ("spider", "Arachnid"),
+        ("avian", "Avian"),
+        ("bird", "Avian"),
+        ("canine", "Canine"),
+        ("wolf", "Canine"),
+        ("dog", "Canine"),
+        ("feline", "Feline"),
+        ("cat", "Feline"),
+        ("equine", "Equine"),
+        ("horse", "Equine"),
+        ("mechanoid", "Mechanoid"),
+        ("android", "Android"),
+        ("robot", "Robotic"),
+        ("synth", "Synthetic"),
+        ("demon", "Demonic"),
+        ("angel", "Angelic"),
+        ("alien", "Alien")
+    };
+
+            string lowerDefName = defName.ToLower();
+
+            foreach (var (pattern, display) in patterns)
+            {
+                if (lowerDefName.Contains(pattern))
+                {
+                    string result = display;
+                    if (includeModdedFlag && !vanillaMap.ContainsValue(display))
+                    {
+                        result += " (Modded)";
+                    }
+                    return result;
+                }
+            }
+
+            // Try to extract a readable name from the defName
+            // Remove common prefixes/suffixes
+            string cleanedName = defName
+                .Replace("BB_", "")
+                .Replace("_Female", "")
+                .Replace("_Male", "")
+                .Replace("_BodyType", "")
+                .Replace("BodyType_", "")
+                .Replace("_", " ");
+
+            // Capitalize first letter of each word
+            if (!string.IsNullOrWhiteSpace(cleanedName))
+            {
+                cleanedName = System.Globalization.CultureInfo.CurrentCulture.TextInfo
+                    .ToTitleCase(cleanedName.ToLower());
+
+                if (includeModdedFlag)
+                {
+                    return $"{cleanedName} (Modded)";
+                }
+                return cleanedName;
+            }
+
+            // Last resort
+            if (includeModdedFlag)
+            {
+                return "Unknown Modded Body";
+            }
+            return "Unknown";
         }
 
         // Updated to prioritize critical conditions
