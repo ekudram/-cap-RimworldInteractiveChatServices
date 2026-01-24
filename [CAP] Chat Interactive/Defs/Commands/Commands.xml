@@ -184,6 +184,19 @@
     <cooldownSeconds>5</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
+
+	<CAP_ChatInteractive.ChatCommandDef>
+		<defName>Storage</defName>
+		<commandText>storage</commandText>
+		<label>Storage</label>
+		<enabled>true</enabled>
+		<commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Storage</commandClass>
+		<requiresMod>true</requiresMod>
+		<commandDescription>Search for things in storage.</commandDescription>
+		<permissionLevel>everyone</permissionLevel>
+		<cooldownSeconds>5</cooldownSeconds>
+		<useCommandCooldown>true</useCommandCooldown>
+	</CAP_ChatInteractive.ChatCommandDef>
   
 
   <!-- Viewer Economy Commands -->

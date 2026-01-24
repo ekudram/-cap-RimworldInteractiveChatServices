@@ -415,22 +415,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
-            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-            //var colonistList = Current.Game.PlayerHomeMaps.SelectMany(m => m.mapPawns.FreeColonistsSpawned);
-            //var animalsList = Current.Game.PlayerHomeMaps.SelectMany(m => m.mapPawns.ColonyAnimals);
-            int colonistCount = Current.Game.PlayerHomeMaps.Sum(m => m.mapPawns.FreeColonistsSpawnedCount);
-            int animalCount = Current.Game.PlayerHomeMaps.Sum(m => m.mapPawns.ColonyAnimals.Count);
-            int viewerCount = assignmentManager.viewerPawnAssignments.Count;
-
-            return $"There are {colonistCount} colonists({viewerCount} viewers) and {animalCount} colony animals.";
-        }
-    }
-
-    public class Stockpile : ChatCommand
-    {
-        public override string Name => "stockpile";
-        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
-        {
             // Get total living free colonists (standard RimWorld count)
             int colonistCount = Current.Game.PlayerHomeMaps
                 .Sum(m => m.mapPawns.FreeColonistsSpawnedCount);
@@ -447,7 +431,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return $"There are {colonistCount} colonists and {animalCount} colony animals.";
             }
 
-            return "";
             // Count unique pawns that are:
             // • Assigned to a viewer
             // • Still alive (most common expectation for viewer commands)
@@ -463,6 +446,53 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             */
 
             return $"There are {colonistCount} colonists ({viewerPawnCount} controlled by viewers) and {animalCount} colony animals.";
+        }
+    }
+
+    public class Storage : ChatCommand
+    {
+        public override string Name => "storage";
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            if (args.Length == 0)
+            {
+                return "Specify a thing";
+            }
+
+            var map = Current.Game.CurrentMap;
+            if (map == null)
+            {
+                return "No active map";
+            }
+
+            var arg = string.Join(" ", args);
+
+            // Zones
+            var zoneThings = map.zoneManager.AllZones
+                .OfType<Zone_Stockpile>()
+                .SelectMany(z => z.Cells)
+                .SelectMany(c => c.GetThingList(map));
+
+            //  Buldings
+            var storageThings = map.listerBuildings.AllBuildingsColonistOfClass<Building_Storage>()
+                .SelectMany(shelf => shelf.GetSlotGroup().HeldThings);
+
+            // Merge
+            var allThings = zoneThings.Concat(storageThings).ToList();
+
+            var thingDef = allThings
+                .Select(t => t.def)
+                .FirstOrDefault(d => string.Equals(d.defName, arg, StringComparison.OrdinalIgnoreCase) 
+                || d.defName.IndexOf(arg, StringComparison.OrdinalIgnoreCase) >= 0 || d.label.IndexOf(arg, StringComparison.OrdinalIgnoreCase) >= 0);
+
+            if (thingDef == null)
+                return $"Couldn't find '{arg}' in storage.";
+
+            int totalCount = allThings
+                .Where(t => t.def == thingDef)
+                .Sum(t => t.stackCount);
+
+            return $"There are {totalCount} {thingDef.label} in storage";
         }
     }
 }
