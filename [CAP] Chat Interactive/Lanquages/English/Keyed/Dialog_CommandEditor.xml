@@ -90,8 +90,6 @@
   <CAP.CommandManager.SurgeryGenderSwapCost>Gender Swap Cost:</CAP.CommandManager.SurgeryGenderSwapCost>
   <CAP.CommandManager.BodyChangeCost>Body Change Cost:</CAP.CommandManager.BodyChangeCost>
 
-  <CAP.CommandManager.SurgerySettings>Surgery Settings</CAP.CommandManager.SurgerySettings>
-  <CAP.CommandManager.SurgeryGenderSwapCost>Gender Swap Cost</CAP.CommandManager.SurgeryGenderSwapCost>
   <CAP.CommandManager.SurgeryBodyChangeCost>Body Change Cost</CAP.CommandManager.SurgeryBodyChangeCost>
   <CAP.CommandManager.SurgerySterilizeCost>Sterilize Cost</CAP.CommandManager.SurgerySterilizeCost>
   <CAP.CommandManager.SurgeryIUDCost>IUD Implant/Removal Cost</CAP.CommandManager.SurgeryIUDCost>
@@ -102,7 +100,7 @@
   <CAP.CommandManager.SurgeryMiscBiotechCost>Misc Biotech Surgery Cost</CAP.CommandManager.SurgeryMiscBiotechCost>
   <CAP.CommandManager.SurgeryDescription>Configure costs for special surgeries. Negative values give coins to the viewer (e.g. for donating blood via hemogen extraction).</CAP.CommandManager.SurgeryDescription>
   
-  <CAP.CommandManager.SurgeryDescription>These costs apply to special cosmetic surgeries like gender swap and body type changes.</CAP.CommandManager.SurgeryDescription>
+  <CAP.CommandManager.SurgeryDescriptionBody>These costs apply to special cosmetic surgeries like gender swap and body type changes.</CAP.CommandManager.SurgeryDescriptionBody>
   <CAP.CommandManager.SurgeryToggleNote>Disabling a surgery hides it from viewers and prevents usage. Costs are shown for reference even when disabled.</CAP.CommandManager.SurgeryToggleNote>
 
   <CAP.CommandManager.SurgeryTooltip>X to disable</CAP.CommandManager.SurgeryTooltip>

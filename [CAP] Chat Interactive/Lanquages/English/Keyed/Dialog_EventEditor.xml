@@ -49,7 +49,6 @@
   <RICS.NoEventsFound>No events found matching current filters</RICS.NoEventsFound>
   <RICS.CannotEnableNotAvailable>Cannot enable - not available via commands</RICS.CannotEnableNotAvailable>
   <RICS.Enabled>Enabled</RICS.Enabled>
-  <RICS.EventToggle.KarmaTooltip>Karma Type: {0}\nAffects karma-type limits if enabled in global settings</RICS.EventToggle.KarmaTooltip>
   <RICS.Messages.SetNoCooldown>Set {0} events to have no cooldown</RICS.Messages.SetNoCooldown>
   <RICS.Messages.SetCooldown>Set {0} events to {1} day{2} cooldown</RICS.Messages.SetCooldown>
   <RICS.Messages.ResetCooldowns>Reset cooldowns for {0} events</RICS.Messages.ResetCooldowns>

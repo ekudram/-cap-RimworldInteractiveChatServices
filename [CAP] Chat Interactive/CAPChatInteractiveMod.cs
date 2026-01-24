@@ -16,6 +16,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // Handles initialization, settings, and service management.
 // Store, Traits, Weather, and other systems will be initialized when the game starts.
+
 using _CAP__Chat_Interactive.Interfaces;
 using RimWorld;
 using System;   
@@ -229,6 +230,8 @@ namespace CAP_ChatInteractive
             // Close the original mod settings window and open our custom one
             Find.WindowStack.TryRemove(typeof(Dialog_ModSettings), true);
             Find.WindowStack.Add(new Dialog_ChatInteractiveSettings());
+
+
         }
 
         public object GetChatService(string platform)
