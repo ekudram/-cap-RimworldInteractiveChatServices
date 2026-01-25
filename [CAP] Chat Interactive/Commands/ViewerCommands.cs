@@ -302,6 +302,20 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
+    public class Study : ChatCommand
+    {
+        public override string Name => "study";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            if (!ModsConfig.AnomalyActive)
+            {
+                return "Requires anomaly DLC";
+            }
+            return ResearchCommandHandler.HandleStudyCommand(messageWrapper, args);
+        }
+    }
+
     public class Passion : ChatCommand
     {
         public override string Name => "passion";
@@ -446,6 +460,53 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             */
 
             return $"There are {colonistCount} colonists ({viewerPawnCount} controlled by viewers) and {animalCount} colony animals.";
+        }
+    }
+
+    public class Storage : ChatCommand
+    {
+        public override string Name => "storage";
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            if (args.Length == 0)
+            {
+                return "Specify a thing";
+            }
+
+            var map = Current.Game.CurrentMap;
+            if (map == null)
+            {
+                return "No active map";
+            }
+
+            var arg = string.Join(" ", args);
+
+            // Zones
+            var zoneThings = map.zoneManager.AllZones
+                .OfType<Zone_Stockpile>()
+                .SelectMany(z => z.Cells)
+                .SelectMany(c => c.GetThingList(map));
+
+            //  Buldings
+            var storageThings = map.listerBuildings.AllBuildingsColonistOfClass<Building_Storage>()
+                .SelectMany(shelf => shelf.GetSlotGroup().HeldThings);
+
+            // Merge
+            var allThings = zoneThings.Concat(storageThings).ToList();
+
+            var thingDef = allThings
+                .Select(t => t.def)
+                .FirstOrDefault(d => string.Equals(d.defName, arg, StringComparison.OrdinalIgnoreCase) 
+                || d.defName.IndexOf(arg, StringComparison.OrdinalIgnoreCase) >= 0 || d.label.IndexOf(arg, StringComparison.OrdinalIgnoreCase) >= 0);
+
+            if (thingDef == null)
+                return $"Couldn't find '{arg}' in storage.";
+
+            int totalCount = allThings
+                .Where(t => t.def == thingDef)
+                .Sum(t => t.stackCount);
+
+            return $"There are {totalCount} {thingDef.label} in storage";
         }
     }
 }

@@ -48,7 +48,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             // Parse color from arguments
             if (args.Length == 0 || string.IsNullOrEmpty(args[0]))
             {
-                return "Please specify a color. Usage: !setfavoritecolor <color> (e.g., !setfavoritecolor blue or !setfavoritecolor #FF0000)";
+                var colour = viewerPawn.story.favoriteColor.defName;
+                return $"Please specify a color.Current color:{colour} Usage: !setfavoritecolor <color> (e.g., !setfavoritecolor blue or !setfavoritecolor #FF0000)";
             }
 
             // Combine args to handle multi-word color names (up to 3 words)
