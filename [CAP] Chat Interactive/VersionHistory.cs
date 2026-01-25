@@ -337,7 +337,17 @@ Fixed Validation errors when loading storeitems with isUseable/isWearable/isEqui
 Put in controls for !flirt command to prevent abuse.
 Animals are back in the store (they were accidentally removed in 1.0.16).
 "
-}
+},
+            {"1.0.16b",
+@"===============================================================================
+        RICS 1.0.16b - Changelog
+        Released: March 2026
+===============================================================================
+HOTFIXES
+Fixed !pawn command not working for everyone ... sorry about that!
+"
+            }
+            
             // Add more versions here as they're released
         };
 
