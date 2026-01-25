@@ -460,6 +460,18 @@
     <cooldownSeconds>5</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
+	
+	  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>Study</defName>
+    <commandText>study</commandText>
+    <label>study</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Study</commandClass>
+    <requiresMod>false</requiresMod>
+    <commandDescription>List anomaly studies</commandDescription>
+    <cooldownSeconds>5</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
     <defName>ModInfo</defName>

@@ -55,7 +55,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return "No research project is currently selected.";
             }
 
-            float progressPercent = researchManager.GetProgress(currentProject);
+            float progressPercent = currentProject.ProgressApparent;
             float totalCost = currentProject.CostApparent;
             float remainingCost = totalCost - progressPercent;
 
@@ -97,6 +97,37 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             string status = project.CanStartNow ? "Available" : "Locked (prerequisites missing)";
 
             return $"{project.LabelCap} - {progress:F0}/{totalCost:F0} ({progressPercent:F1}% complete) - {status}";
+        }
+
+        internal static string HandleStudyCommand(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            var research = Find.ResearchManager;
+            if (research == null)
+                return "No research manager.";
+
+            var projects = research.CurrentAnomalyKnowledgeProjects
+                ?.Select(a => a.project)
+                .Where(p => p != null && p.knowledgeCategory != null)
+                .ToList();
+
+            if (projects == null || projects.Count == 0)
+                return "No active anomaly research.";
+
+            var basic = projects
+                .FirstOrDefault(p => p.knowledgeCategory.overflowCategory == null);
+
+            var advanced = projects
+                .FirstOrDefault(p => p.knowledgeCategory.overflowCategory != null);
+
+            string bas = basic != null
+                ? $"{basic.LabelCap} - {basic.ProgressApparent}/{basic.CostApparent} ({basic.ProgressPercent}%)"
+                : "none";
+
+            string adv = advanced != null
+                ? $"{advanced.LabelCap} - {advanced.ProgressApparent}/{advanced.CostApparent} ({advanced.ProgressPercent}%)"
+                : "none";
+
+            return $"Basic: {bas} | Advanced: {adv}";
         }
     }
 }

@@ -302,6 +302,20 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
+    public class Study : ChatCommand
+    {
+        public override string Name => "study";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            if (!ModsConfig.AnomalyActive)
+            {
+                return "Requires anomaly DLC";
+            }
+            return ResearchCommandHandler.HandleStudyCommand(messageWrapper, args);
+        }
+    }
+
     public class Passion : ChatCommand
     {
         public override string Name => "passion";
