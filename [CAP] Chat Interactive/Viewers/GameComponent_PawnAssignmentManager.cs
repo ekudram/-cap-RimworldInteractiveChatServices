@@ -209,9 +209,10 @@ namespace CAP_ChatInteractive
         // PRIVATE: Internal method that takes identifier directly
         public Pawn GetAssignedPawnIdentifier(string identifier)
         {
+            // FIX: Check if identifier is null before using it
             if (string.IsNullOrEmpty(identifier))
             {
-                Logger.Debug($"GetAssignedPawnIdentifier: o identifier provided for pawn lookup");
+                Logger.Debug($"GetAssignedPawnIdentifier: No identifier provided for pawn lookup");
                 return null;
             }
 

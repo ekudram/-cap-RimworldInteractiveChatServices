@@ -37,23 +37,55 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var viewer = Viewers.GetViewer(messageWrapper);
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
 
-                // Check if viewer already has a pawn assigned using the new manager
-                if (assignmentManager != null && assignmentManager.HasAssignedPawn(messageWrapper))
+                // SIMPLIFIED: Check if viewer already has a pawn assigned using direct dictionary lookup
+                if (assignmentManager != null)
                 {
-                    Pawn existingPawn = assignmentManager.GetAssignedPawn(messageWrapper);
-                    if (existingPawn != null && !existingPawn.Dead && existingPawn.Spawned)
+                    // Get the platform identifier directly from the message
+                    string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
+
+                    // Check if this platform ID exists in the assignments dictionary
+                    if (assignmentManager.viewerPawnAssignments.TryGetValue(platformId, out string thingId))
                     {
-                        return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
+                        Pawn existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
+                        if (existingPawn != null && !existingPawn.Dead && existingPawn.Spawned)
+                        {
+                            return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
+                        }
+                    }
+
+                    // Also check for legacy username assignments as fallback (for older saves)
+                    string usernameLower = messageWrapper.Username.ToLowerInvariant();
+                    if (assignmentManager.viewerPawnAssignments.TryGetValue(usernameLower, out thingId))
+                    {
+                        Pawn existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
+                        if (existingPawn != null && !existingPawn.Dead && existingPawn.Spawned)
+                        {
+                            return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
+                        }
                     }
                 }
-                // Additionally, check if viewer has any pawns by name in the colony
-                if (DoesViewerHavePawnByName(messageWrapper.Username))
-                {
-                    return $"You already have a pawn in the colony with your name! Use !mypawn to check on them.";
-                }
 
-                // Initialize raceSettings to null
-                RaceSettings raceSettings = null;
+                    //// Check if viewer already has a pawn assigned using the new manager
+                    //if (assignmentManager != null && assignmentManager.HasAssignedPawn(messageWrapper))
+                    //{
+                    //    Pawn existingPawn = assignmentManager.GetAssignedPawn(messageWrapper);
+                    //    if (existingPawn != null && !existingPawn.Dead && existingPawn.Spawned)
+                    //    {
+                    //        return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
+                    //    }
+                    //}
+
+
+                    //// Additionally, check if viewer has any pawns by name in the colony
+                    //if (DoesViewerHavePawnByName(messageWrapper.Username))
+                    //{
+                    //    return $"You already have a pawn in the colony with your name! Use !mypawn to check on them.";
+                    //}
+
+
+
+                    // Initialize raceSettings to null
+                    RaceSettings raceSettings = null;
 
                 // Validate the pawn request FIRST to get raceSettings
                 if (!IsValidPawnRequest(raceName, xenotypeName, out raceSettings))
