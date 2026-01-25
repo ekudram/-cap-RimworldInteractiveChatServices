@@ -335,6 +335,7 @@ HOTFIXES
 Fixed finding pawns from commands for !revivepawn, !healpawn and others.
 Fixed Validation errors when loading storeitems with isUseable/isWearable/isEquippable.
 Put in controls for !flirt command to prevent abuse.
+Animals are back in the store (they were accidentally removed in 1.0.16).
 "
 }
             // Add more versions here as they're released

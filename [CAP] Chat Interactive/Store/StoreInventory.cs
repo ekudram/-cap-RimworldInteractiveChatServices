@@ -361,12 +361,12 @@ namespace CAP_ChatInteractive.Store
 
         private static bool HasMissingGraphics(ThingDef thingDef)
         {
-            // Check for missing graphic data
-            if (thingDef.graphicData == null)
-            {
-                Logger.Debug($"{thingDef.defName} has null graphicData");
-                return true;
-            }
+            //// Check for missing graphic data
+            //if (thingDef.graphicData == null)
+            //{
+            //    Logger.Debug($"{thingDef.defName} has null graphicData");
+            //    return true;
+            //}
 
             // Check for missing icon textures
             if (thingDef.uiIcon == null || thingDef.uiIcon == BaseContent.BadTex)
