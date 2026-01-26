@@ -337,20 +337,24 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return null;
         }
 
-        public static Pawn GetViewerPawn(ChatMessageWrapper user)
+        public static Pawn GetViewerPawn(ChatMessageWrapper messageWrapper)
         {
             try
             {
-                var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-                if (assignmentManager != null && assignmentManager.HasAssignedPawn(user))
-                {
-                    return assignmentManager.GetAssignedPawn(user);
-                }
+                var manager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+                if (manager == null || messageWrapper == null) return null;
+
+                string key = $"{messageWrapper.Platform?.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
+                if (string.IsNullOrEmpty(key) || key == ":") return null;
+
+                if (manager.viewerPawnAssignments.TryGetValue(key, out string thingId))
+                    return GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
+
                 return null;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error getting viewer pawn for {user.Username}: {ex}");
+                Logger.Error($"Error getting viewer pawn: {ex}");
                 return null;
             }
         }
@@ -1156,7 +1160,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         public static string FormatCurrencyMessage(int amount, string currencySymbol)
         {
             var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            return $"{amount} {currencySymbol}";
+            return $"{amount}"+" - "+$"{currencySymbol}";
         }
 
         private static bool TryBackpackItem(Thing thing, Verse.Pawn pawn)
