@@ -346,6 +346,24 @@ Animals are back in the store (they were accidentally removed in 1.0.16).
 HOTFIXES
 Fixed !pawn command not working for everyone ... sorry about that!
 "
+},
+            {"1.0.16c",
+@"===============================================================================
+        RICS 1.0.16c - Changelog
+        Released: March 2026
+===============================================================================
+HOTFIXES
+!pawnqueue command fixed (was broken in 1.0.16)
+!joinqueue command fixed (was broken in 1.0.16)
+Fixed pawn queue handling for platform IDs (was broken in 1.0.16)
+Finally fixed que not removing viewers when pawn was assigned (was broken for a long time)
+
+Feature added: (stealth update)
+!storage command to show what the colony has in storage (items and quantities).
+!study command to show anomolies being studied by colonists.
+
+Both commands are from Kanboru's excellent contributions!
+"
             }
             
             // Add more versions here as they're released

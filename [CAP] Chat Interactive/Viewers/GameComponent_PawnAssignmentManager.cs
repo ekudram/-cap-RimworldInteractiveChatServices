@@ -27,11 +27,12 @@
  * - These represent substantial architectural differences from basic pawn assignment
  */
 
-using UnityEngine;
+using RimWorld;
 using System.Collections.Generic;
 using System.Linq;
-using RimWorld;
+using UnityEngine;
 using Verse;
+using static Mono.Security.X509.X520;
 
 
 namespace CAP_ChatInteractive
@@ -109,6 +110,14 @@ namespace CAP_ChatInteractive
             string identifier = GetViewerIdentifier(message);
             viewerPawnAssignments[identifier] = pawn.ThingID;
 
+            // Remove from queue if they're in it
+            if (pawnQueue.Contains(identifier))
+            {
+                pawnQueue.Remove(identifier);
+                queueJoinTimes.Remove(identifier);
+                Logger.Debug($"Removed {message.Username} from pawn queue after assignment");
+            }
+
             // Store original nickname before changing it
             if (pawn.Name is NameTriple nameTriple && !pawnOriginalNicknames.ContainsKey(pawn.ThingID))
             {
@@ -133,6 +142,14 @@ namespace CAP_ChatInteractive
         {
             // Now we can assume platformID is valid (checked by the caller)
             viewerPawnAssignments[platformID] = pawn.ThingID;
+
+            // Remove from queue if they're in it
+            if (pawnQueue.Contains(platformID))
+            {
+                pawnQueue.Remove(platformID);
+                queueJoinTimes.Remove(platformID);
+                Logger.Debug($"Removed {username} (platform ID: {platformID}) from pawn queue after direct assignment");
+            }
 
             // Store original nickname before changing it
             if (pawn.Name is NameTriple nameOldTriple && !pawnOriginalNicknames.ContainsKey(pawn.ThingID))
@@ -444,6 +461,7 @@ namespace CAP_ChatInteractive
         public bool AddToQueue(ChatMessageWrapper messageWrapper)
         {
             string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
+            string usernameLower = messageWrapper.Username.ToLowerInvariant();
 
             // Check if already in queue
             if (pawnQueue.Contains(platformId))
@@ -451,8 +469,24 @@ namespace CAP_ChatInteractive
                 return false;
             }
 
-            // Check if already has a pawn
-            if (HasAssignedPawn(messageWrapper))
+            // DIRECT DICTIONARY CHECK: Check if already has a pawn
+            bool hasPawn = false;
+
+            // Check platform ID
+            if (viewerPawnAssignments.TryGetValue(platformId, out string thingId))
+            {
+                Pawn existingPawn = FindPawnByThingId(thingId);
+                hasPawn = (existingPawn != null);
+            }
+
+            // Check legacy username if platform ID didn't find anything
+            if (!hasPawn && viewerPawnAssignments.TryGetValue(usernameLower, out thingId))
+            {
+                Pawn existingPawn = FindPawnByThingId(thingId);
+                hasPawn = (existingPawn != null);
+            }
+
+            if (hasPawn)
             {
                 return false;
             }
