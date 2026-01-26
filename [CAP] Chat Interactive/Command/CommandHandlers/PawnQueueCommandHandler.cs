@@ -16,39 +16,57 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Handles pawn queue commands: !join, !leave, !queue, !accept
-using RimWorld;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using Verse;
+
 
 namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class PawnQueueCommandHandler
     {
-        public static string HandleJoinQueueCommand(ChatMessageWrapper user)
+        public static string HandleJoinQueueCommand(ChatMessageWrapper messageWrapper)
         {
             try
             {
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
 
-                // Check if user already has a pawn - CHANGED: use message-based method
-                if (assignmentManager.HasAssignedPawn(user))
+                // DIRECT DICTIONARY CHECK: Check if user already has a pawn assigned
+                string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
+                string usernameLower = messageWrapper.Username.ToLowerInvariant();
+
+                bool hasPawn = false;
+                if (assignmentManager != null)
+                {
+                    // Check platform ID
+                    if (assignmentManager.viewerPawnAssignments.TryGetValue(platformId, out string thingId))
+                    {
+                        Verse.Pawn existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
+                        hasPawn = (existingPawn != null);
+                    }
+
+                    // Check legacy username if platform ID didn't find anything
+                    if (!hasPawn && assignmentManager.viewerPawnAssignments.TryGetValue(usernameLower, out thingId))
+                    {
+                        Verse.Pawn existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
+                        hasPawn = (existingPawn != null);
+                    }
+                }
+
+                if (hasPawn)
                 {
                     return "You already have a pawn assigned! Use !leave to release your current pawn first.";
                 }
 
                 // Check if already in queue - CHANGED: use message-based method
-                if (assignmentManager.IsInQueue(user.Username))
+                if (assignmentManager.IsInQueue(messageWrapper.Username))
                 {
-                    int position = assignmentManager.GetQueuePosition(user.Username);
+                    int position = assignmentManager.GetQueuePosition(messageWrapper.Username);
                     return $"You are already in the pawn queue at position #{position}.";
                 }
 
                 // Add to queue - CHANGED: use message-based method
-                if (assignmentManager.AddToQueue(user))
+                if (assignmentManager.AddToQueue(messageWrapper))
                 {
-                    int position = assignmentManager.GetQueuePosition(user.Username);
+                    int position = assignmentManager.GetQueuePosition(messageWrapper.Username);
                     int queueSize = assignmentManager.GetQueueSize();
                     return $"✅ You have joined the pawn queue! Position: #{position} of {queueSize}";
                 }
@@ -62,20 +80,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        public static string HandleLeaveQueueCommand(ChatMessageWrapper user)
+        public static string HandleLeaveQueueCommand(ChatMessageWrapper messageWrapper)
         {
             try
             {
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
 
                 // CHANGED: Use message-based check for queue membership
-                if (!assignmentManager.IsInQueue(user.Username))
+                if (!assignmentManager.IsInQueue(messageWrapper.Username))
                 {
                     return "You are not in the pawn queue.";
                 }
 
                 // CHANGED: This one is already correct (uses user parameter)
-                if (assignmentManager.RemoveFromQueue(user))
+                if (assignmentManager.RemoveFromQueue(messageWrapper))
                 {
                     return "✅ You have left the pawn queue.";
                 }
@@ -89,13 +107,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        public static string HandleQueueStatusCommand(ChatMessageWrapper user)
+        public static string HandleQueueStatusCommand(ChatMessageWrapper messageWrapper)
         {
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
 
-            if (assignmentManager.IsInQueue(user.Username)) // Now this will work correctly
+            if (assignmentManager.IsInQueue(messageWrapper.Username)) // Now this will work correctly
             {
-                int position = assignmentManager.GetQueuePosition(user.Username); // And this
+                int position = assignmentManager.GetQueuePosition(messageWrapper.Username); // And this
                 int queueSize = assignmentManager.GetQueueSize();
                 return $"You are in the pawn queue at position #{position} of {queueSize}.";
             }
@@ -106,40 +124,57 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        public static string HandleAcceptPawnCommand(ChatMessageWrapper user)
+        public static string HandleAcceptPawnCommand(ChatMessageWrapper messageWrapper)
         {
             try
             {
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+                string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
+                string usernameLower = messageWrapper.Username.ToLowerInvariant();
+                bool hasPawn = false;
 
-                Logger.Debug($"Accept pawn command received from {user.Username}");
+                Logger.Debug($"Accept pawn command received from {messageWrapper.Username}");
 
                 // Check if user has a pending offer
-                if (!assignmentManager.HasPendingOffer(user))
+                if (!assignmentManager.HasPendingOffer(messageWrapper))
                 {
-                    Logger.Debug($"No pending offer found for {user.Username}");
+                    Logger.Debug($"No pending offer found for {messageWrapper.Username}");
                     return "You don't have a pending pawn offer. Join the queue with !join to get in line!";
                 }
 
-                // Check if user already has a pawn
-                if (assignmentManager.HasAssignedPawn(user))
+                if (assignmentManager != null)
                 {
-                    Logger.Debug($"User {user.Username} already has an assigned pawn");
-                    assignmentManager.RemovePendingOffer(user);
+                    // Check platform ID
+                    if (assignmentManager.viewerPawnAssignments.TryGetValue(platformId, out string thingId))
+                    {
+                        Verse.Pawn existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
+                        hasPawn = (existingPawn != null);
+                    }
+
+                    // Check legacy username if platform ID didn't find anything
+                    if (!hasPawn && assignmentManager.viewerPawnAssignments.TryGetValue(usernameLower, out thingId))
+                    {
+                        Verse.Pawn existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
+                        hasPawn = (existingPawn != null);
+                    }
+                }
+
+                if (hasPawn)
+                {
                     return "You already have a pawn assigned! Use !leave to release your current pawn first.";
                 }
 
                 // Accept the offer and get the assigned pawn
-                Pawn assignedPawn = assignmentManager.AcceptPendingOffer(user);
+                Verse.Pawn assignedPawn = assignmentManager.AcceptPendingOffer(messageWrapper);
 
                 if (assignedPawn != null)
                 {
-                    Logger.Debug($"Successfully accepted pawn {assignedPawn.Name} for {user.Username}");
-                    return $"🎉 @{user.Username}, you have accepted your pawn {assignedPawn.Name}. Welcome to the colony!";
+                    Logger.Debug($"Successfully accepted pawn {assignedPawn.Name} for {messageWrapper.Username}");
+                    return $"🎉 @{messageWrapper.Username}, you have accepted your pawn {assignedPawn.Name}. Welcome to the colony!";
                 }
                 else
                 {
-                    Logger.Debug($"Pawn acceptance failed for {user.Username} - pawn no longer available");
+                    Logger.Debug($"Pawn acceptance failed for {messageWrapper.Username} - pawn no longer available");
                     return "❌ Your pawn offer is no longer valid. Please join the queue again with !join";
                 }
             }

@@ -441,37 +441,37 @@ namespace CAP_ChatInteractive
         }
 
         // Queue management methods
-        public bool AddToQueue(ChatMessageWrapper message)
+        public bool AddToQueue(ChatMessageWrapper messageWrapper)
         {
-            string identifier = GetViewerIdentifier(message);
+            string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
 
             // Check if already in queue
-            if (pawnQueue.Contains(identifier))
+            if (pawnQueue.Contains(platformId))
             {
                 return false;
             }
 
             // Check if already has a pawn
-            if (HasAssignedPawn(message))
+            if (HasAssignedPawn(messageWrapper))
             {
                 return false;
             }
 
-            pawnQueue.Add(identifier);
-            queueJoinTimes[identifier] = Find.TickManager.TicksGame;
-            Logger.Debug($"Added {identifier} to pawn queue");
+            pawnQueue.Add(platformId);
+            queueJoinTimes[platformId] = Find.TickManager.TicksGame;
+            Logger.Debug($"Added {platformId} to pawn queue");
             return true;
         }
 
         // UPDATED: Remove from queue
-        public bool RemoveFromQueue(ChatMessageWrapper message)
+        public bool RemoveFromQueue(ChatMessageWrapper messageWrapper)
         {
-            string identifier = GetViewerIdentifier(message);
-            bool removed = pawnQueue.Remove(identifier);
+            string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
+            bool removed = pawnQueue.Remove(platformId);
             if (removed)
             {
-                queueJoinTimes.Remove(identifier);
-                Logger.Debug($"Removed {identifier} from pawn queue");
+                queueJoinTimes.Remove(platformId);
+                Logger.Debug($"Removed {platformId} from pawn queue");
             }
             return removed;
         }
@@ -575,10 +575,10 @@ namespace CAP_ChatInteractive
             Logger.Debug($"Added pending offer for {username} with platform ID: {platformID}");
         }
 
-        public bool HasPendingOffer(ChatMessageWrapper message)
+        public bool HasPendingOffer(ChatMessageWrapper messageWrapper)
         {
-            string identifier = GetViewerIdentifier(message);
-            return pendingOffers.ContainsKey(identifier);
+            string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
+            return pendingOffers.ContainsKey(platformId);
         }
 
         // NEW: Legacy overload
@@ -588,14 +588,14 @@ namespace CAP_ChatInteractive
             return pendingOffers.ContainsKey(identifier);
         }
 
-        public Pawn AcceptPendingOffer(ChatMessageWrapper message)
+        public Pawn AcceptPendingOffer(ChatMessageWrapper messageWrapper)
         {
-            string platformIdentifier = GetViewerIdentifier(message);
+            string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
 
             // Look for offer by platform ID (secure)
-            if (pendingOffers.TryGetValue(platformIdentifier, out PendingPawnOffer offer))
+            if (pendingOffers.TryGetValue(platformId, out PendingPawnOffer offer))
             {
-                pendingOffers.Remove(platformIdentifier);
+                pendingOffers.Remove(platformId);
 
                 // Find the pawn by its stored ThingID
                 Pawn pawn = FindPawnByThingId(offer.PawnThingId);
@@ -606,34 +606,34 @@ namespace CAP_ChatInteractive
                     // Set the pawn's nickname to the username
                     if (pawn.Name is NameTriple nameTriple)
                     {
-                        pawn.Name = new NameTriple(nameTriple.First, message.Username, nameTriple.Last);
+                        pawn.Name = new NameTriple(nameTriple.First, messageWrapper.Username, nameTriple.Last);
                     }
                     else
                     {
-                        pawn.Name = new NameSingle(message.Username);
+                        pawn.Name = new NameSingle(messageWrapper.Username);
                     }
 
                     // Assign the pawn to the viewer using platform ID for security
-                    AssignPawnToViewer(message, pawn);
-
-                    Logger.Debug($"Successfully assigned pawn {pawn.Name} to viewer {message.Username}");
+                    AssignPawnToViewer(messageWrapper, pawn);
+                    RemoveFromQueue(messageWrapper);
+                    Logger.Debug($"Successfully assigned pawn {pawn.Name} to viewer {messageWrapper.Username}");
                     return pawn;
                 }
                 else
                 {
-                    Logger.Debug($"Pawn offer for {message.Username} failed - pawn null or dead");
+                    Logger.Debug($"Pawn offer for {messageWrapper.Username} failed - pawn null or dead");
                     return null;
                 }
             }
 
-            Logger.Debug($"No pending offer found for platform: {platformIdentifier}");
+            Logger.Debug($"No pending offer found for platform: {platformId}");
             return null;
         }
 
-        public void RemovePendingOffer(ChatMessageWrapper message)
+        public void RemovePendingOffer(ChatMessageWrapper messageWrapper)
         {
-            string identifier = GetViewerIdentifier(message);
-            pendingOffers.Remove(identifier);
+            string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
+            pendingOffers.Remove(platformId);
         }
 
         private void CheckExpiredOffers()
