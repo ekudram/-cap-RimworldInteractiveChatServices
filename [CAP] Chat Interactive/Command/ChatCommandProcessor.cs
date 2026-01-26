@@ -103,7 +103,7 @@ namespace CAP_ChatInteractive
             }
         }
 
-        private static bool IsCommand(string message)
+        public static bool IsCommand(string message)
         {
             if (string.IsNullOrEmpty(message)) return false;
 

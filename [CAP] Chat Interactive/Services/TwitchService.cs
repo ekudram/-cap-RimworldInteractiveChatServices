@@ -48,10 +48,11 @@ namespace CAP_ChatInteractive
         private readonly TimeSpan _messageDelay = TimeSpan.FromMilliseconds(100);
         private bool _isConnecting = false;
         private CancellationTokenSource _connectionTimeoutToken;
-
+        private DateTime _lastWhisperReminderTime = DateTime.MinValue;
         public bool IsConnected => _client?.IsConnected == true;
 
         // Events for other parts of your mod to subscribe to
+        public event Action<string, string> OnWhisperReceived; // username, message 1.0.17
         public event Action<string, string> OnMessageReceived; // username, message
         public event Action<string> OnConnected;
         public event Action<string> OnDisconnected;
@@ -195,6 +196,7 @@ namespace CAP_ChatInteractive
             _client.OnConnected += OnClientConnected;
             _client.OnJoinedChannel += OnJoinedChannel;
             _client.OnMessageReceived += OnChatMessageReceived;
+            _client.OnWhisperReceived += OnWhisperReceivedHandler;
             _client.OnConnectionError += OnConnectionError;
             _client.OnDisconnected += OnClientDisconnected;
             _client.OnError += OnClientError;
@@ -207,15 +209,16 @@ namespace CAP_ChatInteractive
         {
             if (_client == null) return;
 
-            _client.OnConnected -= OnClientConnected;
-            _client.OnJoinedChannel -= OnJoinedChannel;
-            _client.OnMessageReceived -= OnChatMessageReceived;
-            _client.OnConnectionError -= OnConnectionError;
-            _client.OnDisconnected -= OnClientDisconnected;
-            _client.OnError -= OnClientError;
-            _client.OnIncorrectLogin -= OnIncorrectLogin;
-            _client.OnUserJoined -= OnUserJoined;
-            _client.OnUserLeft -= OnUserLeft;
+            _client.OnConnected += OnClientConnected;
+            _client.OnJoinedChannel += OnJoinedChannel;
+            _client.OnMessageReceived += OnChatMessageReceived;
+            _client.OnWhisperReceived += OnWhisperReceivedHandler;
+            _client.OnConnectionError += OnConnectionError;
+            _client.OnDisconnected += OnClientDisconnected;
+            _client.OnError += OnClientError;
+            _client.OnIncorrectLogin += OnIncorrectLogin;
+            _client.OnUserJoined += OnUserJoined;
+            _client.OnUserLeft += OnUserLeft;
         }
 
         #region Twitch Client Event Handlers
@@ -265,9 +268,31 @@ namespace CAP_ChatInteractive
         private void OnChatMessageReceived(object sender, OnMessageReceivedArgs e)
         {
             var message = e.ChatMessage;
-            // Logger.Debug($"Twitch message from {message.Username}: {message.Message}");
 
-            // Create unified message wrapper with Twitch-specific data
+            // Check if forceUseWhisper is enabled
+            if (_settings.forceUseWhisper)
+            {
+                // Check if timer is enabled (> 0 seconds)
+                if (_settings.forceUseWhisperMessageTimer > 0)
+                {
+                    // Calculate time since last reminder
+                    var timeSinceLastReminder = DateTime.Now - _lastWhisperReminderTime;
+                    int reminderIntervalSeconds = _settings.forceUseWhisperMessageTimer;
+
+                    // Send reminder if enough time has passed
+                    if (timeSinceLastReminder.TotalSeconds >= reminderIntervalSeconds)
+                    {
+                        SendMessage($"Please use whispers for commands. Type: /w {_settings.BotUsername} [command]");
+                        _lastWhisperReminderTime = DateTime.Now;
+                    }
+                }
+
+                // Always ignore commands in public chat when forceUseWhisper is enabled
+                // (Don't return early, just skip command processing)
+                Logger.Debug($"Ignoring public chat message (forceUseWhisper enabled): {message.Message}");
+            }
+
+            // Always create the message wrapper and log/viewer activity
             var messageWrapper = new ChatMessageWrapper(
                 username: message.Username,
                 message: message.Message,
@@ -275,15 +300,75 @@ namespace CAP_ChatInteractive
                 platformUserId: message.UserId,
                 channelId: _settings.ChannelName,
                 platformMessage: message,
-                customRewardId: message.CustomRewardId,  // Add reward ID
-                bits: message.Bits                       // Add bits
+                customRewardId: message.CustomRewardId,
+                bits: message.Bits,
+                shouldIgnoreForCommands: _settings.forceUseWhisper // Add this flag
             );
 
-            // Use RimWorld's thread-safe event handler - NO POPUP BOX
             LongEventHandler.QueueLongEvent(() =>
             {
                 ProcessMessageOnMainThread(messageWrapper);
             }, null, false, null, showExtraUIInfo: false, forceHideUI: true);
+        }
+
+        private void OnWhisperReceivedHandler(object sender, OnWhisperReceivedArgs e)
+        {
+            var whisper = e.WhisperMessage;
+            Logger.Debug($"Twitch whisper from {whisper.Username}: {whisper.Message}");
+
+            // Create unified whisper wrapper
+            var whisperWrapper = new ChatMessageWrapper(
+                username: whisper.Username,
+                message: whisper.Message,
+                platform: "Twitch",
+                platformUserId: whisper.UserId,
+                channelId: "WHISPER", // Special identifier for whispers
+                platformMessage: whisper,
+                isWhisper: true
+            );
+
+            // Use RimWorld's thread-safe event handler
+            LongEventHandler.QueueLongEvent(() =>
+            {
+                ProcessWhisperOnMainThread(whisperWrapper);
+            }, null, false, null, showExtraUIInfo: false, forceHideUI: true);
+        }
+
+        #region Twitch Client Event Handlers
+
+        private void ProcessWhisperOnMainThread(ChatMessageWrapper whisperWrapper)
+        {
+            try
+            {
+                Logger.Debug($"Processing whisper from {whisperWrapper.Username}: {whisperWrapper.Message}");
+
+                // Log whisper for display (check if AddMessage supports isWhisper parameter)
+                ChatMessageLogger.AddMessage(
+                    whisperWrapper.Username,
+                    whisperWrapper.Message,
+                    "Twitch"
+                );
+
+                // Check service-specific whisper settings
+                bool shouldProcessWhisper = _settings.useWhisperForCommands;
+
+                if (shouldProcessWhisper)
+                {
+                    Logger.Debug($"Processing whisper as command: {whisperWrapper.Message}");
+                    ChatCommandProcessor.ProcessMessage(whisperWrapper);
+                }
+                else
+                {
+                    Logger.Debug($"Whisper commands disabled for Twitch service, ignoring whisper from {whisperWrapper.Username}");
+                }
+
+                // Fire the whisper received event
+                OnWhisperReceived?.Invoke(whisperWrapper.Username, whisperWrapper.Message);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error processing Twitch whisper: {ex.Message}");
+            }
         }
 
         private void OnConnectionError(object sender, OnConnectionErrorArgs e)
@@ -353,8 +438,15 @@ namespace CAP_ChatInteractive
                 // Notify subscribers about the message
                 OnMessageReceived?.Invoke(messageWrapper.Username, messageWrapper.Message);
 
-                // Process through unified command system
-                ChatCommandProcessor.ProcessMessage(messageWrapper);
+                // Check if we should process commands for this message
+                if (!messageWrapper.ShouldIgnoreForCommands)
+                {
+                    ChatCommandProcessor.ProcessMessage(messageWrapper);
+                }
+                else
+                {
+                    Logger.Debug($"Skipping command processing (ShouldIgnoreForCommands=true): {messageWrapper.Message}");
+                }
 
                 // Example: Check for first-time chatters
                 if (messageWrapper.PlatformMessage is ChatMessage twitchMessage &&
@@ -389,6 +481,31 @@ namespace CAP_ChatInteractive
             }
         }
 
+        [Obsolete("Usage of SendWhisper through chat is not possible anymore. Use TwitchLib.Api.Helix.Whispers.SendWhisperAsync() instead.")]
+        public void SendWhisper(string username, string message)
+        {
+            if (!IsConnected || string.IsNullOrEmpty(username))
+                return;
+
+            try
+            {
+                // Rate limiting for whispers (different from regular messages)
+                var now = DateTime.Now;
+                if (now - _lastMessageTime < _messageDelay)
+                {
+                    System.Threading.Thread.Sleep(_messageDelay - (now - _lastMessageTime));
+                }
+                // Obsolete
+                _client.SendWhisper(username, message);
+                _lastMessageTime = DateTime.Now;
+                Logger.Debug($"Sent Twitch whisper to {username}: {message}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to send Twitch whisper: {ex.Message}");
+            }
+        }
+
         private void SendSingleMessage(string message)
         {
             // Rate limiting
@@ -410,4 +527,5 @@ namespace CAP_ChatInteractive
             }
         }
     }
+    #endregion
 }
