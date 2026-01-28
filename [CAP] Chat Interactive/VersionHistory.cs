@@ -364,6 +364,20 @@ Feature added: (stealth update)
 
 Both commands are from Kanboru's excellent contributions!
 "
+            },
+            {"1.0.16e",
+@"===============================================================================
+        RICS 1.0.16e - Changelog
+        Released: March 2026
+===============================================================================
+HOTFIXES
+
+Put mechs back in.  You can buy them again.
+Put Vehicles back in.  You can buy them safely now.
+minor fixes to the !buy command.
+
+
+"
             }
             
             // Add more versions here as they're released
