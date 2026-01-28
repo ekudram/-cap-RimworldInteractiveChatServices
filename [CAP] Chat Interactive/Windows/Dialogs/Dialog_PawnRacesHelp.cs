@@ -16,7 +16,6 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // A help dialog for the Pawn Race Settings
 using System.Text;
-using RimWorld;
 using UnityEngine;
 using Verse;
 
