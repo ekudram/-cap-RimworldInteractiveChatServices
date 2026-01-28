@@ -1,16 +1,25 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
+
+  <RecipeDef Abstract="True" Name="RICSSurgeryBase">
+    <effectWorking>Surgery</effectWorking>
+    <soundWorking>Recipe_Surgery</soundWorking>
+    <workSpeedStat>MedicalOperationSpeed</workSpeedStat>
+    <workSkill>Medicine</workSkill>
+    <workSkillLearnFactor>16</workSkillLearnFactor>
+    <anesthetize>false</anesthetize>
+    <!-- Set once here for all -->
+  </RecipeDef>
+  
   <!-- Gender Swap Surgery -->
-  <RecipeDef Name="GenderSwapSurgery" ParentName="SurgeryFlesh">
+  <RecipeDef Name="GenderSwapSurgery" ParentName="RICSSurgeryBase">
     <defName>GenderSwapSurgery</defName>
     <label>gender swap</label>
     <description>Performs a gender swap on the patient.</description>
     <workerClass>CAP_ChatInteractive.Commands.CommandHandlers.GenderSwapRecipeWorker</workerClass>
     <surgerySuccessChanceFactor>1</surgerySuccessChanceFactor>
     <workSpeedStat>MedicalOperationSpeed</workSpeedStat>
-    <workAmount>3200</workAmount>
-    <anesthetize>true</anesthetize>
-    <workSpeedStat>MedicalOperationSpeed</workSpeedStat>
+    <workAmount>2000</workAmount>
     <hideBodyPartNames>true</hideBodyPartNames>
     <appliedOnFixedBodyParts>
       <li>Torso</li>
@@ -45,14 +54,13 @@
 
   
   <!-- Fat Body Surgery -->
-  <RecipeDef Name="FatBodySurgery" ParentName="SurgeryFlesh">
+  <RecipeDef Name="FatBodySurgery" ParentName="RICSSurgeryBase">
     <defName>FatBodySurgery</defName>
     <label>add fat surgery</label>
     <description>Performs fat adding surgery.</description>
     <workerClass>CAP_ChatInteractive.Commands.CommandHandlers.FatBodyRecipeWorker</workerClass>
     <workSpeedStat>MedicalOperationSpeed</workSpeedStat>
     <workAmount>3200</workAmount>
-    <anesthetize>true</anesthetize>
     <surgerySuccessChanceFactor>1</surgerySuccessChanceFactor>
     <hideBodyPartNames>true</hideBodyPartNames>
     <skillRequirements>
@@ -87,7 +95,7 @@
   </RecipeDef>
 
   <!-- Feminine Body Surgery -->
-  <RecipeDef Name="FeminineBodySurgery" ParentName="SurgeryFlesh">
+  <RecipeDef Name="FeminineBodySurgery" ParentName="RICSSurgeryBase">
     <defName>FeminineBodySurgery</defName>
     <label>feminine surgery</label>
     <description>Surgery to make one more feminine.</description>
@@ -102,7 +110,6 @@
     <workSpeedStat>MedicalOperationSpeed</workSpeedStat>
     <workAmount>3200</workAmount>
     <!-- Surgery duration -->
-    <anesthetize>true</anesthetize>
     <surgerySuccessChanceFactor>1</surgerySuccessChanceFactor>
     <!-- Ingredients required for the surgery -->
     <ingredients>
@@ -129,7 +136,7 @@
   </RecipeDef>
 
   <!-- Hulking Body Surgery -->
-  <RecipeDef Name="HulkingBodySurgery" ParentName="SurgeryFlesh">
+  <RecipeDef Name="HulkingBodySurgery" ParentName="RICSSurgeryBase">
     <defName>HulkingBodySurgery</defName>
     <label>hulking surgery</label>
     <description>Surgery to make one more hulking.</description>
@@ -168,7 +175,6 @@
     <workSpeedStat>MedicalOperationSpeed</workSpeedStat>
     <workAmount>3200</workAmount>
     <!-- Surgery duration -->
-    <anesthetize>true</anesthetize>
     <surgerySuccessChanceFactor>1</surgerySuccessChanceFactor>
   </RecipeDef>
 
@@ -217,7 +223,7 @@
   </RecipeDef>
 
   <!-- Thin Body Surgery -->
-  <RecipeDef Name="ThinBodySurgery" ParentName="SurgeryFlesh">
+  <RecipeDef Name="ThinBodySurgery" ParentName="RICSSurgeryBase">
     <defName>ThinBodySurgery</defName>
     <label>thin surgery</label>
     <description>Surgery to make one thin.</description>
