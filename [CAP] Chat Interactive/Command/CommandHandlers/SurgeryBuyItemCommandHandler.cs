@@ -39,6 +39,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             { "hemogen", "ExtractHemogenPack" },
             { "transfusion", "BloodTransfusion" },
             { "blood", "BloodTransfusion" },
+            { "giveblood", "BloodTransfusion" },
             { "tubal", "TubalLigation" },
             { "tuballigation", "TubalLigation" },
             { "vasectomy", "Vasectomy" },
