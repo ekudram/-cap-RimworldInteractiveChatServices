@@ -39,7 +39,7 @@ Button Type Documentation:
   <!-- Quick Access: Viewer Manager -->
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
     <defName>Quick_ViewerManager</defName>
-    <label>Viwer Manager</label>
+    <label>Viewer Manager</label>
     <description>Opens viewer manager</description>
     <dialogClass>CAP_ChatInteractive.Dialog_ViewerManager</dialogClass>
     <buttonType>DirectDialogButton</buttonType>

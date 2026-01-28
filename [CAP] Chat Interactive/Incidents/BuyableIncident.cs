@@ -1,4 +1,4 @@
-﻿// BuyableIncident.cs
+﻿ // BuyableIncident.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
