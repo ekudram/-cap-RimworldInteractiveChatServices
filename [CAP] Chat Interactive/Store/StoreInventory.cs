@@ -207,9 +207,9 @@ namespace CAP_ChatInteractive.Store
                         itemsCreated++;
 
                         // Log every 100 items to see progress
-                        if (itemsCreated % 100 == 0)
-                        {
-                        }
+                        //if (itemsCreated % 100 == 0)
+                        //{
+                        //}
                     }
                 }
                 catch (Exception ex)
@@ -234,8 +234,6 @@ namespace CAP_ChatInteractive.Store
         // Validate and update store items
         private static void ValidateAndUpdateStore()
         {
-
-
             var tradeableItems = GetDefaultTradeableItems();
             int addedItems = 0;
             int removedItems = 0;
@@ -248,6 +246,9 @@ namespace CAP_ChatInteractive.Store
             Logger.Message("=== Validating and updating store items... ===");
             Logger.Debug($"Current store items: {AllStoreItems.Count}");
             Logger.Debug($"Tradeable items in game: {tradeableItems.Count()}");
+
+            // TODO; if we are loading a game it will have the dictionary in it.
+            // We should check that to see if there is data that is missing from the json
 
             // Add any new items that aren't in the store
             foreach (var thingDef in tradeableItems)
@@ -269,11 +270,21 @@ namespace CAP_ChatInteractive.Store
                     // MIGRATE: Update item format for existing items
                     MigrateStoreItemFormat(existingItem, thingDef.defName);
                     migratedItems++;
-
+                    Logger.Debug($"Thingclass =");
                     // Special case: rename old "Animal" category to "Mechs" for mechanoids
                     if (existingItem.Category == "Animal" && thingDef.race?.IsMechanoid == true)
                     {
                         existingItem.Category = "Mechs";
+                        updatedCategories++;
+                    }
+                    else if ("VehiclePawn".Equals(thingDef.thingClass?.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        existingItem.Category = "Vehicles";
+                        updatedCategories++;
+                    }
+                    else if (thingDef.thingClass?.FullName?.Contains("vehiclePawn") == true)
+                    {
+                        existingItem.Category = "Vehicles";
                         updatedCategories++;
                     }
                     // Check if category needs updating (if Def category changed)
@@ -343,11 +354,11 @@ namespace CAP_ChatInteractive.Store
             if (thingDef == null) return false;
 
             // Check for missing critical components
-            if (HasMissingGraphics(thingDef))
-            {
-                Logger.Debug($"Excluding {thingDef.defName} - Missing graphics/components");
-                return false;
-            }
+            //if (HasMissingGraphics(thingDef))
+            //{
+            //    Logger.Debug($"Excluding {thingDef.defName} - Missing graphics/components");
+            //    return false;
+            //}
 
             // Skip items that are likely vehicles or complex structures
             if (IsLikelyProblematicItem(thingDef))
@@ -369,17 +380,17 @@ namespace CAP_ChatInteractive.Store
             //}
 
             // Check for missing icon textures
-            if (thingDef.uiIcon == null || thingDef.uiIcon == BaseContent.BadTex)
-            {
-                Logger.Debug($"{thingDef.defName} has missing/invalid uiIcon");
-                return true;
-            }
+            //if (thingDef.uiIcon == null || thingDef.uiIcon == BaseContent.BadTex)
+            //{
+            //    //Logger.Debug($"{thingDef.defName} has missing/invalid uiIcon");
+            //    return true;
+            //}
 
             // Check for missing graphic class (for complex items like vehicles)
             // Some items might still be valid without graphicClass, but log it
             if (thingDef.graphicData?.graphicClass == null)
             {
-                Logger.Debug($"{thingDef.defName} has no graphicClass specified");
+                // Logger.Debug($"{thingDef.defName} has no graphicClass specified");
                 // Don't return true here - some items might be valid without graphicClass
             }
 
@@ -392,6 +403,7 @@ namespace CAP_ChatInteractive.Store
 
             if (thingDef == null)
             {
+                // but is it in the dictionary?
                 reason = "Def no longer exists in database";
                 return true;
             }
@@ -402,11 +414,11 @@ namespace CAP_ChatInteractive.Store
                 return true;
             }
 
-            if (!IsItemValidForStore(thingDef))
-            {
-                reason = "Failed item validation (missing graphics, etc.)";
-                return true;
-            }
+            //if (!IsItemValidForStore(thingDef))
+            //{
+            //    reason = "Failed item validation (missing graphics, etc.)";
+            //    return true;
+            //}
 
             if (!tradeableItems.Any(t => t.defName == defName))
             {
@@ -423,46 +435,43 @@ namespace CAP_ChatInteractive.Store
 
             // Check for vehicle-related patterns in defName From Looking at Mods for vehicles
             if (defName.Contains("VehiclePawn")) // ||
-                //defName.Contains("VE_") ||
-                //defName.Contains("VVE_") ||
-                //defName.Contains("VanillaVehicles"))
             {
                 return true;
             }
 
             // Check for tradeability - items that can't be traded shouldn't be in store
-            if (thingDef.tradeability == Tradeability.None)
-            {
-                return true;
-            }
+            //if (thingDef.tradeability == Tradeability.None)
+            //{
+            //    return true;
+            //}
 
             // Check if item has vehicle or complex components
-            if (thingDef.comps != null)
-            {
-                foreach (var comp in thingDef.comps)
-                {
-                    string compClassName = comp.compClass?.FullName ?? "";
-                    if (compClassName.Contains("CompVehicleMovementController") ||
-                        compClassName.Contains("CompVehicleTurrets"))
-                    {
-                        return true;
-                    }
-                }
-            }
+            //if (thingDef.comps != null)
+            //{
+            //    foreach (var comp in thingDef.comps)
+            //    {
+            //        string compClassName = comp.compClass?.FullName ?? "";
+            //        if (compClassName.Contains("CompVehicleMovementController") ||
+            //            compClassName.Contains("CompVehicleTurrets"))
+            //        {
+            //            return true;
+            //        }
+            //    }
+            //}
 
             // Check for items that can't be placed/minified (like vehicles)
-            if (thingDef.placeWorkers != null && thingDef.placeWorkers.Count > 0)
-            {
-                // Some placeWorkers might indicate complex placement logic
-                Logger.Debug($"{thingDef.defName} has placeWorkers - may be complex item");
-            }
+            //if (thingDef.placeWorkers != null && thingDef.placeWorkers.Count > 0)
+            //{
+            //    // Some placeWorkers might indicate complex placement logic
+            //    Logger.Debug($"{thingDef.defName} has placeWorkers - may be complex item");
+            //}
 
             // Check for items with special designators (vehicles often have these)
-            if (thingDef.designatorDropdown != null ||
-                thingDef.inspectorTabs != null && thingDef.inspectorTabs.Count > 0)
-            {
-                Logger.Debug($"{thingDef.defName} has complex UI elements - may be vehicle/structure");
-            }
+            //if (thingDef.designatorDropdown != null ||
+            //    thingDef.inspectorTabs != null && thingDef.inspectorTabs.Count > 0)
+            //{
+            //    Logger.Debug($"{thingDef.defName} has complex UI elements - may be vehicle/structure");
+            //}
 
             return false;
         }
@@ -503,11 +512,11 @@ namespace CAP_ChatInteractive.Store
                             return false;
                         }
 
-                        // NEW: Validate item graphics and problematic items
-                        if (!IsItemValidForStore(t))
-                        {
-                            return false;
-                        }
+                        //// NEW: Validate item graphics and problematic items
+                        //if (!IsItemValidForStore(t))
+                        //{
+                        //    return false;
+                        //}
 
                         // Basic tradeable criteria
                         return t.BaseMarketValue > 0f &&
