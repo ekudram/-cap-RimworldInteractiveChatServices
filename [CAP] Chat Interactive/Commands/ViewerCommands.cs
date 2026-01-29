@@ -16,14 +16,15 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Commands that viewers can use to interact with the game
+using CAP_ChatInteractive;
 using CAP_ChatInteractive.Commands.CommandHandlers;
+using CAP_ChatInteractive.Utilities;
 using RimWorld;
 using RimWorld.BaseGen;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Verse;
-using CAP_ChatInteractive;
 
 namespace CAP_ChatInteractive.Commands.ViewerCommands
 {
@@ -466,47 +467,104 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
     public class Storage : ChatCommand
     {
         public override string Name => "storage";
+
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
             if (args.Length == 0)
             {
-                return "Specify a thing";
+                return "Usage: !storage [item name] (e.g. !storage steel, !storage plasteel longsword, !storage hyperweave)";
             }
 
-            var map = Current.Game.CurrentMap;
+            var map = Current.Game?.CurrentMap;
             if (map == null)
             {
-                return "No active map";
+                return "No active map found.";
             }
 
-            var arg = string.Join(" ", args);
+            // Use the shared parser (most fields are ignored here, but we get clean ItemName)
+            var parsed = CommandParserUtility.ParseCommandArguments(
+                args,
+                allowQuality: true,     // we can ignore it or use it later
+                allowMaterial: true,    // we can ignore or use later
+                allowSide: false,
+                allowQuantity: false    // quantity doesn't make sense for "how many in storage"
+            );
 
-            // Zones
+            if (parsed.HasError)
+            {
+                return parsed.Error;
+            }
+
+            string searchName = parsed.ItemName;
+            if (string.IsNullOrWhiteSpace(searchName))
+            {
+                return "No valid item name could be parsed.";
+            }
+
+            // Optional: log what was parsed for debugging
+            Logger.Debug($"Storage command parsed: Item='{searchName}', Quality='{parsed.Quality}', Material='{parsed.Material}'");
+
+            // ────────────────────────────────────────────────
+            // Collect all things in stockpiles + storage buildings
+            // ────────────────────────────────────────────────
             var zoneThings = map.zoneManager.AllZones
                 .OfType<Zone_Stockpile>()
                 .SelectMany(z => z.Cells)
                 .SelectMany(c => c.GetThingList(map));
 
-            //  Buldings
             var storageThings = map.listerBuildings.AllBuildingsColonistOfClass<Building_Storage>()
-                .SelectMany(shelf => shelf.GetSlotGroup().HeldThings);
+                .SelectMany(shelf => shelf.GetSlotGroup().HeldThings ?? Enumerable.Empty<Thing>());
 
-            // Merge
             var allThings = zoneThings.Concat(storageThings).ToList();
 
-            var thingDef = allThings
+            if (!allThings.Any())
+            {
+                return "No items found in any storage/stockpile on this map.";
+            }
+
+            // Find matching ThingDef(s) using flexible matching on defName or label
+            var matchingDefs = allThings
                 .Select(t => t.def)
-                .FirstOrDefault(d => string.Equals(d.defName, arg, StringComparison.OrdinalIgnoreCase) 
-                || d.defName.IndexOf(arg, StringComparison.OrdinalIgnoreCase) >= 0 || d.label.IndexOf(arg, StringComparison.OrdinalIgnoreCase) >= 0);
+                .Distinct()
+                .Where(def =>
+                    def.defName.IndexOf(searchName, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    (def.label ?? "").IndexOf(searchName, StringComparison.OrdinalIgnoreCase) >= 0)
+                .ToList();
 
-            if (thingDef == null)
-                return $"Couldn't find '{arg}' in storage.";
+            if (!matchingDefs.Any())
+            {
+                return $"No items matching '{searchName}' found in storage.";
+            }
 
-            int totalCount = allThings
-                .Where(t => t.def == thingDef)
-                .Sum(t => t.stackCount);
+            // If multiple defs match, we can either:
+            // A) Show all of them (most user-friendly)
+            // B) Take the first/best match (simpler)
+            // Here we go with A) — show grouped counts
 
-            return $"There are {totalCount} {thingDef.label} in storage";
+            var results = new System.Text.StringBuilder();
+
+            foreach (var def in matchingDefs.OrderBy(d => d.label))
+            {
+                int count = allThings
+                    .Where(t => t.def == def)
+                    .Sum(t => t.stackCount);
+
+                if (count > 0)
+                {
+                    results.AppendLine($"{count}× {def.label}");
+                }
+            }
+
+            if (results.Length == 0)
+            {
+                return $"Found matching definitions for '{searchName}', but none in storage right now.";
+            }
+
+            string header = matchingDefs.Count == 1
+                ? $"Found in storage:"
+                : $"Found {matchingDefs.Count} matching item types for '{searchName}':";
+
+            return header + "\n" + results.ToString().TrimEnd();
         }
     }
 }
