@@ -65,27 +65,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                 }
 
-                    //// Check if viewer already has a pawn assigned using the new manager
-                    //if (assignmentManager != null && assignmentManager.HasAssignedPawn(messageWrapper))
-                    //{
-                    //    Pawn existingPawn = assignmentManager.GetAssignedPawn(messageWrapper);
-                    //    if (existingPawn != null && !existingPawn.Dead && existingPawn.Spawned)
-                    //    {
-                    //        return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
-                    //    }
-                    //}
-
-
-                    //// Additionally, check if viewer has any pawns by name in the colony
-                    //if (DoesViewerHavePawnByName(messageWrapper.Username))
-                    //{
-                    //    return $"You already have a pawn in the colony with your name! Use !mypawn to check on them.";
-                    //}
-
-
-
-                    // Initialize raceSettings to null
-                    RaceSettings raceSettings = null;
+                // Initialize raceSettings to null
+                RaceSettings raceSettings = null;
 
                 // Validate the pawn request FIRST to get raceSettings
                 if (!IsValidPawnRequest(raceName, xenotypeName, out raceSettings))
@@ -792,6 +773,34 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "You must specify a race. Usage: !pawn [race] [xenotype] [gender] [age]";
                 }
 
+                // Check if the race exists - try to find it
+                var raceDef = RaceUtils.FindRaceByName(raceName);
+
+                if (raceDef == null)
+                {
+                    // Try to find similar races for better error messages
+                    var allRaces = RaceUtils.GetAllHumanlikeRaces();
+                    var similarRaces = allRaces
+                        .Where(r => r.defName.IndexOf(raceName, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                   r.label.IndexOf(raceName, StringComparison.OrdinalIgnoreCase) >= 0)
+                        .Select(r => r.label)
+                        .Take(3)
+                        .ToList();
+
+                    string errorMessage = $"Race '{raceName}' not found.";
+
+                    if (similarRaces.Any())
+                    {
+                        errorMessage += $" Did you mean: {string.Join(", ", similarRaces)}?";
+                    }
+                    else
+                    {
+                        errorMessage += " Use !races to see available races.";
+                    }
+
+                    return errorMessage;
+                }
+
                 // Call the existing handler with parsed parameters
                 return HandleBuyPawnCommandInternal(messageWrapper, raceName, xenotypeName, genderName, ageString);
             }
@@ -802,9 +811,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        // Smart parameter parsing
+        // Smart parameter parsing with multi-word race support
         private static void ParsePawnParameters(string[] args, out string raceName, out string xenotypeName, out string genderName, out string ageString)
         {
+            // Initialize defaults
             raceName = "";
             xenotypeName = "Baseliner";
             genderName = "Random";
@@ -812,42 +822,144 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (args.Length == 0) return;
 
-            raceName = args[0];
+            // Track which arguments have been used
+            var usedArgs = new bool[args.Length];
 
-            // Track what we've assigned
-            bool hasXenotype = false;
-            bool hasGender = false;
-            bool hasAge = false;
-
-            for (int i = 1; i < args.Length; i++)
+            // STEP 1: Identify AGE (numbers)
+            for (int i = 0; i < args.Length; i++)
             {
-                string arg = args[i].ToLower();
+                if (usedArgs[i]) continue;
 
-                // Check for gender (highest priority - unambiguous)
-                if (!hasGender && (arg == "male" || arg == "female" || arg == "m" || arg == "f"))
-                {
-                    genderName = args[i];
-                    hasGender = true;
-                    continue;
-                }
-
-                // Check for age (also unambiguous if it's a number)
-                if (!hasAge && (int.TryParse(arg, out int age) || arg == "random"))
+                if (int.TryParse(args[i], out int age) && age > 0 && age <= 150)
                 {
                     ageString = args[i];
-                    hasAge = true;
-                    continue;
+                    usedArgs[i] = true;
+                    break; // Only one age parameter expected
                 }
+            }
 
-                // If we get here and don't have a xenotype yet, assume it's a xenotype
-                if (!hasXenotype)
+            // STEP 2: Identify GENDER (limited values)
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (usedArgs[i]) continue;
+
+                string argLower = args[i].ToLower();
+                if (argLower == "male" || argLower == "female" ||
+                    argLower == "m" || argLower == "f")
                 {
-                    xenotypeName = args[i];
-                    hasXenotype = true;
+                    genderName = args[i]; // Keep original case
+                    usedArgs[i] = true;
+                    break; // Only one gender parameter expected
                 }
+            }
+
+            // STEP 3: Identify XENOTYPE (check against known xenotypes)
+            var knownXenotypes = GetKnownXenotypes();
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (usedArgs[i]) continue;
+
+                string arg = args[i];
+
+                // Check if this argument matches a known xenotype
+                if (knownXenotypes.Contains(arg, StringComparer.OrdinalIgnoreCase))
+                {
+                    xenotypeName = arg;
+                    usedArgs[i] = true;
+                    break; // Only one xenotype parameter expected (except Baseliner)
+                }
+            }
+
+            // STEP 4: RACE is what's left (can be multi-word)
+            // Collect all unused arguments as potential race name parts
+            var raceParts = new List<string>();
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (!usedArgs[i])
+                {
+                    raceParts.Add(args[i]);
+                }
+            }
+
+            if (raceParts.Count == 0)
+            {
+                // No race specified - this will be caught by validation
+                return;
+            }
+
+            // Now try to find the best matching race from the remaining parts
+            raceName = FindBestRaceMatch(raceParts.ToArray());
+
+            // If no exact match found, join all parts as the race name
+            if (string.IsNullOrEmpty(raceName))
+            {
+                raceName = string.Join(" ", raceParts);
             }
         }
 
+        // Helper method to get all known xenotypes for validation
+        private static HashSet<string> GetKnownXenotypes()
+        {
+            var xenotypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "Baseliner" // Always include Baseliner
+    };
+
+            if (ModsConfig.BiotechActive)
+            {
+                // Add all xenotypes from the game
+                foreach (var xenotypeDef in DefDatabase<XenotypeDef>.AllDefs)
+                {
+                    if (!string.IsNullOrEmpty(xenotypeDef.defName))
+                    {
+                        xenotypes.Add(xenotypeDef.defName);
+                    }
+                }
+            }
+
+            return xenotypes;
+        }
+
+        // Helper method to find the best race match from remaining arguments
+        private static string FindBestRaceMatch(string[] potentialRaceArgs)
+        {
+            if (potentialRaceArgs.Length == 0) return string.Empty;
+
+            // Get all known race names (defName and label)
+            var knownRaces = RaceUtils.GetAllHumanlikeRaces()
+                .SelectMany(r => new[] { r.defName, r.label })
+                .Where(name => !string.IsNullOrEmpty(name))
+                .Distinct()
+                .ToList();
+
+            // Try from longest combination to shortest
+            for (int wordCount = Math.Min(3, potentialRaceArgs.Length); wordCount >= 1; wordCount--)
+            {
+                for (int startIndex = 0; startIndex <= potentialRaceArgs.Length - wordCount; startIndex++)
+                {
+                    // Create a candidate race name from consecutive words
+                    var candidateParts = potentialRaceArgs
+                        .Skip(startIndex)
+                        .Take(wordCount)
+                        .ToArray();
+
+                    string candidateRace = string.Join(" ", candidateParts);
+
+                    // Check for exact match
+                    var exactMatch = knownRaces.FirstOrDefault(r =>
+                        r.Equals(candidateRace, StringComparison.OrdinalIgnoreCase));
+
+                    if (exactMatch != null)
+                    {
+                        // Mark these parts as used (optional - for debugging)
+                        return exactMatch;
+                    }
+                }
+            }
+
+            // No match found - return the first word as fallback
+            return potentialRaceArgs[0];
+        }
         // List methods
         public static string ListAvailableRaces()
         {
