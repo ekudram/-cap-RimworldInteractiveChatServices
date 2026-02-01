@@ -375,10 +375,32 @@ HOTFIXES
 Put mechs back in.  You can buy them again.
 Put Vehicles back in.  You can buy them safely now.
 minor fixes to the !buy command.
-
-
 "
-            }
+            },
+            {"1.0.17",
+                @"RICS 1.0.17 - Changelog  
+Released: March 2026  
+
+**MAJOR FEATURE**  
+- **Rimazon Delivery Locker**: Items can now be delivered to lockers on the map. The system will prioritize available lockers before resorting to standard drop pods.  
+
+**NEW FEATURES**  
+- **Price Check Command**: Use `!pricecheck [item] [quality] [material] [quantity]` to view an item's cost before purchasing.  
+  Example: `!pricecheck assault rifle masterwork 1`  
+
+**FIXES**  
+- Body and gender surgeries now function correctly after thorough testing.  
+- Fixed `!joinqueue` command break introduced in a prior version (resolved in 1.0.16d).  
+- Surgery drop methods corrected—invoice now displays the correct item destination.  
+- Resolved Store Item Editor issue that could reset some prices to 0.  
+- Purchasing multi-word races is now supported.  
+- Improved `!storage` command parsing for more reliable item handling (additional refinements planned).  
+
+**KNOWN ISSUES**  
+- **Whispers controls are currently broken**—targeted for repair in version 1.0.18.  
+- Item parser requires improvements in handling quality and material parameters."
+                }
+
             
             // Add more versions here as they're released
         };

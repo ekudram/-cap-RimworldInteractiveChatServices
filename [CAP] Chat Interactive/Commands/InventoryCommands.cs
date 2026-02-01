@@ -18,6 +18,7 @@
 // Commands for purchasing and using items from the in-game store.
 using CAP_ChatInteractive.Commands.CommandHandlers;
 using CAP_ChatInteractive.Commands.Cooldowns;
+using CAP_ChatInteractive.Utilities;
 using System;
 using System.Linq;
 using Verse;
@@ -216,6 +217,102 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
             return $"Check out the item prices and purchase list here: {settings.priceListUrl}";
+        }
+    }
+
+    public class PriceCheck : ChatCommand
+    {
+        public override string Name => "pricecheck";
+
+        public override string Execute(ChatMessageWrapper user, string[] args)
+        {
+            if (args.Length == 0)
+            {
+                return "Usage: !pricecheck [item] [quality] [material] [quantity] - Example: !pricecheck assault rifle masterwork 1";
+            }
+            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
+            try
+            {
+                // Use the CommandParserUtility for consistent argument parsing
+                var parsed = CommandParserUtility.ParseCommandArguments(
+                    args,
+                    allowQuality: true,
+                    allowMaterial: true,
+                    allowSide: false,  // Side doesn't affect price for non-surgery items
+                    allowQuantity: true
+                );
+
+                if (parsed.HasError)
+                {
+                    return $"❌ {parsed.Error}";
+                }
+
+                Logger.Debug($"PriceCheck parsing - Item: '{parsed.ItemName}', Quality: '{parsed.Quality}', Material: '{parsed.Material}', Quantity: {parsed.Quantity}");
+
+                var storeItem = StoreCommandHelper.GetStoreItemByName(parsed.ItemName);
+                if (storeItem == null)
+                {
+                    // Try to find similar items for helpful suggestions
+                    //var suggestions = CAP_ChatInteractive.Store.StoreItemsDatabase.FindSimilarItems(parsed.ItemName, 3);
+                    //if (suggestions.Any())
+                    //{
+                    //    var suggestionList = string.Join(", ", suggestions.Select(s => s.DisplayName));
+                    //    return $"❌ Item '{parsed.ItemName}' not found. Did you mean: {suggestionList}?";
+                    //}
+                    return $"❌ Item '{parsed.ItemName}' not found in the store.";
+                }
+
+                // Get the ThingDef for price calculation
+                var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
+                if (thingDef == null)
+                {
+                    return $"❌ Could not find item definition for '{parsed.ItemName}'";
+                }
+
+                // Parse quality using ItemConfigHelper
+                var quality = ItemConfigHelper.ParseQuality(parsed.Quality);
+
+                // Parse material if specified
+                ThingDef material = null;
+                if (parsed.Material != null && !parsed.Material.Equals("random", StringComparison.OrdinalIgnoreCase))
+                {
+                    material = ItemConfigHelper.ParseMaterial(parsed.Material, thingDef);
+                    if (material == null)
+                    {
+                        return $"❌ Material '{parsed.Material}' not found or cannot be used for {parsed.ItemName}";
+                    }
+                }
+
+                // Check if quality is allowed based on settings
+                if (quality.HasValue && !ItemConfigHelper.IsQualityAllowed(quality))
+                {
+                    if (settings != null)
+                    {
+                        return $"❌ {quality.Value} quality is disabled in settings";
+                    }
+                }
+
+                // Calculate the price using the same logic as the buy command
+                int price = ItemConfigHelper.CalculateFinalPrice(
+                    storeItem,
+                    parsed.Quantity,
+                    quality,
+                    material
+                );
+
+                // Build a clear response message
+                string qualityStr = quality.HasValue ? quality.Value.ToString().ToLower() : "normal";
+                string materialStr = material != null ? material.label : "default";
+                string quantityStr = parsed.Quantity > 1 ? $"{parsed.Quantity}x " : "";
+
+                return $"💰 Price Check: {quantityStr}{storeItem.CustomName} ({qualityStr}, {materialStr}) = {price} {currencySymbol}";
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in pricecheck command: {ex}");
+                return $"❌ Error calculating price: {ex.Message}";
+            }
         }
     }
 

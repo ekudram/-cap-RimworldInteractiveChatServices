@@ -86,7 +86,7 @@ namespace CAP_ChatInteractive
     public class CAPGlobalChatSettings : IExposable
     {
         // Existing properties...
-        public string modVersion = "1.0.16e";  // Current mod version WE DONT SAVE THIS!
+        public string modVersion = "1.0.17";  // Current mod version WE DONT SAVE THIS! Used in history control
         public string modVersionSaved = "";
         public string priceListUrl = "https://github.com/ekudram/RICS-Pricelist";
         public bool EnableDebugLogging = false;
@@ -106,8 +106,6 @@ namespace CAP_ChatInteractive
         public int MinutesForActive = 30;
         public int MaxTraits = 4;
         public string CurrencyName = " 💰 ";
-
-
 
         // Global event settings
         public bool EventCooldownsEnabled = true;

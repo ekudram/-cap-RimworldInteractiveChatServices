@@ -414,6 +414,17 @@
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
+    <defName>PriceCheck</defName>
+    <commandText>pricecheck</commandText>
+    <label>price check</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.PriceCheck</commandClass>
+    <requiresMod>false</requiresMod>
+    <commandDescription>Exact price of an item.</commandDescription>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
     <defName>help</defName>
     <commandText>help</commandText>
     <label>instructions</label>
