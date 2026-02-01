@@ -35,7 +35,7 @@ namespace CAP_ChatInteractive
         public string customName = null;
         public ThingOwner innerContainer;
         public int MaxStacks => def.GetModExtension<LockerExtension>().maxStacks;
-        public new StorageSettings settings;
+        public StorageSettings settings;
 
         // Constructor
         public Building_RimazonLocker()
@@ -56,26 +56,71 @@ namespace CAP_ChatInteractive
 
         public new StorageSettings GetStoreSettings()
         {
-            if (settings == null)
+            if (settings != null)
             {
-                settings = new StorageSettings(this);
-                // Copy from parent if available
-                var parent = GetParentStoreSettings();
-                if (parent != null)
+                return settings;
+            }
+
+            // Lazy creation
+            settings = new StorageSettings(this);
+
+            bool copied = false;
+
+            // 1. Try the normal parent/defaults copy (what vanilla would have done)
+            var parentSettings = GetParentStoreSettings();
+            if (parentSettings != null)
+            {
+                try
                 {
-                    settings.CopyFrom(parent);
+                    settings.CopyFrom(parentSettings);
+                    copied = true;
+                    Log.Message($"[RICS Locker] Successfully copied settings from parent/defaults for {this.def.defName} at {this.Position}");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning($"[RICS Locker] Failed to copy parent settings during lazy init: {ex.Message}. Using fallback.");
                 }
             }
+
+            // 2. If no parent or copy failed, explicitly grab the def's defaultStorageSettings (your XML block)
+            if (!copied && def?.building?.defaultStorageSettings != null)
+            {
+                try
+                {
+                    settings.CopyFrom(def.building.defaultStorageSettings);
+                    copied = true;
+                    Log.Message($"[RICS Locker] Recovered by copying directly from def.defaultStorageSettings for {this.def.defName}");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning($"[RICS Locker] Failed to copy def defaults: {ex.Message}. Using allow-all fallback.");
+                }
+            }
+
+            // 3. Ultimate fallback: make sure we have a usable filter (allow everything, low priority)
+            if (!copied)
+            {
+                settings.filter = new ThingFilter();
+                //settings.filter.SetAllowAllWhoCanHold(this);  // Or just SetAllowEverything() if you prefer broader
+                settings.Priority = StoragePriority.Low;      // Matches your XML intent
+                Log.Warning($"[RICS Locker] No valid settings source found for {this.def.defName} at {this.Position}. Using full allow-all fallback.");
+            }
+
+            // Optional: enforce any fixed restrictions from your XML <fixedStorageSettings> if you want
+            // (you can merge them here if needed)
+
             return settings;
         }
 
         public new StorageSettings GetParentStoreSettings()
         {
-            // Handle null def during construction
             if (def?.building?.defaultStorageSettings != null)
             {
                 return def.building.defaultStorageSettings;
             }
+
+            // If def is null or no defaults (very rare during normal play)
+            Log.Warning($"[RICS] No defaultStorageSettings found on def for {def?.defName ?? "unknown"}");
             return null;
         }
 
@@ -90,6 +135,7 @@ namespace CAP_ChatInteractive
             base.PostMake();
             //Log.Message($"[DEBUG] Locker created - StorageComp: {this.GetComp<CompStorage>() != null}");
             Log.Message($"[DEBUG] ThingOwner: {this.GetDirectlyHeldThings() != null}");
+            Log.Message($"[DEBUG] Locker {this} settings after init: {(settings != null ? "exists" : "NULL")} | Parent defaults: {(def.building?.defaultStorageSettings != null ? "exists" : "NULL")}");
             // Initialize innerContainer if null (shouldn't be, but just in case)
             if (innerContainer == null)
             {
@@ -104,7 +150,8 @@ namespace CAP_ChatInteractive
         public override void SpawnSetup(Map map, bool respawningAfterReload)
         {
             base.SpawnSetup(map, respawningAfterReload);
-
+            _ = GetStoreSettings();  // Just access it to trigger creation
+            Log.Message($"[DEBUG] Locker {this} settings after init: {(settings != null ? "exists" : "NULL")} | Parent defaults: {(def.building?.defaultStorageSettings != null ? "exists" : "NULL")}");
             // Initialize innerContainer if null
             if (innerContainer == null)
             {
@@ -120,7 +167,7 @@ namespace CAP_ChatInteractive
         private ITab_LockerContents cachedContentsTab;
         public override IEnumerable<InspectTabBase> GetInspectTabs()
         {
-            Log.Message($"[DEBUG LOCKER] GetInspectTabs called - Spawned: {Spawned}, Map: {Map != null}");
+            // Logger.Debug($"[DEBUG LOCKER] GetInspectTabs called - Spawned: {Spawned}, Map: {Map != null}");
 
             if (Spawned && Map != null)
             {
