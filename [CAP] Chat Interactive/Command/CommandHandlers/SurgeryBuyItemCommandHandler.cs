@@ -280,7 +280,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 for (int i = 0; i < quantity; i++)
                 {
-                    StoreCommandHelper.SpawnItemForPawn(thingDef, 1, null, null, viewerPawn, false); // Add to inventory
+                    ItemDeliveryHelper.SpawnItemForPawn(thingDef, 1, null, null, viewerPawn, false); // Add to inventory
                     Logger.Debug($"Spawned surgery item {i + 1} of {quantity}: {thingDef.defName}");
                 }
 
