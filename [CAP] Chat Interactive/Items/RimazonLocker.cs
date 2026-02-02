@@ -25,12 +25,21 @@ using UnityEngine;
 using Verse;
 namespace CAP_ChatInteractive
 {
+
     public class LockerExtension : DefModExtension
     {
-        public int maxStacks = 24;  // Actually means "maximum stack groups/slots"
+        public int maxStacks = 24;
+
+        // Add tab types if you want
+        public List<Type> inspectorTabs = new List<Type>
+        {
+            typeof(ITab_ContainerStorage),
+            typeof(ITab_LockerContents)
+        };
     }
     // Main Class
-    public class Building_RimazonLocker : Building_Storage, IThingHolder, IHaulDestination, IStoreSettingsParent
+    // public class Building_RimazonLocker : Building_Storage, IThingHolder, IHaulDestination, IStoreSettingsParent
+    public class Building_RimazonLocker : Building, IThingHolder, IHaulDestination, IStoreSettingsParent
     {
         public string customName = null;
         public ThingOwner innerContainer;
@@ -52,7 +61,7 @@ namespace CAP_ChatInteractive
         public new IThingHolder ParentHolder => this; // New in front of this?
 
         // === IStoreSettingsParent
-        public new bool StorageTabVisible => Spawned && Map != null;
+        public bool StorageTabVisible => Spawned && Map != null;
 
         public new StorageSettings GetStoreSettings()
         {
@@ -189,7 +198,7 @@ namespace CAP_ChatInteractive
         //  === IHaulDestination
         public new IntVec3 Position => base.Position;           // Inherited from Thing, but explicit for clarity
         public new Map Map => base.Map;                         // Inherited from Thing
-        public new bool HaulDestinationEnabled => true;
+        public bool HaulDestinationEnabled => true;
 
 
         // === Rename Locker
@@ -325,6 +334,7 @@ namespace CAP_ChatInteractive
             {
                 yield return gizmo;
             }
+
             // Rename button
             yield return new Command_Action
             {
@@ -336,15 +346,26 @@ namespace CAP_ChatInteractive
                     Find.WindowStack.Add(new Dialog_RenameLocker(this));
                 }
             };
-            //// Open button to view/access contents
-            //yield return new Command_Action
-            //{
-            //    defaultLabel = "Open locker",
-            //    defaultDesc = "View and access items in the locker.",
-            //    icon = ContentFinder<Texture2D>.Get("UI/Commands/RICS_OpenLocker", true), // Reuse vanilla or adjust
-            //    action = () => Open()
-            //};
-            // Eject button
+
+            // OPEN LOCKER BUTTON - This is the key!
+            yield return new Command_Action
+            {
+                defaultLabel = "Open locker",
+                defaultDesc = "View and access items in the locker.",
+                icon = ContentFinder<Texture2D>.Get("UI/Commands/RICS_OpenLocker", true),
+                action = () => OpenLocker()
+            };
+
+            // STORAGE SETTINGS BUTTON (optional)
+            yield return new Command_Action
+            {
+                defaultLabel = "Storage settings",
+                defaultDesc = "Configure what can be stored in this locker.",
+                icon = ContentFinder<Texture2D>.Get("UI/Commands/RICS_Settings", true), // Or use a custom icon
+                action = () => OpenStorageSettings()
+            };
+
+            // Eject button with safe placement
             if (innerContainer.Count > 0)
             {
                 yield return new Command_Action
@@ -352,17 +373,192 @@ namespace CAP_ChatInteractive
                     defaultLabel = "Eject all contents",
                     defaultDesc = "Drop all items from the locker to the ground nearby.",
                     icon = ContentFinder<Texture2D>.Get("UI/Commands/RICS_Eject"),
-                    action = () => innerContainer.TryDropAll(Position, Map, ThingPlaceMode.Near)
+                    action = () => SafeEjectAllContents()
                 };
             }
         }
 
+
+        /// <summary>
+        /// Safely ejects all contents without placing them on the locker itself
+        /// </summary>
+        public void SafeEjectAllContents()
+        {
+            if (innerContainer.Count == 0 || Map == null)
+            {
+                Logger.Debug("SafeEjectAllContents: Container empty or no map");
+                return;
+            }
+
+            Logger.Debug($"SafeEjectAllContents: Attempting to eject {innerContainer.Count} items from locker at {Position}");
+
+            try
+            {
+                // List all items before ejecting for debugging
+                foreach (Thing thing in innerContainer)
+                {
+                    if (thing == null)
+                    {
+                        Logger.Error("SafeEjectAllContents: Found null thing in container!");
+                        continue;
+                    }
+                    Logger.Debug($"  - {thing.LabelCap} x{thing.stackCount}, def={thing.def?.defName}, MarketValue={thing.MarketValue}");
+                }
+
+                // Find a valid cell to drop items near the locker
+                IntVec3 dropCell = FindValidDropCell(Position, Map);
+
+                if (dropCell.IsValid)
+                {
+                    Logger.Debug($"SafeEjectAllContents: Dropping items at {dropCell}");
+                    bool success = innerContainer.TryDropAll(dropCell, Map, ThingPlaceMode.Near);
+                    Logger.Debug($"SafeEjectAllContents: TryDropAll result = {success}");
+
+                    if (!success)
+                    {
+                        Logger.Warning("SafeEjectAllContents: TryDropAll failed, trying individual drops");
+                        SafeDropItemsIndividually();
+                    }
+                }
+                else
+                {
+                    Logger.Warning("SafeEjectAllContents: No valid drop cell found near locker, trying individual drops");
+                    SafeDropItemsIndividually();
+                }
+
+                Logger.Debug($"SafeEjectAllContents: After ejection, container count = {innerContainer.Count}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"SafeEjectAllContents ERROR: {ex.Message}");
+                Logger.Error($"Stack trace: {ex.StackTrace}");
+
+                // Emergency fallback: try to save items
+                EmergencyEject();
+            }
+
+            // Show effect if we're still spawned
+            if (Spawned && Map != null)
+            {
+                try
+                {
+                    MoteMaker.ThrowText(this.DrawPos + new Vector3(0f, 0f, 0.25f), Map, "Items Ejected", Color.white, 2f);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Failed to create mote: {ex.Message}");
+                }
+            }
+        }
+
+        private IntVec3 FindValidDropCell(IntVec3 center, Map map, int radius = 3)
+        {
+            for (int r = 1; r <= radius; r++)
+            {
+                foreach (IntVec3 cell in GenRadial.RadialCellsAround(center, r, true))
+                {
+                    if (!cell.InBounds(map) || cell.Fogged(map))
+                        continue;
+
+                    // Check if the cell is walkable
+                    if (!cell.Walkable(map))
+                        continue;
+
+                    // Check if there's a building that blocks placement
+                    Building building = cell.GetEdifice(map);
+                    if (building != null && building.def.passability == Traversability.Impassable)
+                        continue;
+
+                    // Cell is valid
+                    return cell;
+                }
+            }
+
+            // If no ideal cell, return the center (fallback)
+            return center;
+        }
+
+        private void SafeDropItemsIndividually()
+        {
+            if (innerContainer.Count == 0 || Map == null)
+                return;
+
+            // Create a copy of the list to avoid modification during iteration
+            List<Thing> itemsToDrop = new List<Thing>();
+            foreach (Thing thing in innerContainer)
+            {
+                itemsToDrop.Add(thing);
+            }
+
+            foreach (Thing thing in itemsToDrop)
+            {
+                if (thing == null || thing.Destroyed || !innerContainer.Contains(thing))
+                    continue;
+
+                try
+                {
+                    // Find a valid cell for this specific item
+                    IntVec3 dropCell = FindValidDropCell(Position, Map, 5);
+
+                    if (dropCell.IsValid)
+                    {
+                        Logger.Debug($"Dropping {thing.LabelCap} at {dropCell}");
+                        bool dropped = innerContainer.TryDrop(thing, dropCell, Map, ThingPlaceMode.Direct, out Thing result);
+                        Logger.Debug($"  - Drop result: {dropped}, result: {result?.LabelCap ?? "null"}");
+                    }
+                    else
+                    {
+                        Logger.Warning($"No valid drop cell found for {thing.LabelCap}, forcing drop at position");
+                        innerContainer.TryDrop(thing, Position, Map, ThingPlaceMode.Near, out Thing result);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Error dropping {thing?.LabelCap ?? "unknown item"}: {ex.Message}");
+                }
+            }
+        }
+
+        private void EmergencyEject()
+        {
+            // Last resort: destroy items to prevent crash
+            Logger.Error("EmergencyEject: Destroying items to prevent crash");
+
+            while (innerContainer.Count > 0)
+            {
+                try
+                {
+                    Thing thing = innerContainer[0];
+                    if (thing != null)
+                    {
+                        Logger.Error($"Destroying: {thing.LabelCap} x{thing.stackCount}");
+                        thing.Destroy();
+                    }
+                    innerContainer.Remove(thing);
+                }
+                catch
+                {
+                    // If even this fails, clear the container forcefully
+                    innerContainer.Clear();
+                    break;
+                }
+            }
+        }
+
+
         public bool CanOpen => true;
 
         // === How we access the contents
-        public void Open()
+        public void OpenLocker()
         {
             Find.WindowStack.Add(new Dialog_LockerContents(this));
+        }
+
+        // === Open Storage Settings Method ===
+        public void OpenStorageSettings()
+        {
+            // Create a simple window for storage settings
+            Find.WindowStack.Add(new Dialog_StorageSettings(this));
         }
 
         // === Inspect String
@@ -448,10 +644,10 @@ namespace CAP_ChatInteractive
             Widgets.Label(new Rect(0f, 60f, inRect.width, 25f),
                 $"Total items: {locker.innerContainer.TotalStackCount}");
 
-            Rect viewRect = new Rect(0f, 90f, inRect.width, inRect.height - 120f);
+            Rect viewRect = new Rect(0f, 120f, inRect.width, inRect.height - 120f);
             Rect listRect = new Rect(0f, 0f, viewRect.width - 20f, cachedContents.Count * 35f);
 
-            // Draw column headers - USEFUL THREE-COLUMN LAYOUT
+            // Draw column headers - FOUR-COLUMN LAYOUT with Quantity
             if (cachedContents.Count > 0)
             {
                 Rect headerRect = new Rect(viewRect.x, viewRect.y, viewRect.width, 25f);
@@ -460,12 +656,14 @@ namespace CAP_ChatInteractive
                 GUI.color = Color.white;
 
                 Text.Anchor = TextAnchor.MiddleLeft;
-                // Item column (includes quantity in the label)
-                Widgets.Label(new Rect(headerRect.x + 30f, headerRect.y, 220f, 25f), "Item");
+                // Item column
+                Widgets.Label(new Rect(headerRect.x + 30f, headerRect.y, 180f, 25f), "Item");
+                // Quantity column
+                Widgets.Label(new Rect(headerRect.x + 220f, headerRect.y, 70f, 25f), "Qty");
                 // Individual item value
-                Widgets.Label(new Rect(headerRect.x + 260f, headerRect.y, 100f, 25f), "Each Value");
+                Widgets.Label(new Rect(headerRect.x + 300f, headerRect.y, 90f, 25f), "Each Value");
                 // Total value (item value × quantity)
-                Widgets.Label(new Rect(headerRect.x + 370f, headerRect.y, 150f, 25f), "Total Value");
+                Widgets.Label(new Rect(headerRect.x + 400f, headerRect.y, 120f, 25f), "Total Value");
                 Text.Anchor = TextAnchor.UpperLeft;
             }
 
@@ -486,18 +684,23 @@ namespace CAP_ChatInteractive
                 // Icon
                 Widgets.ThingIcon(new Rect(0f, y + 2f, 28f, 28f), thing);
 
-                // Name - LabelCap includes stack count (e.g., "Granite blocks x75")
+                // Name - Manually include stack count since we're not using Building_Storage
                 Text.Anchor = TextAnchor.MiddleLeft;
-                Widgets.Label(new Rect(30f, y, 230f, 32f), thing.LabelCap);
+                string itemName = thing.LabelCapNoCount ?? thing.def?.label ?? "Unknown";
+                Widgets.Label(new Rect(30f, y, 190f, 32f), itemName);
+
+                // Quantity
+                string quantityText = thing.stackCount.ToString();
+                Widgets.Label(new Rect(220f, y, 80f, 32f), quantityText);
 
                 // Individual item value (per unit)
                 string eachValue = thing.MarketValue.ToStringMoney();
-                Widgets.Label(new Rect(260f, y, 110f, 32f), eachValue);
+                Widgets.Label(new Rect(300f, y, 100f, 32f), eachValue);
 
                 // Total value (item value × quantity)
                 float totalValue = thing.MarketValue * thing.stackCount;
                 string totalValueText = totalValue.ToStringMoney();
-                Widgets.Label(new Rect(370f, y, 150f, 32f), totalValueText);
+                Widgets.Label(new Rect(400f, y, 130f, 32f), totalValueText);
 
                 // Info button
                 if (Widgets.ButtonImage(new Rect(listRect.width - 24f, y + 4f, 24f, 24f), TexButton.Info))
@@ -530,19 +733,98 @@ namespace CAP_ChatInteractive
             Rect buttonRect = new Rect(0f, inRect.height - 30f, inRect.width, 30f);
             if (Widgets.ButtonText(new Rect(buttonRect.x, buttonRect.y, 150f, 30f), "Eject All"))
             {
-                locker.innerContainer.TryDropAll(locker.Position, locker.Map, ThingPlaceMode.Near);
+                // With this:
+                locker.SafeEjectAllContents();
                 CacheContents(); // Refresh
             }
         }
+    }
 
-        [DebugAction("CAP", "Open locker tab", allowedGameStates = AllowedGameStates.PlayingOnMap)]
-        public static void Debug_OpenLockerTab()
+    // === Add this class to your RimazonLocker.cs file ===
+
+    public class Dialog_StorageSettings : Window
+    {
+        private Building_RimazonLocker locker;
+        private ThingFilterUI.UIState uiState = new ThingFilterUI.UIState();
+
+        public Dialog_StorageSettings(Building_RimazonLocker locker)
         {
-            if (Find.Selector.SingleSelectedThing is Building_RimazonLocker locker)
+            this.locker = locker;
+            this.forcePause = true;
+            this.doCloseX = true;
+            this.absorbInputAroundWindow = true;
+            this.closeOnClickedOutside = true;
+            this.closeOnAccept = false;
+        }
+
+        public override Vector2 InitialSize => new Vector2(420f, 480f);
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            try
             {
-                Find.WindowStack.Add(new Dialog_LockerContents(locker)); // or just select & open tab
-                Messages.Message("Locker tab should now be visible", MessageTypeDefOf.TaskCompletion);
+                if (locker?.settings == null)
+                {
+                    Widgets.Label(inRect, "Storage settings not available.");
+                    return;
+                }
+
+                // Reset GUI state
+                GUI.color = Color.white;
+                Text.Font = GameFont.Small;
+                Text.Anchor = TextAnchor.UpperLeft;
+
+                Rect mainRect = new Rect(0f, 0f, inRect.width, inRect.height).ContractedBy(10f);
+
+                // Draw priority
+                DrawPriority(new Rect(mainRect.x, mainRect.y, mainRect.width, 30f), locker.settings);
+
+                // Draw filter (below priority)
+                Rect filterRect = new Rect(mainRect.x, mainRect.y + 35f, mainRect.width, mainRect.height - 35f);
+                DrawFilter(filterRect, locker.settings.filter, locker.def.building?.defaultStorageSettings?.filter);
             }
+            catch (Exception ex)
+            {
+                Log.Error($"[RICS] Error in storage settings window: {ex}");
+            }
+        }
+
+        private void DrawPriority(Rect rect, StorageSettings settings)
+        {
+            Widgets.Label(rect.LeftHalf(), "Priority".Translate() + ":");
+
+            Rect buttonRect = rect.RightHalf();
+            if (Widgets.ButtonText(buttonRect, settings.Priority.ToString()))
+            {
+                List<FloatMenuOption> options = new List<FloatMenuOption>();
+                foreach (StoragePriority priority in Enum.GetValues(typeof(StoragePriority)))
+                {
+                    options.Add(new FloatMenuOption(priority.ToString(), () =>
+                    {
+                        settings.Priority = priority;
+                        locker.Notify_SettingsChanged();
+                    }));
+                }
+                Find.WindowStack.Add(new FloatMenu(options));
+            }
+        }
+
+        private void DrawFilter(Rect rect, ThingFilter filter, ThingFilter parentFilter)
+        {
+            ThingFilterUI.DoThingFilterConfigWindow(
+                rect: rect,
+                state: uiState,
+                filter: filter,
+                parentFilter: parentFilter,
+                openMask: 1,
+                forceHiddenDefs: null,
+                forceHiddenFilters: null,
+                forceHideHitPointsConfig: false,
+                forceHideQualityConfig: false,
+                showMentalBreakChanceRange: false,
+                suppressSmallVolumeTags: null,
+                map: Find.CurrentMap
+            );
         }
     }
 
@@ -773,7 +1055,7 @@ namespace CAP_ChatInteractive
                 Rect btnRect = listing.GetRect(30f);
                 if (Widgets.ButtonText(new Rect(btnRect.x, btnRect.y, btnRect.width / 2 - 5f, 30f), "Eject All"))
                 {
-                    locker.innerContainer.TryDropAll(locker.Position, locker.Map, ThingPlaceMode.Near);
+                    locker.SafeEjectAllContents();
                 }
 
                 if (Widgets.ButtonText(new Rect(btnRect.x + btnRect.width / 2 + 5f, btnRect.y, btnRect.width / 2 - 5f, 30f), "Detailed View"))
