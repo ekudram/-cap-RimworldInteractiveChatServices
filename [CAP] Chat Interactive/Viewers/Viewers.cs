@@ -204,9 +204,9 @@ namespace CAP_ChatInteractive
                         viewer.GiveCoins(coinsToAward);
 
                         // Add debug logging if needed:
-                        Logger.Debug($"Awarded {coinsToAward} coins to {viewer.Username} " +
-                                      $"(base: {settings.BaseCoinReward}, karma: {viewer.Karma}, " +
-                                      $"sub: {viewer.IsSubscriber}, vip: {viewer.IsVip}, mod: {viewer.IsModerator})");
+                        //Logger.Debug($"Awarded {coinsToAward} coins to {viewer.Username} " +
+                        //              $"(base: {settings.BaseCoinReward}, karma: {viewer.Karma}, " +
+                        //              $"sub: {viewer.IsSubscriber}, vip: {viewer.IsVip}, mod: {viewer.IsModerator})");
                     }
                 }
 
