@@ -270,7 +270,7 @@ namespace CAP_ChatInteractive.Store
                     // MIGRATE: Update item format for existing items
                     MigrateStoreItemFormat(existingItem, thingDef.defName);
                     migratedItems++;
-                    Logger.Debug($"Thingclass =");
+
                     // Special case: rename old "Animal" category to "Mechs" for mechanoids
                     if (existingItem.Category == "Animal" && thingDef.race?.IsMechanoid == true)
                     {
