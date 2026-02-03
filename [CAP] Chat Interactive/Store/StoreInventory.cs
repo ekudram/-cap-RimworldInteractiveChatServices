@@ -447,18 +447,18 @@ namespace CAP_ChatInteractive.Store
             //}
 
             // Check if item has vehicle or complex components
-            //if (thingDef.comps != null)
-            //{
-            //    foreach (var comp in thingDef.comps)
-            //    {
-            //        string compClassName = comp.compClass?.FullName ?? "";
-            //        if (compClassName.Contains("CompVehicleMovementController") ||
-            //            compClassName.Contains("CompVehicleTurrets"))
-            //        {
-            //            return true;
-            //        }
-            //    }
-            //}
+            if (thingDef.comps != null)
+            {
+                foreach (var comp in thingDef.comps)
+                {
+                    string compClassName = comp.compClass?.FullName ?? "";
+                    if (compClassName.Contains("CompVehicleMovementController") ||
+                        compClassName.Contains("CompVehicleTurrets"))
+                    {
+                        return true;
+                    }
+                }
+            }
 
             // Check for items that can't be placed/minified (like vehicles)
             //if (thingDef.placeWorkers != null && thingDef.placeWorkers.Count > 0)
@@ -513,11 +513,16 @@ namespace CAP_ChatInteractive.Store
                             return false;
                         }
 
-                        //// NEW: Validate item graphics and problematic items
-                        //if (!IsItemValidForStore(t))
-                        //{
-                        //    return false;
-                        //}
+                        if (t.thingClass != null && t.thingClass.Name == "VehiclePawn")
+                        {
+                            return false;
+                        }
+
+                        // NEW: Validate item graphics and problematic items
+                        if (!IsItemValidForStore(t))
+                        {
+                            return false;
+                        }
 
                         // Basic tradeable criteria
                         return t.BaseMarketValue > 0f &&

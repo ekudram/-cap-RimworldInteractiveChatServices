@@ -377,9 +377,15 @@ Put Vehicles back in.  You can buy them safely now.
 minor fixes to the !buy command.
 "
             },
-            {"1.0.17",
-                @"RICS 1.0.17 - Changelog  
-Released: March 2026  
+            {"1.0.17b",
+                @"RICS 1.0.17b - Changelog  
+Released: Feb 3 2026  
+
+HOTFIX Release for Rimazon Locker
+You can now use the locker
+You will have to eject items from the locker.
+Pawns will not remove things from the locker.
+Vehicles removed again becuase they wont spawn nicely.
 
 **MAJOR FEATURE**  
 - **Rimazon Delivery Locker**: Items can now be delivered to lockers on the map. The system will prioritize available lockers before resorting to standard drop pods.  
