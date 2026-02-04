@@ -268,19 +268,27 @@ namespace _CAP__Chat_Interactive
                     "RICS.Twitch.TokenGeneratorStep2".Translate() + "\n" +
                     "RICS.Twitch.TokenGeneratorStep3".Translate() + "\n" +
                     "RICS.Twitch.TokenGeneratorStep4".Translate() + "\n" +
-                    "RICS.Twitch.TokenGeneratorStep5".Translate() + "\n\n" +
+                    "RICS.Twitch.TokenGeneratorStep5".Translate() + "\n" +
+                    "RICS.Twitch.TokenGeneratorStep6".Translate() + "\n" +
+                    "RICS.Twitch.TokenGeneratorStep7".Translate() + "\n" +
+                    "RICS.Twitch.TokenGeneratorStep8".Translate() + "\n" +
+                    "RICS.Twitch.TokenGeneratorStep9".Translate() + "\n" +
+                    "RICS.Twitch.TokenGeneratorStep10".Translate() + "\n" +
+                    "RICS.Twitch.TokenGeneratorStep11".Translate() + "\n" +
+                    "RICS.Twitch.TokenGeneratorStep12".Translate() + "\n\n" +
                     "🔒 <b>" + UIUtilities.Colorize("RICS.Twitch.TokenGeneratorSecurityHeader".Translate(), ColorLibrary.SubHeader) + "</b>\n" +
                     "RICS.Twitch.TokenGeneratorSecurityNote1".Translate() + "\n" +
                     "RICS.Twitch.TokenGeneratorSecurityNote2".Translate() + "\n" +
-                    "RICS.Twitch.TokenGeneratorSecurityNote3".Translate() + "\n\n" +
-                    "RICS.Twitch.TokenGeneratorConfirmation".Translate();  // The final question
+                    "RICS.Twitch.TokenGeneratorSecurityNote3".Translate() + "\n" +
+                    "RICS.Twitch.TokenGeneratorSecurityNote4".Translate() + "\n\n" +
+                    "RICS.Twitch.TokenGeneratorConfirmation".Translate();
 
                 Find.WindowStack.Add(new Dialog_MessageBox(
                     message,
-                    "RICS.Twitch.OpenBrowserButton".Translate(),  // "Open Browser"
+                    "RICS.Twitch.OpenBrowserButton".Translate(),
                     () => Application.OpenURL("https://twitchtokengenerator.com/"),
-                    "RICS.Twitch.CancelButton".Translate(),       // "Cancel"
-                    null, null, true  // Make it dismissible with Esc, etc.
+                    "RICS.Twitch.CancelButton".Translate(),
+                    null, null, true
                 ));
             }
             TooltipHandler.TipRegion(getTokenRect, "RICS.Twitch.GetTokenButtonTooltip".Translate());
@@ -526,11 +534,12 @@ namespace _CAP__Chat_Interactive
             //    "• <b>Connection drops?</b> Check internet stability\n" +
             //    "• <b>See your own messages?</b> That's normal with main account";
             string tips =
-                UIUtilities.Colorize("RICS.Twitch.TipsTitle".Translate(), Color.yellow) + "\n" +  // or any color you like for the header
+                UIUtilities.Colorize("RICS.Twitch.TipsTitle".Translate(), Color.yellow) + "\n" +
                 "RICS.Twitch.TipsTokenIssue".Translate() + "\n" +
                 "RICS.Twitch.TipsBotIssue".Translate() + "\n" +
                 "RICS.Twitch.TipsConnectionDrops".Translate() + "\n" +
-                "RICS.Twitch.TipsOwnMessages".Translate();
+                "RICS.Twitch.TipsOwnMessages".Translate() + "\n" +
+                "RICS.Twitch.TipsWhispersNotWorking".Translate(); // Add this line
             Widgets.Label(tipsRect, tips);
             // TooltipHandler.TipRegion(tipsRect, "Helpful tips for troubleshooting Twitch connection");
             TooltipHandler.TipRegion(tipsRect,"RICS.Twitch.QuickTipsTooltip".Translate());

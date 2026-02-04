@@ -88,22 +88,26 @@
   <RICS.Twitch.GetTokenButtonTooltip>Open Twitch Token Generator to get your OAuth token (with instructions)</RICS.Twitch.GetTokenButtonTooltip>
 
   <!-- Dialog Content -->
-  <RICS.Twitch.TokenGeneratorTitle>Twitch Token Generator Instructions</RICS.Twitch.TokenGeneratorTitle>
+  <RICS.Twitch.TokenGeneratorTitle>📝 Twitch Token Generator Instructions</RICS.Twitch.TokenGeneratorTitle>
   <RICS.Twitch.TokenGeneratorStepsHeader>Step-by-Step:</RICS.Twitch.TokenGeneratorStepsHeader>
   <RICS.Twitch.TokenGeneratorStep1>1. Click 'Open Browser' below</RICS.Twitch.TokenGeneratorStep1>
   <RICS.Twitch.TokenGeneratorStep2>2. Login with your Twitch account</RICS.Twitch.TokenGeneratorStep2>
   <RICS.Twitch.TokenGeneratorStep3>• Use your BOT account if you have one</RICS.Twitch.TokenGeneratorStep3>
   <RICS.Twitch.TokenGeneratorStep4>• Or use your MAIN streamer account</RICS.Twitch.TokenGeneratorStep4>
-  <RICS.Twitch.TokenGeneratorStep5>3. Select 'Bot Chat Token'</RICS.Twitch.TokenGeneratorStep5>
-  <RICS.Twitch.TokenGeneratorStep6>4. Copy the generated token</RICS.Twitch.TokenGeneratorStep6>
-  <RICS.Twitch.TokenGeneratorStep7>5. Return here and click 'Paste Token'</RICS.Twitch.TokenGeneratorStep7>
+  <RICS.Twitch.TokenGeneratorStep5>3. Click "Custom Scope"</RICS.Twitch.TokenGeneratorStep5>
+  <RICS.Twitch.TokenGeneratorStep6>4. Check ALL THREE boxes:</RICS.Twitch.TokenGeneratorStep6>
+  <RICS.Twitch.TokenGeneratorStep7>   ✓ chat:read (Read chat)</RICS.Twitch.TokenGeneratorStep7>
+  <RICS.Twitch.TokenGeneratorStep8>   ✓ whispers:read (Receive whispers)</RICS.Twitch.TokenGeneratorStep8>
+  <RICS.Twitch.TokenGeneratorStep9>   ✓ chat:edit (Send messages)</RICS.Twitch.TokenGeneratorStep9>
+  <RICS.Twitch.TokenGeneratorStep10>5. Click "Generate Token"</RICS.Twitch.TokenGeneratorStep10>
+  <RICS.Twitch.TokenGeneratorStep11>6. Copy the generated token</RICS.Twitch.TokenGeneratorStep11>
+  <RICS.Twitch.TokenGeneratorStep12>7. Return here and click 'Paste Token'</RICS.Twitch.TokenGeneratorStep12>
 
-  <RICS.Twitch.TokenGeneratorSecurityHeader>Security Note:</RICS.Twitch.TokenGeneratorSecurityHeader>
-  <RICS.Twitch.TokenGeneratorSecurityNote1>• This token only allows chat access</RICS.Twitch.TokenGeneratorSecurityNote1>
-  <RICS.Twitch.TokenGeneratorSecurityNote2>• It cannot control your stream</RICS.Twitch.TokenGeneratorSecurityNote2>
-  <RICS.Twitch.TokenGeneratorSecurityNote3>• Keep it private like a password</RICS.Twitch.TokenGeneratorSecurityNote3>
-
-  <RICS.Twitch.TokenGeneratorConfirmation>Open Twitch Token Generator in your browser?</RICS.Twitch.TokenGeneratorConfirmation>
+  <RICS.Twitch.TokenGeneratorSecurityHeader>⚠️ Important for Whispers:</RICS.Twitch.TokenGeneratorSecurityHeader>
+  <RICS.Twitch.TokenGeneratorSecurityNote1>• Without 'whispers:read' scope, whispers won't work!</RICS.Twitch.TokenGeneratorSecurityNote1>
+  <RICS.Twitch.TokenGeneratorSecurityNote2>• Without 'chat:edit', bot can't send messages</RICS.Twitch.TokenGeneratorSecurityNote2>
+  <RICS.Twitch.TokenGeneratorSecurityNote3>• This token only allows chat access</RICS.Twitch.TokenGeneratorSecurityNote3>
+  <RICS.Twitch.TokenGeneratorSecurityNote4>• Keep it private like a password</RICS.Twitch.TokenGeneratorSecurityNote4>
 
   <!-- Buttons in dialog -->
   <RICS.Twitch.OpenBrowserButton>Open Browser</RICS.Twitch.OpenBrowserButton>
@@ -157,6 +161,10 @@
   <!-- Quick Tips Section -->
 
   <RICS.Twitch.QuickTipsHeader>Quick Tips</RICS.Twitch.QuickTipsHeader>
+
+  <RICS.Twitch.TipsWhispersNotWorking>
+    • <b>Whispers not working?</b> Regenerate token with 'whispers:read' scope
+  </RICS.Twitch.TipsWhispersNotWorking>
 
   <!-- Common Issues & Solutions Tips -->
   <RICS.Twitch.TipsTitle>💡 <b>Common Issues and Solutions:</b></RICS.Twitch.TipsTitle>
@@ -212,15 +220,14 @@ When "Force whisper-only commands" is enabled, this controls how often the remin
   <RICS.Twitch.WhisperReminderDisabled>Reminder: Disabled (no chat messages will be sent)</RICS.Twitch.WhisperReminderDisabled>
   <RICS.Twitch.WhisperReminderEnabled>Reminder: Every {0} seconds</RICS.Twitch.WhisperReminderEnabled>
 
-  <RICS.Twitch.WhisperLimitationNote>Note: Twitch limits bot whisper replies to certain users.</RICS.Twitch.WhisperLimitationNote>
+  <RICS.Twitch.WhisperLimitationNote>⚠️ For whispers to work: Token needs 'whispers:read' scope</RICS.Twitch.WhisperLimitationNote>
   <RICS.Twitch.WhisperLimitationTooltip>
-    <![CDATA[Twitch Platform Limitation:
-• Bots can only send whispers to users who:
-  - Have subscribed to the channel
-  - Have received a whisper from the bot before
-  - Are followed by the bot account
-• This is a Twitch API restriction for spam prevention.
-• Public chat replies will still work normally.]]>
+    <![CDATA[Whisper Requirements:
+• Your token MUST include 'whispers:read' scope
+• Use Twitch Token Generator → "Custom Scope"
+• Check ALL THREE boxes: chat:read, whispers:read, chat:edit
+• Without 'whispers:read', you won't receive whispers!
+• Bots can only reply to whispers from users they follow (Twitch restriction)]]>
   </RICS.Twitch.WhisperLimitationTooltip>
   
   

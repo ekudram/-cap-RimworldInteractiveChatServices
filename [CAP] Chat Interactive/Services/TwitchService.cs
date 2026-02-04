@@ -32,6 +32,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
+using TwitchLib.Client.Extensions;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Events;
@@ -196,7 +197,7 @@ namespace CAP_ChatInteractive
             _client.OnConnected += OnClientConnected;
             _client.OnJoinedChannel += OnJoinedChannel;
             _client.OnMessageReceived += OnChatMessageReceived;
-            _client.OnWhisperReceived += OnWhisperReceivedHandler;
+            _client.OnWhisperReceived += OnWhisperMessageReceived;
             _client.OnConnectionError += OnConnectionError;
             _client.OnDisconnected += OnClientDisconnected;
             _client.OnError += OnClientError;
@@ -212,7 +213,7 @@ namespace CAP_ChatInteractive
             _client.OnConnected += OnClientConnected;
             _client.OnJoinedChannel += OnJoinedChannel;
             _client.OnMessageReceived += OnChatMessageReceived;
-            _client.OnWhisperReceived += OnWhisperReceivedHandler;
+            _client.OnWhisperReceived += OnWhisperMessageReceived;
             _client.OnConnectionError += OnConnectionError;
             _client.OnDisconnected += OnClientDisconnected;
             _client.OnError += OnClientError;
@@ -302,7 +303,8 @@ namespace CAP_ChatInteractive
                 platformMessage: message,
                 customRewardId: message.CustomRewardId,
                 bits: message.Bits,
-                shouldIgnoreForCommands: _settings.forceUseWhisper // Add this flag
+                shouldIgnoreForCommands: _settings.forceUseWhisper, // Add this flag
+                isWhisper: false
             );
 
             LongEventHandler.QueueLongEvent(() =>
@@ -311,7 +313,7 @@ namespace CAP_ChatInteractive
             }, null, false, null, showExtraUIInfo: false, forceHideUI: true);
         }
 
-        private void OnWhisperReceivedHandler(object sender, OnWhisperReceivedArgs e)
+        private void OnWhisperMessageReceived(object sender, OnWhisperReceivedArgs e)
         {
             var whisper = e.WhisperMessage;
             Logger.Debug($"Twitch whisper from {whisper.Username}: {whisper.Message}");
@@ -334,7 +336,45 @@ namespace CAP_ChatInteractive
             }, null, false, null, showExtraUIInfo: false, forceHideUI: true);
         }
 
+
+
         #region Twitch Client Event Handlers
+
+        private void ProcessMessageOnMainThread(ChatMessageWrapper messageWrapper)
+        {
+            try
+            {
+                // Update viewer activity
+                Viewers.UpdateViewerActivity(messageWrapper);
+
+                // Log message for chat display
+                ChatMessageLogger.AddMessage(messageWrapper.Username, messageWrapper.Message, "Twitch");
+
+                // Notify subscribers about the message
+                OnMessageReceived?.Invoke(messageWrapper.Username, messageWrapper.Message);
+
+                // Check if we should process commands for this message
+                if (!messageWrapper.ShouldIgnoreForCommands)
+                {
+                    ChatCommandProcessor.ProcessMessage(messageWrapper);
+                }
+                else
+                {
+                    Logger.Debug($"Skipping command processing (ShouldIgnoreForCommands=true): {messageWrapper.Message}");
+                }
+
+                // Example: Check for first-time chatters
+                if (messageWrapper.PlatformMessage is ChatMessage twitchMessage &&
+                    twitchMessage.IsFirstMessage)
+                {
+                    SendMessage($"Welcome to the stream, @{messageWrapper.Username}! Type !help for available commands.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error processing Twitch message: {ex.Message}");
+            }
+        }
 
         private void ProcessWhisperOnMainThread(ChatMessageWrapper whisperWrapper)
         {
@@ -425,41 +465,7 @@ namespace CAP_ChatInteractive
 
         #endregion
 
-        private void ProcessMessageOnMainThread(ChatMessageWrapper messageWrapper)
-        {
-            try
-            {
-                // Update viewer activity
-                Viewers.UpdateViewerActivity(messageWrapper);
-
-                // Log message for chat display
-                ChatMessageLogger.AddMessage(messageWrapper.Username, messageWrapper.Message, "Twitch");
-
-                // Notify subscribers about the message
-                OnMessageReceived?.Invoke(messageWrapper.Username, messageWrapper.Message);
-
-                // Check if we should process commands for this message
-                if (!messageWrapper.ShouldIgnoreForCommands)
-                {
-                    ChatCommandProcessor.ProcessMessage(messageWrapper);
-                }
-                else
-                {
-                    Logger.Debug($"Skipping command processing (ShouldIgnoreForCommands=true): {messageWrapper.Message}");
-                }
-
-                // Example: Check for first-time chatters
-                if (messageWrapper.PlatformMessage is ChatMessage twitchMessage &&
-                    twitchMessage.IsFirstMessage)
-                {
-                    SendMessage($"Welcome to the stream, @{messageWrapper.Username}! Type !help for available commands.");
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error processing Twitch message: {ex.Message}");
-            }
-        }
+        
 
         public void SendMessage(string message)
         {
@@ -505,6 +511,8 @@ namespace CAP_ChatInteractive
                 Logger.Error($"Failed to send Twitch whisper: {ex.Message}");
             }
         }
+
+
 
         private void SendSingleMessage(string message)
         {
