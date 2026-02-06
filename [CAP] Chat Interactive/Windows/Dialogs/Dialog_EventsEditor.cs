@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // A dialog window for editing and managing chat-interactive events
-using _CAP__Chat_Interactive.Windows.Dialogs._CAP__Chat_Interactive.Windows.Dialogs;
+using _CAP__Chat_Interactive.Windows.Dialogs;
 using CAP_ChatInteractive.Incidents;
 using RimWorld;
 using System.Collections.Generic;
