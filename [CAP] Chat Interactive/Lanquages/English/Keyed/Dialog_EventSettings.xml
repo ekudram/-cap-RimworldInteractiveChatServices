@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- Translation File for Dialog_EventSettings -->
+  
+  <!-- Headers -->
+
+  <RICS.Header.Event>Event Settings</RICS.Header.Event>
+  <RICS.Header.EventStat>Event Statistics</RICS.Header.EventStat>
+  <RICS.Header.Display>Display Settings</RICS.Header.Display>
+  <RICS.Header.Cooldown>Cooldown Settings</RICS.Header.Cooldown>
+  
+  <!-- General Messages -->
+
+  <RICS.Message.TotalEvents>Total Events: {0}</RICS.Message.TotalEvents>
+  <RICS.Message.EnabledEvents>Enabled Events: {0}</RICS.Message.EnabledEvents>
+  <RICS.Message.AvailableforCommands>Available for Commands: {0}</RICS.Message.AvailableforCommands>
+  <RICS.Message.UnavailableEvents>Unavailable Events: {0}</RICS.Message.UnavailableEvents>
+  <RICS.Message.EventsbyKarma>Available events by karma type:</RICS.Message.EventsbyKarma>
+  <RICS.Message.KarmaGroup>  • {0}: {1} events</RICS.Message.KarmaGroup>
+  <RICS.Message.ShowUnavailableDesc>Unavailable events are grayed out and cannot be enabled</RICS.Message.ShowUnavailableDesc>
+  <RICS.Message.CooldownDurationDesc>Events will be unavailable for {0} in-game days after purchase</RICS.Message.CooldownDurationDesc>
+  <RICS.Message.EventsPerCooldown>Events per cooldown period:</RICS.Message.EventsPerCooldown>
+  <RICS.Message.EventsPerCooldownDesc>Limit of {0} event purchases per cooldown period</RICS.Message.EventsPerCooldownDesc>
+  <RICS.Message.KarmaLimits>Limit events by karma type</RICS.Message.KarmaLimits>
+  <RICS.Message.KarmaLimitsDesc>When enabled, events will only be available if the character's karma matches the event's karma type</RICS.Message.KarmaLimitsDesc>
+  <RICS.Message.MaxItemPurchasesDesc>Viewers can purchase up to {0} items per game day before cooldown</RICS.Message.MaxItemPurchasesDesc>
+  
+  
+  <!-- Checkboxes -->
+  <RICS.Message.ShowUnavailable>Show unavailable events</RICS.Message.ShowUnavailable>
+  <RICS.Message.ShowUnavailableDesc>When enabled, events that are not available via commands will still be visible in the editor</RICS.Message.ShowUnavailableDesc>
+  <RICS.Message.EnableCooldown>Enable event cooldowns</RICS.Message.EnableCooldown>
+  <RICS.Message.EnableCooldownDesc>When enabled, events will have cooldowns that prevent them from being triggered too frequently</RICS.Message.EnableCooldownDesc>
+  <RICS.Message.CooldownDuration>Event cooldown duration (days):</RICS.Message.CooldownDuration>
+  
+  <!-- Numeric Fields -->
+  <RICS.Message.MaxBadEvents>Max bad event purchases:</RICS.Message.MaxBadEvents>
+  <RICS.Message.MaxGoodEvents>Max good event purchases:</RICS.Message.MaxGoodEvents>
+  <RICS.Message.MaxNeutralEvents>Max neutral event purchases:</RICS.Message.MaxNeutralEvents>
+  <RICS.Message.MaxItemPurchases>Max item purchases per day:</RICS.Message.MaxItemPurchases>
+  
+  
+
+</LanguageData>

@@ -3,5 +3,16 @@
 
   <!-- RICS General Information -->
   <RICS.SavingIncidentsSettings>Saving incidents settings...</RICS.SavingIncidentsSettings>
+  
+  <!-- Karma Type Generic -->
+  <RICS.KarmaType.Good>Good</RICS.KarmaType.Good>
+  <RICS.KarmaType.Neutral>Neutral</RICS.KarmaType.Neutral>
+  <RICS.KarmaType.Bad>Bad</RICS.KarmaType.Bad>
+  <RICS.KarmaType.Doom>Doom</RICS.KarmaType.Doom>
+  
+  <!-- Common -->
+  <RICS.Events>events</RICS.Events>
+  
+  <!-- Rimazon Locker -->
 
 </LanguageData>
