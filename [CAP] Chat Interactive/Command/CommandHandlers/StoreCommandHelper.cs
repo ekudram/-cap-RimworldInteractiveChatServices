@@ -108,56 +108,116 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var viewer = Viewers.GetViewer(user);
             return viewer.Coins >= price;
         }
-
+        /// <summary>
+        /// Checks if the specified StoreItem has any research prerequisites that are not yet completed. This includes:
+        /// ThingDef direct research prereqs, recipe maker prereqs, and any recipes that produce the item. If any required research is unfinished, returns false to prevent purchase. If no research gates are found or all are completed, returns true.
+        /// Workbenches and production benches are also checked for their research prereqs, as these often gate the ability to produce certain items even if the item itself doesn't have direct research requirements. This method is designed to be comprehensive and mod-compatible, accounting for various ways that mods might implement research gating on items.
+        /// All RecipeDefs are scanned as a last resort to catch any hidden research gates, but if no recipes are found that produce the item, it assumes there are no research requirements to avoid false negatives from modded items that don't use standard gating methods.
+        /// </summary>
+        /// <param name="storeItem"></param>
+        /// <returns></returns>
         public static bool HasRequiredResearch(StoreItem storeItem)
         {
-            // Get settings from the mod instance
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
-            if (settings == null)
+            if (settings == null || !settings.RequireResearch)
             {
-                Logger.Debug($"HasRequiredResearch: No settings found, allowing purchase");
+                Logger.Debug($"HasRequiredResearch: Settings allow purchase without research check");
                 return true;
             }
 
-            // If research requirement is disabled, allow purchase
-            if (!settings.RequireResearch)
-            {
-                Logger.Debug($"HasRequiredResearch: Research requirement disabled, allowing purchase");
-                return true;
-            }
-
-            // Get the thing definition
             var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
             if (thingDef == null)
             {
-                Logger.Debug($"HasRequiredResearch: ThingDef not found for {storeItem.DefName}, allowing purchase");
+                Logger.Debug($"HasRequiredResearch: ThingDef '{storeItem.DefName}' not found → allowing purchase");
                 return true;
             }
 
-            // Check research prerequisites
+            // 1. Direct research prereqs on the ThingDef itself (buildings, some items, rare on pawns/mechs)
             if (thingDef.researchPrerequisites != null && thingDef.researchPrerequisites.Count > 0)
             {
                 foreach (var research in thingDef.researchPrerequisites)
                 {
                     if (research != null && !research.IsFinished)
                     {
-                        Logger.Debug($"HasRequiredResearch: Research prerequisite {research.defName} not completed for {storeItem.DefName}");
+                        Logger.Debug($"Direct ThingDef prereq '{research.defName}' unfinished for '{storeItem.DefName}'");
                         return false;
                     }
                 }
             }
 
-            // Also check recipe prerequisites if this is a building or complex item
+            // 2. If it's a building with its own recipe maker prereq
             if (thingDef.recipeMaker != null && thingDef.recipeMaker.researchPrerequisite != null)
             {
                 if (!thingDef.recipeMaker.researchPrerequisite.IsFinished)
                 {
-                    Logger.Debug($"HasRequiredResearch: Recipe research prerequisite {thingDef.recipeMaker.researchPrerequisite.defName} not completed for {storeItem.DefName}");
+                    Logger.Debug($"RecipeMaker prereq '{thingDef.recipeMaker.researchPrerequisite.defName}' unfinished for '{storeItem.DefName}'");
                     return false;
                 }
             }
 
-            Logger.Debug($"HasRequiredResearch: All research prerequisites met for {storeItem.DefName}");
+            // 3. Aggressive last-resort: Scan ALL recipes that produce this ThingDef
+            bool foundAnyProducingRecipe = false;
+
+            foreach (var recipe in DefDatabase<RecipeDef>.AllDefsListForReading)
+            {
+                bool producesThis = recipe.ProducedThingDef == thingDef ||
+                                   (recipe.products != null && recipe.products.Any(p => p.thingDef == thingDef));
+
+                if (!producesThis) continue;
+
+                foundAnyProducingRecipe = true;
+
+                // Recipe direct prereq (single)
+                if (recipe.researchPrerequisite != null && !recipe.researchPrerequisite.IsFinished)
+                {
+                    Logger.Debug($"Recipe '{recipe.defName}' prereq '{recipe.researchPrerequisite.defName}' unfinished for '{storeItem.DefName}'");
+                    return false;
+                }
+
+                // Recipe prereq list (less common but used in some mods)
+                if (recipe.researchPrerequisites != null)
+                {
+                    foreach (var prereq in recipe.researchPrerequisites)
+                    {
+                        if (prereq != null && !prereq.IsFinished)
+                        {
+                            Logger.Debug($"Recipe '{recipe.defName}' multi-prereq '{prereq.defName}' unfinished");
+                            return false;
+                        }
+                    }
+                }
+
+                // Bench / worktable prereqs (this catches gestators, printers, smithies, fab benches, etc.)
+                if (recipe.recipeUsers != null)
+                {
+                    foreach (var userDef in recipe.recipeUsers)
+                    {
+                        if (userDef?.researchPrerequisites == null || userDef.researchPrerequisites.Count == 0)
+                            continue;
+
+                        foreach (var benchPrereq in userDef.researchPrerequisites)
+                        {
+                            if (benchPrereq != null && !benchPrereq.IsFinished)
+                            {
+                                Logger.Debug($"Bench '{userDef.defName}' prereq '{benchPrereq.defName}' unfinished (via recipe '{recipe.defName}') for '{storeItem.DefName}'");
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // If we found recipes but none had unfinished prereqs → allow
+            // If we found ZERO recipes → assume no gate (protects against bad mods / direct spawns)
+            if (foundAnyProducingRecipe)
+            {
+                Logger.Debug($"Found producing recipes for '{storeItem.DefName}', all prereqs met");
+            }
+            else
+            {
+                Logger.Debug($"No producing recipes found for '{storeItem.DefName}' → no research gate detected, allowing purchase");
+            }
+
             return true;
         }
 
