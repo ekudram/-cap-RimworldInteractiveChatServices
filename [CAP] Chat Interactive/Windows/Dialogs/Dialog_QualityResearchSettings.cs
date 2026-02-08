@@ -47,8 +47,11 @@ public class Dialog_QualityResearchSettings : Window
         // Header
         Text.Font = GameFont.Medium;
         Rect headerRect = new Rect(0f, 0f, inRect.width, 40f);
-        Widgets.Label(headerRect, "Quality & Research Settings");
+        GUI.color = ColorLibrary.HeaderAccent;
+        // Widgets.Label(headerRect, "Quality & Research Settings");
+        Widgets.Label(headerRect, "RICS.Header.QnRSettings".Translate());
         Text.Font = GameFont.Small;
+        GUI.color = Color.white;
 
         // Main content area
         Rect contentRect = new Rect(0f, 45f, inRect.width, inRect.height - 45f - CloseButSize.y);
@@ -86,33 +89,37 @@ public class Dialog_QualityResearchSettings : Window
 
         // Section header
         Text.Font = GameFont.Medium;
+        GUI.color = ColorLibrary.SubHeader;
         Rect headerRect = new Rect(0f, 0f, rect.width, 30f);
-        Widgets.Label(headerRect, "Allowed Quality Levels & Multipliers");
+        // Widgets.Label(headerRect, "Allowed Quality Levels & Multipliers");
+        Widgets.Label(headerRect, "RICS.Header.QualitySettings".Translate());
+
         Text.Font = GameFont.Small;
+        GUI.color = Color.white;
 
         float y = 35f;
         float checkboxHeight = 30f;
 
         // Quality checkboxes with MMO colors and multiplier inputs
-        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "Awful", ref settings.GlobalSettings.AllowAwfulQuality, Color.red, "Awful");
+        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "RICS.Quality.Awful".Translate(), ref settings.GlobalSettings.AllowAwfulQuality, Color.red, "Awful");
         y += checkboxHeight;
 
-        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "Poor", ref settings.GlobalSettings.AllowPoorQuality, new Color(0.65f, 0.50f, 0.39f), "Poor");
+        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "RICS.Quality.Poor".Translate(), ref settings.GlobalSettings.AllowPoorQuality, new Color(0.65f, 0.50f, 0.39f), "Poor");
         y += checkboxHeight;
 
-        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "Normal", ref settings.GlobalSettings.AllowNormalQuality, Color.white, "Normal");
+        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "RICS.Quality.Normal".Translate(), ref settings.GlobalSettings.AllowNormalQuality, Color.white, "Normal");
         y += checkboxHeight;
 
-        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "Good", ref settings.GlobalSettings.AllowGoodQuality, Color.green, "Good");
+        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "RICS.Quality.Good".Translate(), ref settings.GlobalSettings.AllowGoodQuality, Color.green, "Good");
         y += checkboxHeight;
 
-        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "Excellent", ref settings.GlobalSettings.AllowExcellentQuality, Color.blue, "Excellent");
+        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "RICS.Quality.Excellent".Translate(), ref settings.GlobalSettings.AllowExcellentQuality, Color.blue, "Excellent");
         y += checkboxHeight;
 
-        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "Masterwork", ref settings.GlobalSettings.AllowMasterworkQuality, new Color(0.5f, 0f, 0.5f), "Masterwork");
+        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "RICS.Quality.Masterwork".Translate(), ref settings.GlobalSettings.AllowMasterworkQuality, new Color(0.5f, 0f, 0.5f), "Masterwork");
         y += checkboxHeight;
 
-        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "Legendary", ref settings.GlobalSettings.AllowLegendaryQuality, new Color(1f, 0.5f, 0f), "Legendary");
+        DrawQualityCheckbox(new Rect(0f, y, rect.width, checkboxHeight), "RICS.Quality.Legendary".Translate(), ref settings.GlobalSettings.AllowLegendaryQuality, new Color(1f, 0.5f, 0f), "Legendary");
 
         Widgets.EndGroup();
         return rect.height;
@@ -154,7 +161,7 @@ public class Dialog_QualityResearchSettings : Window
 
         // Label for multiplier
         Rect multiplierLabelRect = new Rect(checkboxRect.xMax + spacing, rect.y, 140f, rect.height);
-        string multiplierText = $"Multiplier: {multiplier * 100:F0}%";
+        string multiplierText = "RICS.Multiplier".Translate() + $": {multiplier * 100:F0}%";
         Widgets.Label(multiplierLabelRect, multiplierText);
 
         // Input field for multiplier - CHANGED: We'll work with percentage in the UI
@@ -201,9 +208,12 @@ public class Dialog_QualityResearchSettings : Window
 
         // Section header
         Text.Font = GameFont.Medium;
+        GUI.color = ColorLibrary.SubHeader;
         Rect headerRect = new Rect(0f, 0f, rect.width, 30f);
-        Widgets.Label(headerRect, "Research Requirements");
+        // Widgets.Label(headerRect, "Research Requirements");
+        Widgets.Label(headerRect, "RICS.Header.ResearchSettings".Translate());
         Text.Font = GameFont.Small;
+        GUI.color = Color.white;
 
         float y = 35f;
         float checkboxHeight = 30f;
@@ -211,7 +221,8 @@ public class Dialog_QualityResearchSettings : Window
         // Research checkboxes - now using settings
         Rect researchRect = new Rect(0f, y, rect.width, checkboxHeight);
         bool previousResearch = settings.GlobalSettings.RequireResearch;
-        Widgets.CheckboxLabeled(researchRect, "Enable research requirements", ref settings.GlobalSettings.RequireResearch);
+        // Widgets.CheckboxLabeled(researchRect, "Enable research requirements", ref settings.GlobalSettings.RequireResearch);
+        Widgets.CheckboxLabeled(researchRect, "RICS.Label.RequireResearch".Translate(), ref settings.GlobalSettings.RequireResearch);
         if (settings.GlobalSettings.RequireResearch != previousResearch)
         {
             SoundDefOf.Click.PlayOneShotOnCamera();
@@ -227,7 +238,7 @@ public class Dialog_QualityResearchSettings : Window
     {
         Text.Font = GameFont.Tiny;
         GUI.color = ColorLibrary.LightText;
-
+        /*
         string infoText = "These settings affect the purchase commands:\n" +
                          "• Quality levels determine what qualities viewers can request\n" +
                          "• Multipliers affect the price of items (100% = normal price)\n" +
@@ -235,8 +246,8 @@ public class Dialog_QualityResearchSettings : Window
                          "    items are researched. ✔️ means research required.\n" +
                          "• Use 'Reset Multipliers' button to restore defaults\n" +
                          "Changes take effect immediately for new purchases.";
-
-        Widgets.Label(rect, infoText);
+        */
+        Widgets.Label(rect, "RICS.Info.QualityResearchSettings".Translate());
 
         Text.Font = GameFont.Small;
         GUI.color = Color.white;
@@ -244,7 +255,7 @@ public class Dialog_QualityResearchSettings : Window
 
     private void DrawResetButton(Rect rect)
     {
-        if (Widgets.ButtonText(rect, "Reset Multipliers to Defaults"))
+        if (Widgets.ButtonText(rect, "RICS.Button.QualityReset".Translate()))
         {
             SoundDefOf.Click.PlayOneShotOnCamera();
 
@@ -261,7 +272,8 @@ public class Dialog_QualityResearchSettings : Window
             qualityMultiplierBuffers.Clear();
 
             // Show a confirmation message
-            Messages.Message("Quality multipliers reset to default values", MessageTypeDefOf.PositiveEvent);
+            // Messages.Message("Quality multipliers reset to default values", MessageTypeDefOf.PositiveEvent);
+                Messages.Message("RICS.Message.QualityReset".Translate(), MessageTypeDefOf.PositiveEvent);
 
             // Force a UI refresh
             Find.WindowStack.TryRemove(this, true);
@@ -269,6 +281,7 @@ public class Dialog_QualityResearchSettings : Window
         }
 
         // Add a tooltip
+        /*
         TooltipHandler.TipRegion(rect, "Reset all quality price multipliers to their default values:\n" +
                                       "• Awful: 50%\n" +
                                       "• Poor: 75%\n" +
@@ -277,6 +290,8 @@ public class Dialog_QualityResearchSettings : Window
                                       "• Excellent: 200%\n" +
                                       "• Masterwork: 300%\n" +
                                       "• Legendary: 500%");
+        */
+        TooltipHandler.TipRegion(rect, "RICS.Tooltip.ResetMultipliers".Translate());
     }
 
     public override void PostClose()
@@ -291,10 +306,7 @@ public class Dialog_QualityResearchSettings : Window
                 // This will trigger the WriteSettings method in your mod class
                 CAPChatInteractiveMod.Instance.Settings.Write();
 
-                // Alternative: directly call the mod's WriteSettings
-                // CAPChatInteractiveMod.Instance.WriteSettings();
-
-                CAP_ChatInteractive.Logger.Debug("Quality research settings saved on dialog close");
+                // CAP_ChatInteractive.Logger.Debug("Quality research settings saved on dialog close");
             }
             catch (Exception ex)
             {

@@ -36,6 +36,7 @@
   <RICS.Status>Status</RICS.Status>
   <RICS.DISABLED>DISABLED</RICS.DISABLED>
   <RICS.Reset>Reset</RICS.Reset>
+  <RICS.Multiplier>Multiplier</RICS.Multiplier>
 
   <!-- Rimazon Locker -->
   <RICS.Locker.DeliveryReceived>Delivery Received</RICS.Locker.DeliveryReceived>
@@ -58,6 +59,48 @@
   <RICS.Label.FilteredOnlyInfo>Will only affect events matching current filters</RICS.Label.FilteredOnlyInfo>
   <RICS.Label.AllEventsInfo>Will affect ALL events, regardless of filters</RICS.Label.AllEventsInfo>
   <RICS.Label.NoFilterWarning>No active filter - will apply to all events</RICS.Label.NoFilterWarning>
+  
+  <!-- Quality and Research Settings -->
+
+  <!-- Section headers -->
+  <RICS.Header.QualitySettings>Allowed Quality Levels and Multipliers</RICS.Header.QualitySettings>
+
+  <RICS.Button.QualityReset>Reset Multipliers to Defaults</RICS.Button.QualityReset>
+
+  <RICS.Message.QualityReset>Quality multipliers reset to default values</RICS.Message.QualityReset>
+
+  <RICS.Quality.Awful>Awful</RICS.Quality.Awful>
+  <RICS.Quality.Poor>Poor</RICS.Quality.Poor>
+  <RICS.Quality.Normal>Normal</RICS.Quality.Normal>
+  <RICS.Quality.Good>Good</RICS.Quality.Good>
+  <RICS.Quality.Excellent>Excellent</RICS.Quality.Excellent>
+  <RICS.Quality.Masterwork>Masterwork</RICS.Quality.Masterwork>
+  <RICS.Quality.Legendary>Legendary</RICS.Quality.Legendary>
+
+  <RICS.Info.QualityResearchSettings>
+    <![CDATA[These settings affect the purchase commands:
+
+• Quality levels determine what qualities viewers can request
+• Multipliers affect the price of items (100% = normal price)
+• Research setting controls whether items can be bought before
+  items are researched. ✔️ means research required.
+• Use 'Reset Multipliers' button to restore defaults
+
+Changes take effect immediately for new purchases.]]>
+  </RICS.Info.QualityResearchSettings>
+
+  <!-- Reset button tooltip -->
+  <RICS.Tooltip.ResetMultipliers>
+    <![CDATA[Reset all quality price multipliers to their default values:
+
+• Awful:      50%
+• Poor:       75%
+• Normal:    100%
+• Good:      150%
+• Excellent: 200%
+• Masterwork:300%
+• Legendary: 500%]]>
+  </RICS.Tooltip.ResetMultipliers>
 
   
 </LanguageData>
