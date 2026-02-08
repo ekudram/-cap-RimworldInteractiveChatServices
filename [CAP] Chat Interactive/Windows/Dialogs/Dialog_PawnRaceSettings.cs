@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // A dialog window for configuring pawn races and xenotypes 
-using _CAP__Chat_Interactive.Interfaces;
 using _CAP__Chat_Interactive.Utilities;
 using RimWorld;
 using System;
@@ -84,7 +83,8 @@ namespace CAP_ChatInteractive
             // FIXED: Use enabled races count instead of all humanlike races
             int enabledRacesCount = RaceUtils.GetEnabledRaces().Count;
             int totalRacesCount = DefDatabase<ThingDef>.AllDefs.Count(d => d.race?.Humanlike ?? false);
-            string titleText = $"Pawn Races ({enabledRacesCount}";
+            // string titleText = $"Pawn Races ({enabledRacesCount}";
+            string titleText = $"RICS.Header.PawnRaces {enabledRacesCount}".Translate();
 
             // Show filtered count if search is active
             if (filteredRaces.Count != enabledRacesCount)
@@ -115,7 +115,7 @@ namespace CAP_ChatInteractive
             else
             {
                 // Fallback to text if icon not found
-                Widgets.Label(new Rect(0f, searchY, 40f, 30f), "Search:");
+                Widgets.Label(new Rect(0f, searchY, 40f, 30f), "RICS.Search".Translate() + ":");
             }
 
             Rect searchRect = new Rect(30f, searchY, 170f, 24f);
@@ -129,27 +129,32 @@ namespace CAP_ChatInteractive
 
             // Reset All Prices button - moved left to make room for help button
             Rect resetAllRect = new Rect(rect.width - 160f, controlsY, 120f, 24f);
-            if (Widgets.ButtonText(resetAllRect, "Reset All Prices"))
+            if (Widgets.ButtonText(resetAllRect, "RICS.Button.ResetAllPrices".Translate()))
             {
                 if (selectedRace != null)
                 {
                     // Show confirmation dialog
+                    string message = "RICS.Dialog.ResetXenotypeQuestion".Translate(selectedRace.LabelCap) +
+                                     "\n\n" +
+                                     "RICS.Dialog.ResetXenotypeWarning".Translate();
+
                     Find.WindowStack.Add(new Dialog_MessageBox(
-                        $"Reset ALL xenotype prices for {selectedRace.LabelCap} to gene-based values?\n\n" +
-                        "This will overwrite any custom prices you've set.",
-                        "Yes, Reset All",
+                        message,
+                        "RICS.Dialog.Button.ResetAll".Translate(),
                         () => ResetAllXenotypePrices(selectedRace),
-                        "No, Cancel",
+                        "RICS.Dialog.Button.Cancel".Translate(),
                         null,
-                        "Reset Xenotype Prices"
+                        "RICS.Dialog.Title.ResetXenotypePrices".Translate()
                     ));
                 }
                 else
                 {
-                    Messages.Message("Select a race first to reset prices", MessageTypeDefOf.RejectInput);
+                    // Messages.Message("Select a race first to reset prices", MessageTypeDefOf.RejectInput);
+                    Messages.Message("RICS.Message.SelectRaceToReset".Translate(), MessageTypeDefOf.RejectInput);
                 }
             }
-            TooltipHandler.TipRegion(resetAllRect, "Reset all xenotype prices for selected race to gene-based values");
+            // TooltipHandler.TipRegion(resetAllRect, "Reset all xenotype prices for selected race to gene-based values");
+            TooltipHandler.TipRegion(resetAllRect, "RICS.Tooltip.ResetAllPrices".Translate());
 
             // Info help icon - next to reset button
             //Rect infoRect = new Rect(rect.width - 190f, controlsY, 24f, 24f);
@@ -161,12 +166,13 @@ namespace CAP_ChatInteractive
                 {
                     Find.WindowStack.Add(new Dialog_PawnRacesHelp());
                 }
-                TooltipHandler.TipRegion(infoRect, "Pawn Race Settings Help");
+                // TooltipHandler.TipRegion(infoRect, "Pawn Race Settings Help");
+                TooltipHandler.TipRegion(infoRect, "RICS.Tooltip.PawnRacesHelp".Translate());
             }
             else
             {
                 // Fallback text button
-                if (Widgets.ButtonText(new Rect(rect.width - 190f, 5f, 45f, 24f), "Help")) //(Widgets.ButtonText(new Rect(rect.width - 190f, controlsY, 45f, 24f), "Help"))
+                if (Widgets.ButtonText(new Rect(rect.width - 190f, 5f, 45f, 24f), "RICS.Help".Translate())) //(Widgets.ButtonText(new Rect(rect.width - 190f, controlsY, 45f, 24f), "Help"))
                 {
                     Find.WindowStack.Add(new Dialog_PawnRacesHelp());
                 }
@@ -190,7 +196,8 @@ namespace CAP_ChatInteractive
                     Find.WindowStack.Add(new Dialog_DebugRaces());
                 }
             }
-            TooltipHandler.TipRegion(debugRect, "Open Race Debug Information");
+            // TooltipHandler.TipRegion(debugRect, "Open Race Debug Information");
+            TooltipHandler.TipRegion(debugRect, "RICS.Tooltip.DebugInfo".Translate());
             Widgets.EndGroup();
         }
 
@@ -204,7 +211,7 @@ namespace CAP_ChatInteractive
             float y = 0f; // Draw at top of the group, not at absolute top
 
             // Sort by Name
-            if (Widgets.ButtonText(new Rect(x, y, buttonWidth, 24f), "Name"))
+            if (Widgets.ButtonText(new Rect(x, y, buttonWidth, 24f), "RICS.Name".Translate()))
             {
                 if (sortMethod == PawnSortMethod.Name)
                     sortAscending = !sortAscending;
@@ -215,7 +222,7 @@ namespace CAP_ChatInteractive
             x += buttonWidth + spacing;
 
             // Sort by Category
-            if (Widgets.ButtonText(new Rect(x, y, buttonWidth, 24f), "Category"))
+            if (Widgets.ButtonText(new Rect(x, y, buttonWidth, 24f), "RICS.Category".Translate()))
             {
                 if (sortMethod == PawnSortMethod.Category)
                     sortAscending = !sortAscending;
@@ -226,7 +233,7 @@ namespace CAP_ChatInteractive
             x += buttonWidth + spacing;
 
             // Sort by Status
-            if (Widgets.ButtonText(new Rect(x, y, buttonWidth, 24f), "Status"))
+            if (Widgets.ButtonText(new Rect(x, y, buttonWidth, 24f), "RICS.Status".Translate()))
             {
                 if (sortMethod == PawnSortMethod.Status)
                     sortAscending = !sortAscending;
@@ -259,7 +266,9 @@ namespace CAP_ChatInteractive
             Rect headerRect = new Rect(rect.x, rect.y, rect.width, 30f);
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter;
-            Widgets.Label(headerRect, "Races");
+            GUI.color = ColorLibrary.HeaderAccent;
+            Widgets.Label(headerRect, "RICS.Header.Races".Translate());
+            GUI.color = Color.white;
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
 
@@ -280,7 +289,7 @@ namespace CAP_ChatInteractive
                     if (!raceSettings.TryGetValue(race.defName, out settings))
                     {
                         // Race was excluded or not in settings - skip it
-                        Logger.Warning($"Race {race.defName} not found in raceSettings, skipping");
+                        //Logger.Warning($"Race {race.defName} not found in raceSettings, skipping");
                         continue;
                     }
 
@@ -289,7 +298,7 @@ namespace CAP_ChatInteractive
                     // Race name with status indicator
                     string displayName = race.LabelCap;
                     if (!settings.Enabled)
-                        displayName += " [DISABLED]";
+                        displayName += " [" + "RICS.DISABLED".Translate() + "]";
 
                     // Color coding based on enabled status
                     Color buttonColor = settings.Enabled ? Color.white : Color.gray;
@@ -315,47 +324,60 @@ namespace CAP_ChatInteractive
             }
             Widgets.EndScrollView();
         }
-
+        // Draws the details panel for the selected Race, including settings and xenotype configuration
         private void DrawRaceDetails(Rect rect)
         {
             Widgets.DrawMenuSection(rect);
 
-            if (selectedRace == null)
+            var fontRestore = Text.Font;      // capture
+            TextAnchor anchorRestore = Text.Anchor;
+            Color colorRestore = GUI.color;
+
+            try
             {
-                Rect messageRect = new Rect(rect.x, rect.y, rect.width, rect.height);
-                Text.Anchor = TextAnchor.MiddleCenter;
-                Widgets.Label(messageRect, "Select a race to see details");
-                Text.Anchor = TextAnchor.UpperLeft;
-                return;
-            }
+                if (selectedRace == null)
+                {
+                    Rect messageRect = new Rect(rect.x, rect.y, rect.width, rect.height);
+                    Text.Anchor = TextAnchor.MiddleCenter;
+                    Widgets.Label(messageRect, "RICS.Label.SelectRace".Translate());
+                    return;
+                }
 
-            // SAFELY get settings
-            RaceSettings settings = null;
-            if (!raceSettings.TryGetValue(selectedRace.defName, out settings))
+                // SAFELY get settings
+                if (!raceSettings.TryGetValue(selectedRace.defName, out var settings))
+                {
+                    Rect messageRect = new Rect(rect.x, rect.y, rect.width, rect.height);
+                    Text.Anchor = TextAnchor.MiddleCenter;
+                    Widgets.Label(messageRect, "RICS.Label.RaceNotFound".Translate(selectedRace.LabelCap));
+                    return;
+                }
+
+                // Compact header
+                Rect headerRect = new Rect(rect.x, rect.y, rect.width, 30f);
+                Text.Font = GameFont.Medium;
+                Text.Anchor = TextAnchor.MiddleCenter;
+                string headerText = $"{selectedRace.LabelCap}";
+                GUI.color = ColorLibrary.Danger;
+                if (!settings.Enabled)
+                    headerText += " 🚫 " + "RICS.DISABLED".Translate();
+                GUI.color = colorRestore;           // restore immediately after use
+
+                Widgets.Label(headerRect, headerText);
+
+                Text.Font = GameFont.Small;
+                Text.Anchor = TextAnchor.UpperLeft;
+
+                // Details content with scrolling
+                Rect contentRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 40f);
+                DrawRaceDetailsContent(contentRect, settings);
+            }
+            finally
             {
-                Rect messageRect = new Rect(rect.x, rect.y, rect.width, rect.height);
-                Text.Anchor = TextAnchor.MiddleCenter;
-                Widgets.Label(messageRect, $"Race {selectedRace.defName} not found in settings");
-                Text.Anchor = TextAnchor.UpperLeft;
-                return;
+                // Always restore, no matter what
+                Text.Font = fontRestore;
+                Text.Anchor = anchorRestore;
+                GUI.color = colorRestore;
             }
-
-            // Compact header
-            Rect headerRect = new Rect(rect.x, rect.y, rect.width, 30f);
-            Text.Font = GameFont.Medium;
-            Text.Anchor = TextAnchor.MiddleCenter;
-
-            string headerText = $"{selectedRace.LabelCap}";
-            if (!settings.Enabled)
-                headerText += " 🚫 DISABLED";
-
-            Widgets.Label(headerRect, headerText);
-            Text.Font = GameFont.Small;
-            Text.Anchor = TextAnchor.UpperLeft;
-
-            // Details content with scrolling
-            Rect contentRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 40f);
-            DrawRaceDetailsContent(contentRect, settings);
         }
 
         private void DrawRaceDetailsContent(Rect rect, RaceSettings settings)
@@ -781,7 +803,7 @@ namespace CAP_ChatInteractive
             filteredRaces = allRaces.ToList();
             SortRaces();
 
-            Logger.Debug($"Filtered races: {filteredRaces.Count} races after filtering");
+            // Logger.Debug($"Filtered races: {filteredRaces.Count} races after filtering");
         }
 
         private void SortRaces()
@@ -796,8 +818,8 @@ namespace CAP_ChatInteractive
                 case PawnSortMethod.Category:
                     // Group by mod source
                     filteredRaces = sortAscending ?
-                        filteredRaces.OrderBy(r => r.modContentPack?.Name ?? "Core").ToList() :
-                        filteredRaces.OrderByDescending(r => r.modContentPack?.Name ?? "Core").ToList();
+                        filteredRaces.OrderBy(r => r.modContentPack?.Name ?? "Rimworld").ToList() :
+                        filteredRaces.OrderByDescending(r => r.modContentPack?.Name ?? "Rimworld").ToList();
                     break;
                 case PawnSortMethod.Status:
                     filteredRaces = sortAscending ?
@@ -832,7 +854,7 @@ namespace CAP_ChatInteractive
             SaveRaceSettings();
 
             // Show feedback
-            string message = $"Reset {resetCount} xenotype prices for {race.LabelCap}";
+            string message = $"RICS.Reset".Translate() + $" {resetCount} " + "RICS.Message.xenotypepricesfor".Translate() + $" {race.LabelCap}";
             Messages.Message(message, MessageTypeDefOf.PositiveEvent);
 
             // Optional: Log details

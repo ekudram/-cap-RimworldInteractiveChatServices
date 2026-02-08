@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <!--  Pawn Queue Dialog window translation keys -->
+
+  <!-- Headers -->
+  <RICS.Header.PawnQueueManagement>Queue Management - {0} waiting</RICS.Header.PawnQueueManagement>
+  <RICS.Header.AvailablePawns></RICS.Header.AvailablePawns>
+  
+  <!-- Labels -->
+  
+  <RICS.Pawn.NameAgeGender>{0}</RICS.Pawn.NameAgeGender>
+  <RICS.Label.SelectPawnToAssign>Select a pawn to assign from queue</RICS.Label.SelectPawnToAssign>
+  <RICS.Label.Childhood>Childhood</RICS.Label.Childhood>
+  <RICS.Label.Adulthood>Adulthood</RICS.Label.Adulthood>
+  <RICS.Label.ViewersInQueue>Viewers in Queue ({0})</RICS.Label.ViewersInQueue>
+  <RICS.Label.NoViewersInQueue>No Viewers In Pawn Queue</RICS.Label.NoViewersInQueue>
+  
+  <!-- Messages -->
+  
+  <RICS.Message.SelectedRandomViewer>Selected {0} from queue</RICS.Message.SelectedRandomViewer>
+  <RICS.Message.ViewerNotFound>Cannot assign pawn - viewer '{0}' not found in database.</RICS.Message.ViewerNotFound>
+  <RICS.Message.PawnAssigned>🎉 You have been assigned {0}! Use !mypawn to check your pawn's status.</RICS.Message.PawnAssigned>
+  <RICS.Message.PawnAssignedDirectly>Assigned pawn directly to {0}</RICS.Message.PawnAssignedDirectly>
+  
+  <!-- Buttons -->
+
+  <RICS.Button.SelectRandom>Select Random</RICS.Button.SelectRandom>
+  <RICS.Button.SendOffer>Send Offer</RICS.Button.SendOffer>
+  <RICS.Button.ClearQueue>Clear Queue</RICS.Button.ClearQueue>
+  <RICS.Confirm.ClearQueue>Are you sure you want to clear the entire pawn queue?</RICS.Confirm.ClearQueue>
+  
+
+
+</LanguageData>

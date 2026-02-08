@@ -21,8 +21,22 @@
   <RICS.EjectAll>Eject All</RICS.EjectAll>
   <RICS.Priority>Priority</RICS.Priority>
   <RICS.Unstored>Unstored</RICS.Unstored>
-  
-  
+  <RICS.Search>Search</RICS.Search>
+  <RICS.Pawn.Gender.Male>M</RICS.Pawn.Gender.Male>
+  <RICS.Pawn.Gender.Female>F</RICS.Pawn.Gender.Female>
+  <RICS.Pawn.Gender.Other>O</RICS.Pawn.Gender.Other>
+  <RICS.Pawn.Unnamed>Unnamed</RICS.Pawn.Unnamed>
+  <RICS.Assign>Assign</RICS.Assign>
+  <RICS.Label.Traits>Traits</RICS.Label.Traits>
+  <RICS.Button.Select>Select</RICS.Button.Select>
+  <RICS.Button.Remove>Remove</RICS.Button.Remove>
+  <RICS.Help>Help</RICS.Help>
+  <RICS.Name>Name</RICS.Name>
+  <RICS.Category>Category</RICS.Category>
+  <RICS.Status>Status</RICS.Status>
+  <RICS.DISABLED>DISABLED</RICS.DISABLED>
+  <RICS.Reset>Reset</RICS.Reset>
+
   <!-- Rimazon Locker -->
   <RICS.Locker.DeliveryReceived>Delivery Received</RICS.Locker.DeliveryReceived>
   <RICS.Locker.ItemsEjected>Items Ejected</RICS.Locker.ItemsEjected>

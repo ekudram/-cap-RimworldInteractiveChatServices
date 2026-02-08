@@ -72,7 +72,8 @@ namespace CAP_ChatInteractive
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.HeaderAccent;
             Rect titleRect = new Rect(0f, 0f, 400f, 35f);
-            string titleText = $"Pawn Queue Management - {GetQueueManager().GetQueueSize()} waiting";
+            //string titleText = $"Pawn Queue Management - {GetQueueManager().GetQueueSize()} waiting";
+            string titleText = "RICS.Header.PawnQueueManagement".Translate(GetQueueManager().GetQueueSize());
 
             // Draw title
             Widgets.Label(titleRect, titleText);
@@ -91,7 +92,7 @@ namespace CAP_ChatInteractive
             // Search bar on the left with label
             Rect searchLabelRect = new Rect(0f, controlsY, 80f, controlsHeight);
             Text.Font = GameFont.Medium; // Medium font for the label
-            Widgets.Label(searchLabelRect, "Search:");
+            Widgets.Label(searchLabelRect, "RICS.Search".Translate() + ":");
             Text.Font = GameFont.Small;
 
             Rect searchRect = new Rect(85f, controlsY, 200f, controlsHeight);
@@ -104,7 +105,7 @@ namespace CAP_ChatInteractive
 
             // Select Random button
             Rect randomRect = new Rect(x, controlsY, buttonWidth, controlsHeight);
-            if (Widgets.ButtonText(randomRect, "Select Random"))
+            if (Widgets.ButtonText(randomRect, "RICS.Button.SelectRandom".Translate()))
             {
                 SelectRandomViewer();
             }
@@ -112,7 +113,7 @@ namespace CAP_ChatInteractive
 
             // Send Offer button
             Rect offerRect = new Rect(x, controlsY, buttonWidth, controlsHeight);
-            if (Widgets.ButtonText(offerRect, "Send Offer") && selectedPawn != null && !string.IsNullOrEmpty(selectedUsername))
+            if (Widgets.ButtonText(offerRect, "RICS.Button.SendOffer".Translate()) && selectedPawn != null && !string.IsNullOrEmpty(selectedUsername))
             {
                 SendPawnOffer(selectedUsername, selectedUserPlatformID, selectedPawn);
             }
@@ -120,10 +121,16 @@ namespace CAP_ChatInteractive
 
             // Clear Queue button
             Rect clearRect = new Rect(x, controlsY, buttonWidth, controlsHeight);
-            if (Widgets.ButtonText(clearRect, "Clear Queue"))
+            if (Widgets.ButtonText(clearRect, "RICS.Button.ClearQueue".Translate()))
             {
+                //Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                //    "Are you sure you want to clear the entire pawn queue?",
+                //    () => GetQueueManager().ClearQueue(),
+                //    true
+                //));
+
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    "Are you sure you want to clear the entire pawn queue?",
+                    "RICS.Confirm.ClearQueue".Translate(),
                     () => GetQueueManager().ClearQueue(),
                     true
                 ));
@@ -155,7 +162,7 @@ namespace CAP_ChatInteractive
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter;
             GUI.color = ColorLibrary.HeaderAccent;
-            Widgets.Label(headerRect, "Available Pawns");
+            Widgets.Label(headerRect, "RICS.Header.AvailablePawns".Translate());
             GUI.color = Color.white;
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
@@ -253,7 +260,13 @@ namespace CAP_ChatInteractive
             float startY = rect.y + (50f - totalHeight) / 2f; // Center in the 50px info area
 
             // Line 1: Name • Age • Gender
-            string nameAgeGender = $"{pawn.Name?.ToStringShort ?? "Unnamed"} • {pawn.ageTracker.AgeBiologicalYears} • {GetGenderSymbol(pawn)}";
+            //string nameAgeGender = $"{pawn.Name?.ToStringShort ?? "Unnamed"} • {pawn.ageTracker.AgeBiologicalYears} • {GetGenderSymbol(pawn)}";
+            string nameAgeGender = "RICS.Pawn.NameAgeGender".Translate(
+                pawn.Name?.ToStringShort ?? "RICS.Pawn.Unnamed".Translate(),
+                pawn.ageTracker.AgeBiologicalYears,
+                GetGenderSymbol(pawn)
+            );
+
             Rect line1Rect = new Rect(rect.x, startY, rect.width, lineHeight);
             Widgets.Label(line1Rect, nameAgeGender);
 
@@ -277,9 +290,9 @@ namespace CAP_ChatInteractive
         {
             return pawn.gender switch
             {
-                Gender.Male => "M ♂️",
-                Gender.Female => "F ♀️",
-                _ => "O ⚧️"
+                Gender.Male => "RICS.Pawn.Gender.Male".Translate() + " ♂️",
+                Gender.Female => "RICS.Pawn.Gender.Female".Translate() + " ♀️",
+                _ => "RICS.Pawn.Gender.Other".Translate() + " ⚧️"
             };
         }
 
@@ -293,7 +306,8 @@ namespace CAP_ChatInteractive
                 // No pawn selected message
                 Rect messageRect = new Rect(rect.x, rect.y, rect.width, rect.height);
                 Text.Anchor = TextAnchor.MiddleCenter;
-                Widgets.Label(messageRect, "Select a pawn to assign from queue");
+                // Widgets.Label(messageRect, "Select a pawn to assign from queue");
+                Widgets.Label(messageRect, "RICS.Label.SelectPawnToAssign".Translate());
                 Text.Anchor = TextAnchor.UpperLeft;
                 return;
             }
@@ -339,7 +353,7 @@ namespace CAP_ChatInteractive
             selectedUsername = Widgets.TextField(usernameRect, selectedUsername);
 
             Rect assignRect = new Rect(usernameRect.xMax + 5f, usernameRect.y, 95f, 25f);
-            if (Widgets.ButtonText(assignRect, "Assign") && !string.IsNullOrEmpty(selectedUsername))
+            if (Widgets.ButtonText(assignRect, "RICS.Assign".Translate()) && !string.IsNullOrEmpty(selectedUsername))
             {
                 // Use direct assignment instead of sending offer
                 AssignPawnDirectly(selectedUsername, selectedUserPlatformID, pawn);
@@ -352,7 +366,12 @@ namespace CAP_ChatInteractive
             Text.Anchor = TextAnchor.UpperLeft;
 
             // Name, Gender, Age
-            string nameInfo = $"{pawn.Name?.ToStringFull ?? "Unnamed"} • {GetGenderSymbol(pawn)} • {pawn.ageTracker.AgeBiologicalYears}";
+            // string nameInfo = $"{pawn.Name?.ToStringFull ?? "Unnamed"} • {GetGenderSymbol(pawn)} • {pawn.ageTracker.AgeBiologicalYears}";
+            string nameInfo = "RICS.Pawn.NameGenderAge".Translate(
+                pawn.Name?.ToStringFull ?? "RICS.Pawn.Unnamed".Translate(),
+                GetGenderSymbol(pawn),
+                pawn.ageTracker.AgeBiologicalYears
+            );
             Widgets.Label(new Rect(rect.x, currentY, rect.width, lineHeight), nameInfo);
             currentY += lineHeight;
 
@@ -375,14 +394,14 @@ namespace CAP_ChatInteractive
                 if (pawn.story.Childhood != null)
                 {
                     string childhoodTitle = pawn.story.Childhood.TitleCapFor(pawn.gender);
-                    Widgets.Label(new Rect(rect.x, currentY, rect.width, lineHeight), $"Childhood: {childhoodTitle}");
+                    Widgets.Label(new Rect(rect.x, currentY, rect.width, lineHeight), $"RICS.Label.Childhood".Translate() + ": {childhoodTitle}");
                     currentY += lineHeight;
                 }
 
                 if (pawn.story.Adulthood != null)
                 {
                     string adulthoodTitle = pawn.story.Adulthood.TitleCapFor(pawn.gender);
-                    Widgets.Label(new Rect(rect.x, currentY, rect.width, lineHeight), $"Adulthood: {adulthoodTitle}");
+                    Widgets.Label(new Rect(rect.x, currentY, rect.width, lineHeight), $"RICS.Label.Adulthood".Translate() + ": {adulthoodTitle}");
                     currentY += lineHeight + 5f;
                 }
             }
@@ -390,7 +409,7 @@ namespace CAP_ChatInteractive
             // Traits
             if (pawn.story != null && pawn.story.traits != null && pawn.story.traits.allTraits.Count > 0)
             {
-                Widgets.Label(new Rect(rect.x, currentY, rect.width, lineHeight), "Traits:");
+                Widgets.Label(new Rect(rect.x, currentY, rect.width, lineHeight), "RICS.Label.Traits".Translate() + ":");
                 currentY += lineHeight;
 
                 foreach (Trait trait in pawn.story.traits.allTraits)
@@ -451,7 +470,8 @@ namespace CAP_ChatInteractive
             Rect headerRect = new Rect(rect.x, rect.y, rect.width, 30f);
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter;
-            string headerText = $"Viewers in Queue ({queueList.Count})";
+            // string headerText = $"Viewers in Queue ({queueList.Count})";
+            string headerText = "RICS.Label.ViewersInQueue".Translate(queueList.Count);
             Widgets.Label(headerRect, headerText);
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
@@ -464,7 +484,8 @@ namespace CAP_ChatInteractive
                 // Empty queue message
                 Rect emptyRect = new Rect(listRect.x, listRect.y, listRect.width, 50f);
                 Text.Anchor = TextAnchor.MiddleCenter;
-                Widgets.Label(emptyRect, "No viewers in queue");
+                // Widgets.Label(emptyRect, "No viewers in queue");
+                Widgets.Label(emptyRect, "RICS.Label.NoViewersInQueue".Translate());
                 Text.Anchor = TextAnchor.UpperLeft;
                 return;
             }
@@ -496,14 +517,14 @@ namespace CAP_ChatInteractive
 
                     // Action buttons
                     Rect selectRect = new Rect(260f, y, 80f, rowHeight - 4f);
-                    if (Widgets.ButtonText(selectRect, "Select"))
+                    if (Widgets.ButtonText(selectRect, "RICS.Button.Select".Translate()))
                     {
                         selectedUsername = username; // Store username for assignment
                         selectedUserPlatformID = platformId;
                     }
 
                     Rect removeRect = new Rect(345f, y, 80f, rowHeight - 4f);
-                    if (Widgets.ButtonText(removeRect, "Remove"))
+                    if (Widgets.ButtonText(removeRect, "RICS.Button.Remove".Translate()))
                     {
                         queueManager.RemoveFromQueue(platformId); // Remove by platform ID
                     }
@@ -575,7 +596,7 @@ namespace CAP_ChatInteractive
 
             if (queue.Count == 0)
             {
-                Messages.Message("Pawn queue is empty.", MessageTypeDefOf.RejectInput);
+                Messages.Message("RICS.Label.NoViewersInQueue".Translate(), MessageTypeDefOf.RejectInput);
                 return;
             }
 
@@ -589,7 +610,8 @@ namespace CAP_ChatInteractive
                 selectedPawn = filteredPawns[0];
             }
 
-            Messages.Message($"Selected {randomViewer} from queue", MessageTypeDefOf.NeutralEvent);
+            // Messages.Message($"Selected {randomViewer} from queue", MessageTypeDefOf.NeutralEvent);
+            Messages.Message("RICS.Message.SelectedRandomViewer".Translate(randomViewer), MessageTypeDefOf.NeutralEvent);
         }
 
         private void SendPawnOffer(string username, string platformID, Pawn pawn)
@@ -639,13 +661,15 @@ namespace CAP_ChatInteractive
                 if (viewer != null)
                 {
                     platformID = viewer.GetPrimaryPlatformIdentifier();
-                    Logger.Debug($"Found platform ID for {username}: {platformID}");
+                    //Logger.Debug($"Found platform ID for {username}: {platformID}");
                 }
                 else
                 {
                     // Show warning and abort the assignment
-                    Messages.Message($"Cannot assign pawn - viewer '{username}' not found in database.", MessageTypeDefOf.RejectInput);
-                    Logger.Warning($"Cannot assign pawn to {username} - viewer not found in database");
+                    //Messages.Message($"Cannot assign pawn - viewer '{username}' not found in database.", MessageTypeDefOf.RejectInput);
+                    Messages.Message("RICS.Message.ViewerNotFound".Translate(username), MessageTypeDefOf.RejectInput);
+
+                    //Logger.Warning($"Cannot assign pawn to {username} - viewer not found in database");
                     return; // Abort the assignment
                 }
             }
@@ -657,7 +681,9 @@ namespace CAP_ChatInteractive
             queueManager.AssignPawnToViewerDialog(username, platformID, pawn);
 
             // Send confirmation message to chat (user-facing)
-            string assignMessage = $"🎉 You have been assigned {pawn.Name}! Use !mypawn to check your pawn's status.";
+            // string assignMessage = $"🎉 You have been assigned {pawn.Name}! Use !mypawn to check your pawn's status.";
+            string assignMessage = "RICS.Message.PawnAssigned".Translate(pawn.Name.ToStringFull);
+            
             ChatCommandProcessor.SendMessageToUsername(username, assignMessage);
 
             // Update UI
@@ -672,7 +698,8 @@ namespace CAP_ChatInteractive
             else
                 selectedPawn = null;
 
-            Messages.Message($"Assigned pawn directly to {username}", MessageTypeDefOf.PositiveEvent);
+            // Messages.Message($"Assigned pawn directly to {username}", MessageTypeDefOf.PositiveEvent);
+            Messages.Message("RICS.Message.PawnAssignedDirectly".Translate(username), MessageTypeDefOf.PositiveEvent);
         }
 
         private GameComponent_PawnAssignmentManager GetQueueManager()

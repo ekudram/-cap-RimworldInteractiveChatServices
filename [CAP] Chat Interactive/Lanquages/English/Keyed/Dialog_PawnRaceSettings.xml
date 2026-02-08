@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- Dialog_PawnRaceSettings.cs -->
+    
+  <!-- Headers -->
+  <RICS.Header.PawnRaces>Pawn Races {0}</RICS.Header.PawnRaces>
+  <RICS.Button.ResetAllPrices>Reset all Prices</RICS.Button.ResetAllPrices>
+  <RICS.Header.Races>Races</RICS.Header.Races>
+
+  <!-- Dialog Messages -->
+  <RICS.Dialog.ResetXenotypeQuestion>Reset ALL xenotype prices for {0} to gene-based values?</RICS.Dialog.ResetXenotypeQuestion>
+  <RICS.Dialog.ResetXenotypeWarning>This will overwrite any custom prices you've set.</RICS.Dialog.ResetXenotypeWarning>
+  <RICS.Label.SelectRace>Select a race to see details</RICS.Label.SelectRace>
+  <RICS.Label.RaceNotFound>Race {0} not found in settings</RICS.Label.RaceNotFound>
+
+  <!-- Dialog Buttons -->
+  <RICS.Dialog.Button.ResetAll>Yes, Reset All</RICS.Dialog.Button.ResetAll>
+  <RICS.Dialog.Button.Cancel>No, Cancel</RICS.Dialog.Button.Cancel>
+
+  <!-- Dialog Title -->
+  <RICS.Dialog.Title.ResetXenotypePrices>Reset Xenotype Prices</RICS.Dialog.Title.ResetXenotypePrices>
+    
+  <!-- Messages -->
+  <RICS.Message.SelectRaceToReset>Select a race first to reset prices</RICS.Message.SelectRaceToReset>
+  <RICS.Message.xenotypepricesfor>xenotype prices for</RICS.Message.xenotypepricesfor>
+    
+  <!-- Tooltips -->
+  <RICS.Tooltip.ResetAllPrices>Reset all xenotype prices for selected race to gene-based values</RICS.Tooltip.ResetAllPrices>
+  <RICS.Tooltip.PawnRacesHelp>Pawn Race Settings Help</RICS.Tooltip.PawnRacesHelp>
+  <RICS.Tooltip.DebugInfo>Open Race Debug Information</RICS.Tooltip.DebugInfo>
+    
+    
+    
+</LanguageData>
