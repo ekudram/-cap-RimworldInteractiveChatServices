@@ -63,7 +63,11 @@
   <!-- Quality and Research Settings -->
 
   <!-- Section headers -->
+  <RICS.Header.QnRSettings>Quality and Research Settings</RICS.Header.QnRSettings>
   <RICS.Header.QualitySettings>Allowed Quality Levels and Multipliers</RICS.Header.QualitySettings>
+  <RICS.Header.ResearchSettings>Research Requirements</RICS.Header.ResearchSettings>
+
+  <RICS.Label.RequireResearch>Enable research requirements for Purchases</RICS.Label.RequireResearch>
 
   <RICS.Button.QualityReset>Reset Multipliers to Defaults</RICS.Button.QualityReset>
 
@@ -94,6 +98,8 @@ Changes take effect immediately for new purchases.]]>
     <![CDATA[Reset all quality price multipliers to their default values:
 
 • Awful:      50%
++--------------------.
+
 • Poor:       75%
 • Normal:    100%
 • Good:      150%
