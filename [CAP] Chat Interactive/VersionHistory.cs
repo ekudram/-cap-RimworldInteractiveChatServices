@@ -405,6 +405,24 @@ Vehicles removed again becuase they wont spawn nicely.
 **KNOWN ISSUES**  
 - **Whispers controls are currently broken**—targeted for repair in version 1.0.18.  
 - Item parser requires improvements in handling quality and material parameters."
+                },
+            {"1.0.18",
+                @"===============================================================================
+        RICS 1.0.18 - Changelog
+Released: Feb 6, 2026
+
+Fixed:
+Items not minifiing is now fixed.  Note:  Building type items do not fit in the locker.
+Fixed/added Surgery command ""giveblood"" ""getblood"" sub commands
+Research Checks for Purchases is now more agressive checking benches and all recipes.
+
+Translations added for:
+Dialog Event Settings translation keys complete
+Dialog Event Custom Cooldown Window translation keys complete
+Rimazon locker translation keys complete
+Dialog Pawn Queue translation keys complete
+Dialog Pawn Race Settings translation keys complete
+Window For Quality and Research translation keys complete"
                 }
 
             
