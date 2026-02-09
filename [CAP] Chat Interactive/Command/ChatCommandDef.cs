@@ -161,7 +161,6 @@ namespace CAP_ChatInteractive
 
         public override int CooldownSeconds => GetCommandSettings()?.CooldownSeconds ?? 0;
 
-
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
             return _wrappedCommand.Execute(user, args);

@@ -181,7 +181,7 @@ namespace CAP_ChatInteractive
             }
         }
 
-        // Add this method to GameComponent_CommandsInitializer.cs
+        
         private void ValidateAndFixJsonPermissions()
         {
             try
