@@ -57,7 +57,7 @@ namespace _CAP__Chat_Interactive.Utilities
 
     public static class RaceSettingsManager
     {
-        public static Dictionary<string, RaceSettings> _raceSettings;  // SHout be point of truth!  is not Adjust code
+        public static Dictionary<string, RaceSettings> _raceSettings;  // SHout be point of truth!  if not Adjust code
         private static bool _isInitialized = false;
 
         public static Dictionary<string, RaceSettings> RaceSettings
@@ -343,6 +343,7 @@ namespace _CAP__Chat_Interactive.Utilities
             };
         }
 
+        // Eventually move DebugActions to a separate class, but for now it's convenient to have it here since it directly relates
         [DebugAction("CAP", "Delete RaceSettings & Rebuild", allowedGameStates = AllowedGameStates.Playing)]
         public static void DebugRebuildRaceSettings()
         {

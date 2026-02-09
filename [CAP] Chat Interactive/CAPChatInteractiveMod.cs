@@ -90,12 +90,12 @@ namespace CAP_ChatInteractive
             // Force viewer loading by accessing the All property
             var viewerCount = Viewers.All.Count; // This triggers static constructor
             Logger.Debug($"Pre-loaded {viewerCount} viewers");
-
+            /*
             if (Current.Game != null)
             {
                 Current.Game.GetComponent<GameComponent_RaceSettingsInitializer>();
             }
-
+            */
 
 
             // Then initialize services (which will use the registered commands)

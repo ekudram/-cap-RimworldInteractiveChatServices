@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Verse;
 
 // Add this class to a new file or within your existing files
 
@@ -429,31 +430,101 @@ Window For Quality and Research translation keys complete"
             // Add more versions here as they're released
         };
 
-        public static string GetUpdateNotes(string version)
+        public static void CheckForVersionUpdate()
         {
-            if (UpdateNotes.TryGetValue(version, out string notes))
+            var mod = CAPChatInteractiveMod.Instance;
+            if (mod == null)
             {
-                return notes;
+                Logger.Error("Cannot check version update - CAPChatInteractiveMod.Instance is null");
+                return;
             }
 
-            // Default/fallback message
-            return $"RICS has been updated to version {version}.\n\n" +
-                   "Please check the mod's documentation or release notes for detailed changelog.\n\n" +
-                   "Thank you for using RICS!";
+            var settingsContainer = mod.Settings;
+            if (settingsContainer == null)
+            {
+                Logger.Error("Cannot check version update - mod Settings container is null");
+                return;
+            }
+
+            var globalSettings = settingsContainer.GlobalSettings;
+            if (globalSettings == null)
+            {
+                Logger.Error("Cannot check version update - GlobalSettings is null");
+                return;
+            }
+
+            string currentVersion = globalSettings.modVersion ?? "Unknown";
+            string savedVersion = globalSettings.modVersionSaved;
+
+            Logger.Debug($"Version check - Current: {currentVersion}, Saved: {savedVersion ?? "None"}");
+
+            bool isFirstTimeOrMigration = string.IsNullOrEmpty(savedVersion);
+
+            if (isFirstTimeOrMigration || savedVersion != currentVersion)
+            {
+                string previousVersion = savedVersion ?? "First install / migration";
+
+                globalSettings.modVersionSaved = currentVersion;
+
+                try
+                {
+                    settingsContainer.Write();
+                    Logger.Debug($"Updated saved version from '{previousVersion}' to '{currentVersion}'");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Failed to save settings after version update: {ex.Message}");
+                }
+
+                ShowUpdateNotification(currentVersion, previousVersion);
+            }
+            else
+            {
+                Logger.Debug("No version change detected");
+            }
         }
 
-        public static string GetMigrationNotes(string fromVersion, string toVersion)
+        public static void ShowUpdateNotification(string newVersion, string oldVersion)
         {
-            // Special handling for migrations from older versions
-            if (string.IsNullOrEmpty(fromVersion) || fromVersion == "0")
+            if (Find.WindowStack == null)
             {
-                return GetUpdateNotes(toVersion) + "\n\n" +
-                       "NOTE: This appears to be your first time using RICS with this save file, " +
-                       "or you're migrating from a very old version. " +
-                       "Please review the changes above carefully.";
+                Logger.Warning("Cannot show update notification - WindowStack is not available yet");
+                return;
             }
 
-            return GetUpdateNotes(toVersion);
+            try
+            {
+                string updateNotes = GetUpdateNotesForVersion(newVersion, oldVersion);
+                Find.WindowStack.Add(new Dialog_RICS_Updates(updateNotes));
+                Logger.Message($"[RICS] Updated from version {oldVersion} to {newVersion}. Showing update notes.");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error showing update notification: {ex.Message}");
+            }
+        }
+
+        private static string GetUpdateNotesForVersion(string newVersion, string oldVersion)
+        {
+            if (!UpdateNotes.TryGetValue(newVersion, out string notes))
+            {
+                return FallbackUpdateMessage(newVersion, oldVersion);
+            }
+
+            // Optional: you could append migration note here if desired
+            if (string.IsNullOrEmpty(oldVersion))
+            {
+                notes += "\n\nNOTE: This appears to be your first time using RICS with this save file.";
+            }
+
+            return notes;
+        }
+
+        private static string FallbackUpdateMessage(string newVersion, string oldVersion)
+        {
+            return $"RICS has been updated to version {newVersion}.\n\n" +
+                   $"Previous version: {(string.IsNullOrEmpty(oldVersion) ? "First install / unknown" : oldVersion)}\n\n" +
+                   "Please check the mod's documentation or Steam Workshop page for the detailed changelog.";
         }
     }
 }
