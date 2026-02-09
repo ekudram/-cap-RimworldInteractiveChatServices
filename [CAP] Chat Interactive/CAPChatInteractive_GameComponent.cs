@@ -31,8 +31,8 @@ namespace CAP_ChatInteractive
     public class CAPChatInteractive_GameComponent : GameComponent
     {
         private int tickCounter = 0;
-        private const int TICKS_PER_REWARD = 120 * 60; // 2 minutes in ticks (60 ticks/sec * 120 sec)
-        // Flags to ensure certain checks and initializations only happen once
+        private const int TICKS_PER_REWARD = 120 * 60;
+
         private bool versionCheckDone = false;
         private bool raceSettingsInitialized = false;
         private bool storeInitialized = false;
@@ -54,42 +54,19 @@ namespace CAP_ChatInteractive
         public override void LoadedGame()
         {
             base.LoadedGame();
-            // 1st time version check on game load to catch returning players
-            PerformVersionCheckIfNeeded();
-            // 2nd Initialize Race Settings on game load
-            InitializeRaceSettings();
-            // 3rd Initialize Store on game load
-            InitializeStore();
-            // 4th Initialize Events on game load
-            InitializeEvents();
-            // 5th Initialize Weather on game load
-            InitializeWeather();
-            // 6th Initialize Traits on game load
-            InitializeTraits();
+            InitializeAll();
         }
 
         public override void StartedNewGame()
         {
             base.StartedNewGame();
-            // 1st time version check on new game start to catch first-time players
-            PerformVersionCheckIfNeeded();
-            // 2nd Thing to initialize
-            InitializeRaceSettings();
-            // 3rd Thing to initialize
-            InitializeStore();
-            // 4th Initialize Events
-            InitializeEvents();
-            // 5th Initialize Weather
-            InitializeWeather();
-            // 6th Initialize Traits
-            InitializeTraits();
+            InitializeAll();
         }
 
         public override void FinalizeInit()
         {
             base.FinalizeInit();
-            // Logger.Debug("GameComponent FinalizeInit - ensuring store is initialized");
-            // Store.StoreInventory.InitializeStore();
+            // Can be used later for very-late setup if needed
         }
 
         public override void GameComponentTick()
@@ -99,61 +76,68 @@ namespace CAP_ChatInteractive
             {
                 tickCounter = 0;
                 Viewers.AwardActiveViewersCoins();
-                Logger.Debug("2-minute coin reward tick executed - awarded coins to active viewers");
+                Logger.Debug("2-minute coin reward tick executed");
             }
         }
 
+        private void InitializeAll()
+        {
+            PerformVersionCheckIfNeeded();
+            InitializeRaceSettings();
+            InitializeStore();
+            InitializeEvents();
+            InitializeWeather();
+            InitializeTraits();
 
-        // MOD VERSION CHECKING AND UPDATE NOTIFICATIONS
+            Logger.Message("All core systems initialized");
+        }
+
         private void PerformVersionCheckIfNeeded()
         {
             if (versionCheckDone) return;
             versionCheckDone = true;
             VersionHistory.CheckForVersionUpdate();
-            Logger.Debug("Version check performed on game load/new game start");
+            Logger.Debug("Version check performed");
         }
-        // INITIALIZATION RACE SETTINGS
+
         private void InitializeRaceSettings()
         {
             if (raceSettingsInitialized) return;
-            // This will load settings from file or create defaults if missing
             var settings = RaceSettingsManager.RaceSettings;
             raceSettingsInitialized = true;
-            Logger.Debug($"Race settings initialized with {settings.Count} races");
+            Logger.Debug($"Race settings initialized ({settings.Count} races)");
         }
 
-        // INITIALIZATION STORE SETTINGS
         private void InitializeStore()
         {
             if (storeInitialized) return;
             StoreInventory.InitializeStore();
             storeInitialized = true;
-            Logger.Debug("Store inventory initialized in GameComponent");
+            Logger.Debug("Store inventory initialized");
         }
-        // INITIALIZATION EVENTS
+
         private void InitializeEvents()
         {
             if (eventsInitialized) return;
             IncidentsManager.InitializeIncidents();
             eventsInitialized = true;
-            Logger.Debug("Incidents initialized in GameComponent");
+            Logger.Debug("Incidents initialized");
         }
-        // INITIALIZATION WEATHER
+
         private void InitializeWeather()
         {
             if (weatherInitialized) return;
             BuyableWeatherManager.InitializeWeather();
             weatherInitialized = true;
-            Logger.Debug("Buyable weather initialized in GameComponent");
+            Logger.Debug("Buyable weather initialized");
         }
-        // INITIALIZATION TRAITS
+
         private void InitializeTraits()
         {
             if (traitsInitialized) return;
             TraitsManager.InitializeTraits();
             traitsInitialized = true;
-            Logger.Debug("Traits initialized in GameComponent");
+            Logger.Debug("Traits initialized");
         }
-
     }
 }
