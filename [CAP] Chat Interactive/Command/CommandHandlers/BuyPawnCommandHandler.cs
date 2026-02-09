@@ -972,7 +972,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             // Also show how many total races exist for context
             var allRaces = RaceUtils.GetAllHumanlikeRaces();
-            var raceSettings = JsonFileManager.LoadRaceSettings();
+
+            var raceSettings = RaceSettingsManager.RaceSettings;
+            if (raceSettings.Count == 0)
+            {
+                Logger.Debug("No race settings found, initializing defaults...");
+                // This will trigger the initialization in Dialog_PawnSettings.LoadRaceSettings
+                JsonFileManager.LoadRaceSettings();
+                // Just creating the dialog will initialize the settings
+            }
 
             var raceList = availableRaces.Select(r =>
             {

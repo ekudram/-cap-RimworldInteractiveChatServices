@@ -48,13 +48,6 @@ namespace CAP_ChatInteractive
 
             Settings = GetSettings<CAPChatInteractiveSettings>();
 
-            //// ────────────────────────────────────────────────
-            //// Harmony initialization — put this early!
-            //var harmony = new Harmony("com.capto.rimazonlocker");  // Unique ID (reverse-domain style is best)
-            //harmony.PatchAll();                                    // Applies ALL [HarmonyPatch] classes in your assembly
-            //Logger.Message("[RICS] Harmony patches applied successfully.");  // Confirm in log
-            //// ────────────────────────────────────────────────
-
             // Ensure modVersion is set in saved settings if it's empty
             if (string.IsNullOrEmpty(Settings.GlobalSettings.modVersionSaved))
             {
@@ -75,34 +68,15 @@ namespace CAP_ChatInteractive
                     Logger.Debug("GameComponent added to existing game");
                 }
             }
-            /*
-            // INITIALIZE RIMAZON LOCKER MANAGER 
-            LongEventHandler.ExecuteWhenFinished(() =>
-            {
-                if (Current.Game != null)
-                {
-                    Current.Game.GetComponent<GameComponent_LockerManager>();
-                }
-            });
-            */
-            Logger.Message("RICS mod loaded successfully!");
 
             // Force viewer loading by accessing the All property
             var viewerCount = Viewers.All.Count; // This triggers static constructor
             Logger.Debug($"Pre-loaded {viewerCount} viewers");
-            /*
-            if (Current.Game != null)
-            {
-                Current.Game.GetComponent<GameComponent_RaceSettingsInitializer>();
-            }
-            */
 
 
             // Then initialize services (which will use the registered commands)
             InitializeServices();
             InitializeAlienCompatibilityProvider(); // HAR
-
-
 
             Logger.Debug("CAPChatInteractiveMod constructor completed");
         }

@@ -27,19 +27,18 @@
  * - These represent substantial architectural differences from basic pawn assignment
  */
 
+using _CAP__Chat_Interactive.Utilities;
 using RimWorld;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Verse;
 
-
-
 namespace CAP_ChatInteractive
 {
     public class GameComponent_PawnAssignmentManager : GameComponent
     {
-        // CHANGED: Use platform ID as primary key, with username as fallback
+        // CHANGED: Use platform ID as primary key
         public Dictionary<string, string> viewerPawnAssignments; // PlatformID -> ThingID
         private List<string> pawnQueue; // PlatformID in queue order
         private Dictionary<string, float> queueJoinTimes; // PlatformID -> join time (ticks)
@@ -95,16 +94,23 @@ namespace CAP_ChatInteractive
             base.LoadedGame();
 
             // Ensure race settings are initialized
-            var raceSettings = JsonFileManager.LoadRaceSettings();
+            // Insure Races are loaded. If not we might have errors.
+            var raceSettings = RaceSettingsManager.RaceSettings;
+            
             if (raceSettings.Count == 0)
             {
                 Logger.Debug("No race settings found, initializing defaults...");
                 // This will trigger the initialization in Dialog_PawnSettings.LoadRaceSettings
-                var dialog = new Dialog_PawnRaceSettings();
+                JsonFileManager.LoadRaceSettings(); 
                 // Just creating the dialog will initialize the settings
             }
         }
 
+        // === AssignPawn Methods ===
+
+        // 2 references
+        // BuyPawnCommmandHandler.cs: Line 138
+        // This file: line 645
         public void AssignPawnToViewer(ChatMessageWrapper message, Pawn pawn)
         {
             string identifier = GetViewerIdentifier(message);
@@ -171,7 +177,7 @@ namespace CAP_ChatInteractive
         }
 
         // === GetAssignedPawn Methods ===
-
+        // 9 references
         public Pawn GetAssignedPawn(ChatMessageWrapper message)
         {
             string identifier = FindViewerIdentifier(message.Username, message);
@@ -193,18 +199,18 @@ namespace CAP_ChatInteractive
             Logger.Debug($"No assignment found for identifier: {identifier}");
             return null;
         }
-
+        // 6 references
         public Pawn GetAssignedPawn(string username)
         {
             string identifier = FindViewerIdentifier(username);
             return GetAssignedPawnIdentifier(identifier);
         }
-
+        // 0 references - direct identifier method for dialog use
         public Pawn GetAssingedPawn(string identifier)
         {
             return GetAssignedPawnIdentifier(identifier);
         }
-
+        // 2 references - gets username from platform ID for display purposes
         public string GetUsernameFromPlatformId(string platformId)
         {
             // Find the viewer that has this platform ID
@@ -224,6 +230,7 @@ namespace CAP_ChatInteractive
         }
 
         // PRIVATE: Internal method that takes identifier directly
+        // 4 references - used by public methods that resolve identifier first
         public Pawn GetAssignedPawnIdentifier(string identifier)
         {
             // FIX: Check if identifier is null before using it
@@ -252,7 +259,7 @@ namespace CAP_ChatInteractive
         }
 
         // === HasAssignedPawn Methods ===
-
+        // 1 reference
         public bool HasAssignedPawn(ChatMessageWrapper message)
         {
             string identifier = FindViewerIdentifier(message.Username, message);
@@ -265,7 +272,7 @@ namespace CAP_ChatInteractive
             }
             return false;
         }
-
+        // 3 references
         public bool HasAssignedPawn(string username)
         {
             string identifier = FindViewerIdentifier(username);
@@ -285,7 +292,7 @@ namespace CAP_ChatInteractive
         }
 
         // === UnassignPawn Methods ===
-
+        // 1 reference: Used with !leave command to unassign viewer from their pawn
         public void UnassignPawn(ChatMessageWrapper message)
         {
             string identifier = GetViewerIdentifier(message);
@@ -303,6 +310,9 @@ namespace CAP_ChatInteractive
             }
 
             // Also remove any legacy username assignment and reset nickname
+            // This code is very obsolete and should be removed
+            // in a future major version once we can be sure all legacy assignments are cleaned up,
+            // but we'll keep it for now to ensure no one gets stuck with an unremovable pawn due to the old system
             string legacyId = GetLegacyIdentifier(message.Username);
             if (viewerPawnAssignments.TryGetValue(legacyId, out thingId))
             {
@@ -615,13 +625,6 @@ namespace CAP_ChatInteractive
             return pendingOffers.ContainsKey(platformId);
         }
 
-        // NEW: Legacy overload
-        public bool HasPendingOffer(string username)
-        {
-            string identifier = GetLegacyIdentifier(username);
-            return pendingOffers.ContainsKey(identifier);
-        }
-
         public Pawn AcceptPendingOffer(ChatMessageWrapper messageWrapper)
         {
             string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
@@ -728,12 +731,6 @@ namespace CAP_ChatInteractive
 
             // Priority 3: Display Name (last resort)
             return $"name:{message.DisplayName?.ToLowerInvariant() ?? "unknown"}";
-        }
-
-        private string GetViewerIdentifier(string username)
-        {
-            
-            return $"{username.ToLowerInvariant()}";
         }
 
         private string GetLegacyIdentifier(string username)

@@ -49,8 +49,7 @@ namespace CAP_ChatInteractive
             forcePause = true;
             absorbInputAroundWindow = true;
             // optionalTitle = "Pawn Race & Xenotype Settings";
-
-            LoadRaceSettings();
+            raceSettings = RaceSettingsManager.RaceSettings;
             FilterRaces();
         }
 
@@ -757,11 +756,6 @@ namespace CAP_ChatInteractive
         }
 
         // In Dialog_PawnSettings.cs - Update the LoadRaceSettings method
-        private void LoadRaceSettings()
-        {
-            // Use centralized manager instead of loading directly
-            raceSettings = RaceSettingsManager.RaceSettings;
-        }
 
         private void SaveRaceSettings()
         {

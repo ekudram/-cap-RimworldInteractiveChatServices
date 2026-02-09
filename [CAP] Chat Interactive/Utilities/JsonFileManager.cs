@@ -387,6 +387,7 @@ namespace CAP_ChatInteractive
                 return new Dictionary<string, RaceSettings>();
             }
         }
+
         public static Dictionary<string, RaceSettings> LoadRaceSettings()
         {
             string json = LoadFile("RaceSettings.json");

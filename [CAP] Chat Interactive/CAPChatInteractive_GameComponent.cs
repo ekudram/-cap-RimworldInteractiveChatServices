@@ -87,7 +87,7 @@ namespace CAP_ChatInteractive
 
             VersionHistory.CheckForVersionUpdate();
         }
-
+        // INITIALIZATION RACE SETTINGS
         private void InitializeRaceSettings()
         {
             if (raceSettingsInitialized) return;
