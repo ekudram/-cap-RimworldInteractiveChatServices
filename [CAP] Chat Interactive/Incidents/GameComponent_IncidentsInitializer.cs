@@ -16,50 +16,16 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Initializes incident and weather systems when a game is loaded or started
-using CAP_ChatInteractive.Commands.ViewerCommands;
-using RimWorld;
 using Verse;
+
+// Leave empty to prevent non critical errors related to missing game components during incident initialization.
+// Actual initialization logic is handled in CAPChatInteractive_GameComponent to ensure proper sequencing and error handling.
 
 namespace CAP_ChatInteractive.Incidents
 {
     public class GameComponent_IncidentsInitializer : GameComponent
     {
-        private bool incidentsInitialized = false;
-        private bool weatherInitialized = false;
-
         public GameComponent_IncidentsInitializer(Game game) { }
 
-        public override void LoadedGame()
-        {
-            InitializeSystems();
-        }
-
-        public override void StartedNewGame()
-        {
-            InitializeSystems();
-        }
-
-        public override void GameComponentTick()
-        {
-            if ((!incidentsInitialized || !weatherInitialized) && Current.ProgramState == ProgramState.Playing)
-            {
-                InitializeSystems();
-            }
-        }
-
-        private void InitializeSystems()
-        {
-            if (!incidentsInitialized)
-            {
-                IncidentsManager.InitializeIncidents();
-                incidentsInitialized = true;
-            }
-
-            if (!weatherInitialized)
-            {
-                Weather.BuyableWeatherManager.InitializeWeather();
-                weatherInitialized = true;
-            }
-        }
     }
 }

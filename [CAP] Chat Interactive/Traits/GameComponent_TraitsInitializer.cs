@@ -15,43 +15,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // A game component to initialize traits for chat interactive mod
-using RimWorld;
 using Verse;
-
+// Leave empty to prevent non critical errors related to missing game components during incident initialization.
+// Actual initialization logic is handled in CAPChatInteractive_GameComponent to ensure proper sequencing and error handling.
 namespace CAP_ChatInteractive.Traits
 {
     public class GameComponent_TraitsInitializer : GameComponent
     {
-        private bool traitsInitialized = false;
-
         public GameComponent_TraitsInitializer(Game game) { }
-
-        public override void LoadedGame()
-        {
-            InitializeTraits();
-        }
-
-        public override void StartedNewGame()
-        {
-            InitializeTraits();
-        }
-
-        public override void GameComponentTick()
-        {
-            // Initialize on first tick to ensure all defs are loaded
-            if (!traitsInitialized && Current.ProgramState == ProgramState.Playing)
-            {
-                InitializeTraits();
-            }
-        }
-
-        private void InitializeTraits()
-        {
-            if (!traitsInitialized)
-            {
-                TraitsManager.InitializeTraits();
-                traitsInitialized = true;
-            }
-        }
     }
 }

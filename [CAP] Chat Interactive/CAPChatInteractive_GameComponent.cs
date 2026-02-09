@@ -20,8 +20,10 @@
 
 
 using _CAP__Chat_Interactive.Utilities;
+using CAP_ChatInteractive.Incidents;
 using CAP_ChatInteractive.Store;
-using RimWorld;
+using CAP_ChatInteractive.Incidents.Weather;
+using CAP_ChatInteractive.Traits;
 using Verse;
 
 namespace CAP_ChatInteractive
@@ -34,6 +36,9 @@ namespace CAP_ChatInteractive
         private bool versionCheckDone = false;
         private bool raceSettingsInitialized = false;
         private bool storeInitialized = false;
+        private bool eventsInitialized = false;
+        private bool weatherInitialized = false;
+        private bool traitsInitialized = false;
 
         public CAPChatInteractive_GameComponent(Game game)
         {
@@ -55,6 +60,12 @@ namespace CAP_ChatInteractive
             InitializeRaceSettings();
             // 3rd Initialize Store on game load
             InitializeStore();
+            // 4th Initialize Events on game load
+            InitializeEvents();
+            // 5th Initialize Weather on game load
+            InitializeWeather();
+            // 6th Initialize Traits on game load
+            InitializeTraits();
         }
 
         public override void StartedNewGame()
@@ -66,6 +77,12 @@ namespace CAP_ChatInteractive
             InitializeRaceSettings();
             // 3rd Thing to initialize
             InitializeStore();
+            // 4th Initialize Events
+            InitializeEvents();
+            // 5th Initialize Weather
+            InitializeWeather();
+            // 6th Initialize Traits
+            InitializeTraits();
         }
 
         public override void FinalizeInit()
@@ -92,34 +109,50 @@ namespace CAP_ChatInteractive
         {
             if (versionCheckDone) return;
             versionCheckDone = true;
-
             VersionHistory.CheckForVersionUpdate();
+            Logger.Debug("Version check performed on game load/new game start");
         }
         // INITIALIZATION RACE SETTINGS
         private void InitializeRaceSettings()
         {
             if (raceSettingsInitialized) return;
-
-            Logger.Debug("=== INITIALIZING RACE SETTINGS ===");
-
-            // This triggers the full load/initialization in RaceSettingsManager
+            // This will load settings from file or create defaults if missing
             var settings = RaceSettingsManager.RaceSettings;
-
             raceSettingsInitialized = true;
-
             Logger.Debug($"Race settings initialized with {settings.Count} races");
-            Logger.Debug("=== FINISHED INITIALIZING RACE SETTINGS ===");
         }
 
         // INITIALIZATION STORE SETTINGS
-
         private void InitializeStore()
         {
-            if (!storeInitialized)
-            {
-                StoreInventory.InitializeStore();
-                storeInitialized = true;
-            }
+            if (storeInitialized) return;
+            StoreInventory.InitializeStore();
+            storeInitialized = true;
+            Logger.Debug("Store inventory initialized in GameComponent");
+        }
+        // INITIALIZATION EVENTS
+        private void InitializeEvents()
+        {
+            if (eventsInitialized) return;
+            IncidentsManager.InitializeIncidents();
+            eventsInitialized = true;
+            Logger.Debug("Incidents initialized in GameComponent");
+        }
+        // INITIALIZATION WEATHER
+        private void InitializeWeather()
+        {
+            if (weatherInitialized) return;
+            BuyableWeatherManager.InitializeWeather();
+            weatherInitialized = true;
+            Logger.Debug("Buyable weather initialized in GameComponent");
+        }
+        // INITIALIZATION TRAITS
+        private void InitializeTraits()
+        {
+            if (traitsInitialized) return;
+            TraitsManager.InitializeTraits();
+            traitsInitialized = true;
+            Logger.Debug("Traits initialized in GameComponent");
         }
 
     }
