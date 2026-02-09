@@ -132,7 +132,7 @@ namespace CAP_ChatInteractive
 
         // Command settings could be added here in the future
         public string Prefix = "!";
-        public string BuyPrefix = "$";
+        public string BuyPrefix = "#";
 
         // Lootbox settings
         public IntRange LootBoxRandomCoinRange = new IntRange(250, 750);

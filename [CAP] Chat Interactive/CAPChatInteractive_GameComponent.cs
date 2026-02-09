@@ -20,6 +20,7 @@
 
 
 using _CAP__Chat_Interactive.Utilities;
+using CAP_ChatInteractive.Store;
 using RimWorld;
 using Verse;
 
@@ -32,6 +33,7 @@ namespace CAP_ChatInteractive
         // Flags to ensure certain checks and initializations only happen once
         private bool versionCheckDone = false;
         private bool raceSettingsInitialized = false;
+        private bool storeInitialized = false;
 
         public CAPChatInteractive_GameComponent(Game game)
         {
@@ -48,23 +50,29 @@ namespace CAP_ChatInteractive
         {
             base.LoadedGame();
             // 1st time version check on game load to catch returning players
-            PerformVersionCheckIfNeeded(); // Check version on game load as well
+            PerformVersionCheckIfNeeded();
+            // 2nd Initialize Race Settings on game load
             InitializeRaceSettings();
+            // 3rd Initialize Store on game load
+            InitializeStore();
         }
 
         public override void StartedNewGame()
         {
             base.StartedNewGame();
             // 1st time version check on new game start to catch first-time players
-            PerformVersionCheckIfNeeded(); // Check version on new game start as well
+            PerformVersionCheckIfNeeded();
+            // 2nd Thing to initialize
             InitializeRaceSettings();
+            // 3rd Thing to initialize
+            InitializeStore();
         }
 
         public override void FinalizeInit()
         {
             base.FinalizeInit();
-            Logger.Debug("GameComponent FinalizeInit - ensuring store is initialized");
-            Store.StoreInventory.InitializeStore();
+            // Logger.Debug("GameComponent FinalizeInit - ensuring store is initialized");
+            // Store.StoreInventory.InitializeStore();
         }
 
         public override void GameComponentTick()
@@ -101,6 +109,17 @@ namespace CAP_ChatInteractive
 
             Logger.Debug($"Race settings initialized with {settings.Count} races");
             Logger.Debug("=== FINISHED INITIALIZING RACE SETTINGS ===");
+        }
+
+        // INITIALIZATION STORE SETTINGS
+
+        private void InitializeStore()
+        {
+            if (!storeInitialized)
+            {
+                StoreInventory.InitializeStore();
+                storeInitialized = true;
+            }
         }
 
     }

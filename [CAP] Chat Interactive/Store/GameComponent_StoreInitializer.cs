@@ -16,59 +16,18 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // Initializes the in-game store when a game is loaded or started new.
 
-/*
-============================================================
-STORE INITIALIZATION ONLY
-============================================================
+// Dummy game component to handle store initialization separately from the main game component
+// ensuring better modularity and separation of concerns.
 
-PURPOSE:
-• Initialize store once when game loads
-• Ensure AllStoreItems Dictionary is populated
-• Handle validation/updates from JSON
+// Left in place to prevent Error showing in older game saves.
 
-NOT FOR:
-• Store data saving (use StoreInventory.SaveStoreToJson())
-• Store operations (use StoreInventory.AllStoreItems)
-• Store UI logic (see Dialog_StoreEditor)
-============================================================
-*/
-using RimWorld;
 using Verse;
 
 namespace CAP_ChatInteractive.Store
 {
     public class GameComponent_StoreInitializer : GameComponent
     {
-        private bool storeInitialized = false;
-
         public GameComponent_StoreInitializer(Game game) { }
 
-        public override void LoadedGame()
-        {
-            InitializeStore();
-        }
-
-        public override void StartedNewGame()
-        {
-            InitializeStore();
-        }
-
-        public override void GameComponentTick()
-        {
-            // Initialize on first tick to ensure all defs are loaded
-            if (!storeInitialized && Current.ProgramState == ProgramState.Playing)
-            {
-                InitializeStore();
-            }
-        }
-
-        private void InitializeStore()
-        {
-            if (!storeInitialized)
-            {
-                StoreInventory.InitializeStore();
-                storeInitialized = true;
-            }
-        }
     }
 }
