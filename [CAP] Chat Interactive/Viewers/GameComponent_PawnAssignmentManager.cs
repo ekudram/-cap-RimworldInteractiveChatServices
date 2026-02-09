@@ -89,23 +89,6 @@ namespace CAP_ChatInteractive
             }
         }
 
-        public override void LoadedGame()
-        {
-            base.LoadedGame();
-
-            // Ensure race settings are initialized
-            // Insure Races are loaded. If not we might have errors.
-            var raceSettings = RaceSettingsManager.RaceSettings;
-            
-            if (raceSettings.Count == 0)
-            {
-                Logger.Debug("No race settings found, initializing defaults...");
-                // This will trigger the initialization in Dialog_PawnSettings.LoadRaceSettings
-                JsonFileManager.LoadRaceSettings(); 
-                // Just creating the dialog will initialize the settings
-            }
-        }
-
         // === AssignPawn Methods ===
 
         // 2 references
