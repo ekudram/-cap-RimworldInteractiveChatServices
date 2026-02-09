@@ -755,8 +755,6 @@ namespace CAP_ChatInteractive
             return new List<string>();
         }
 
-        // In Dialog_PawnSettings.cs - Update the LoadRaceSettings method
-
         private void SaveRaceSettings()
         {
             try

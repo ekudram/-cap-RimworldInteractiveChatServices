@@ -17,7 +17,6 @@
   <RICS.Message.UnavailableEvents>Unavailable Events: {0}</RICS.Message.UnavailableEvents>
   <RICS.Message.EventsbyKarma>Available events by karma type:</RICS.Message.EventsbyKarma>
   <RICS.Message.KarmaGroup>  • {0}: {1} events</RICS.Message.KarmaGroup>
-  <RICS.Message.ShowUnavailableDesc>Unavailable events are grayed out and cannot be enabled</RICS.Message.ShowUnavailableDesc>
   <RICS.Message.CooldownDurationDesc>Events will be unavailable for {0} in-game days after purchase</RICS.Message.CooldownDurationDesc>
   <RICS.Message.EventsPerCooldown>Events per cooldown period:</RICS.Message.EventsPerCooldown>
   <RICS.Message.EventsPerCooldownDesc>Limit of {0} event purchases per cooldown period</RICS.Message.EventsPerCooldownDesc>

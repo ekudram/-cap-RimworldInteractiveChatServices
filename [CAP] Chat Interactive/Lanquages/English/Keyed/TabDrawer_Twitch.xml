@@ -79,10 +79,6 @@
   <RICS.Twitch.ClearTokenTooltip>Remove the current Twitch OAuth token</RICS.Twitch.ClearTokenTooltip>
   <RICS.Twitch.TokenCleared>Twitch token cleared</RICS.Twitch.TokenCleared>
 
-  <RICS.Twitch.AddedOAuthPrefix>Added 'oauth:' prefix to token</RICS.Twitch.AddedOAuthPrefix>
-  <RICS.Twitch.TokenPastedSuccess>Twitch token pasted successfully!</RICS.Twitch.TokenPastedSuccess>
-  <RICS.Twitch.ClipboardEmpty>Clipboard is empty!</RICS.Twitch.ClipboardEmpty>
-
   <!-- Get Token Button -->
   <RICS.Twitch.GetTokenButton>Get Twitch Token</RICS.Twitch.GetTokenButton>
   <RICS.Twitch.GetTokenButtonTooltip>Open Twitch Token Generator to get your OAuth token (with instructions)</RICS.Twitch.GetTokenButtonTooltip>
@@ -176,13 +172,9 @@
 
   <RICS.Twitch.QuickTipsTooltip></RICS.Twitch.QuickTipsTooltip>
 
-  
   <RICS.Twitch.AuthenticationHeader>Authentication</RICS.Twitch.AuthenticationHeader>
   <RICS.Twitch.AccessTokenLabel>Access Token:</RICS.Twitch.AccessTokenLabel>
-  <RICS.Twitch.BotUsernameTooltip.Title>Bot Account Username</RICS.Twitch.BotUsernameTooltip.Title>
-
-  <RICS.Twitch.BotAccountStatus.Separate>✓ Using dedicated bot account</RICS.Twitch.BotAccountStatus.Separate>
-  <RICS.Twitch.BotAccountStatus.Main>⚠ Using main streamer account as bot</RICS.Twitch.BotAccountStatus.Main>
+  
   <RICS.Twitch.TokenStatus.Ready>✓ Token configured – ready to connect</RICS.Twitch.TokenStatus.Ready>
   <RICS.Twitch.TokenStatus.Missing>❌ No token – cannot connect</RICS.Twitch.TokenStatus.Missing>
   <RICS.Twitch.TokenTypePrefix>Token type:</RICS.Twitch.TokenTypePrefix>
