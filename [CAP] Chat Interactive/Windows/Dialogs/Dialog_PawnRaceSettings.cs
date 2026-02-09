@@ -83,13 +83,13 @@ namespace CAP_ChatInteractive
             int enabledRacesCount = RaceUtils.GetEnabledRaces().Count;
             int totalRacesCount = DefDatabase<ThingDef>.AllDefs.Count(d => d.race?.Humanlike ?? false);
             // string titleText = $"Pawn Races ({enabledRacesCount}";
-            string titleText = $"RICS.Header.PawnRaces {enabledRacesCount}".Translate();
+            string titleText = $"RICS.Header.PawnRaces".Translate(enabledRacesCount);
 
             // Show filtered count if search is active
             if (filteredRaces.Count != enabledRacesCount)
                 titleText += $"/{filteredRaces.Count}";
 
-            titleText += $")";
+            //titleText += $")";
 
             Widgets.Label(titleRect, titleText);
 
@@ -265,7 +265,7 @@ namespace CAP_ChatInteractive
             Rect headerRect = new Rect(rect.x, rect.y, rect.width, 30f);
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter;
-            GUI.color = ColorLibrary.HeaderAccent;
+            GUI.color = ColorLibrary.SubHeader;
             Widgets.Label(headerRect, "RICS.Header.Races".Translate());
             GUI.color = Color.white;
             Text.Anchor = TextAnchor.UpperLeft;
