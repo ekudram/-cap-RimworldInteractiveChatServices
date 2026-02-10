@@ -93,6 +93,9 @@ namespace CAP_ChatInteractive.Store
 
             // Check for CompUsableImplant (very reliable for Biotech / modded implants)
             if (thingDef.HasComp<CompUsableImplant>()) return true;
+            // Check for CompUsable (more general, but still a strong indicator of usability)
+            if (thingDef.HasComp<CompUsable>()) return true; 
+
 
             // Name-based fallbacks (only as last resort)
             string defName = thingDef.defName?.ToLowerInvariant() ?? "";
