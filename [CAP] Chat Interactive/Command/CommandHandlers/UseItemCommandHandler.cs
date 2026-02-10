@@ -1,12 +1,4 @@
-﻿using CAP_ChatInteractive.Commands.Cooldowns;
-using CAP_ChatInteractive.Utilities;
-using RimWorld;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Verse;
-using Verse.Sound;
-// Copyright (c) Captolamia
+﻿// Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
@@ -23,10 +15,20 @@ using Verse.Sound;
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Command handler for buying items from Rimazon store
+using CAP_ChatInteractive.Commands.Cooldowns;
+using CAP_ChatInteractive.Utilities;
+using RimWorld;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Verse;
+using Verse.Sound;
+
 namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     internal static class UseItemCommandHandler
     {
+
         public static string HandleUseItem(ChatMessageWrapper messageWrapper, string[] args)
         {
             try
@@ -510,8 +512,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         Logger.Debug($"Nutrition after manual application: {pawn.needs.food.CurLevel}");
                     }
 
-
-
                     // Play appropriate sound - use safe sound playing method
                     PlayIngestSoundSafely(thingDef, pawn);
 
@@ -530,11 +530,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                     SoundDefOf.Interact_Tend.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
                 }
+                else if (thingDef.HasComp(typeof(CompUsable)) || thingDef.HasComp(typeof(CompUsableImplant)))
+                {
+                    // NEW: Generalized handling for all CompUsable items (includes implants, trainers, etc.)
+                    UseCompUseEffectItem(thing, pawn);  // Updated method name for clarity
+                    Logger.Debug($"Applying CompUsable/Implant effect for {thingDef.defName} on {pawn.Name}");
+                    SoundDefOf.PsychicPulseGlobal.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+                }
                 else if (thingDef.defName.Contains("Psytrainer") || thingDef.defName.Contains("Neurotrainer") || thingDef.defName == "PsychicAmplifier")
                 {
 
                     // FIX: Actually use psy trainers and neurotrainers instead of just adding to inventory
                     UseCompUseEffectItem(thing, pawn);
+                    Logger.Debug($"Used psy/neuro trainer {thingDef.defName} on {pawn.Name}");
                 }
                 else if (thingDef.defName.Contains("Neuroformer"))
                 {
@@ -682,5 +690,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
         }
+        
     }
 }
