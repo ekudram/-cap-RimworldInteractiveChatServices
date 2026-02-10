@@ -73,16 +73,45 @@ namespace CAP_ChatInteractive.Store
         }
         public static bool IsItemUsable(ThingDef thingDef)
         {
-            // Items that can be consumed/used up when used
-            return thingDef.IsIngestible ||
-                   thingDef.IsMedicine ||
-                   thingDef.IsDrug ||
-                   thingDef.IsPleasureDrug ||
-                   thingDef.defName.Contains("Neurotrainer") ||
-                   thingDef.defName.Contains("Psytrainer") ||
-                   thingDef.defName.Contains("PsychicAmplifier") ||
-                   thingDef.defName.Contains("Serum") ||
-                   thingDef.defName.Contains("Pack");
+            if (thingDef == null) return false;
+
+            // Explicitly exclude things that are clearly NOT consumable/usable
+            //if (thingDef.IsApparel)
+            //{
+            //    // Normal apparel (clothing, armor, etc.) is NOT usable in the consumable sense
+            //    // BUT allow implants that are technically apparel
+            //    return false;
+            //}
+
+            if (thingDef.IsWeapon) return false;           // weapons are equippable, not consumable
+            if (thingDef.IsBuildingArtificial) return false; // buildings are not usable items
+
+            // Core usable categories
+            if (thingDef.IsIngestible) return true;
+            if (thingDef.IsMedicine) return true;
+            if (thingDef.IsDrug || thingDef.IsPleasureDrug) return true;
+
+            // Check for CompUsableImplant (very reliable for Biotech / modded implants)
+            if (thingDef.HasComp<CompUsableImplant>()) return true;
+
+            // Name-based fallbacks (only as last resort)
+            string defName = thingDef.defName?.ToLowerInvariant() ?? "";
+            if (defName.Contains("neurotrainer") ||
+                defName.Contains("psytrainer") ||
+                defName.Contains("psychicamplifier") ||
+                defName.Contains("serum"))
+            {
+                return true;
+            }
+
+            // Optional: catch remaining "Pack" items that are actually usable
+            // (but only if they are NOT apparel — already guarded above)
+            if (defName.Contains("pack") && !thingDef.IsApparel)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private int CalculateBasePrice(ThingDef thingDef)
