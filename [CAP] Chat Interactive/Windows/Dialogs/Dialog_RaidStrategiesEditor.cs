@@ -48,15 +48,21 @@ namespace CAP_ChatInteractive
             doCloseButton = true;
             forcePause = true;
             absorbInputAroundWindow = true;
-            optionalTitle = "Configure Raid Strategies";
+            // optionalTitle = "Configure Raid Strategies";
         }
 
         public override void DoWindowContents(Rect inRect)
         {
+
+            // Make OptionalTitle the Header.
+            // GUI.color = ColorLibrary.HeaderAccent;
+
             // Header
             Text.Font = GameFont.Medium;
+            GUI.color = ColorLibrary.HeaderAccent;
             Widgets.Label(new Rect(0f, 0f, inRect.width, 30f), "Allowed Raid Strategies");
             Text.Font = GameFont.Small;
+            GUI.color = Color.white;
 
             // Description
             Widgets.Label(new Rect(0f, 35f, inRect.width, 40f),

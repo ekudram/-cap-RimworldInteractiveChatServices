@@ -30,6 +30,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
     {
         public List<Thing> LockerDeliveredItems { get; set; } = new List<Thing>();
         public List<Thing> DropPodDeliveredItems { get; set; } = new List<Thing>();
+        public List<Thing> DirectlyDeliveredItems { get; set; } = new List<Thing>();
         public IntVec3 DeliveryPosition { get; set; }
         public DeliveryMethod PrimaryMethod { get; set; }
     }
@@ -338,7 +339,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             List<Thing> allItems = new List<Thing>();
             allItems.AddRange(result.LockerDeliveredItems);
             allItems.AddRange(result.DropPodDeliveredItems);
-
+            allItems.AddRange(result.DirectlyDeliveredItems);
             return (allItems, result.DeliveryPosition, result);
         }
 
@@ -450,26 +451,43 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Create items
             List<Thing> itemsToDeliver = CreateItemsForDelivery(thingDef, quantity, quality, finalMaterial);
 
+            // Track successfully direct-delivered items
+            List<Thing> directlyDelivered = new List<Thing>();
+
             // Try to deliver based on interaction type
             if (equipItem && pawn != null)
             {
+                result.PrimaryMethod = DeliveryMethod.Equipped;
                 foreach (var item in itemsToDeliver)
                 {
                     if (PawnItemHelper.EquipItemOnPawn(item, pawn))
                     {
-                        result.PrimaryMethod = DeliveryMethod.Equipped;
+                        directlyDelivered.Add(item);
                         Logger.Debug($"Item equipped on pawn");
+                    }
+                    else
+                    {
+                        // Optional: Fallback to inventory or drop if equip fails
+                        Logger.Debug($"Failed to equip {item.def.defName}, falling back to locker");
+                        TryDeliverToLocker(item, pawn.Map, pawn, result);
                     }
                 }
             }
             else if (wearItem && pawn != null)
             {
+                result.PrimaryMethod = DeliveryMethod.Worn;
                 foreach (var item in itemsToDeliver)
                 {
                     if (PawnItemHelper.WearApparelOnPawn(item, pawn))
                     {
-                        result.PrimaryMethod = DeliveryMethod.Worn;
+                        directlyDelivered.Add(item);
                         Logger.Debug($"Item worn by pawn");
+                    }
+                    else
+                    {
+                        // Optional: Fallback if wear fails
+                        Logger.Debug($"Failed to wear {item.def.defName}, falling back to locker");
+                        TryDeliverToLocker(item, pawn.Map, pawn, result);
                     }
                 }
             }
@@ -478,7 +496,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 result.PrimaryMethod = DeliveryMethod.Inventory;
                 foreach (var item in itemsToDeliver)
                 {
-                    if (!pawn.inventory.innerContainer.TryAdd(item))
+                    if (pawn.inventory.innerContainer.TryAdd(item))
+                    {
+                        directlyDelivered.Add(item);
+                    }
+                    else
                     {
                         Logger.Debug($"Inventory full for item {item.def.defName}");
                         // Fallback to locker delivery for failed inventory items
@@ -486,6 +508,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                 }
             }
+
+            result.DirectlyDeliveredItems = directlyDelivered; // Assign the successful ones
 
             return result;
         }

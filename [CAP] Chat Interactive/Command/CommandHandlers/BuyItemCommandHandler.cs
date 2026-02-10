@@ -219,22 +219,21 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 List<Thing> allSpawnedItems = new List<Thing>();
                 allSpawnedItems.AddRange(deliveryResult.LockerDeliveredItems);
                 allSpawnedItems.AddRange(deliveryResult.DropPodDeliveredItems);
+                allSpawnedItems.AddRange(deliveryResult.DirectlyDeliveredItems);
 
                 // Set ownership for each spawned item if this is a direct pawn delivery
+                Logger.Debug($"Setting ownership for spawned items - requireEquippable: {requireEquippable}, requireWearable: {requireWearable}, addToInventory: {addToInventory}");
                 if (requireEquippable || requireWearable || addToInventory)
                 {
                     foreach (Thing spawnedItem in allSpawnedItems)
                     {
+                        Logger.Debug($"Setting ownership for {spawnedItem.def.defName} to {viewerPawn.Name}");
                         TrySetItemOwnership(spawnedItem, viewerPawn);
                     }
                 }
 
                 // Create look targets - use the delivery position we know items will be at
                 LookTargets lookTargets = null;
-
-                // Get all spawned items for ownership setting (if needed)
-                allSpawnedItems.AddRange(deliveryResult.LockerDeliveredItems);
-                allSpawnedItems.AddRange(deliveryResult.DropPodDeliveredItems);
 
                 // For the LookTargets code, update to use deliveryResult.DeliveryPosition:
                 if (thingDef.thingClass == typeof(Verse.Pawn))
