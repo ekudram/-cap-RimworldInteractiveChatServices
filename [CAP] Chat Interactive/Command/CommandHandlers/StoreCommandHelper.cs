@@ -132,7 +132,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return true;
             }
 
-            // 1. Direct research prereqs on the ThingDef itself (buildings, some items, rare on pawns/mechs)
+            // 1. Direct ThingDef prereqs (buildings, turrets, etc.)
             if (thingDef.researchPrerequisites != null && thingDef.researchPrerequisites.Count > 0)
             {
                 foreach (var research in thingDef.researchPrerequisites)
@@ -143,9 +143,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         return false;
                     }
                 }
+                Logger.Debug($"All ThingDef prereqs met for '{storeItem.DefName}'");
+                return true;  // Early exit!
             }
 
-            // 2. If it's a building with its own recipe maker prereq
+            // 2. Craftables: recipeMaker prereq (auto-generated recipes on weapons/apparel/etc.)
             if (thingDef.recipeMaker != null && thingDef.recipeMaker.researchPrerequisite != null)
             {
                 if (!thingDef.recipeMaker.researchPrerequisite.IsFinished)
@@ -153,9 +155,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     Logger.Debug($"RecipeMaker prereq '{thingDef.recipeMaker.researchPrerequisite.defName}' unfinished for '{storeItem.DefName}'");
                     return false;
                 }
+                Logger.Debug($"RecipeMaker prereq met for '{storeItem.DefName}'");
+                return true;  // Early exit!
             }
 
-            // 3. Aggressive last-resort: Scan ALL recipes that produce this ThingDef
+            // 3. Fallback: Scan ALL recipes/benches (manual recipes only)
+            Logger.Debug($"No direct gates for '{storeItem.DefName}' → scanning recipes/benches");
             bool foundAnyProducingRecipe = false;
 
             foreach (var recipe in DefDatabase<RecipeDef>.AllDefsListForReading)
@@ -167,14 +172,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 foundAnyProducingRecipe = true;
 
-                // Recipe direct prereq (single)
+                // Recipe single/multi prereqs
                 if (recipe.researchPrerequisite != null && !recipe.researchPrerequisite.IsFinished)
                 {
                     Logger.Debug($"Recipe '{recipe.defName}' prereq '{recipe.researchPrerequisite.defName}' unfinished for '{storeItem.DefName}'");
                     return false;
                 }
-
-                // Recipe prereq list (less common but used in some mods)
                 if (recipe.researchPrerequisites != null)
                 {
                     foreach (var prereq in recipe.researchPrerequisites)
@@ -187,19 +190,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                 }
 
-                // Bench / worktable prereqs (this catches gestators, printers, smithies, fab benches, etc.)
+                // Bench prereqs via recipeUsers
                 if (recipe.recipeUsers != null)
                 {
                     foreach (var userDef in recipe.recipeUsers)
                     {
-                        if (userDef?.researchPrerequisites == null || userDef.researchPrerequisites.Count == 0)
-                            continue;
+                        if (userDef?.researchPrerequisites == null || userDef.researchPrerequisites.Count == 0) continue;
 
                         foreach (var benchPrereq in userDef.researchPrerequisites)
                         {
                             if (benchPrereq != null && !benchPrereq.IsFinished)
                             {
-                                Logger.Debug($"Bench '{userDef.defName}' prereq '{benchPrereq.defName}' unfinished (via recipe '{recipe.defName}') for '{storeItem.DefName}'");
+                                Logger.Debug($"Bench '{userDef.defName}' prereq '{benchPrereq.defName}' unfinished (via recipe '{recipe.defName}')");
                                 return false;
                             }
                         }
@@ -207,16 +209,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            // If we found recipes but none had unfinished prereqs → allow
-            // If we found ZERO recipes → assume no gate (protects against bad mods / direct spawns)
             if (foundAnyProducingRecipe)
-            {
                 Logger.Debug($"Found producing recipes for '{storeItem.DefName}', all prereqs met");
-            }
             else
-            {
-                Logger.Debug($"No producing recipes found for '{storeItem.DefName}' → no research gate detected, allowing purchase");
-            }
+                Logger.Debug($"No producing recipes for '{storeItem.DefName}' → allowing purchase");
 
             return true;
         }
