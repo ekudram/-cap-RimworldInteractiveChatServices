@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <!-- Dialog_StoreEditor -->
+  <RICS.SE.Title>Store Editor</RICS.SE.Title>
+
+  <!-- Columns -->
+  <RICS.ModSource>Mod Source</RICS.ModSource>
+  <RICS.Category>Category</RICS.Category>
+
+  <RICS.SE.Categories>Categories</RICS.SE.Categories>
+  <RICS.SE.ModSources>Mod Sources</RICS.SE.ModSources>
+
+  <RICS.SE.ItemsCount>Items ({0})</RICS.SE.ItemsCount>
+  
+  <!-- Labels -->
+  <RICS.SE.Price>Price:</RICS.SE.Price>
+
+  <!-- Buttons -->
+  <RICS.SE.ResetAll>Reset All</RICS.SE.ResetAll>
+  <RICS.SE.QualityResearch>Quality/Research</RICS.SE.QualityResearch>
+  <RICS.SE.Reset>Reset</RICS.SE.Reset>
+  <RICS.SE.EnableArrow>Enable →</RICS.SE.EnableArrow>
+  <RICS.SE.DisableArrow>Disable →</RICS.SE.DisableArrow>
+  <RICS.SE.ResetAll>Reset All</RICS.SE.ResetAll>
+  
+  <!-- Checkboxes -->
+  <RICS.SE.Usable>Usable</RICS.SE.Usable>
+  <RICS.SE.Wearable>Wearable</RICS.SE.Wearable>
+  <RICS.SE.Equippable>Equippable</RICS.SE.Equippable>
+  <RICS.SE.Enabled>Enabled</RICS.SE.Enabled>
+  
+  <!-- Message -->
+
+  <RICS.SE.ResetConfirmation>Are you sure you want to reset all store settings? This action cannot be undone.</RICS.SE.ResetConfirmation>
+  <RICS.SE.EnabledCategory>Enabled {0} {1} items</RICS.SE.EnabledCategory>
+  <RICS.SE.DisabledCategory>Disabled {0} {1} items</RICS.SE.DisabledCategory>
+  <RICS.SE.DisabledType>Disabled {0} {1}</RICS.SE.DisabledType>
+  <RICS.SE.EnabledModSource>Enabled {0} items from '{1}'</RICS.SE.EnabledModSource>
+  <RICS.SE.DisabledModSource>Disabled {0} items from '{1}'</RICS.SE.DisabledModSource>
+  <RICS.SE.NoItems>No items match the current filter</RICS.SE.NoItems>
+  <RICS.SE.SetAllQty>Set All Qty:</RICS.SE.SetAllQty>
+  <RICS.SE.EnabledItemsMessage>Enabled {0} {1} items in {2}</RICS.SE.EnabledItemsMessage>
+  <RICS.SE.DisabledItemsMessage>Disabled {0} {1} items in {2}</RICS.SE.DisabledItemsMessage>
+  <RICS.SE.ResetPricesMessage>Reset {count} items in '{category}' to default prices</RICS.SE.ResetPricesMessage>
+  <RICS.SE.ResetPricesModMessage>Reset {count} items from '{modName}' to default prices</RICS.SE.ResetPricesModMessage>
+  <RICS.SE.SetQuantityLimitMessage>Set quantity limit to {stacks} stacks for {count} items</RICS.SE.SetQuantityLimitMessage>
+  <RICS.SE.EnabledQuantityLimit>Enabled quantity limit for {0} items</RICS.SE.EnabledQuantityLimit>
+  <RICS.SE.DisabledQuantityLimit>Disabled quantity limit for {0} items</RICS.SE.DisabledQuantityLimit>
+  
+  <!-- Floating Menus -->
+
+  <RICS.SE.EnableAll>Enable All Items</RICS.SE.EnableAll>
+  <RICS.SE.EnableCategory>Enable {0} Items</RICS.SE.EnableCategory>
+  <RICS.SE.EnableWeapons>Enable All Weapons</RICS.SE.EnableWeapons>
+  <RICS.SE.EnableApparel>Enable All Apparel</RICS.SE.EnableApparel>
+  <RICS.SE.EnableUsable>Enable All Usable Items</RICS.SE.EnableUsable>
+
+  <RICS.SE.DisableAll>Disable All Items</RICS.SE.DisableAll>
+  <RICS.SE.DisableCategory>Disable {0} Items</RICS.SE.DisableCategory>
+  <RICS.SE.DisableWeapons>Disable All Weapons</RICS.SE.DisableWeapons>
+  <RICS.SE.DisableApparel>Disable All Apparel</RICS.SE.DisableApparel>
+  <RICS.SE.DisableUsable>Disable All Usable Items</RICS.SE.DisableUsable>
+
+  <RICS.SE.EnableAllFromMod>Enable all items from {0}</RICS.SE.EnableAllFromMod>
+  <RICS.SE.EnableUsableFromMod>Enable usable items from {0}</RICS.SE.EnableUsableFromMod>
+  <RICS.SE.EnableWearableFromMod>Enable wearable items from {0}</RICS.SE.EnableWearableFromMod>
+  <RICS.SE.EnableEquippableFromMod>Enable equippable items from {0}</RICS.SE.EnableEquippableFromMod>
+
+  <RICS.SE.DisableAllFromMod>Disable all items from {0}</RICS.SE.DisableAllFromMod>
+  <RICS.SE.DisableUsableFromMod>Disable usable items from {0}</RICS.SE.DisableUsableFromMod>
+  <RICS.SE.DisableWearableFromMod>Disable wearable items from {0}</RICS.SE.DisableWearableFromMod>
+  <RICS.SE.DisableEquippableFromMod>Disable equippable items from {0}</RICS.SE.DisableEquippableFromMod>
+
+  <RICS.SE.EnableAllInCategory>Enable all items in {0}</RICS.SE.EnableAllInCategory>
+  <RICS.SE.EnableUsableInCategory>Enable usable items in {0}</RICS.SE.EnableUsableInCategory>
+  <RICS.SE.EnableWearableInCategory>Enable wearable items in {0}</RICS.SE.EnableWearableInCategory>
+  <RICS.SE.EnableEquippableInCategory>Enable equippable items in {0}</RICS.SE.EnableEquippableInCategory>
+
+  <RICS.SE.DisableAllInCategory>Disable all items in {0}</RICS.SE.DisableAllInCategory>
+  <RICS.SE.DisableUsableInCategory>Disable usable items in {0}</RICS.SE.DisableUsableInCategory>
+  <RICS.SE.DisableWearableInCategory>Disable wearable items in {0}</RICS.SE.DisableWearableInCategory>
+  <RICS.SE.DisableEquippableInCategory>Disable equippable items in {0}</RICS.SE.DisableEquippableInCategory>
+  
+  
+  <!-- Windows -->
+
+  <RICS.SE.ResetCategoryPricesConfirmTitle>Reset all prices?</RICS.SE.ResetCategoryPricesConfirmTitle>
+  <RICS.SE.ResetCategoryPricesConfirmText>
+    Reset all prices to default for {count} items {category}?
+    This cannot be undone.
+  </RICS.SE.ResetCategoryPricesConfirmText>
+
+  <RICS.SE.ResetAllPricesConfirmText>
+    Reset all prices to default for {count} items from '{modName}'?
+    This cannot be undone.
+  </RICS.SE.ResetAllPricesConfirmText>
+  
+  <!-- Tooltips -->
+  <RICS.SE.HelpTooltip>Events Editor Help</RICS.SE.HelpTooltip>
+  <RICS.SE.SortByModSourceTooltip>Click to sort by Mod Source</RICS.SE.SortByModSourceTooltip>
+  <RICS.SE.SortByCategoryTooltip>Click to sort by Category</RICS.SE.SortByCategoryTooltip>
+  <RICS.SE.CategoryViewTooltip>Click to switch to mod source view</RICS.SE.CategoryViewTooltip>
+  <RICS.SE.ModSourceViewTooltip>Click to switch to category view</RICS.SE.ModSourceViewTooltip>
+  <RICS.SE.IconTooltip>Click icon for detailed item information and to set custom name</RICS.SE.IconTooltip>
+  <RICS.SE.CustomNameTooltip>
+    Custom name: {customName}
+    Default name: {defaultName}
+    DefName: {defName}
+    {labelCapLine}
+    {editHint}
+  </RICS.SE.CustomNameTooltip>
+  <RICS.SE.CustomNameIndicatorTooltip>Custom name is set</RICS.SE.CustomNameIndicatorTooltip>
+  <RICS.SE.SetAllQtyTooltip>Enable/disable quantity limits for all visible items</RICS.SE.SetAllQtyTooltip>
+  <RICS.SE.ManualLimitTooltip>Manual limit (current: {0})</RICS.SE.ManualLimitTooltip>
+  
+  
+  
+</LanguageData>

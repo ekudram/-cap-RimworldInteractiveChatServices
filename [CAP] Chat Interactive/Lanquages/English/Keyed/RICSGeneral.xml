@@ -11,6 +11,7 @@
   <RICS.KarmaType.Doom>Doom</RICS.KarmaType.Doom>
   
   <!-- Common -->
+  <RICS.Common.All>All</RICS.Common.All>
   <RICS.Events>events</RICS.Events>
   <RICS_Named>Named: </RICS_Named>
   <RICS_StackSlots>Stacks: </RICS_StackSlots>
@@ -37,6 +38,19 @@
   <RICS.DISABLED>DISABLED</RICS.DISABLED>
   <RICS.Reset>Reset</RICS.Reset>
   <RICS.Multiplier>Multiplier</RICS.Multiplier>
+  
+  <RICS.Enabled>Enabled</RICS.Enabled>
+  <RICS.Disabled>Disabled</RICS.Disabled>
+  
+  2<RICS.Enable>Enable</RICS.Enable>
+  <RICS.Disable>Disable</RICS.Disable>
+
+  <RICS.Settings>Settings</RICS.Settings>
+  <RICS.Price>Price</RICS.Price>
+
+
+  
+
 
   <!-- Rimazon Locker -->
   <RICS.Locker.DeliveryReceived>Delivery Received</RICS.Locker.DeliveryReceived>

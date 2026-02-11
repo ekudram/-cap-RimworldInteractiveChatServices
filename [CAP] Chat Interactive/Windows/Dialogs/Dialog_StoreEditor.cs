@@ -38,7 +38,6 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using UnityEngine;
 using Verse;
 using Verse.Sound;
@@ -114,7 +113,8 @@ namespace CAP_ChatInteractive
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.HeaderAccent; // Orange accent color for title
             Rect titleRect = new Rect(0f, 0f, 430f, 35f);
-            string titleText = "Store Items Editor";
+            // string titleText = "Store Items Editor";
+            string titleText = "RICS.SE.Title".Translate();
 
             // Draw title
             Widgets.Label(titleRect, titleText);
@@ -141,7 +141,9 @@ namespace CAP_ChatInteractive
             else
             {
                 // Fallback to text if icon not found
-                Widgets.Label(new Rect(0f, searchY, 40f, 30f), "Search:");
+                //Widgets.Label(new Rect(0f, searchY, 40f, 30f), "Search" + ":");
+                Widgets.Label(new Rect(0f, searchY, 40f, 30f), "RICS.Search".Translate() + ":");
+
             }
 
             Rect searchRect = new Rect(30f, searchY, 170f, 24f); // Adjusted position for icon
@@ -168,11 +170,12 @@ namespace CAP_ChatInteractive
             else
             {
                 // Fallback text button
-                if (Widgets.ButtonText(new Rect(rect.width - 80f, 5f, 75f, 24f), "Settings"))
+                if (Widgets.ButtonText(new Rect(rect.width - 80f, 5f, 75f, 24f), "RICS.Settings".Translate()))
                 {
                     Find.WindowStack.Add(new Dialog_EventSettings());
                 }
             }
+            TooltipHandler.TipRegion(settingsRect, "RICS.Settings".Translate());
 
             // Info help icon - next to settings gear
             Rect infoRect = new Rect(rect.width - 60f, 5f, 24f, 24f); // Positioned left of the gear
@@ -183,12 +186,13 @@ namespace CAP_ChatInteractive
                 {
                     Find.WindowStack.Add(new Dialog_StoreEditorHelp());
                 }
-                TooltipHandler.TipRegion(infoRect, "Events Editor Help");
+                // TooltipHandler.TipRegion(infoRect, "Events Editor Help");
+                TooltipHandler.TipRegion(infoRect, "RICS.SE.HelpTooltip".Translate());
             }
             else
             {
                 // Fallback text button
-                if (Widgets.ButtonText(new Rect(rect.width - 110f, 5f, 45f, 24f), "Help"))
+                if (Widgets.ButtonText(new Rect(rect.width - 110f, 5f, 45f, 24f), "RICS.Help".Translate()))
                 {
                     Find.WindowStack.Add(new Dialog_StoreEditorHelp());
                 }
@@ -206,7 +210,7 @@ namespace CAP_ChatInteractive
             float x = 0f;
 
             // Sort by Name
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Name"))
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "RICS.Name".Translate()))
             {
                 if (sortMethod == StoreSortMethod.Name)
                     sortAscending = !sortAscending;
@@ -217,7 +221,7 @@ namespace CAP_ChatInteractive
             x += buttonWidth + spacing;
 
             // Sort by Price
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Price"))
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "RICS.Price".Translate()))
             {
                 if (sortMethod == StoreSortMethod.Price)
                     sortAscending = !sortAscending;
@@ -234,12 +238,14 @@ namespace CAP_ChatInteractive
             // Decide which mode the button represents right now
             if (sortMethod == StoreSortMethod.ModSource)
             {
-                secondarySortLabel = "Mod Source";
+                // secondarySortLabel = "Mod Source";
+                secondarySortLabel = "RICS.ModSource".Translate();  
                 secondarySortMode = StoreSortMethod.ModSource;
             }
             else
             {
-                secondarySortLabel = "Category";
+                // secondarySortLabel = "Category";
+                secondarySortLabel = "RICS.Category".Translate();
                 secondarySortMode = StoreSortMethod.Category;
             }
 
@@ -268,9 +274,10 @@ namespace CAP_ChatInteractive
             }
 
             // Optional: show small indicator of what the button will switch to
-            string tooltip = sortMethod == StoreSortMethod.Category
-                ? "Click to sort by Mod Source"
-                : "Click to sort by Category";
+            // string tooltip = sortMethod == StoreSortMethod.Category ? "Click to sort by Mod Source" : "Click to sort by Category";
+            string tooltip = sortMethod == StoreSortMethod.Category 
+                ? "RICS.SE.SortByModSourceTooltip".Translate() 
+                : "RICS.SE.SortByCategoryTooltip".Translate();
             TooltipHandler.TipRegion(secondaryRect, tooltip);
 
             Widgets.EndGroup();
@@ -286,31 +293,36 @@ namespace CAP_ChatInteractive
             float x = 0f;
 
             // Reset All
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Reset All"))
+            //if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Reset All"))
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "RICS.SE.ResetAll".Translate()))
             {
+                //Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                //    "Reset all items to default prices? This cannot be undone.",
+                //    () => ResetAllPrices()
+                //));
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    "Reset all items to default prices? This cannot be undone.",
+                    "RICS.SE.ResetAllConfirmation".Translate(),
                     () => ResetAllPrices()
                 ));
             }
             x += buttonWidth + spacing;
 
             // Enable All
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Enable →"))
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "RICS.Enable".Translate() + " →"))
             {
                 ShowEnableMenu();
             }
             x += buttonWidth + spacing;
 
             // Disable Dropdown
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Disable →"))
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "RICS.Disable".Translate() + " →"))
             {
                 ShowDisableMenu();
             }
             x += buttonWidth + spacing;
 
             // Quality & Research Settings button
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth + 60f, 30f), "Quality/Research"))
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth + 60f, 30f), "RICS.SE.QualityResearch".Translate()))
             {
                 CAPChatInteractiveMod.OpenQualitySettings();
             }
@@ -323,12 +335,11 @@ namespace CAP_ChatInteractive
             var options = new List<FloatMenuOption>();
 
             // Enable All option
-            options.Add(new FloatMenuOption("Enable All Items", () =>
+            // options.Add(new FloatMenuOption("Enable All Items", () =>
+            options.Add(new FloatMenuOption("RICS.SE.EnableAll".Translate(), () =>
             {
                 EnableAllItems();
             }));
-
-            options.Add(new FloatMenuOption("--- Enable by Category ---", null)); // Separator
 
             // Get all categories and add enable options
             var categories = categoryCounts.Keys
@@ -338,26 +349,29 @@ namespace CAP_ChatInteractive
 
             foreach (var category in categories)
             {
-                options.Add(new FloatMenuOption($"Enable {category} Items", () =>
+                // options.Add(new FloatMenuOption($"Enable {category} Items", () =>
+                options.Add(new FloatMenuOption($"RICS.SE.EnableCategory".Translate(category), () =>    
                 {
                     EnableCategoryItems(category);
                 }));
             }
 
             // Enable by type options
-            options.Add(new FloatMenuOption("--- Enable by Type ---", null)); // Separator
 
-            options.Add(new FloatMenuOption("Enable All Weapons", () =>
+            //options.Add(new FloatMenuOption("Enable All Weapons", () =>
+            options.Add(new FloatMenuOption("RICS.SE.EnableWeapons".Translate(), () =>
             {
                 EnableItemsByPredicate(item => item.IsWeapon, "weapons");
             }));
 
-            options.Add(new FloatMenuOption("Enable All Apparel", () =>
+            // options.Add(new FloatMenuOption("Enable All Apparel", () =>
+            options.Add(new FloatMenuOption("RICS.SE.EnableApparel".Translate(), () =>
             {
                 EnableItemsByPredicate(item => item.IsWearable, "apparel");
             }));
 
-            options.Add(new FloatMenuOption("Enable All Usable Items", () =>
+            // options.Add(new FloatMenuOption("Enable All Usable Items", () =>
+            options.Add(new FloatMenuOption("RICS.SE.EnableUsable".Translate(), () =>
             {
                 EnableItemsByPredicate(item => item.IsUsable, "usable items");
             }));
@@ -380,11 +394,12 @@ namespace CAP_ChatInteractive
                 }
             }
             StoreInventory.SaveStoreToJson();
-            Messages.Message($"Enabled {enabledCount} {category} items", MessageTypeDefOf.PositiveEvent);
+            // Messages.Message($"Enabled {enabledCount} {category} items", MessageTypeDefOf.PositiveEvent);
+            Messages.Message($"RICS.SE.EnabledCategory".Translate(enabledCount, category), MessageTypeDefOf.PositiveEvent);
             FilterItems(); // Refresh the view
         }
 
-        private void EnableItemsByPredicate(System.Func<StoreItem, bool> predicate, string typeDescription)
+        private void EnableItemsByPredicate(Func<StoreItem, bool> predicate, string typeDescription)
         {
             int enabledCount = 0;
             foreach (var item in StoreInventory.AllStoreItems.Values)
@@ -406,12 +421,11 @@ namespace CAP_ChatInteractive
             var options = new List<FloatMenuOption>();
 
             // Disable All option
-            options.Add(new FloatMenuOption("Disable All Items", () =>
+            // options.Add(new FloatMenuOption("Disable All Items", () =>
+            options.Add(new FloatMenuOption("RICS.SE.DisableAll".Translate(), () => 
             {
                 DisableAllItems();
             }));
-
-            options.Add(new FloatMenuOption("--- Disable by Category ---", null)); // Separator
 
             // Get all categories and add disable options
             var categories = categoryCounts.Keys
@@ -421,26 +435,29 @@ namespace CAP_ChatInteractive
 
             foreach (var category in categories)
             {
-                options.Add(new FloatMenuOption($"Disable {category} Items", () =>
+                // options.Add(new FloatMenuOption($"Disable {category} Items", () =>
+                options.Add(new FloatMenuOption($"RICS.SE.DisableCategory".Translate(category), () =>
                 {
                     DisableCategoryItems(category);
                 }));
             }
 
             // Disable by type options
-            options.Add(new FloatMenuOption("--- Disable by Type ---", null)); // Separator
 
-            options.Add(new FloatMenuOption("Disable All Weapons", () =>
+            // options.Add(new FloatMenuOption("Disable All Weapons", () =>
+            options.Add(new FloatMenuOption("RICS.SE.DisableWeapons".Translate(), () =>
             {
                 DisableItemsByPredicate(item => item.IsWeapon, "weapons");
             }));
 
-            options.Add(new FloatMenuOption("Disable All Apparel", () =>
+            // options.Add(new FloatMenuOption("Disable All Apparel", () =>
+            options.Add(new FloatMenuOption("RICS.SE.DisableApparel".Translate(), () =>
             {
                 DisableItemsByPredicate(item => item.IsWearable, "apparel");
             }));
 
-            options.Add(new FloatMenuOption("Disable All Usable Items", () =>
+            // options.Add(new FloatMenuOption("Disable All Usable Items", () =>
+            options.Add(new FloatMenuOption("RICS.SE.DisableUsable".Translate(), () =>
             {
                 DisableItemsByPredicate(item => item.IsUsable, "usable items");
             }));
@@ -463,7 +480,8 @@ namespace CAP_ChatInteractive
                 }
             }
             StoreInventory.SaveStoreToJson();
-            Messages.Message($"Disabled {disabledCount} {category} items", MessageTypeDefOf.NeutralEvent);
+            // Messages.Message($"Disabled {disabledCount} {category} items", MessageTypeDefOf.NeutralEvent);
+            Messages.Message($"RICS.SE.DisabledCategory".Translate(disabledCount, category), MessageTypeDefOf.NeutralEvent);
             FilterItems(); // Refresh the view
         }
 
@@ -479,7 +497,8 @@ namespace CAP_ChatInteractive
                 }
             }
             StoreInventory.SaveStoreToJson();
-            Messages.Message($"Disabled {disabledCount} {typeDescription}", MessageTypeDefOf.NeutralEvent);
+            // Messages.Message($"Disabled {disabledCount} {typeDescription}", MessageTypeDefOf.NeutralEvent);
+            Messages.Message($"RICS.SE.DisabledType".Translate(disabledCount, typeDescription), MessageTypeDefOf.NeutralEvent);
             FilterItems(); // Refresh the view
         }
 
@@ -500,8 +519,8 @@ namespace CAP_ChatInteractive
             {
                 StoreInventory.SaveStoreToJson();
                 string modName = GetDisplayModName(selectedModSource);
-                Messages.Message($"Enabled {enabledCount} items from '{modName}'",
-                    MessageTypeDefOf.PositiveEvent);
+                // Messages.Message($"Enabled {enabledCount} items from '{modName}'", MessageTypeDefOf.PositiveEvent);
+                Messages.Message($"RICS.SE.EnabledModSource".Translate(enabledCount, modName), MessageTypeDefOf.PositiveEvent);
                 FilterItems(); // Refresh view
             }
         }
@@ -523,8 +542,8 @@ namespace CAP_ChatInteractive
             {
                 StoreInventory.SaveStoreToJson();
                 string modName = GetDisplayModName(selectedModSource);
-                Messages.Message($"Disabled {disabledCount} items from '{modName}'",
-                    MessageTypeDefOf.NeutralEvent);
+                // Messages.Message($"Disabled {disabledCount} items from '{modName}'", MessageTypeDefOf.NeutralEvent);
+                Messages.Message($"RICS.SE.DisabledModSource".Translate(disabledCount, modName), MessageTypeDefOf.NeutralEvent);
                 FilterItems(); // Refresh view
             }
         }
@@ -565,11 +584,13 @@ namespace CAP_ChatInteractive
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter;
             GUI.color = ColorLibrary.SubHeader;
-            Widgets.Label(headerRect, "Categories");
+            // Widgets.Label(headerRect, "Categories");
+            Widgets.Label(headerRect, "RICS.SE.Categories".Translate());
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
-            TooltipHandler.TipRegion(headerRect, "Click to switch to mod source view");
+            // TooltipHandler.TipRegion(headerRect, "Click to switch to mod source view");
+            TooltipHandler.TipRegion(headerRect, "RICS.SE.CategoryViewTooltip".Translate());
 
             // Toggle view on header click
             if (Widgets.ButtonInvisible(headerRect))
@@ -656,11 +677,13 @@ namespace CAP_ChatInteractive
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter;
             GUI.color = ColorLibrary.SubHeader;
-            Widgets.Label(headerRect, "Mod Sources");
+            // Widgets.Label(headerRect, "Mod Sources");
+            Widgets.Label(headerRect, "RICS.SE.ModSources".Translate());
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
-            TooltipHandler.TipRegion(headerRect, "Click to switch to category view");
+            // TooltipHandler.TipRegion(headerRect, "Click to switch to category view");
+            TooltipHandler.TipRegion(headerRect, "RICS.SE.ModSourceViewTooltip".Translate());
 
             // Toggle view on header click
             if (Widgets.ButtonInvisible(headerRect))
@@ -809,7 +832,8 @@ namespace CAP_ChatInteractive
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter;
             GUI.color = ColorLibrary.SubHeader; 
-            string headerText = $"Items ({filteredItems.Count})";
+            // string headerText = $"Items ({filteredItems.Count})";
+            string headerText = "RICS.SE.ItemsCount".Translate(filteredItems.Count);
             if (listViewType == StoreListViewType.Category && selectedCategory != "All")
                 headerText += $" – {selectedCategory}";
             else if (listViewType == StoreListViewType.ModSource && selectedModSource != "All")
@@ -865,7 +889,8 @@ namespace CAP_ChatInteractive
 
             if (filteredItems.Count == 0)
             {
-                Widgets.NoneLabelCenteredVertically(listRect, "No items match the current filter");
+                // Widgets.NoneLabelCenteredVertically(listRect, "No items match the current filter");
+                Widgets.NoneLabelCenteredVertically(listRect, "RICS.SE.NoItems".Translate());
                 return;
             }
 
@@ -925,9 +950,11 @@ namespace CAP_ChatInteractive
                     }
 
                     // Add tooltip for the icon
-                    TooltipHandler.TipRegion(iconRect, "Click icon for detailed item information and to set custom name");
+                    // TooltipHandler.TipRegion(iconRect, "Click icon for detailed item information and to set custom name");
+                    TooltipHandler.TipRegion(iconRect, "RICS.SE.IconTooltip".Translate());
 
                     Widgets.InfoCardButton(iconRect.xMax + 2f, iconRect.y, thingDef);
+                    // TooltipHandler.TipRegion(new Rect(iconRect.xMax + 2f, iconRect.y, 24f, 24f), "RICS.SE.InfoCardTooltip".Translate());
                 }
                 x += 80f;
 
@@ -962,33 +989,22 @@ namespace CAP_ChatInteractive
                 // Add tooltip if truncated OR if there's a user-set custom name
                 if (UIUtilities.WouldTruncate(displayName, infoWidth - 5f) || hasUserCustomName)
                 {
-                    // Build comprehensive tooltip text
-                    StringBuilder tooltipBuilder = new StringBuilder();
+                    string defaultName = labelCapString ?? item.DefName;
+                    string labelCapLine = (thingDef != null && labelCapString != item.DefName)
+                        ? "\n" + "RICS.SE.LabelCap".Translate(thingDef.LabelCap.Named("0"))
+                        : "";
 
-                    if (hasUserCustomName)
-                    {
-                        tooltipBuilder.AppendLine($"Custom Name: {item.CustomName}");
-                        tooltipBuilder.AppendLine($"Default Name: {labelCapString ?? item.DefName}");
-                    }
-                    else
-                    {
-                        tooltipBuilder.AppendLine($"Name: {labelCapString ?? item.DefName}");
-                    }
+                    string editHint = hasUserCustomName ? "RICS.SE.ClickToEdit".Translate() : "";
 
-                    tooltipBuilder.AppendLine($"DefName: {item.DefName}");
+                    string tooltipText = "RICS.SE.CustomNameTooltip".Translate(
+                        item.CustomName.Named("customName"),
+                        defaultName.Named("defaultName"),
+                        item.DefName.Named("defName"),
+                        labelCapLine.Named("labelCapLine"),
+                        editHint.Named("editHint")
+                    );
 
-                    // Only show LabelCap separately if it's different from DefName
-                    if (thingDef != null && labelCapString != item.DefName)
-                    {
-                        tooltipBuilder.AppendLine($"LabelCap: {thingDef.LabelCap}");
-                    }
-
-                    if (hasUserCustomName)
-                    {
-                        tooltipBuilder.AppendLine($"\nClick the icon to edit custom name");
-                    }
-
-                    TooltipHandler.TipRegion(infoRect.TopHalf(), tooltipBuilder.ToString());
+                    TooltipHandler.TipRegion(infoRect.TopHalf(), tooltipText);
                 }
                 // Optional: Add a small indicator for user-set custom names
                 if (hasUserCustomName)
@@ -1000,7 +1016,8 @@ namespace CAP_ChatInteractive
 
                     // Add a special tooltip just for the indicator
                     Rect indicatorTooltipRect = new Rect(infoRect.x, infoRect.y, 20f, 20f);
-                    TooltipHandler.TipRegion(indicatorTooltipRect, "Custom name is set");
+                    // TooltipHandler.TipRegion(indicatorTooltipRect, "Custom name is set");
+                    TooltipHandler.TipRegion(indicatorTooltipRect, "RICS.SE.CustomNameIndicatorTooltip".Translate());
                 }
 
                 Text.Font = GameFont.Tiny;
@@ -1070,7 +1087,8 @@ namespace CAP_ChatInteractive
             // Label
             Rect labelRect = new Rect(x, centerY, 80f, iconSize);
             Text.Anchor = TextAnchor.MiddleRight;
-            string labelText = "Set All Qty:";
+            // string labelText = "Set All Qty:";
+            string labelText = "RICS.SE.SetAllQty".Translate();
             string displayLabel = UIUtilities.Truncate(labelText, labelRect.width);
             Widgets.Label(labelRect, displayLabel);
 
@@ -1119,7 +1137,9 @@ namespace CAP_ChatInteractive
                 }
             }
 
-            TooltipHandler.TipRegion(enableRect, "Enable/disable quantity limits for all visible items");
+            // TooltipHandler.TipRegion(enableRect, "Enable/disable quantity limits for all visible items");
+            TooltipHandler.TipRegion(enableRect, "RICS.SE.SetAllQtyTooltip".Translate());
+
             x += 28f + spacing;
 
             // Stack preset buttons (only show if there are items with quantity limits)
@@ -1289,7 +1309,8 @@ namespace CAP_ChatInteractive
                         StoreInventory.SaveStoreToJson();
                     }
 
-                    TooltipHandler.TipRegion(numRect, $"Manual limit (current: {item.QuantityLimit})");
+                    // TooltipHandler.TipRegion(numRect, $"Manual limit (current: {item.QuantityLimit})");
+                    TooltipHandler.TipRegion(numRect, "RICS.SE.ManualLimitTooltip".Translate(item.QuantityLimit));
                 }
             }
 
@@ -1299,7 +1320,8 @@ namespace CAP_ChatInteractive
         private void DrawUsableCheckbox(Rect rect, StoreItem item)
         {
             bool currentValue = item.IsUsable;
-            Widgets.CheckboxLabeled(rect, "Usable", ref currentValue);
+            // Widgets.CheckboxLabeled(rect, "Usable", ref currentValue);
+            Widgets.CheckboxLabeled(rect, "RICS.SE.Usable".Translate(), ref currentValue);
             if (currentValue != item.IsUsable)
             {
                 item.IsUsable = currentValue;
@@ -1311,7 +1333,8 @@ namespace CAP_ChatInteractive
         private void DrawWearableCheckbox(Rect rect, StoreItem item)
         {
             bool currentValue = item.IsWearable;
-            Widgets.CheckboxLabeled(rect, "Wearable", ref currentValue);
+            // Widgets.CheckboxLabeled(rect, "Wearable", ref currentValue);
+            Widgets.CheckboxLabeled(rect, "RICS.SE.Wearable".Translate(), ref currentValue);
             if (currentValue != item.IsWearable)
             {
                 item.IsWearable = currentValue;
@@ -1323,7 +1346,8 @@ namespace CAP_ChatInteractive
         private void DrawEquippableCheckbox(Rect rect, StoreItem item)
         {
             bool currentValue = item.IsEquippable;
-            Widgets.CheckboxLabeled(rect, "Equippable", ref currentValue);
+            // Widgets.CheckboxLabeled(rect, "Equippable", ref currentValue);
+            Widgets.CheckboxLabeled(rect, "RICS.SE.Equippable".Translate(), ref currentValue);
             if (currentValue != item.IsEquippable)
             {
                 item.IsEquippable = currentValue;
@@ -1336,7 +1360,8 @@ namespace CAP_ChatInteractive
         {
             bool wasEnabled = item.Enabled;
             bool currentEnabled = item.Enabled;
-            Widgets.CheckboxLabeled(rect, "Enabled", ref currentEnabled);
+            // Widgets.CheckboxLabeled(rect, "Enabled", ref currentEnabled);
+            Widgets.CheckboxLabeled(rect, "RICS.SE.Enabled".Translate(), ref currentEnabled);
             if (currentEnabled != wasEnabled)
             {
                 item.Enabled = currentEnabled;
@@ -1351,7 +1376,8 @@ namespace CAP_ChatInteractive
 
             // Price label
             Rect labelRect = new Rect(0f, 0f, 40f, 30f);
-            Widgets.Label(labelRect, "Price:");
+            // Widgets.Label(labelRect, "Price:");
+            Widgets.Label(labelRect, "RICS.SE.Price".Translate());
 
             // Price input - use local variable instead of property directly
             Rect inputRect = new Rect(45f, 0f, 60f, 30f);
@@ -1372,7 +1398,8 @@ namespace CAP_ChatInteractive
 
             // Reset button
             Rect resetRect = new Rect(110f, 0f, 40f, 30f);
-            if (Widgets.ButtonText(resetRect, "Reset"))
+            // if (Widgets.ButtonText(resetRect, "Reset"))
+            if (Widgets.ButtonText(resetRect, "RICS.SE.Reset".Translate()))
             {
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
                 if (thingDef != null)
@@ -1399,7 +1426,8 @@ namespace CAP_ChatInteractive
             Rect enableRect = new Rect(x, 2f, buttonWidth + 20f, 28f);
             Text.Anchor = TextAnchor.MiddleRight;
 
-            if (Widgets.ButtonText(enableRect, "Enable →"))
+            // if (Widgets.ButtonText(enableRect, "Enable →"))
+            if (Widgets.ButtonText(enableRect, "RICS.SE.EnableArrow".Translate()))
             {
                 ShowCategoryEnableMenu();
             }
@@ -1407,7 +1435,8 @@ namespace CAP_ChatInteractive
 
             // Disable button
             Rect disableRect = new Rect(x, 2f, buttonWidth + 20f, 28f);
-            if (Widgets.ButtonText(disableRect, "Disable →"))
+            // if (Widgets.ButtonText(disableRect, "Disable →"))
+            if (Widgets.ButtonText(disableRect, "RICS.SE.DisableArrow".Translate()))
             {
                 ShowCategoryDisableMenu();
             }
@@ -1415,11 +1444,21 @@ namespace CAP_ChatInteractive
 
             // Reset All Prices button (with confirmation)
             Rect resetRect = new Rect(x, 2f, buttonWidth + 30f, 28f);
-            if (Widgets.ButtonText(resetRect, "Reset All"))
+            //if (Widgets.ButtonText(resetRect, "Reset All"))
+            if (Widgets.ButtonText(resetRect, "RICS.SE.ResetAll".Translate()))
             {
+                //Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                //    $"Reset all prices to default for {filteredItems.Count} items in '{selectedCategory}'?\nThis cannot be undone.",
+                //    () => ResetCategoryPrices()
+                //));
+
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    $"Reset all prices to default for {filteredItems.Count} items in '{selectedCategory}'?\nThis cannot be undone.",
-                    () => ResetCategoryPrices()
+                    "RICS.SE.ResetCategoryPricesConfirmText".Translate(
+                        filteredItems.Count.Named("count"),
+                        selectedCategory.Named("category")   // note: include the quotes '' if you want them
+                    ),
+                    () => ResetCategoryPrices(),
+                    title: "RICS.SE.ResetCategoryPricesConfirmTitle".Translate()
                 ));
             }
             Text.Anchor = TextAnchor.UpperLeft;
@@ -1437,7 +1476,7 @@ namespace CAP_ChatInteractive
             // Enable button
             Rect enableRect = new Rect(x, 2f, buttonWidth + 20f, 28f);
             Text.Anchor = TextAnchor.MiddleRight;
-            if (Widgets.ButtonText(enableRect, "Enable →"))
+            if (Widgets.ButtonText(enableRect, "RICS.SE.EnableArrow"))
             {
                 // For mod source - we can either reuse category logic or make a mod-specific one
                 // Simplest: use the same category-style menu but apply to current mod source items
@@ -1447,7 +1486,7 @@ namespace CAP_ChatInteractive
 
             // Disable button
             Rect disableRect = new Rect(x, 2f, buttonWidth + 20f, 28f);
-            if (Widgets.ButtonText(disableRect, "Disable →"))
+            if (Widgets.ButtonText(disableRect, "RICS.SE.DisableArrow"))
             {
                 ShowModSourceDisableMenu();
             }
@@ -1455,11 +1494,19 @@ namespace CAP_ChatInteractive
 
             // Reset All Prices button
             Rect resetRect = new Rect(x, 2f, buttonWidth + 30f, 28f);
-            if (Widgets.ButtonText(resetRect, "Reset All"))
+            if (Widgets.ButtonText(resetRect, "RICS.SE.ResetAll".Translate()))
             {
+                string modDisplayName = GetDisplayModName(selectedModSource);
+
+                string confirmationText = "RICS.SE.ResetAllPricesConfirmText".Translate(
+                    filteredItems.Count.Named("count"),
+                    modDisplayName.Named("modName")
+                );
+
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    $"Reset all prices to default for {filteredItems.Count} items from '{GetDisplayModName(selectedModSource)}'?\nThis cannot be undone.",
-                    () => ResetModSourcePrices()
+                    confirmationText,
+                    () => ResetModSourcePrices(),
+                    title: "RICS.SE.ResetCategoryPricesConfirmTitle".Translate()
                 ));
             }
             Text.Anchor = TextAnchor.UpperLeft;
@@ -1472,27 +1519,29 @@ namespace CAP_ChatInteractive
             var options = new List<FloatMenuOption>();
 
             // Enable all in current mod source
-            options.Add(new FloatMenuOption($"Enable All Items from {GetDisplayModName(selectedModSource)}", () =>
+            // options.Add(new FloatMenuOption($"Enable All Items from {GetDisplayModName(selectedModSource)}", () =>
+            options.Add(new FloatMenuOption("RICS.SE.EnableAllFromMod".Translate(GetDisplayModName(selectedModSource).Named("0")),
+            () =>
             {
                 EnableModSourceItems();
             }));
 
-            options.Add(new FloatMenuOption("--- Enable Usage Types ---", null)); // Separator
+            string modName = GetDisplayModName(selectedModSource);
 
-            options.Add(new FloatMenuOption($"Enable Usable Items from {GetDisplayModName(selectedModSource)}", () =>
-            {
-                ToggleModSourceItemTypeFlag("Usable", true);
-            }));
+            options.Add(new FloatMenuOption(
+                "RICS.SE.EnableUsableFromMod".Translate(modName.Named("0")),
+                () => ToggleModSourceItemTypeFlag("Usable", true)
+            ));
 
-            options.Add(new FloatMenuOption($"Enable Wearable Items from {GetDisplayModName(selectedModSource)}", () =>
-            {
-                ToggleModSourceItemTypeFlag("Wearable", true);
-            }));
+            options.Add(new FloatMenuOption(
+                "RICS.SE.EnableWearableFromMod".Translate(modName.Named("0")),
+                () => ToggleModSourceItemTypeFlag("Wearable", true)
+            ));
 
-            options.Add(new FloatMenuOption($"Enable Equippable Items from {GetDisplayModName(selectedModSource)}", () =>
-            {
-                ToggleModSourceItemTypeFlag("Equippable", true);
-            }));
+            options.Add(new FloatMenuOption(
+                "RICS.SE.EnableEquippableFromMod".Translate(modName.Named("0")),
+                () => ToggleModSourceItemTypeFlag("Equippable", true)
+            ));
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
@@ -1501,29 +1550,27 @@ namespace CAP_ChatInteractive
         private void ShowModSourceDisableMenu()
         {
             var options = new List<FloatMenuOption>();
+            string modName = GetDisplayModName(selectedModSource);
 
-            // Disable all in current mod source
-            options.Add(new FloatMenuOption($"Disable All Items from {GetDisplayModName(selectedModSource)}", () =>
-            {
-                DisableModSourceItems();
-            }));
+            options.Add(new FloatMenuOption(
+                "RICS.SE.DisableAllFromMod".Translate(modName.Named("0")),
+                () => DisableModSourceItems()
+            ));
 
-            options.Add(new FloatMenuOption("--- Disable Usage Types ---", null)); // Separator
+            options.Add(new FloatMenuOption(
+                "RICS.SE.DisableUsableFromMod".Translate(modName.Named("0")),
+                () => ToggleModSourceItemTypeFlag("Usable", false)
+            ));
 
-            options.Add(new FloatMenuOption($"Disable Usable Items from {GetDisplayModName(selectedModSource)}", () =>
-            {
-                ToggleModSourceItemTypeFlag("Usable", false);
-            }));
+            options.Add(new FloatMenuOption(
+                "RICS.SE.DisableWearableFromMod".Translate(modName.Named("0")),
+                () => ToggleModSourceItemTypeFlag("Wearable", false)
+            ));
 
-            options.Add(new FloatMenuOption($"Disable Wearable Items from {GetDisplayModName(selectedModSource)}", () =>
-            {
-                ToggleModSourceItemTypeFlag("Wearable", false);
-            }));
-
-            options.Add(new FloatMenuOption($"Disable Equippable Items from {GetDisplayModName(selectedModSource)}", () =>
-            {
-                ToggleModSourceItemTypeFlag("Equippable", false);
-            }));
+            options.Add(new FloatMenuOption(
+                "RICS.SE.DisableEquippableFromMod".Translate(modName.Named("0")),
+                () => ToggleModSourceItemTypeFlag("Equippable", false)
+            ));
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
@@ -1599,30 +1646,27 @@ namespace CAP_ChatInteractive
         private void ShowCategoryEnableMenu()
         {
             var options = new List<FloatMenuOption>();
+            string categoryName = selectedCategory;  // or use a formatted/display name if needed
 
-            // Enable All in Category (this still uses the Enabled property)
-            options.Add(new FloatMenuOption($"Enable All Items in {selectedCategory}", () =>
-            {
-                EnableCategoryItems(selectedCategory);
-            }));
+            options.Add(new FloatMenuOption(
+                "RICS.SE.EnableAllInCategory".Translate(categoryName.Named("0")),
+                () => EnableCategoryItems(selectedCategory)
+            ));
 
-            options.Add(new FloatMenuOption("--- Enable Usage Types ---", null)); // Separator
+            options.Add(new FloatMenuOption(
+                "RICS.SE.EnableUsableInCategory".Translate(categoryName.Named("0")),
+                () => ToggleCategoryItemTypeFlag(selectedCategory, "Usable", true)
+            ));
 
-            // Always show all three options
-            options.Add(new FloatMenuOption($"Enable Usable Items in {selectedCategory}", () =>
-            {
-                ToggleCategoryItemTypeFlag(selectedCategory, "Usable", true);
-            }));
+            options.Add(new FloatMenuOption(
+                "RICS.SE.EnableWearableInCategory".Translate(categoryName.Named("0")),
+                () => ToggleCategoryItemTypeFlag(selectedCategory, "Wearable", true)
+            ));
 
-            options.Add(new FloatMenuOption($"Enable Wearable Items in {selectedCategory}", () =>
-            {
-                ToggleCategoryItemTypeFlag(selectedCategory, "Wearable", true);
-            }));
-
-            options.Add(new FloatMenuOption($"Enable Equippable Items in {selectedCategory}", () =>
-            {
-                ToggleCategoryItemTypeFlag(selectedCategory, "Equippable", true);
-            }));
+            options.Add(new FloatMenuOption(
+                "RICS.SE.EnableEquippableInCategory".Translate(categoryName.Named("0")),
+                () => ToggleCategoryItemTypeFlag(selectedCategory, "Equippable", true)
+            ));
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
@@ -1630,30 +1674,29 @@ namespace CAP_ChatInteractive
         private void ShowCategoryDisableMenu()
         {
             var options = new List<FloatMenuOption>();
+            string categoryName = selectedCategory;  // or use a formatted/display name if needed
 
-            // Disable All in Category (this still uses the Enabled property)
-            options.Add(new FloatMenuOption($"Disable All Items in {selectedCategory}", () =>
-            {
-                DisableCategoryItems(selectedCategory);
-            }));
+            options.Add(new FloatMenuOption(
+                "RICS.SE.DisableAllInCategory".Translate(categoryName.Named("0")),
+                () => DisableCategoryItems(selectedCategory)
+            ));
 
-            options.Add(new FloatMenuOption("--- Disable Usage Types ---", null)); // Separator
+            options.Add(new FloatMenuOption("--- Disable Usage Types ---", null)); // Separator (no translation needed)
 
-            // Always show all three options
-            options.Add(new FloatMenuOption($"Disable Usable Items in {selectedCategory}", () =>
-            {
-                ToggleCategoryItemTypeFlag(selectedCategory, "Usable", false);
-            }));
+            options.Add(new FloatMenuOption(
+                "RICS.SE.DisableUsableInCategory".Translate(categoryName.Named("0")),
+                () => ToggleCategoryItemTypeFlag(selectedCategory, "Usable", false)
+            ));
 
-            options.Add(new FloatMenuOption($"Disable Wearable Items in {selectedCategory}", () =>
-            {
-                ToggleCategoryItemTypeFlag(selectedCategory, "Wearable", false);
-            }));
+            options.Add(new FloatMenuOption(
+                "RICS.SE.DisableWearableInCategory".Translate(categoryName.Named("0")),
+                () => ToggleCategoryItemTypeFlag(selectedCategory, "Wearable", false)
+            ));
 
-            options.Add(new FloatMenuOption($"Disable Equippable Items in {selectedCategory}", () =>
-            {
-                ToggleCategoryItemTypeFlag(selectedCategory, "Equippable", false);
-            }));
+            options.Add(new FloatMenuOption(
+                "RICS.SE.DisableEquippableInCategory".Translate(categoryName.Named("0")),
+                () => ToggleCategoryItemTypeFlag(selectedCategory, "Equippable", false)
+            ));
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
@@ -1727,8 +1770,16 @@ namespace CAP_ChatInteractive
             if (changedCount > 0)
             {
                 StoreInventory.SaveStoreToJson();
-                Messages.Message($"{(enable ? "Enabled" : "Disabled")} {changedCount} {flagType.ToLower()} items in {category}",
-                    MessageTypeDefOf.PositiveEvent);
+                string key = enable ? "RICS.SE.EnabledItemsMessage" : "RICS.SE.DisabledItemsMessage";
+
+                Messages.Message(
+                    key.Translate(
+                        changedCount.Named("0"),
+                        flagType.ToLower().Named("1"),
+                        category.Named("2")
+                    ),
+                    MessageTypeDefOf.PositiveEvent
+                );
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 FilterItems(); // Refresh the view
             }
@@ -1806,8 +1857,13 @@ namespace CAP_ChatInteractive
             if (changedCount > 0)
             {
                 StoreInventory.SaveStoreToJson();
-                Messages.Message($"Reset {changedCount} items in '{selectedCategory}' to default prices",
-                    MessageTypeDefOf.PositiveEvent);
+                Messages.Message(
+                    "RICS.SE.ResetPricesMessage".Translate(
+                        changedCount.Named("count"),
+                        selectedCategory.Named("category")
+                    ),
+                    MessageTypeDefOf.PositiveEvent
+                );
                 SoundDefOf.Click.PlayOneShotOnCamera();
             }
         }
@@ -1837,8 +1893,13 @@ namespace CAP_ChatInteractive
             {
                 StoreInventory.SaveStoreToJson();
                 string modName = GetDisplayModName(selectedModSource);
-                Messages.Message($"Reset {changedCount} items from '{modName}' to default prices",
-                    MessageTypeDefOf.PositiveEvent);
+                Messages.Message(
+                    "RICS.SE.ResetPricesModMessage".Translate(
+                        changedCount.Named("count"),
+                        modName.Named("modName")
+                    ),
+                    MessageTypeDefOf.PositiveEvent
+                );
                 SoundDefOf.Click.PlayOneShotOnCamera();
             }
         }
@@ -2007,7 +2068,13 @@ namespace CAP_ChatInteractive
             if (affectedCount > 0)
             {
                 StoreInventory.SaveStoreToJson();
-                Messages.Message($"Set quantity limit to {stacks} stacks for {affectedCount} items", MessageTypeDefOf.PositiveEvent);
+                Messages.Message(
+                    "RICS.SE.SetQuantityLimitMessage".Translate(
+                        stacks.Named("stacks"),
+                        affectedCount.Named("count")
+                    ),
+                    MessageTypeDefOf.PositiveEvent
+                );
                 SoundDefOf.Click.PlayOneShotOnCamera();
             }
         }
@@ -2027,8 +2094,12 @@ namespace CAP_ChatInteractive
             if (affectedCount > 0)
             {
                 StoreInventory.SaveStoreToJson();
-                Messages.Message($"{(enable ? "Enabled" : "Disabled")} quantity limit for {affectedCount} items",
-                    MessageTypeDefOf.PositiveEvent);
+                string key = enable ? "RICS.SE.EnabledQuantityLimit" : "RICS.SE.DisabledQuantityLimit";
+
+                Messages.Message(
+                    key.Translate(affectedCount.Named("0")),
+                    MessageTypeDefOf.PositiveEvent
+                );
                 SoundDefOf.Click.PlayOneShotOnCamera();
             }
         }
@@ -2042,306 +2113,6 @@ namespace CAP_ChatInteractive
         private void ShowDefInfoWindow(ThingDef thingDef, StoreItem storeItem)
         {
             Find.WindowStack.Add(new DefInfoWindow(thingDef, storeItem));
-        }
-    }
-    // This class represents a window that displays detailed information about a specific ThingDef and its corresponding StoreItem.
-    public class DefInfoWindow : Window
-    {
-        private ThingDef thingDef;
-        private StoreItem storeItem;
-        private Vector2 scrollPosition = Vector2.zero;
-        private string customNameBuffer = "";
-
-        public override Vector2 InitialSize => new Vector2(600f, 700f);
-
-        public DefInfoWindow(ThingDef thingDef, StoreItem storeItem)
-        {
-            this.thingDef = thingDef;
-            this.storeItem = storeItem;
-            this.customNameBuffer = storeItem.CustomName ?? "";
-            doCloseButton = true;
-            forcePause = true;
-            absorbInputAroundWindow = true;
-            resizeable = true;
-        }
-
-        public override void DoWindowContents(Rect inRect)
-        {
-            // Title
-            Rect titleRect = new Rect(0f, 0f, inRect.width, 35f);
-            Text.Font = GameFont.Medium;
-            Widgets.Label(titleRect, $"Def Information: {thingDef.LabelCap}");
-            Text.Font = GameFont.Small;
-
-            // Content area
-            Rect contentRect = new Rect(0f, 40f, inRect.width, inRect.height - 40f - CloseButSize.y);
-            DrawDefInfo(contentRect);
-        }
-
-        private void DrawDefInfo(Rect rect)
-        {
-            StringBuilder sb = new StringBuilder();
-
-            // Always show at top
-            sb.AppendLine($"DefName: {thingDef.defName}");
-            sb.AppendLine($"BaseMarketValue: {thingDef.BaseMarketValue}");
-            sb.AppendLine($"");
-
-            // ThingDef properties
-            sb.AppendLine($"thingClass: {thingDef.thingClass?.Name ?? "null"}");
-            sb.AppendLine($"stackLimit: {thingDef.stackLimit}");
-            sb.AppendLine($"Size: {thingDef.size}");
-            sb.AppendLine($"TechLevel: {thingDef.techLevel}");
-            sb.AppendLine($"Tradeability: {thingDef.tradeability}");
-
-            // Boolean properties - only show if true
-            if (thingDef.IsIngestible) sb.AppendLine($"IsIngestible: {thingDef.IsIngestible}");
-            if (thingDef.IsMedicine) sb.AppendLine($"IsMedicine: {thingDef.IsMedicine}");
-            if (thingDef.IsStuff) sb.AppendLine($"IsStuff: {thingDef.IsStuff}");
-            if (thingDef.IsDrug) sb.AppendLine($"IsDrug: {thingDef.IsDrug}");
-            if (thingDef.IsPleasureDrug) sb.AppendLine($"IsPleasureDrug: {thingDef.IsPleasureDrug}");
-            if (thingDef.IsNonMedicalDrug) sb.AppendLine($"IsNonMedicalDrug: {thingDef.IsNonMedicalDrug}");
-            if (thingDef.IsApparel) sb.AppendLine($"IsApparel: {thingDef.IsApparel}");
-            if (thingDef.Claimable) sb.AppendLine($"Claimable: {thingDef.Claimable}");
-            if (thingDef.IsWeapon) sb.AppendLine($"IsWeapon: {thingDef.IsWeapon}");
-            if (thingDef.IsBuildingArtificial) sb.AppendLine($"IsBuildingArtificial: {thingDef.IsBuildingArtificial}");
-
-            // MINIFICATION PROPERTIES - Always show these
-            sb.AppendLine($"Minifiable: {thingDef.Minifiable}");
-            if (thingDef.Minifiable)
-            {
-                sb.AppendLine($"  - Will be delivered as minified crate");
-            }
-
-            if (thingDef.smeltable) sb.AppendLine($"Smeltable: {thingDef.smeltable}");
-
-            sb.AppendLine($"");
-
-            // Delivery Information
-            sb.AppendLine($"--- Delivery Information ---");
-            sb.AppendLine($"Will Minify: {ShouldMinifyForDelivery(thingDef)}");
-            sb.AppendLine($"Stack Limit: {thingDef.stackLimit}");
-            sb.AppendLine($"Size: {thingDef.size}");
-            sb.AppendLine($"");
-
-            // List comps if the thing has them
-            if (thingDef.comps != null && thingDef.comps.Count > 0)
-            {
-                sb.AppendLine($"--- Comp Properties ({thingDef.comps.Count}) ---");
-                foreach (var compProps in thingDef.comps)
-                {
-                    sb.AppendLine($"• {compProps.compClass?.Name ?? "null"}");
-
-                    // Show detailed CompProperties_UseEffect information
-                    if (compProps is CompProperties_UseEffect compUseEffect)
-                    {
-                        sb.AppendLine($"  - UseEffect Type: {compUseEffect.GetType().Name}");
-                        if (compUseEffect.doCameraShake) sb.AppendLine($"  - Camera Shake: Yes");
-                        if (compUseEffect.moteOnUsed != null) sb.AppendLine($"  - Mote On Used: {compUseEffect.moteOnUsed.defName}");
-                        if (compUseEffect.moteOnUsedScale != 1f) sb.AppendLine($"  - Mote Scale: {compUseEffect.moteOnUsedScale}");
-                        if (compUseEffect.fleckOnUsed != null) sb.AppendLine($"  - Fleck On Used: {compUseEffect.fleckOnUsed.defName}");
-                        if (compUseEffect.fleckOnUsedScale != 1f) sb.AppendLine($"  - Fleck Scale: {compUseEffect.fleckOnUsedScale}");
-                        if (compUseEffect.effecterOnUsed != null) sb.AppendLine($"  - Effecter On Used: {compUseEffect.effecterOnUsed.defName}");
-                        if (compUseEffect.warmupEffecter != null) sb.AppendLine($"  - Warmup Effecter: {compUseEffect.warmupEffecter.defName}");
-                    }
-                    else if (compProps is CompProperties_FoodPoisonable compFoodPoison)
-                    {
-                        sb.AppendLine($"  - FoodPoisonable");
-                    }
-                    // Add more comp type checks as needed
-                }
-                sb.AppendLine($"");
-            }
-
-            // Ingestible properties if exists
-            if (thingDef.ingestible != null)
-            {
-                sb.AppendLine($"--- Ingestible Properties ---");
-                sb.AppendLine($"Nutrition: {thingDef.ingestible.CachedNutrition}");
-                sb.AppendLine($"FoodType: {thingDef.ingestible.foodType}");
-                sb.AppendLine($"Preferability: {thingDef.ingestible.preferability}");
-                sb.AppendLine($"");
-            }
-
-            // Apparel properties if exists
-            if (thingDef.apparel != null)
-            {
-                sb.AppendLine($"--- Apparel Properties ---");
-                sb.AppendLine($"Layers: {string.Join(", ", thingDef.apparel.layers)}");
-                sb.AppendLine($"BodyPartGroups: {string.Join(", ", thingDef.apparel.bodyPartGroups?.Select(g => g.defName) ?? new List<string>())}");
-                sb.AppendLine($"");
-            }
-
-            // Weapon properties if exists
-            if (thingDef.weaponTags != null && thingDef.weaponTags.Count > 0)
-            {
-                sb.AppendLine($"--- Weapon Properties ---");
-                sb.AppendLine($"WeaponTags: {string.Join(", ", thingDef.weaponTags)}");
-                sb.AppendLine($"");
-            }
-
-            // StoreItem information
-            sb.AppendLine($"--- Store Item Data ---");
-            sb.AppendLine($"Custom Name: {storeItem.CustomName}");
-            sb.AppendLine($"Base Price: {storeItem.BasePrice}");
-            sb.AppendLine($"Enabled: {storeItem.Enabled}");
-            sb.AppendLine($"Category: {storeItem.Category}");
-            sb.AppendLine($"Mod Source: {storeItem.ModSource}");
-            sb.AppendLine($"IsUsable: {storeItem.IsUsable}");
-            sb.AppendLine($"IsWearable: {storeItem.IsWearable}");
-            sb.AppendLine($"IsEquippable: {storeItem.IsEquippable}");
-            sb.AppendLine($"HasQuantityLimit: {storeItem.HasQuantityLimit}");
-            sb.AppendLine($"QuantityLimit: {storeItem.QuantityLimit}");
-
-            string fullText = sb.ToString();
-
-            // Custom name editor - positioned at the top
-            Rect customNameRect = new Rect(rect.x, rect.y, rect.width, 30f);
-
-            // Label
-            Rect labelRect = new Rect(customNameRect.x, customNameRect.y, 100f, 30f);
-            Widgets.Label(labelRect, "Custom Name:");
-
-            // Text input
-            Rect inputRect = new Rect(customNameRect.x + 105f, customNameRect.y, rect.width - 215f, 30f);
-            customNameBuffer = Widgets.TextField(inputRect, customNameBuffer);
-
-            // Clear button (only show if there's a custom name)
-            if (!string.IsNullOrEmpty(storeItem.CustomName))
-            {
-                Rect clearButtonRect = new Rect(customNameRect.x + rect.width - 210f, customNameRect.y, 100f, 30f);
-                if (Widgets.ButtonText(clearButtonRect, "Clear"))
-                {
-                    storeItem.CustomName = null;
-                    customNameBuffer = "";
-                    StoreInventory.SaveStoreToJson();
-                    Messages.Message("Custom name cleared", MessageTypeDefOf.PositiveEvent);
-                    SoundDefOf.Click.PlayOneShotOnCamera();
-                }
-            }
-
-            // Save button
-            Rect saveButtonRect = new Rect(customNameRect.x + rect.width - 105f, customNameRect.y, 100f, 30f);
-            bool canSave = !string.IsNullOrWhiteSpace(customNameBuffer) && customNameBuffer != storeItem.CustomName;
-
-            // Disable save button if name is duplicate
-            if (IsCustomNameDuplicate(customNameBuffer))
-            {
-                GUI.color = Color.gray;
-                if (Widgets.ButtonText(saveButtonRect, "Save"))
-                {
-                    Messages.Message("Cannot save: Custom name is already in use by another item",
-                        MessageTypeDefOf.RejectInput);
-                }
-                GUI.color = Color.white;
-                TooltipHandler.TipRegion(saveButtonRect, "Cannot save: This name is already in use by another item");
-            }
-            else if (Widgets.ButtonText(saveButtonRect, "Save") && canSave)
-            {
-                storeItem.CustomName = customNameBuffer.Trim();
-                StoreInventory.SaveStoreToJson();
-                Messages.Message($"Custom name updated to '{storeItem.CustomName}'", MessageTypeDefOf.PositiveEvent);
-                SoundDefOf.Click.PlayOneShotOnCamera();
-            }
-            else if (!canSave)
-            {
-                GUI.color = Color.gray;
-                Widgets.ButtonText(saveButtonRect, "Save");
-                GUI.color = Color.white;
-                TooltipHandler.TipRegion(saveButtonRect, "No changes to save");
-            }
-
-            // Warning message below the input field (if duplicate)
-            if (!string.IsNullOrWhiteSpace(customNameBuffer) && IsCustomNameDuplicate(customNameBuffer))
-            {
-                Rect warningRect = new Rect(rect.x + 105f, rect.y + 35f, rect.width - 110f, 20f);
-                Text.Anchor = TextAnchor.UpperLeft;
-                GUI.color = ColorLibrary.HeaderAccent;
-                Widgets.Label(warningRect, "⚠ Warning: This name is already in use by another item");
-                GUI.color = Color.white;
-                Text.Anchor = TextAnchor.UpperLeft;
-
-                // Adjust scroll view position to account for warning message
-                Rect scrollRect = new Rect(rect.x, rect.y + 60f, rect.width, rect.height - 60f);
-
-                // Calculate text height
-                float textHeight = Text.CalcHeight(fullText, rect.width - 20f);
-                Rect viewRect = new Rect(0f, 0f, rect.width - 20f, textHeight);
-
-                // Scroll view
-                Widgets.BeginScrollView(scrollRect, ref scrollPosition, viewRect);
-                Widgets.Label(new Rect(0f, 0f, viewRect.width, textHeight), fullText);
-                Widgets.EndScrollView();
-            }
-            else
-            {
-                // Adjust scroll view to account for custom name editor
-                Rect scrollRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f);
-
-                // Calculate text height
-                float textHeight = Text.CalcHeight(fullText, rect.width - 20f);
-                Rect viewRect = new Rect(0f, 0f, rect.width - 20f, textHeight);
-
-                // Scroll view
-                Widgets.BeginScrollView(scrollRect, ref scrollPosition, viewRect);
-                Widgets.Label(new Rect(0f, 0f, viewRect.width, textHeight), fullText);
-                Widgets.EndScrollView();
-            }
-        }
-
-        // Helper method to check minification (same logic as StoreCommandHelper)
-        private bool ShouldMinifyForDelivery(ThingDef thingDef)
-        {
-            return thingDef != null && thingDef.Minifiable;
-        }
-        // Method to check for duplicate custom names
-        private HashSet<string> GetAllExistingNames()
-        {
-            var existingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var item in StoreInventory.AllStoreItems.Values)
-            {
-                // Add custom names
-                if (!string.IsNullOrEmpty(item.CustomName))
-                    existingNames.Add(item.CustomName);
-
-                // Add def names
-                existingNames.Add(item.DefName);
-
-                // Add label caps
-                var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
-                if (thingDef != null)
-                    existingNames.Add(thingDef.LabelCap.ToString());
-            }
-
-            return existingNames;
-        }
-
-        private bool IsCustomNameDuplicate(string customName)
-        {
-            if (string.IsNullOrWhiteSpace(customName))
-                return false;
-
-            var existingNames = GetAllExistingNames();
-
-            // Remove current item's names from the set to allow editing
-            if (!string.IsNullOrEmpty(storeItem.CustomName))
-                existingNames.Remove(storeItem.CustomName);
-
-            existingNames.Remove(storeItem.DefName);
-
-            var currentThingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
-            if (currentThingDef != null)
-            {
-                string currentLabelCap = currentThingDef.LabelCap.ToString();
-                existingNames.Remove(currentLabelCap);
-
-                // Also remove the custom name if it's the same as LabelCap (default assignment)
-                if (storeItem.CustomName == currentLabelCap)
-                    existingNames.Remove(storeItem.CustomName);
-            }
-
-            return existingNames.Contains(customName);
         }
     }
     // Enums for sorting and view types
