@@ -405,6 +405,7 @@ namespace CAP_ChatInteractive
 
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.UpperCenter;
+            GUI.color = ColorLibrary.SubHeader;
             Widgets.Label(headerRect, "RICS.Categories".Translate().Colorize(ColorLibrary.SubHeader));
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
