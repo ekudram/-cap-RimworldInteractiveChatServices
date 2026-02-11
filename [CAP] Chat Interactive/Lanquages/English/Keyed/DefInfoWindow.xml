@@ -1,0 +1,93 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<language>
+  <!-- DefInfoWindow -->
+
+  <RICS.DIW.Header>Definition Information</RICS.DIW.Header>
+
+  <!-- Labels -->
+  
+  <RICS.DIW.DefName>DefName: {0}</RICS.DIW.DefName>
+  <RICS.DIW.BaseMarketValue>Base market value: {0}</RICS.DIW.BaseMarketValue>
+
+  <RICS.DIW.ThingClass>Thing class: {0}</RICS.DIW.ThingClass>
+  <RICS.DIW.StackLimit>Maximum stack size: {0}</RICS.DIW.StackLimit>
+  <RICS.DIW.Size>Size: {width}×{height}</RICS.DIW.Size>
+  <RICS.DIW.TechLevel>Tech level: {0}</RICS.DIW.TechLevel>
+  <RICS.DIW.Tradeability>Tradeability: {0}</RICS.DIW.Tradeability>
+
+  <RICS.DIW.IsIngestible>Is ingestible: {0}</RICS.DIW.IsIngestible>
+  <RICS.DIW.IsMedicine>Is medicine: {0}</RICS.DIW.IsMedicine>
+  <RICS.DIW.IsStuff>Is stuff: {0}</RICS.DIW.IsStuff>
+  <RICS.DIW.IsDrug>Is drug: {0}</RICS.DIW.IsDrug>
+  <RICS.DIW.IsPleasureDrug>Is pleasure drug: {0}</RICS.DIW.IsPleasureDrug>
+  <RICS.DIW.IsNonMedicalDrug>Is non-medical drug: {0}</RICS.DIW.IsNonMedicalDrug>
+  <RICS.DIW.IsApparel>Is apparel: {0}</RICS.DIW.IsApparel>
+  <RICS.DIW.Claimable>Claimable: {0}</RICS.DIW.Claimable>
+  <RICS.DIW.IsWeapon>Is weapon: {0}</RICS.DIW.IsWeapon>
+  <RICS.DIW.IsBuildingArtificial>Is artificial building: {0}</RICS.DIW.IsBuildingArtificial>
+
+  <RICS.DIW.Minifiable>Minifiable: {0}</RICS.DIW.Minifiable>
+  <RICS.DIW.MinifiableNote> - Will be delivered as minified crate</RICS.DIW.MinifiableNote>
+  <RICS.DIW.Smeltable>Smeltable: {0}</RICS.DIW.Smeltable>
+
+  <RICS.DIW.DeliverySection>--- Delivery Information ---</RICS.DIW.DeliverySection>
+  <RICS.DIW.WillMinify>Will be minified for delivery: {0}</RICS.DIW.WillMinify>
+  <RICS.DIW.StackLimit>Maximum stack size: {0}</RICS.DIW.StackLimit>
+  <RICS.DIW.Size>Size: {width}×{height}</RICS.DIW.Size>
+
+  <RICS.DIW.CompSection>--- Comp Properties ({0}) ---</RICS.DIW.CompSection>
+  <RICS.DIW.CompBullet>• {0}</RICS.DIW.CompBullet>
+
+  <!-- CompProperties_UseEffect -->
+  <RICS.DIW.UseEffectType>UseEffect type: {0}</RICS.DIW.UseEffectType>
+  <RICS.DIW.CameraShake> - Camera shake: Yes</RICS.DIW.CameraShake>
+  <RICS.DIW.MoteOnUsed> - Mote on used: {0}</RICS.DIW.MoteOnUsed>
+  <RICS.DIW.MoteScale> - Mote scale: {0}</RICS.DIW.MoteScale>
+  <RICS.DIW.FleckOnUsed> - Fleck on used: {0}</RICS.DIW.FleckOnUsed>
+  <RICS.DIW.FleckScale> - Fleck scale: {0}</RICS.DIW.FleckScale>
+  <RICS.DIW.EffecterOnUsed> - Effecter on used: {0}</RICS.DIW.EffecterOnUsed>
+  <RICS.DIW.WarmupEffecter> - Warmup effecter: {0}</RICS.DIW.WarmupEffecter>
+
+  <!-- CompProperties_FoodPoisonable -->
+  <RICS.DIW.FoodPoisonable> - Food poisonable</RICS.DIW.FoodPoisonable>
+
+  <RICS.DIW.IngestibleSection>--- Ingestible Properties ---</RICS.DIW.IngestibleSection>
+  <RICS.DIW.Nutrition>Nutrition value: {0}</RICS.DIW.Nutrition>
+  <RICS.DIW.FoodType>Food category: {0}</RICS.DIW.FoodType>
+  <RICS.DIW.Preferability>Preferability: {0}</RICS.DIW.Preferability>
+
+  <RICS.DIW.ApparelSection>--- Apparel Properties ---</RICS.DIW.ApparelSection>
+  <RICS.DIW.ApparelLayers>Layers: {layers}</RICS.DIW.ApparelLayers>
+  <RICS.DIW.ApparelBodyPartGroups>Covered body parts: {bodyParts}</RICS.DIW.ApparelBodyPartGroups>
+
+  <RICS.DIW.WeaponSection>--- Weapon Properties ---</RICS.DIW.WeaponSection>
+  <RICS.DIW.WeaponTags>Tags: {tags}</RICS.DIW.WeaponTags>
+
+  <!-- Store item Info -->
+
+  <RICS.DIW.StoreItemSection>--- Store Item Data ---</RICS.DIW.StoreItemSection>
+  <RICS.DIW.CustomName>Custom name: {0}</RICS.DIW.CustomName>
+  <RICS.DIW.BasePrice>Base price: {0}</RICS.DIW.BasePrice>
+  <RICS.DIW.Enabled>Enabled: {0}</RICS.DIW.Enabled>
+  <RICS.DIW.Category>Category: {0}</RICS.DIW.Category>
+  <RICS.DIW.ModSource>Mod source: {0}</RICS.DIW.ModSource>
+  <RICS.DIW.IsUsable>Usable: {0}</RICS.DIW.IsUsable>
+  <RICS.DIW.IsWearable>Wearable: {0}</RICS.DIW.IsWearable>
+  <RICS.DIW.IsEquippable>Equippable: {0}</RICS.DIW.IsEquippable>
+  <RICS.DIW.HasQuantityLimit>Has quantity limit: {0}</RICS.DIW.HasQuantityLimit>
+  <RICS.DIW.QuantityLimit>Quantity limit: {0}</RICS.DIW.QuantityLimit>
+
+  <RICS.DIW.CustomNameLabel>Custom Name:</RICS.DIW.CustomNameLabel>
+  <RICS.DIW.ClearButton>Clear</RICS.DIW.ClearButton>
+  <RICS.DIW.CustomNameCleared>Custom name cleared.</RICS.DIW.CustomNameCleared>
+
+  <RICS.DIW.SaveButton>Save</RICS.DIW.SaveButton>
+  <RICS.DIW.CannotSaveDuplicate>Duplicate name</RICS.DIW.CannotSaveDuplicate>
+  <RICS.DIW.CannotSaveDuplicateMessage>Cannot save: Custom name is already in use by another item</RICS.DIW.CannotSaveDuplicateMessage>
+  <RICS.DIW.CannotSaveDuplicateTooltip>Cannot save: This name is already in use by another item</RICS.DIW.CannotSaveDuplicateTooltip>
+  <RICS.DIW.CustomNameUpdated>Custom name updated to '{0}'</RICS.DIW.CustomNameUpdated>
+  <RICS.DIW.NoChangesToSave>No changes to save</RICS.DIW.NoChangesToSave>
+  <RICS.DIW.NoChangesTooltip>No changes to save</RICS.DIW.NoChangesTooltip>
+
+  <RICS.DIW.DuplicateNameWarning>⚠ Warning: This name is already in use by another item</RICS.DIW.DuplicateNameWarning>
+</language>

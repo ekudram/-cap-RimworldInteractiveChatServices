@@ -54,8 +54,11 @@ namespace CAP_ChatInteractive
             // Title
             Rect titleRect = new Rect(0f, 0f, inRect.width, 35f);
             Text.Font = GameFont.Medium;
-            Widgets.Label(titleRect, $"Def Information: {thingDef.LabelCap}");
+            GUI.color = ColorLibrary.HeaderAccent;
+            // Widgets.Label(titleRect, $"Def Information: {thingDef.LabelCap}");
+            Widgets.Label(titleRect, $"RICS.DIW.Header".Translate(thingDef.LabelCap));
             Text.Font = GameFont.Small;
+            GUI.color = Color.white;
 
             // Content area
             Rect contentRect = new Rect(0f, 40f, inRect.width, inRect.height - 40f - CloseButSize.y);
@@ -67,116 +70,182 @@ namespace CAP_ChatInteractive
             StringBuilder sb = new StringBuilder();
 
             // Always show at top
-            sb.AppendLine($"DefName: {thingDef.defName}");
-            sb.AppendLine($"BaseMarketValue: {thingDef.BaseMarketValue}");
+            sb.AppendLine("RICS.DIW.DefName".Translate(thingDef.defName.Named("0")));
+            sb.AppendLine("RICS.DIW.BaseMarketValue".Translate(thingDef.BaseMarketValue.ToStringMoney("F2").Named("0")));
             sb.AppendLine($"");
 
             // ThingDef properties
-            sb.AppendLine($"thingClass: {thingDef.thingClass?.Name ?? "null"}");
-            sb.AppendLine($"stackLimit: {thingDef.stackLimit}");
-            sb.AppendLine($"Size: {thingDef.size}");
-            sb.AppendLine($"TechLevel: {thingDef.techLevel}");
-            sb.AppendLine($"Tradeability: {thingDef.tradeability}");
+            sb.AppendLine("RICS.DIW.ThingClass".Translate((thingDef.thingClass?.Name ?? "null").Named("0")));
+            sb.AppendLine("RICS.DIW.StackLimit".Translate(thingDef.stackLimit.Named("0")));
+            sb.AppendLine("RICS.DIW.Size".Translate(
+                thingDef.size.x.Named("width"),
+                thingDef.size.z.Named("height")   // RimWorld uses x/z for width/depth
+            ));
+            sb.AppendLine("RICS.DIW.TechLevel".Translate(thingDef.techLevel.ToStringHuman().Named("0")));
+            sb.AppendLine("RICS.DIW.Tradeability".Translate(thingDef.tradeability.ToString().Named("0")));
 
             // Boolean properties - only show if true
-            if (thingDef.IsIngestible) sb.AppendLine($"IsIngestible: {thingDef.IsIngestible}");
-            if (thingDef.IsMedicine) sb.AppendLine($"IsMedicine: {thingDef.IsMedicine}");
-            if (thingDef.IsStuff) sb.AppendLine($"IsStuff: {thingDef.IsStuff}");
-            if (thingDef.IsDrug) sb.AppendLine($"IsDrug: {thingDef.IsDrug}");
-            if (thingDef.IsPleasureDrug) sb.AppendLine($"IsPleasureDrug: {thingDef.IsPleasureDrug}");
-            if (thingDef.IsNonMedicalDrug) sb.AppendLine($"IsNonMedicalDrug: {thingDef.IsNonMedicalDrug}");
-            if (thingDef.IsApparel) sb.AppendLine($"IsApparel: {thingDef.IsApparel}");
-            if (thingDef.Claimable) sb.AppendLine($"Claimable: {thingDef.Claimable}");
-            if (thingDef.IsWeapon) sb.AppendLine($"IsWeapon: {thingDef.IsWeapon}");
-            if (thingDef.IsBuildingArtificial) sb.AppendLine($"IsBuildingArtificial: {thingDef.IsBuildingArtificial}");
+            if (thingDef.IsIngestible)
+                sb.AppendLine("RICS.DIW.IsIngestible".Translate(thingDef.IsIngestible.ToStringYesNo().Named("0")));
+            if (thingDef.IsMedicine)
+                sb.AppendLine("RICS.DIW.IsMedicine".Translate(thingDef.IsMedicine.ToStringYesNo().Named("0")));
+            if (thingDef.IsStuff)
+                sb.AppendLine("RICS.DIW.IsStuff".Translate(thingDef.IsStuff.ToStringYesNo().Named("0")));
+            if (thingDef.IsDrug)
+                sb.AppendLine("RICS.DIW.IsDrug".Translate(thingDef.IsDrug.ToStringYesNo().Named("0")));
+            if (thingDef.IsPleasureDrug)
+                sb.AppendLine("RICS.DIW.IsPleasureDrug".Translate(thingDef.IsPleasureDrug.ToStringYesNo().Named("0")));
+            if (thingDef.IsNonMedicalDrug)
+                sb.AppendLine("RICS.DIW.IsNonMedicalDrug".Translate(thingDef.IsNonMedicalDrug.ToStringYesNo().Named("0")));
+            if (thingDef.IsApparel)
+                sb.AppendLine("RICS.DIW.IsApparel".Translate(thingDef.IsApparel.ToStringYesNo().Named("0")));
+            if (thingDef.Claimable)
+                sb.AppendLine("RICS.DIW.Claimable".Translate(thingDef.Claimable.ToStringYesNo().Named("0")));
+            if (thingDef.IsWeapon)
+                sb.AppendLine("RICS.DIW.IsWeapon".Translate(thingDef.IsWeapon.ToStringYesNo().Named("0")));
+            if (thingDef.IsBuildingArtificial)
+                sb.AppendLine("RICS.DIW.IsBuildingArtificial".Translate(thingDef.IsBuildingArtificial.ToStringYesNo().Named("0")));
 
             // MINIFICATION PROPERTIES - Always show these
-            sb.AppendLine($"Minifiable: {thingDef.Minifiable}");
+            sb.AppendLine("RICS.DIW.Minifiable".Translate(thingDef.Minifiable.ToStringYesNo().Named("0")));
+
             if (thingDef.Minifiable)
             {
-                sb.AppendLine($"  - Will be delivered as minified crate");
+                sb.AppendLine("RICS.DIW.MinifiableNote".Translate());
             }
-
-            if (thingDef.smeltable) sb.AppendLine($"Smeltable: {thingDef.smeltable}");
-
+            if (thingDef.smeltable)
+            {
+                sb.AppendLine("RICS.DIW.Smeltable".Translate(thingDef.smeltable.ToStringYesNo().Named("0")));
+            }
             sb.AppendLine($"");
+            sb.AppendLine("RICS.DIW.DeliverySection".Translate());
+            sb.AppendLine("RICS.DIW.WillMinify".Translate(
+                ShouldMinifyForDelivery(thingDef).ToStringYesNo().Named("0")
+            ));
+            sb.AppendLine("RICS.DIW.StackLimit".Translate(
+                thingDef.stackLimit.Named("0")
+            ));
+            sb.AppendLine("RICS.DIW.Size".Translate(
+                thingDef.size.x.Named("width"),
+                thingDef.size.z.Named("height")
+            ));
 
-            // Delivery Information
-            sb.AppendLine($"--- Delivery Information ---");
-            sb.AppendLine($"Will Minify: {ShouldMinifyForDelivery(thingDef)}");
-            sb.AppendLine($"Stack Limit: {thingDef.stackLimit}");
-            sb.AppendLine($"Size: {thingDef.size}");
-            sb.AppendLine($"");
+            sb.AppendLine("");
 
             // List comps if the thing has them
             if (thingDef.comps != null && thingDef.comps.Count > 0)
             {
-                sb.AppendLine($"--- Comp Properties ({thingDef.comps.Count}) ---");
+                sb.AppendLine("RICS.DIW.CompSection".Translate(thingDef.comps.Count.Named("0")));
+
                 foreach (var compProps in thingDef.comps)
                 {
-                    sb.AppendLine($"• {compProps.compClass?.Name ?? "null"}");
+                    string compName = compProps.compClass?.Name ?? "null";
+                    sb.AppendLine("RICS.DIW.CompBullet".Translate(compName.Named("0")));
 
                     // Show detailed CompProperties_UseEffect information
                     if (compProps is CompProperties_UseEffect compUseEffect)
                     {
-                        sb.AppendLine($"  - UseEffect Type: {compUseEffect.GetType().Name}");
-                        if (compUseEffect.doCameraShake) sb.AppendLine($"  - Camera Shake: Yes");
-                        if (compUseEffect.moteOnUsed != null) sb.AppendLine($"  - Mote On Used: {compUseEffect.moteOnUsed.defName}");
-                        if (compUseEffect.moteOnUsedScale != 1f) sb.AppendLine($"  - Mote Scale: {compUseEffect.moteOnUsedScale}");
-                        if (compUseEffect.fleckOnUsed != null) sb.AppendLine($"  - Fleck On Used: {compUseEffect.fleckOnUsed.defName}");
-                        if (compUseEffect.fleckOnUsedScale != 1f) sb.AppendLine($"  - Fleck Scale: {compUseEffect.fleckOnUsedScale}");
-                        if (compUseEffect.effecterOnUsed != null) sb.AppendLine($"  - Effecter On Used: {compUseEffect.effecterOnUsed.defName}");
-                        if (compUseEffect.warmupEffecter != null) sb.AppendLine($"  - Warmup Effecter: {compUseEffect.warmupEffecter.defName}");
+                        sb.AppendLine("RICS.DIW.UseEffectType".Translate(compUseEffect.GetType().Name.Named("0")));
+                        if (compUseEffect.doCameraShake)
+                            sb.AppendLine("RICS.DIW.CameraShake".Translate());
+                        if (compUseEffect.moteOnUsed != null)
+                            sb.AppendLine("RICS.DIW.MoteOnUsed".Translate(compUseEffect.moteOnUsed.defName.Named("0")));
+                        if (compUseEffect.moteOnUsedScale != 1f)
+                            sb.AppendLine("RICS.DIW.MoteScale".Translate(compUseEffect.moteOnUsedScale.ToString("F2").Named("0")));
+                        if (compUseEffect.fleckOnUsed != null)
+                            sb.AppendLine("RICS.DIW.FleckOnUsed".Translate(compUseEffect.fleckOnUsed.defName.Named("0")));
+                        if (compUseEffect.fleckOnUsedScale != 1f)
+                            sb.AppendLine("RICS.DIW.FleckScale".Translate(compUseEffect.fleckOnUsedScale.ToString("F2").Named("0")));
+                        if (compUseEffect.effecterOnUsed != null)
+                            sb.AppendLine("RICS.DIW.EffecterOnUsed".Translate(compUseEffect.effecterOnUsed.defName.Named("0")));
+                        if (compUseEffect.warmupEffecter != null)
+                            sb.AppendLine("RICS.DIW.WarmupEffecter".Translate(compUseEffect.warmupEffecter.defName.Named("0")));
                     }
-                    else if (compProps is CompProperties_FoodPoisonable compFoodPoison)
+                    else if (compProps is CompProperties_FoodPoisonable)
                     {
-                        sb.AppendLine($"  - FoodPoisonable");
+                        sb.AppendLine("RICS.DIW.FoodPoisonable".Translate());
                     }
-                    // Add more comp type checks as needed
+                    // Add more comp type checks as needed (same pattern)
                 }
-                sb.AppendLine($"");
+
+                sb.AppendLine("");  // empty line separator
             }
 
             // Ingestible properties if exists
             if (thingDef.ingestible != null)
             {
-                sb.AppendLine($"--- Ingestible Properties ---");
-                sb.AppendLine($"Nutrition: {thingDef.ingestible.CachedNutrition}");
-                sb.AppendLine($"FoodType: {thingDef.ingestible.foodType}");
-                sb.AppendLine($"Preferability: {thingDef.ingestible.preferability}");
-                sb.AppendLine($"");
+                sb.AppendLine("RICS.DIW.IngestibleSection".Translate());
+                sb.AppendLine("RICS.DIW.Nutrition".Translate(
+                    thingDef.ingestible.CachedNutrition.ToString("F2").Named("0")
+                ));
+                sb.AppendLine("RICS.DIW.FoodType".Translate(
+                    thingDef.ingestible.foodType.ToString().Named("0")
+                ));
+                sb.AppendLine("RICS.DIW.Preferability".Translate(
+                    thingDef.ingestible.preferability.ToString().Named("0")
+                ));
+                sb.AppendLine("");  // empty line separator
             }
 
             // Apparel properties if exists
             if (thingDef.apparel != null)
             {
-                sb.AppendLine($"--- Apparel Properties ---");
-                sb.AppendLine($"Layers: {string.Join(", ", thingDef.apparel.layers)}");
-                sb.AppendLine($"BodyPartGroups: {string.Join(", ", thingDef.apparel.bodyPartGroups?.Select(g => g.defName) ?? new List<string>())}");
-                sb.AppendLine($"");
+                sb.AppendLine("RICS.DIW.ApparelSection".Translate());
+                sb.AppendLine("RICS.DIW.ApparelLayers".Translate(
+                    string.Join(", ", thingDef.apparel.layers).Named("layers")
+                ));
+                sb.AppendLine("RICS.DIW.ApparelBodyPartGroups".Translate(
+                    string.Join(", ",
+                        thingDef.apparel.bodyPartGroups?.Select(g => g.defName) ?? Enumerable.Empty<string>()
+                    ).Named("bodyParts")
+                ));
+                sb.AppendLine("");
             }
 
             // Weapon properties if exists
             if (thingDef.weaponTags != null && thingDef.weaponTags.Count > 0)
             {
-                sb.AppendLine($"--- Weapon Properties ---");
-                sb.AppendLine($"WeaponTags: {string.Join(", ", thingDef.weaponTags)}");
-                sb.AppendLine($"");
+                sb.AppendLine("RICS.DIW.WeaponSection".Translate());
+
+                sb.AppendLine("RICS.DIW.WeaponTags".Translate(
+                    string.Join(", ", thingDef.weaponTags).Named("tags")
+                ));
+
+                sb.AppendLine("");
             }
 
             // StoreItem information
-            sb.AppendLine($"--- Store Item Data ---");
-            sb.AppendLine($"Custom Name: {storeItem.CustomName}");
-            sb.AppendLine($"Base Price: {storeItem.BasePrice}");
-            sb.AppendLine($"Enabled: {storeItem.Enabled}");
-            sb.AppendLine($"Category: {storeItem.Category}");
-            sb.AppendLine($"Mod Source: {storeItem.ModSource}");
-            sb.AppendLine($"IsUsable: {storeItem.IsUsable}");
-            sb.AppendLine($"IsWearable: {storeItem.IsWearable}");
-            sb.AppendLine($"IsEquippable: {storeItem.IsEquippable}");
-            sb.AppendLine($"HasQuantityLimit: {storeItem.HasQuantityLimit}");
-            sb.AppendLine($"QuantityLimit: {storeItem.QuantityLimit}");
-
+            sb.AppendLine("RICS.DIW.StoreItemSection".Translate());
+            sb.AppendLine("RICS.DIW.CustomName".Translate(
+                (storeItem.CustomName ?? "None").Named("0")
+            ));
+            sb.AppendLine("RICS.DIW.BasePrice".Translate(
+                storeItem.BasePrice.ToString("F2").Named("0")
+            ));
+            sb.AppendLine("RICS.DIW.Enabled".Translate(
+                storeItem.Enabled.ToStringYesNo().Named("0")
+            ));
+            sb.AppendLine("RICS.DIW.Category".Translate(
+                storeItem.Category.Named("0")
+            ));
+            sb.AppendLine("RICS.DIW.ModSource".Translate(
+                storeItem.ModSource.Named("0")
+            ));
+            sb.AppendLine("RICS.DIW.IsUsable".Translate(
+                storeItem.IsUsable.ToStringYesNo().Named("0")
+            ));
+            sb.AppendLine("RICS.DIW.IsWearable".Translate(
+                storeItem.IsWearable.ToStringYesNo().Named("0")
+            ));
+            sb.AppendLine("RICS.DIW.IsEquippable".Translate(
+                storeItem.IsEquippable.ToStringYesNo().Named("0")
+            ));
+            sb.AppendLine("RICS.DIW.HasQuantityLimit".Translate(
+                storeItem.HasQuantityLimit.ToStringYesNo().Named("0")
+            ));
+            sb.AppendLine("RICS.DIW.QuantityLimit".Translate(
+                storeItem.QuantityLimit.Named("0")
+            ));
             string fullText = sb.ToString();
 
             // Custom name editor - positioned at the top
@@ -184,7 +253,8 @@ namespace CAP_ChatInteractive
 
             // Label
             Rect labelRect = new Rect(customNameRect.x, customNameRect.y, 100f, 30f);
-            Widgets.Label(labelRect, "Custom Name:");
+            // Widgets.Label(labelRect, "Custom Name:");
+            Widgets.Label(labelRect, "RICS.DIW.CustomNameLabel".Translate());   
 
             // Text input
             Rect inputRect = new Rect(customNameRect.x + 105f, customNameRect.y, rect.width - 215f, 30f);
@@ -194,12 +264,17 @@ namespace CAP_ChatInteractive
             if (!string.IsNullOrEmpty(storeItem.CustomName))
             {
                 Rect clearButtonRect = new Rect(customNameRect.x + rect.width - 210f, customNameRect.y, 100f, 30f);
-                if (Widgets.ButtonText(clearButtonRect, "Clear"))
+                if (Widgets.ButtonText(clearButtonRect, "RICS.DIW.ClearButton".Translate()))
                 {
                     storeItem.CustomName = null;
                     customNameBuffer = "";
                     StoreInventory.SaveStoreToJson();
-                    Messages.Message("Custom name cleared", MessageTypeDefOf.PositiveEvent);
+
+                    Messages.Message(
+                        "RICS.DIW.CustomNameCleared".Translate(),
+                        MessageTypeDefOf.PositiveEvent
+                    );
+
                     SoundDefOf.Click.PlayOneShotOnCamera();
                 }
             }
@@ -208,31 +283,48 @@ namespace CAP_ChatInteractive
             Rect saveButtonRect = new Rect(customNameRect.x + rect.width - 105f, customNameRect.y, 100f, 30f);
             bool canSave = !string.IsNullOrWhiteSpace(customNameBuffer) && customNameBuffer != storeItem.CustomName;
 
+            string saveButtonText = "RICS.DIW.SaveButton".Translate();
+
             // Disable save button if name is duplicate
             if (IsCustomNameDuplicate(customNameBuffer))
             {
                 GUI.color = Color.gray;
-                if (Widgets.ButtonText(saveButtonRect, "Save"))
-                {
-                    Messages.Message("Cannot save: Custom name is already in use by another item",
-                        MessageTypeDefOf.RejectInput);
-                }
+                Widgets.ButtonText(saveButtonRect, saveButtonText);
                 GUI.color = Color.white;
-                TooltipHandler.TipRegion(saveButtonRect, "Cannot save: This name is already in use by another item");
+
+                if (Widgets.ButtonText(saveButtonRect, saveButtonText)) // still clickable for feedback
+                {
+                    Messages.Message(
+                        "RICS.DIW.CannotSaveDuplicateMessage".Translate(),
+                        MessageTypeDefOf.RejectInput
+                    );
+                }
+
+                TooltipHandler.TipRegion(saveButtonRect,
+                    "RICS.DIW.CannotSaveDuplicateTooltip".Translate());
             }
-            else if (Widgets.ButtonText(saveButtonRect, "Save") && canSave)
+            else if (Widgets.ButtonText(saveButtonRect, saveButtonText) && canSave)
             {
                 storeItem.CustomName = customNameBuffer.Trim();
                 StoreInventory.SaveStoreToJson();
-                Messages.Message($"Custom name updated to '{storeItem.CustomName}'", MessageTypeDefOf.PositiveEvent);
+
+                Messages.Message(
+                    "RICS.DIW.CustomNameUpdated".Translate(
+                        storeItem.CustomName.Named("0")
+                    ),
+                    MessageTypeDefOf.PositiveEvent
+                );
+
                 SoundDefOf.Click.PlayOneShotOnCamera();
             }
             else if (!canSave)
             {
                 GUI.color = Color.gray;
-                Widgets.ButtonText(saveButtonRect, "Save");
+                Widgets.ButtonText(saveButtonRect, saveButtonText);
                 GUI.color = Color.white;
-                TooltipHandler.TipRegion(saveButtonRect, "No changes to save");
+
+                TooltipHandler.TipRegion(saveButtonRect,
+                    "RICS.DIW.NoChangesTooltip".Translate());
             }
 
             // Warning message below the input field (if duplicate)
@@ -241,7 +333,8 @@ namespace CAP_ChatInteractive
                 Rect warningRect = new Rect(rect.x + 105f, rect.y + 35f, rect.width - 110f, 20f);
                 Text.Anchor = TextAnchor.UpperLeft;
                 GUI.color = ColorLibrary.HeaderAccent;
-                Widgets.Label(warningRect, "⚠ Warning: This name is already in use by another item");
+                // Widgets.Label(warningRect, "⚠ Warning: This name is already in use by another item");
+                Widgets.Label(warningRect, "RICS.DIW.DuplicateNameWarning".Translate());    
                 GUI.color = Color.white;
                 Text.Anchor = TextAnchor.UpperLeft;
 
