@@ -65,19 +65,30 @@ namespace CAP_ChatInteractive
         private List<StoreItem> filteredItems = new List<StoreItem>();
         private Dictionary<string, int> originalPrices = new Dictionary<string, int>();
 
+        private string selectedModSource = "All";
+        private Dictionary<string, int> modSourceCounts = new Dictionary<string, int>();
+        private StoreListViewType listViewType = StoreListViewType.Category;
+
         public override Vector2 InitialSize => new Vector2(1200f, 755f);
 
+        // Constructor
         public Dialog_StoreEditor()
         {
             doCloseButton = true;
             forcePause = true;
             absorbInputAroundWindow = true;
 
+            selectedCategory = "All";
+            selectedModSource = "All";
+            scrollPosition = Vector2.zero;
+            categoryScrollPosition = Vector2.zero;
+
             BuildCategoryCounts();
+            BuildModSourceCounts();
             FilterItems();
             SaveOriginalPrices();
         }
-
+        // DoWindowContents is called every frame to redraw the window
         public override void DoWindowContents(Rect inRect)
         {
             // Update search if query changed
@@ -94,14 +105,14 @@ namespace CAP_ChatInteractive
             Rect contentRect = new Rect(0f, 75f, inRect.width, inRect.height - 75f - CloseButSize.y);
             DrawContent(contentRect);
         }
-
+        // DrawHeader creates the top section of the window with title, search bar, and action buttons
         private void DrawHeader(Rect rect)
         {
             Widgets.BeginGroup(rect);
 
             // Custom title with larger font and underline effect - similar to PawnQueue
             Text.Font = GameFont.Medium;
-            GUI.color = ColorLibrary.HeaderAccent;
+            GUI.color = ColorLibrary.HeaderAccent; // Orange accent color for title
             Rect titleRect = new Rect(0f, 0f, 430f, 35f);
             string titleText = "Store Items Editor";
 
@@ -190,8 +201,8 @@ namespace CAP_ChatInteractive
         {
             Widgets.BeginGroup(rect);
 
-            float buttonWidth = 80f;
-            float spacing = 5f;
+            float buttonWidth = 90f;   // slightly wider to fit "Mod Source"
+            float spacing = 6f;
             float x = 0f;
 
             // Sort by Name
@@ -216,20 +227,51 @@ namespace CAP_ChatInteractive
             }
             x += buttonWidth + spacing;
 
-            // Sort by Category
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Category"))
+            // Dynamic Category / Mod Source button
+            string secondarySortLabel;
+            StoreSortMethod secondarySortMode;
+
+            // Decide which mode the button represents right now
+            if (sortMethod == StoreSortMethod.ModSource)
             {
-                if (sortMethod == StoreSortMethod.Category)
+                secondarySortLabel = "Mod Source";
+                secondarySortMode = StoreSortMethod.ModSource;
+            }
+            else
+            {
+                secondarySortLabel = "Category";
+                secondarySortMode = StoreSortMethod.Category;
+            }
+
+            // Append arrow if this is the current sort
+            if (sortMethod == secondarySortMode)
+            {
+                secondarySortLabel += sortAscending ? " ↑" : " ↓";
+            }
+
+            Rect secondaryRect = new Rect(x, 0f, buttonWidth + 20f, 30f); // a bit wider
+
+            if (Widgets.ButtonText(secondaryRect, secondarySortLabel))
+            {
+                if (sortMethod == secondarySortMode)
+                {
+                    // Already sorting by this → just flip direction
                     sortAscending = !sortAscending;
+                }
                 else
-                    sortMethod = StoreSortMethod.Category;
+                {
+                    // Switch to the other secondary sort (start ascending)
+                    sortMethod = secondarySortMode;
+                    sortAscending = true;
+                }
                 SortItems();
             }
 
-            // Sort indicator
-            string sortIndicator = sortAscending ? " ↑" : " ↓";
-            Rect indicatorRect = new Rect(x + buttonWidth + 10f, 8f, 50f, 20f);
-            Widgets.Label(indicatorRect, sortIndicator);
+            // Optional: show small indicator of what the button will switch to
+            string tooltip = sortMethod == StoreSortMethod.Category
+                ? "Click to sort by Mod Source"
+                : "Click to sort by Category";
+            TooltipHandler.TipRegion(secondaryRect, tooltip);
 
             Widgets.EndGroup();
         }
@@ -441,6 +483,52 @@ namespace CAP_ChatInteractive
             FilterItems(); // Refresh the view
         }
 
+        private void EnableModSourceItems()
+        {
+            int enabledCount = 0;
+
+            foreach (var item in filteredItems)
+            {
+                if (!item.Enabled)
+                {
+                    item.Enabled = true;
+                    enabledCount++;
+                }
+            }
+
+            if (enabledCount > 0)
+            {
+                StoreInventory.SaveStoreToJson();
+                string modName = GetDisplayModName(selectedModSource);
+                Messages.Message($"Enabled {enabledCount} items from '{modName}'",
+                    MessageTypeDefOf.PositiveEvent);
+                FilterItems(); // Refresh view
+            }
+        }
+
+        private void DisableModSourceItems()
+        {
+            int disabledCount = 0;
+
+            foreach (var item in filteredItems)
+            {
+                if (item.Enabled)
+                {
+                    item.Enabled = false;
+                    disabledCount++;
+                }
+            }
+
+            if (disabledCount > 0)
+            {
+                StoreInventory.SaveStoreToJson();
+                string modName = GetDisplayModName(selectedModSource);
+                Messages.Message($"Disabled {disabledCount} items from '{modName}'",
+                    MessageTypeDefOf.NeutralEvent);
+                FilterItems(); // Refresh view
+            }
+        }
+
         private void DrawContent(Rect rect)
         {
             // Add 2px padding to the left side
@@ -452,25 +540,47 @@ namespace CAP_ChatInteractive
             float categoryWidth = 200f;
             float itemsWidth = rect.width - categoryWidth - 10f;
 
-            Rect categoryRect = new Rect(rect.x, rect.y, categoryWidth, rect.height);
+            Rect listRect = new Rect(rect.x, rect.y, categoryWidth, rect.height);
             Rect itemsRect = new Rect(rect.x + categoryWidth + 10f, rect.y, itemsWidth, rect.height);
 
-            DrawCategoryList(categoryRect);
+            if (listViewType == StoreListViewType.Category)
+            {
+                DrawCategoryList(listRect);
+            }
+            else
+            {
+                DrawModSourcesList(listRect);
+            }
+
             DrawItemList(itemsRect);
         }
-
+        // This method draws the category list on the left side when in Category view.
         private void DrawCategoryList(Rect rect)
         {
             // Background
             Widgets.DrawMenuSection(rect);
 
-            // Header
+            // Header Catagory List
             Rect headerRect = new Rect(rect.x, rect.y, rect.width, 30f);
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter;
+            GUI.color = ColorLibrary.SubHeader;
             Widgets.Label(headerRect, "Categories");
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
+            GUI.color = Color.white;
+            TooltipHandler.TipRegion(headerRect, "Click to switch to mod source view");
+
+            // Toggle view on header click
+            if (Widgets.ButtonInvisible(headerRect))
+            {
+                listViewType = StoreListViewType.ModSource;
+                selectedCategory = "All";           // reset
+                selectedModSource = "All";          // reset both for safety
+                scrollPosition = Vector2.zero;      // reset item list scroll
+                categoryScrollPosition = Vector2.zero; // reset left panel scroll
+                FilterItems();                      // rebuild list immediately
+            }
 
             // Category list area
             Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f);
@@ -535,204 +645,263 @@ namespace CAP_ChatInteractive
             }
             Widgets.EndScrollView();
         }
-
-        private void DrawItemList(Rect rect)
+        // This method draws the mod source list on the left side when in Mod Source view.
+        private void DrawModSourcesList(Rect rect)
         {
             // Background
             Widgets.DrawMenuSection(rect);
 
-            // Header with item count and quantity controls
-            Rect headerRect = new Rect(rect.x, rect.y, rect.width, 55f); // Increased height from 30f to 55f
-
-            // Top row: Item count
-            Rect countRect = new Rect(headerRect.x, headerRect.y, headerRect.width, 25f);
+            // Header Mod Source List
+            Rect headerRect = new Rect(rect.x, rect.y, rect.width, 30f);
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter;
-            string headerText = $"Items ({filteredItems.Count})";
-            if (selectedCategory != "All") headerText += $" - {selectedCategory}";
-
-            // Truncate header if needed
-            //string displayHeader = UIUtilities.TruncateTextToWidthEfficient(headerText, countRect.width - 20f);
-            string displayHeader = UIUtilities.Truncate(headerText, countRect.width - 20f);
-            Widgets.Label(countRect, displayHeader);
-
-            // Add tooltip if truncated
-            if (UIUtilities.WouldTruncate(headerText, countRect.width - 20f))
-            {
-                TooltipHandler.TipRegion(countRect, headerText);
-            }
-
+            GUI.color = ColorLibrary.SubHeader;
+            Widgets.Label(headerRect, "Mod Sources");
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
+            GUI.color = Color.white;
+            TooltipHandler.TipRegion(headerRect, "Click to switch to category view");
 
-            // Bottom rows: Bulk controls for all visible items
-            if (filteredItems.Count > 0)
+            // Toggle view on header click
+            if (Widgets.ButtonInvisible(headerRect))
             {
-                // First row: Quantity controls
-                Rect qtyControlsRect = new Rect(headerRect.x, headerRect.y + 25f, headerRect.width, 25f);
-                DrawBulkQuantityControls(qtyControlsRect);
-
-                // Second row: Category price controls (only show when a specific category is selected)
-                if (selectedCategory != "All")
-                {
-                    Rect priceControlsRect = new Rect(headerRect.x, headerRect.y + 50f, headerRect.width, 25f);
-                    DrawCategoryPriceControls(priceControlsRect);
-                }
+                listViewType = StoreListViewType.Category;
+                selectedCategory = "All";           // reset
+                selectedModSource = "All";          // reset both for safety
+                scrollPosition = Vector2.zero;      // reset item list scroll
+                categoryScrollPosition = Vector2.zero; // reset left panel scroll
+                FilterItems();                      // rebuild list immediately
             }
 
-            // Item list with virtual scrolling
-            Rect listRect = new Rect(rect.x, rect.y + (selectedCategory != "All" ? 85f : 60f), rect.width,
-                rect.height - (selectedCategory != "All" ? 85f : 60f));
-            float rowHeight = 60f;
+            // Mod source list area
+            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f);
 
-            // Handle empty filtered items case
-            if (filteredItems.Count == 0)
+            // Safety: don't crash if no mod sources yet
+            if (modSourceCounts == null || modSourceCounts.Count == 0)
             {
-                Rect emptyRect = new Rect(listRect.x, listRect.y, listRect.width, 30f);
-                Text.Anchor = TextAnchor.MiddleCenter;
-                Widgets.Label(emptyRect, "No items found");
-                Text.Anchor = TextAnchor.UpperLeft;
+                Widgets.Label(listRect, "No mod sources loaded");
                 return;
             }
 
-            // Calculate visible range
-            int firstVisibleIndex = Mathf.FloorToInt(scrollPosition.y / rowHeight);
-            int lastVisibleIndex = Mathf.CeilToInt((scrollPosition.y + listRect.height) / rowHeight);
-            firstVisibleIndex = Mathf.Clamp(firstVisibleIndex, 0, filteredItems.Count - 1);
-            lastVisibleIndex = Mathf.Clamp(lastVisibleIndex, 0, filteredItems.Count - 1);
+            Rect viewRect = new Rect(0f, 0f, listRect.width - 20f, modSourceCounts.Count * 30f);
 
-            // Only create viewRect for visible items
-            Rect viewRect = new Rect(0f, 0f, listRect.width - 20f, filteredItems.Count * rowHeight);
-
-            Widgets.BeginScrollView(listRect, ref scrollPosition, viewRect);
+            Widgets.BeginScrollView(listRect, ref categoryScrollPosition, viewRect);
             {
-                float y = firstVisibleIndex * rowHeight;
-                for (int i = firstVisibleIndex; i <= lastVisibleIndex; i++)
-                {
-                    Rect itemRect = new Rect(0f, y, viewRect.width, rowHeight - 2f);
-                    if (i % 2 == 1)
+                float y = 0f;
+
+                // Custom sort: "All" first → Alphabetical
+                var orderedModSources = modSourceCounts.Keys
+                    .OrderBy(source =>
                     {
-                        Widgets.DrawLightHighlight(itemRect);
+                        if (source == "All") return 0;
+                        return 1;
+                    })
+                    .ThenBy(source => source)
+                    .ToList();
+
+                foreach (var source in orderedModSources)
+                {
+                    int count = modSourceCounts[source];
+                    Rect sourceButtonRect = new Rect(2f, y, viewRect.width - 4f, 28f);
+
+                    string label = $"{source} ({count})";
+
+                    // Use truncation
+                    string displayLabel = UIUtilities.Truncate(label, sourceButtonRect.width - 10f);
+
+                    // Visual feedback
+                    if (selectedModSource == source)
+                        Widgets.DrawHighlightSelected(sourceButtonRect);
+                    else if (Mouse.IsOver(sourceButtonRect))
+                        Widgets.DrawHighlight(sourceButtonRect);
+
+                    // Button action
+                    if (Widgets.ButtonText(sourceButtonRect, displayLabel))
+                    {
+                        selectedModSource = source;
+                        FilterItems();
                     }
 
-                    DrawItemRow(itemRect, filteredItems[i], i);
-                    y += rowHeight;
+                    // Tooltip only when actually truncated
+                    if (UIUtilities.WouldTruncate(label, sourceButtonRect.width - 10f))
+                    {
+                        TooltipHandler.TipRegion(sourceButtonRect, label);
+                    }
+
+                    y += 30f;
                 }
             }
             Widgets.EndScrollView();
         }
-        private void DrawBulkQuantityControls(Rect rect)
+        // This method builds the mod source counts dictionary by
+        // iterating through all store items and counting how many items belong to each mod source.
+        private void BuildModSourceCounts()
         {
-            Widgets.BeginGroup(rect);
+            modSourceCounts.Clear();
+            modSourceCounts["All"] = StoreInventory.AllStoreItems.Count;
 
-            float iconSize = 24f;
-            float spacing = 4f;
-            float centerY = (rect.height - iconSize) / 2f;
-            float x = rect.width / 2f - 150f; // Center the controls
-
-            // Label
-            Rect labelRect = new Rect(x, centerY, 80f, iconSize);
-            Text.Anchor = TextAnchor.MiddleRight;
-            string labelText = "Set All Qty:";
-            string displayLabel = UIUtilities.Truncate(labelText, labelRect.width);
-            Widgets.Label(labelRect, displayLabel);
-
-            // Add tooltip if truncated
-            if (UIUtilities.WouldTruncate(labelText, labelRect.width))
+            foreach (var item in StoreInventory.AllStoreItems.Values)
             {
-                TooltipHandler.TipRegion(labelRect, labelText);
-            }
-            Text.Anchor = TextAnchor.UpperLeft;
-            x += 85f + spacing;
+                // Handle null mod sources
+                string modSourceKey = GetDisplayModName(item.ModSource ?? "Unknown");
 
-            // Enable/disable toggle
-            Rect enableRect = new Rect(x, centerY, 24f, iconSize);
-            bool anyHasLimit = filteredItems.Any(item => item.HasQuantityLimit);
-            bool allHaveLimit = filteredItems.All(item => item.HasQuantityLimit);
-
-            // Use mixed state if some have limit and some don't
-            bool? mixedState = anyHasLimit && !allHaveLimit ? null : (bool?)allHaveLimit;
-
-            if (Widgets.ButtonInvisible(enableRect))
-            {
-                // If mixed or any disabled, enable all. If all enabled, disable all.
-                bool newState = !allHaveLimit;
-                EnableQuantityLimitForAllVisible(newState);
-            }
-
-            // Draw appropriate checkbox state
-            if (mixedState.HasValue)
-            {
-                bool state = mixedState.Value;
-                Widgets.Checkbox(enableRect.position, ref state, 24f);
-            }
-            else
-            {
-                // Draw mixed state (partially checked)
-                Texture2D mixedTex = ContentFinder<Texture2D>.Get("UI/Widgets/CheckBoxPartial", false);
-                if (mixedTex != null)
-                {
-                    Widgets.DrawTextureFitted(enableRect, mixedTex, 1f);
-                }
+                if (modSourceCounts.ContainsKey(modSourceKey))
+                    modSourceCounts[modSourceKey]++;
                 else
-                {
-                    // Fallback: draw empty checkbox with different background
-                    Widgets.DrawRectFast(enableRect, new Color(0.5f, 0.5f, 0.5f, 0.3f));
-                    Widgets.DrawBox(enableRect);
-                }
+                    modSourceCounts[modSourceKey] = 1;
             }
-
-            TooltipHandler.TipRegion(enableRect, "Enable/disable quantity limits for all visible items");
-            x += 28f + spacing;
-
-            // Stack preset buttons (only show if there are items with quantity limits)
-            if (anyHasLimit)
-            {
-                (string icon, string tooltip, int stacks)[] presets =
-                {
-                    ("Stack1", "Set all visible items to 1 stack limit", 1),
-                    ("Stack3", "Set all visible items to 3 stacks limit", 3),
-                    ("Stack5", "Set all visible items to 5 stacks limit", 5)
-                };
-
-                foreach (var preset in presets)
-                {
-                    Texture2D icon = null;
-
-                    // Method 1: Try standard path
-                    icon = ContentFinder<Texture2D>.Get($"UI/Icons/{preset.icon}", false);
-                    Rect iconRect = new Rect(x, centerY, iconSize, iconSize);
-
-                    // Hover highlight
-                    if (Mouse.IsOver(iconRect))
-                        Widgets.DrawHighlight(iconRect);
-
-                    if (icon == null)
-                    {
-                        Log.Warning($"Could not load icon: UI/Icons/{preset.icon}");
-                        // Fallback to text
-                        Widgets.ButtonText(iconRect, $"{preset.stacks}x");
-                    }
-                    else
-                    {
-                        Widgets.DrawTextureFitted(iconRect, icon, 1f);
-                    }
-
-                    TooltipHandler.TipRegion(iconRect, preset.tooltip);
-
-                    // Click handler
-                    if (Widgets.ButtonInvisible(iconRect))
-                    {
-                        SetAllVisibleItemsQuantityLimit(preset.stacks);
-                    }
-
-                    x += iconSize + spacing;
-                }
-            }
-
-            Widgets.EndGroup();
         }
+        // This method converts raw mod source names into more user-friendly display names
+        private string GetDisplayModName(string modSource)
+        {
+            if (modSource == "Core") return "RimWorld";
+            if (modSource.Contains(".")) return modSource.Split('.')[0];
+            return modSource;
+        }
+        // This method draws the item list on the right side,
+        // including the header with count and bulk controls,
+        // and then the scrollable list of items.
+        // It only draws the visible rows based on the scroll position for performance.
+        private void DrawItemList(Rect rect)
+        {
+            // Background for the entire right panel
+            Widgets.DrawMenuSection(rect);
 
+            // Calculate if we need to show bulk controls
+            bool showBulkControls = filteredItems.Count > 0;
+
+            // Start with base height for count row
+            float currentY = 0f;
+
+            // ────────────────────────────────────────
+            // First: calculate final header height (same logic as before)
+            float headerHeight = 30f; // count row
+
+            if (showBulkControls)
+            {
+                headerHeight += 30f; // quantity controls
+
+                bool showPriceControls = false;
+                if (listViewType == StoreListViewType.Category && selectedCategory != "All")
+                    showPriceControls = true;
+                else if (listViewType == StoreListViewType.ModSource && selectedModSource != "All")
+                    showPriceControls = true;
+
+                if (showPriceControls)
+                {
+                    headerHeight += 30f; // price/enable/disable row
+                }
+            }
+
+            // ────────────────────────────────────────
+            // NOW draw the background box FIRST (behind everything)
+            Rect headerRect = new Rect(rect.x, rect.y, rect.width, headerHeight);
+
+            // Subtle dark background (adjust alpha if too strong)
+            Widgets.DrawBoxSolid(headerRect, new Color(0.18f, 0.18f, 0.18f, 0.85f)); // slightly darker, high opacity
+
+            // ────────────────────────────────────────
+            // Now draw content ON TOP of the background
+            currentY = 0f;
+
+            // Draw item count header (always shown)
+            Rect countRect = new Rect(rect.x, rect.y + currentY, rect.width, 30f);
+            Text.Font = GameFont.Medium;
+            Text.Anchor = TextAnchor.MiddleCenter;
+            GUI.color = ColorLibrary.SubHeader; 
+            string headerText = $"Items ({filteredItems.Count})";
+            if (listViewType == StoreListViewType.Category && selectedCategory != "All")
+                headerText += $" – {selectedCategory}";
+            else if (listViewType == StoreListViewType.ModSource && selectedModSource != "All")
+                headerText += $" – {GetDisplayModName(selectedModSource)}";
+
+            string displayHeader = UIUtilities.Truncate(headerText, countRect.width - 20f);
+            Widgets.Label(countRect, displayHeader);
+
+            if (UIUtilities.WouldTruncate(headerText, countRect.width - 20f))
+                TooltipHandler.TipRegion(countRect, headerText);
+
+
+            Text.Font = GameFont.Small;
+            GUI.color = Color.white;
+
+            currentY += 30f;
+
+            // Bulk controls section
+            if (showBulkControls)
+            {
+                // Quantity controls (always when items present)
+                Rect qtyControlsRect = new Rect(rect.x, rect.y + currentY, rect.width, 28f);
+                DrawBulkQuantityControls(qtyControlsRect);
+                currentY += 30f;
+
+                // Price/enable/disable controls (only when specific category or mod source selected)
+                bool showPriceControls = false;
+                if (listViewType == StoreListViewType.Category && selectedCategory != "All")
+                    showPriceControls = true;
+                else if (listViewType == StoreListViewType.ModSource && selectedModSource != "All")
+                    showPriceControls = true;
+
+                if (showPriceControls)
+                {
+                    Rect priceControlsRect = new Rect(rect.x, rect.y + currentY, rect.width, 28f);
+
+                    if (listViewType == StoreListViewType.Category)
+                    {
+                        DrawCategoryPriceControls(priceControlsRect);
+                    }
+                    else // ModSource
+                    {
+                        DrawModSourcePriceControls(priceControlsRect);
+                    }
+                    currentY += 30f;
+                }
+            }
+
+            Text.Anchor = TextAnchor.UpperLeft;
+
+            // Item list starts after header + small padding
+            Rect listRect = new Rect(rect.x, rect.y + headerHeight + 4f, rect.width, rect.height - headerHeight - 8f);
+
+            if (filteredItems.Count == 0)
+            {
+                Widgets.NoneLabelCenteredVertically(listRect, "No items match the current filter");
+                return;
+            }
+
+            float rowHeight = 64f;
+            float viewHeight = filteredItems.Count * rowHeight;
+            Rect viewRect = new Rect(0f, 0f, listRect.width - 16f, viewHeight); // -16f ≈ scrollbar width
+
+            Widgets.BeginScrollView(listRect, ref scrollPosition, viewRect);
+
+            // Only draw visible rows (your existing performant loop)
+            float scrollY = scrollPosition.y;
+            float visibleTop = scrollY;
+            float visibleBottom = scrollY + listRect.height;
+
+            int firstRow = Mathf.Max(0, Mathf.FloorToInt(visibleTop / rowHeight));
+            int lastRow = Mathf.Min(filteredItems.Count - 1, Mathf.CeilToInt(visibleBottom / rowHeight));
+
+            firstRow = Mathf.Max(0, firstRow - 2);
+            lastRow = Mathf.Min(filteredItems.Count - 1, lastRow + 2);
+
+            for (int i = firstRow; i <= lastRow; i++)
+            {
+                float y = i * rowHeight;
+                Rect rowRect = new Rect(0f, y, viewRect.width, rowHeight);
+
+                if (y + rowHeight < visibleTop || y > visibleBottom)
+                    continue;
+
+                StoreItem item = filteredItems[i];
+                DrawItemRow(rowRect, item, i);  // assuming it accepts index; remove ,i if not needed
+            }
+
+            Widgets.EndScrollView();
+        }
+        // This method draws a single item row, given the rect and the StoreItem data
+        // Only draws the Rows that are visible based on the scroll position and row height
         private void DrawItemRow(Rect rect, StoreItem item, int index)
         {
             Widgets.BeginGroup(rect);
@@ -888,6 +1057,119 @@ namespace CAP_ChatInteractive
             }
         }
 
+        // This method draws the bulk quantity controls in the header of the item list.
+        private void DrawBulkQuantityControls(Rect rect)
+        {
+            Widgets.BeginGroup(rect);
+
+            float iconSize = 24f;
+            float spacing = 4f;
+            float centerY = (rect.height - iconSize) / 2f;
+            float x = rect.width / 2f - 150f; // Center the controls
+
+            // Label
+            Rect labelRect = new Rect(x, centerY, 80f, iconSize);
+            Text.Anchor = TextAnchor.MiddleRight;
+            string labelText = "Set All Qty:";
+            string displayLabel = UIUtilities.Truncate(labelText, labelRect.width);
+            Widgets.Label(labelRect, displayLabel);
+
+            // Add tooltip if truncated
+            if (UIUtilities.WouldTruncate(labelText, labelRect.width))
+            {
+                TooltipHandler.TipRegion(labelRect, labelText);
+            }
+            Text.Anchor = TextAnchor.UpperLeft;
+            x += 85f + spacing;
+
+            // Enable/disable toggle
+            Rect enableRect = new Rect(x, centerY, 24f, iconSize);
+            bool anyHasLimit = filteredItems.Any(item => item.HasQuantityLimit);
+            bool allHaveLimit = filteredItems.All(item => item.HasQuantityLimit);
+
+            // Use mixed state if some have limit and some don't
+            bool? mixedState = anyHasLimit && !allHaveLimit ? null : (bool?)allHaveLimit;
+
+            if (Widgets.ButtonInvisible(enableRect))
+            {
+                // If mixed or any disabled, enable all. If all enabled, disable all.
+                bool newState = !allHaveLimit;
+                EnableQuantityLimitForAllVisible(newState);
+            }
+
+            // Draw appropriate checkbox state
+            if (mixedState.HasValue)
+            {
+                bool state = mixedState.Value;
+                Widgets.Checkbox(enableRect.position, ref state, 24f);
+            }
+            else
+            {
+                // Draw mixed state (partially checked)
+                Texture2D mixedTex = ContentFinder<Texture2D>.Get("UI/Widgets/CheckBoxPartial", false);
+                if (mixedTex != null)
+                {
+                    Widgets.DrawTextureFitted(enableRect, mixedTex, 1f);
+                }
+                else
+                {
+                    // Fallback: draw empty checkbox with different background
+                    Widgets.DrawRectFast(enableRect, new Color(0.5f, 0.5f, 0.5f, 0.3f));
+                    Widgets.DrawBox(enableRect);
+                }
+            }
+
+            TooltipHandler.TipRegion(enableRect, "Enable/disable quantity limits for all visible items");
+            x += 28f + spacing;
+
+            // Stack preset buttons (only show if there are items with quantity limits)
+            if (anyHasLimit)
+            {
+                (string icon, string tooltip, int stacks)[] presets =
+                {
+                    ("Stack1", "Set all visible items to 1 stack limit", 1),
+                    ("Stack3", "Set all visible items to 3 stacks limit", 3),
+                    ("Stack5", "Set all visible items to 5 stacks limit", 5)
+                };
+
+                foreach (var preset in presets)
+                {
+                    Texture2D icon = null;
+
+                    // Method 1: Try standard path
+                    icon = ContentFinder<Texture2D>.Get($"UI/Icons/{preset.icon}", false);
+                    Rect iconRect = new Rect(x, centerY, iconSize, iconSize);
+
+                    // Hover highlight
+                    if (Mouse.IsOver(iconRect))
+                        Widgets.DrawHighlight(iconRect);
+
+                    if (icon == null)
+                    {
+                        Log.Warning($"Could not load icon: UI/Icons/{preset.icon}");
+                        // Fallback to text
+                        Widgets.ButtonText(iconRect, $"{preset.stacks}x");
+                    }
+                    else
+                    {
+                        Widgets.DrawTextureFitted(iconRect, icon, 1f);
+                    }
+
+                    TooltipHandler.TipRegion(iconRect, preset.tooltip);
+
+                    // Click handler
+                    if (Widgets.ButtonInvisible(iconRect))
+                    {
+                        SetAllVisibleItemsQuantityLimit(preset.stacks);
+                    }
+
+                    x += iconSize + spacing;
+                }
+            }
+
+            Widgets.EndGroup();
+        }
+        // This method draws the item type checkboxes (Usable, Equippable, Wearable) in the item row.
         private void DrawItemTypeCheckboxes(Rect rect, StoreItem item)
         {
             Widgets.BeginGroup(rect);
@@ -923,7 +1205,7 @@ namespace CAP_ChatInteractive
             }
             Widgets.EndGroup();
         }
-
+        // This method draws the quantity preset controls in the item row, allowing quick setting of quantity limits.
         private void DrawQuantityPresetControls(Rect rect, StoreItem item)
         {
             Widgets.BeginGroup(rect);
@@ -1013,7 +1295,7 @@ namespace CAP_ChatInteractive
 
             Widgets.EndGroup();
         }
-
+        // These methods draw the individual checkboxes for item types (Usable, Wearable, Equippable) in the item row.
         private void DrawUsableCheckbox(Rect rect, StoreItem item)
         {
             bool currentValue = item.IsUsable;
@@ -1025,7 +1307,7 @@ namespace CAP_ChatInteractive
                 StoreInventory.SaveStoreToJson();
             }
         }
-
+        // These methods draw the individual checkboxes for item types (Usable, Wearable, Equippable) in the item row.
         private void DrawWearableCheckbox(Rect rect, StoreItem item)
         {
             bool currentValue = item.IsWearable;
@@ -1037,7 +1319,7 @@ namespace CAP_ChatInteractive
                 StoreInventory.SaveStoreToJson();
             }
         }
-
+        // These methods draw the individual checkboxes for item types (Usable, Wearable, Equippable) in the item row.
         private void DrawEquippableCheckbox(Rect rect, StoreItem item)
         {
             bool currentValue = item.IsEquippable;
@@ -1049,7 +1331,7 @@ namespace CAP_ChatInteractive
                 StoreInventory.SaveStoreToJson();
             }
         }
-
+        // This method draws the enabled/disabled toggle for an item in the item row.
         private void DrawEnabledToggle(Rect rect, StoreItem item)
         {
             bool wasEnabled = item.Enabled;
@@ -1062,7 +1344,7 @@ namespace CAP_ChatInteractive
                 StoreInventory.SaveStoreToJson();
             }
         }
-
+        // This method draws the price controls (input and reset button) for an item in the item row.
         private void DrawPriceControls(Rect rect, StoreItem item)
         {
             Widgets.BeginGroup(rect);
@@ -1103,86 +1385,217 @@ namespace CAP_ChatInteractive
 
             Widgets.EndGroup();
         }
-
-        // Add this method to your Dialog_StoreEditor class:
+        // This method draws the bulk price controls (Enable/Disable/Reset)
+        // in the header of the item list when a specific category is selected.
         private void DrawCategoryPriceControls(Rect rect)
         {
             Widgets.BeginGroup(rect);
 
-            float centerY = (rect.height - 30f) / 2f;
-            float x = 0f;
+            float buttonWidth = 110f;
+            float spacing = 8f;
+            float x = 12f;
 
-            // Label
-            Rect labelRect = new Rect(x, centerY, 180f, 30f);
+            // Enable button (with dropdown arrow feel)
+            Rect enableRect = new Rect(x, 2f, buttonWidth + 20f, 28f);
             Text.Anchor = TextAnchor.MiddleRight;
-            Widgets.Label(labelRect, "Category Price:");
-            Text.Anchor = TextAnchor.UpperLeft;
-            x += 190f;
 
-            // Price input for the category
-            Rect priceRect = new Rect(x, centerY, 80f, 30f);
-            int categoryPriceBuffer = 0;
-            string categoryPriceBufferKey = $"cat_price_{selectedCategory}";
-
-            // Get or initialize buffer
-            if (!numericBuffers.ContainsKey(categoryPriceBufferKey))
-            {
-                numericBuffers[categoryPriceBufferKey] = "0";
-            }
-
-            string buffer = numericBuffers[categoryPriceBufferKey];
-            Widgets.TextFieldNumeric(priceRect, ref categoryPriceBuffer, ref buffer, 0, 1000000);
-            numericBuffers[categoryPriceBufferKey] = buffer;
-            x += 85f;
-
-            // Set Price button
-            Rect setButtonRect = new Rect(x, centerY, 110f, 30f);
-            if (Widgets.ButtonText(setButtonRect, "Set All"))
-            {
-                if (categoryPriceBuffer >= 0)
-                {
-                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                        $"Set price to {categoryPriceBuffer} for all {filteredItems.Count} items in '{selectedCategory}' category?",
-                        () => SetCategoryPrice(categoryPriceBuffer)
-                    ));
-                }
-                else
-                {
-                    Messages.Message("Price cannot be negative", MessageTypeDefOf.RejectInput);
-                }
-            }
-            x += 115f;
-
-            // NEW: Enable menu button (with dropdown arrow)
-            Rect enableMenuRect = new Rect(x, centerY, 120f, 30f);
-            if (Widgets.ButtonText(enableMenuRect, "Enable →"))
+            if (Widgets.ButtonText(enableRect, "Enable →"))
             {
                 ShowCategoryEnableMenu();
             }
-            x += 125f;
+            x += buttonWidth + 28f + spacing;
 
-            // NEW: Disable menu button (with dropdown arrow)
-            Rect disableMenuRect = new Rect(x, centerY, 120f, 30f);
-            if (Widgets.ButtonText(disableMenuRect, "Disable →"))
+            // Disable button
+            Rect disableRect = new Rect(x, 2f, buttonWidth + 20f, 28f);
+            if (Widgets.ButtonText(disableRect, "Disable →"))
             {
                 ShowCategoryDisableMenu();
             }
-            x += 125f;
+            x += buttonWidth + 28f + spacing;
 
-            // Reset Category button
-            Rect resetButtonRect = new Rect(x, centerY, 110f, 30f);
-            if (Widgets.ButtonText(resetButtonRect, "Reset All"))
+            // Reset All Prices button (with confirmation)
+            Rect resetRect = new Rect(x, 2f, buttonWidth + 30f, 28f);
+            if (Widgets.ButtonText(resetRect, "Reset All"))
             {
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    $"Reset all prices to default for {filteredItems.Count} items in '{selectedCategory}' category?",
+                    $"Reset all prices to default for {filteredItems.Count} items in '{selectedCategory}'?\nThis cannot be undone.",
                     () => ResetCategoryPrices()
                 ));
             }
-
+            Text.Anchor = TextAnchor.UpperLeft;
             Widgets.EndGroup();
         }
+        // This method draws the bulk price controls (Enable/Disable/Reset)
+        private void DrawModSourcePriceControls(Rect rect)
+        {
+            Widgets.BeginGroup(rect);
 
-        // Add these new methods for the category-specific enable/disable menus:
+            float buttonWidth = 110f;
+            float spacing = 8f;
+            float x = 12f;
+
+            // Enable button
+            Rect enableRect = new Rect(x, 2f, buttonWidth + 20f, 28f);
+            Text.Anchor = TextAnchor.MiddleRight;
+            if (Widgets.ButtonText(enableRect, "Enable →"))
+            {
+                // For mod source - we can either reuse category logic or make a mod-specific one
+                // Simplest: use the same category-style menu but apply to current mod source items
+                ShowModSourceEnableMenu();  // ← we'll define this next
+            }
+            x += buttonWidth + 28f + spacing;
+
+            // Disable button
+            Rect disableRect = new Rect(x, 2f, buttonWidth + 20f, 28f);
+            if (Widgets.ButtonText(disableRect, "Disable →"))
+            {
+                ShowModSourceDisableMenu();
+            }
+            x += buttonWidth + 28f + spacing;
+
+            // Reset All Prices button
+            Rect resetRect = new Rect(x, 2f, buttonWidth + 30f, 28f);
+            if (Widgets.ButtonText(resetRect, "Reset All"))
+            {
+                Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                    $"Reset all prices to default for {filteredItems.Count} items from '{GetDisplayModName(selectedModSource)}'?\nThis cannot be undone.",
+                    () => ResetModSourcePrices()
+                ));
+            }
+            Text.Anchor = TextAnchor.UpperLeft;
+            Widgets.EndGroup();
+        }
+        // These methods show the bulk enable/disable menus for mod sources,
+        // allowing users to enable/disable all items from the mod source or by specific usage types.
+        private void ShowModSourceEnableMenu()
+        {
+            var options = new List<FloatMenuOption>();
+
+            // Enable all in current mod source
+            options.Add(new FloatMenuOption($"Enable All Items from {GetDisplayModName(selectedModSource)}", () =>
+            {
+                EnableModSourceItems();
+            }));
+
+            options.Add(new FloatMenuOption("--- Enable Usage Types ---", null)); // Separator
+
+            options.Add(new FloatMenuOption($"Enable Usable Items from {GetDisplayModName(selectedModSource)}", () =>
+            {
+                ToggleModSourceItemTypeFlag("Usable", true);
+            }));
+
+            options.Add(new FloatMenuOption($"Enable Wearable Items from {GetDisplayModName(selectedModSource)}", () =>
+            {
+                ToggleModSourceItemTypeFlag("Wearable", true);
+            }));
+
+            options.Add(new FloatMenuOption($"Enable Equippable Items from {GetDisplayModName(selectedModSource)}", () =>
+            {
+                ToggleModSourceItemTypeFlag("Equippable", true);
+            }));
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+        // This method shows the disable menu for mod sources,
+        // allowing users to disable all items from the mod source or by specific usage types.
+        private void ShowModSourceDisableMenu()
+        {
+            var options = new List<FloatMenuOption>();
+
+            // Disable all in current mod source
+            options.Add(new FloatMenuOption($"Disable All Items from {GetDisplayModName(selectedModSource)}", () =>
+            {
+                DisableModSourceItems();
+            }));
+
+            options.Add(new FloatMenuOption("--- Disable Usage Types ---", null)); // Separator
+
+            options.Add(new FloatMenuOption($"Disable Usable Items from {GetDisplayModName(selectedModSource)}", () =>
+            {
+                ToggleModSourceItemTypeFlag("Usable", false);
+            }));
+
+            options.Add(new FloatMenuOption($"Disable Wearable Items from {GetDisplayModName(selectedModSource)}", () =>
+            {
+                ToggleModSourceItemTypeFlag("Wearable", false);
+            }));
+
+            options.Add(new FloatMenuOption($"Disable Equippable Items from {GetDisplayModName(selectedModSource)}", () =>
+            {
+                ToggleModSourceItemTypeFlag("Equippable", false);
+            }));
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+        // This method toggles the specified item type flag (Usable, Wearable, Equippable)
+        // for all items from the currently selected mod source.
+        private void ToggleModSourceItemTypeFlag(string flagType, bool enable)
+        {
+            int changedCount = 0;
+
+            foreach (var item in filteredItems)  // already filtered to current mod source
+            {
+                var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
+                if (thingDef == null) continue;
+
+                bool shouldHaveThisFlag = false;
+
+                switch (flagType)
+                {
+                    case "Usable":
+                        shouldHaveThisFlag = StoreItem.IsItemUsable(thingDef);
+                        break;
+                    case "Equippable":
+                        shouldHaveThisFlag = !StoreItem.IsItemUsable(thingDef) && thingDef.IsWeapon;
+                        break;
+                    case "Wearable":
+                        shouldHaveThisFlag = !StoreItem.IsItemUsable(thingDef) && !thingDef.IsWeapon && thingDef.IsApparel;
+                        break;
+                }
+
+                if (shouldHaveThisFlag)
+                {
+                    bool changed = false;
+
+                    switch (flagType)
+                    {
+                        case "Usable":
+                            if (item.IsUsable != enable)
+                            {
+                                item.IsUsable = enable;
+                                changed = true;
+                            }
+                            break;
+                        case "Wearable":
+                            if (item.IsWearable != enable)
+                            {
+                                item.IsWearable = enable;
+                                changed = true;
+                            }
+                            break;
+                        case "Equippable":
+                            if (item.IsEquippable != enable)
+                            {
+                                item.IsEquippable = enable;
+                                changed = true;
+                            }
+                            break;
+                    }
+
+                    if (changed) changedCount++;
+                }
+            }
+
+            if (changedCount > 0)
+            {
+                StoreInventory.SaveStoreToJson();
+                Messages.Message($"{(enable ? "Enabled" : "Disabled")} {changedCount} {flagType.ToLower()} items from '{GetDisplayModName(selectedModSource)}'",
+                    MessageTypeDefOf.PositiveEvent);
+                SoundDefOf.Click.PlayOneShotOnCamera();
+                FilterItems(); // Refresh
+            }
+        }
+        // This method shows the bulk enable menu for categories,
         private void ShowCategoryEnableMenu()
         {
             var options = new List<FloatMenuOption>();
@@ -1213,7 +1626,7 @@ namespace CAP_ChatInteractive
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
-
+        // This method shows the bulk disable menu for categories,
         private void ShowCategoryDisableMenu()
         {
             var options = new List<FloatMenuOption>();
@@ -1244,8 +1657,7 @@ namespace CAP_ChatInteractive
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
-
-        // In Dialog_StoreEditor class, add these new helper methods:
+        // This method toggles the specified item type flag (Usable, Wearable, Equippable)
         private void ToggleCategoryItemTypeFlag(string category, string flagType, bool enable)
         {
             int changedCount = 0;
@@ -1321,25 +1733,8 @@ namespace CAP_ChatInteractive
                 FilterItems(); // Refresh the view
             }
         }
-
-        // Add this method to check what type of flag an item SHOULD have based on its ThingDef
-        private string GetItemFlagType(StoreItem item)
-        {
-            var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
-            if (thingDef == null) return "None";
-
-            // Use the same logic as DrawItemTypeCheckboxes
-            if (StoreItem.IsItemUsable(thingDef))
-                return "Usable";
-            if (!StoreItem.IsItemUsable(thingDef) && thingDef.IsWeapon)
-                return "Equippable";
-            if (!StoreItem.IsItemUsable(thingDef) && !thingDef.IsWeapon && thingDef.IsApparel)
-                return "Wearable";
-
-            return "None";
-        }
-
-        // Add this method to set category price:
+        // This method enables all items in the specified category.
+        // Deprecated: now we use the toggle method for specific types, but this can still be used for a general "Enable All".
         private void SetCategoryPrice(int price)
         {
             int changedCount = 0;
@@ -1360,8 +1755,37 @@ namespace CAP_ChatInteractive
                 SoundDefOf.Click.PlayOneShotOnCamera();
             }
         }
+        // This method enables all items from the selected mod source.
+        // Deprecated: now we use the toggle method for specific types, but this can still be used for a general "Enable All".
+        private void SetModSourcePrice(int price)
+        {
+            if (price <= 0)
+            {
+                Messages.Message("Price must be positive", MessageTypeDefOf.RejectInput);
+                return;
+            }
 
-        // Add this method to reset category prices:
+            int changedCount = 0;
+
+            foreach (var item in filteredItems)
+            {
+                if (item.BasePrice != price)
+                {
+                    item.BasePrice = price;
+                    changedCount++;
+                }
+            }
+
+            if (changedCount > 0)
+            {
+                StoreInventory.SaveStoreToJson();
+                string modName = GetDisplayModName(selectedModSource);
+                Messages.Message($"Set price to {price} silver for {changedCount} items from mod '{modName}'",
+                    MessageTypeDefOf.PositiveEvent);
+                SoundDefOf.Click.PlayOneShotOnCamera();
+            }
+        }
+        // This method resets all item prices in the selected category to their default values based on ThingDef.BaseMarketValue.
         private void ResetCategoryPrices()
         {
             int changedCount = 0;
@@ -1387,10 +1811,40 @@ namespace CAP_ChatInteractive
                 SoundDefOf.Click.PlayOneShotOnCamera();
             }
         }
+        // This method resets all item prices from the selected mod source to their default values based on ThingDef.BaseMarketValue.
+        private void ResetModSourcePrices()
+        {
+            int changedCount = 0;
 
-        // Add this field to your class:
+            foreach (var item in filteredItems)
+            {
+                var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
+                if (thingDef != null)
+                {
+                    int defaultPrice = (int)thingDef.BaseMarketValue;
+                    // Optional: enforce minimum price of 1
+                    defaultPrice = Math.Max(1, defaultPrice);
+
+                    if (item.BasePrice != defaultPrice)
+                    {
+                        item.BasePrice = defaultPrice;
+                        changedCount++;
+                    }
+                }
+            }
+
+            if (changedCount > 0)
+            {
+                StoreInventory.SaveStoreToJson();
+                string modName = GetDisplayModName(selectedModSource);
+                Messages.Message($"Reset {changedCount} items from '{modName}' to default prices",
+                    MessageTypeDefOf.PositiveEvent);
+                SoundDefOf.Click.PlayOneShotOnCamera();
+            }
+        }
+        // This dictionary is used to store temporary string buffers for numeric text fields, keyed by item DefName.
         private Dictionary<string, string> numericBuffers = new Dictionary<string, string>();
-
+        // This method retrieves the string buffer for a given item DefName, creating it if it doesn't exist.
         private void BuildCategoryCounts()
         {
             categoryCounts.Clear();
@@ -1400,7 +1854,7 @@ namespace CAP_ChatInteractive
             {
                 if (item.Category == null)
                 {
-                    Log.Warning($"[CAP] Store item '{item.DefName}' from mod '{item.ModSource}' has null category");
+                    Logger.Warning($"[CAP] Store item '{item.DefName}' from mod '{item.ModSource}' has null category");
                 }
                 // Handle null categories - this is the fix!
                 string categoryKey = item.Category ?? "Uncategorized";
@@ -1411,7 +1865,8 @@ namespace CAP_ChatInteractive
                     categoryCounts[categoryKey] = 1;
             }
         }
-
+        // This method applies the current search query and view filters to the list of store items,
+        // updating the filteredItems list accordingly.
         private void FilterItems()
         {
             lastSearch = searchQuery;
@@ -1419,11 +1874,14 @@ namespace CAP_ChatInteractive
 
             var allItems = StoreInventory.AllStoreItems.Values.AsEnumerable();
 
-            // Category filter - handle null categories
-            if (selectedCategory != "All")
+            // Apply view-based filter
+            if (listViewType == StoreListViewType.Category && selectedCategory != "All")
             {
-                allItems = allItems.Where(item =>
-                    (item.Category ?? "Uncategorized") == selectedCategory);
+                allItems = allItems.Where(item => (item.Category ?? "Uncategorized") == selectedCategory);
+            }
+            else if (listViewType == StoreListViewType.ModSource && selectedModSource != "All")
+            {
+                allItems = allItems.Where(item => GetDisplayModName(item.ModSource ?? "Unknown") == selectedModSource);
             }
 
             // Search filter
@@ -1441,35 +1899,51 @@ namespace CAP_ChatInteractive
             filteredItems = allItems.ToList();
             SortItems();
         }
-
+        // This method sorts the filteredItems list based on the current sort method and order.
         private void SortItems()
         {
             switch (sortMethod)
             {
                 case StoreSortMethod.Name:
-                    filteredItems = sortAscending ?
-                        filteredItems.OrderBy(item => GetThingDefLabel(item.DefName)).ToList() :
-                        filteredItems.OrderByDescending(item => GetThingDefLabel(item.DefName)).ToList();
+                    filteredItems = sortAscending
+                        ? filteredItems.OrderBy(item => GetThingDefLabel(item.DefName)).ToList()
+                        : filteredItems.OrderByDescending(item => GetThingDefLabel(item.DefName)).ToList();
                     break;
+
                 case StoreSortMethod.Price:
-                    filteredItems = sortAscending ?
-                        filteredItems.OrderBy(item => item.BasePrice).ToList() :
-                        filteredItems.OrderByDescending(item => item.BasePrice).ToList();
+                    filteredItems = sortAscending
+                        ? filteredItems.OrderBy(item => item.BasePrice).ToList()
+                        : filteredItems.OrderByDescending(item => item.BasePrice).ToList();
                     break;
+
                 case StoreSortMethod.Category:
-                    filteredItems = sortAscending ?
-                        filteredItems.OrderBy(item => item.Category).ThenBy(item => GetThingDefLabel(item.DefName)).ToList() :
-                        filteredItems.OrderByDescending(item => item.Category).ThenBy(item => GetThingDefLabel(item.DefName)).ToList();
+                    filteredItems = sortAscending
+                        ? filteredItems.OrderBy(item => item.Category ?? "Uncategorized")
+                                      .ThenBy(item => GetThingDefLabel(item.DefName))
+                                      .ToList()
+                        : filteredItems.OrderByDescending(item => item.Category ?? "Uncategorized")
+                                      .ThenBy(item => GetThingDefLabel(item.DefName))
+                                      .ToList();
+                    break;
+
+                case StoreSortMethod.ModSource:
+                    filteredItems = sortAscending
+                        ? filteredItems.OrderBy(item => GetDisplayModName(item.ModSource ?? "Unknown"))
+                                      .ThenBy(item => GetThingDefLabel(item.DefName))
+                                      .ToList()
+                        : filteredItems.OrderByDescending(item => GetDisplayModName(item.ModSource ?? "Unknown"))
+                                      .ThenBy(item => GetThingDefLabel(item.DefName))
+                                      .ToList();
                     break;
             }
         }
-
+        // This method retrieves the display name for a mod source, handling "RimWorld" and null/unknown cases.
         private string GetThingDefLabel(string defName)
         {
             var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(defName);
             return thingDef?.LabelCap ?? defName;
         }
-
+        // This method retrieves a user-friendly display name for a mod source, handling "RimWorld" and null/unknown cases.
         private void SaveOriginalPrices()
         {
             originalPrices.Clear();
@@ -1478,7 +1952,7 @@ namespace CAP_ChatInteractive
                 originalPrices[item.DefName] = item.BasePrice;
             }
         }
-
+        // This method resets all item prices to their default values based on ThingDef.BaseMarketValue.
         private void ResetAllPrices()
         {
             foreach (var item in StoreInventory.AllStoreItems.Values)
@@ -1494,7 +1968,7 @@ namespace CAP_ChatInteractive
             StoreInventory.SaveStoreToJson();
             FilterItems();
         }
-
+        // This method enables all items in the store.
         private void EnableAllItems()
         {
             foreach (var item in StoreInventory.AllStoreItems.Values)
@@ -1504,7 +1978,7 @@ namespace CAP_ChatInteractive
             StoreInventory.SaveStoreToJson();
             FilterItems();
         }
-
+        // This method disables all items in the store.
         private void DisableAllItems()
         {
             foreach (var item in StoreInventory.AllStoreItems.Values)
@@ -1514,8 +1988,7 @@ namespace CAP_ChatInteractive
             StoreInventory.SaveStoreToJson();
             FilterItems();
         }
-
-        // Add these new methods to handle bulk quantity limit operations
+        // This method sets the quantity limit for all visible items based on the specified number of stacks.
         private void SetAllVisibleItemsQuantityLimit(int stacks)
         {
             int affectedCount = 0;
@@ -1538,7 +2011,7 @@ namespace CAP_ChatInteractive
                 SoundDefOf.Click.PlayOneShotOnCamera();
             }
         }
-
+        // This method enables or disables the quantity limit for all visible items based on the specified boolean value.
         private void EnableQuantityLimitForAllVisible(bool enable)
         {
             int affectedCount = 0;
@@ -1559,20 +2032,19 @@ namespace CAP_ChatInteractive
                 SoundDefOf.Click.PlayOneShotOnCamera();
             }
         }
-
         // Override PostClose to save store data when the dialog is closed
         public override void PostClose()
         {
             StoreInventory.SaveStoreToJson();
             base.PostClose();
         }
-
+        // This method opens a new window displaying detailed information about the specified ThingDef and StoreItem.
         private void ShowDefInfoWindow(ThingDef thingDef, StoreItem storeItem)
         {
             Find.WindowStack.Add(new DefInfoWindow(thingDef, storeItem));
         }
     }
-
+    // This class represents a window that displays detailed information about a specific ThingDef and its corresponding StoreItem.
     public class DefInfoWindow : Window
     {
         private ThingDef thingDef;
@@ -1872,11 +2344,18 @@ namespace CAP_ChatInteractive
             return existingNames.Contains(customName);
         }
     }
-
+    // Enums for sorting and view types
     public enum StoreSortMethod
     {
         Name,
         Price,
+        Category,
+        ModSource
+    }
+    // This enum defines the different ways the store item list can be filtered or grouped in the UI.
+    public enum StoreListViewType
+    {
+        ModSource,
         Category
     }
 }
