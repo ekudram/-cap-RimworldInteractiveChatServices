@@ -409,6 +409,7 @@ namespace CAP_ChatInteractive
             Widgets.Label(headerRect, "RICS.Categories".Translate().Colorize(ColorLibrary.SubHeader));
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
+            GUI.color = Color.white;
 
             Rect listRect = new Rect(rect.x + 5f, rect.y + 35f, rect.width - 10f, rect.height - 35f);
             Rect viewRect = new Rect(0f, 0f, listRect.width - 20f, categoryCounts.Count * 30f);

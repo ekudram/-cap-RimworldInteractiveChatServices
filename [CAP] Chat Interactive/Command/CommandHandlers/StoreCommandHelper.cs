@@ -182,10 +182,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     foreach (var prereq in recipe.researchPrerequisites)
                     {
-                        if (prereq != null && !prereq.IsFinished)
+                        if (prereq != null)
                         {
-                            Logger.Debug($"Recipe '{recipe.defName}' multi-prereq '{prereq.defName}' unfinished");
-                            return false;
+                            if (prereq != null && !prereq.IsFinished)
+                            {
+                                Logger.Debug($"Recipe '{recipe.defName}' multi-prereq '{prereq.defName}' unfinished");
+                                return false;
+                            }
                         }
                     }
                 }
@@ -216,6 +219,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             return true;
         }
+
+        // Helper: Check if a ResearchProjectDef is fully unlocked (including study requirements)
+
 
         public static bool IsItemTypeValid(StoreItem storeItem, bool requireEquippable, bool requireWearable, bool requireUsable)
         {
