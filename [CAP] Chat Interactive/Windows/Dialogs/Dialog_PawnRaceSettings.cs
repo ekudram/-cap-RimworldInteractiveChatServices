@@ -20,6 +20,7 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using Verse;
 
@@ -573,52 +574,44 @@ namespace CAP_ChatInteractive
                 y += sectionHeight + 10f;
 
                 // Xenotype Settings section (only if Biotech is active)
+                // Xenotype Settings section (only if Biotech is active)
                 if (ModsConfig.BiotechActive)
                 {
                     Rect xenotypeLabelRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
                     Text.Font = GameFont.Medium;
-                    Widgets.Label(xenotypeLabelRect, "Xenotype Prices"); // CHANGED: "Settings" to "Prices"
+                    Widgets.Label(xenotypeLabelRect, "Xenotype Prices");
                     Text.Font = GameFont.Small;
                     y += sectionHeight;
 
-                    // Get ALL xenotypes, not just allowed ones
-                    var allXenotypes = DefDatabase<XenotypeDef>.AllDefs
-                        .Where(x => !string.IsNullOrEmpty(x.defName))
-                        .Select(x => x.defName)
-                        .OrderBy(x => x)
+                    var allowedXenotypes = GetAllowedXenotypes(selectedRace)
+                        .OrderBy(x => x) // Ensure sorted
                         .ToList();
+                    Logger.Debug($"HAR allows {allowedXenotypes.Count} xenotypes for {selectedRace.defName}: {string.Join(", ", allowedXenotypes)}");
 
-                    if (allXenotypes.Count > 0)
+                    if (allowedXenotypes.Count > 0)
                     {
                         // Column headers - UPDATED
                         Rect xenotypeHeaderRect = new Rect(leftPadding, y, columnWidth, sectionHeight);
                         Rect enabledHeaderRect = new Rect(leftPadding + columnWidth, y, 80f, sectionHeight);
-                        Rect priceHeaderRect = new Rect(leftPadding + columnWidth + 90f, y, 120f, sectionHeight); // CHANGED: multiplier to price
+                        Rect priceHeaderRect = new Rect(leftPadding + columnWidth + 90f, y, 120f, sectionHeight);
 
                         Text.Font = GameFont.Tiny;
                         Widgets.Label(xenotypeHeaderRect, "Xenotype");
                         Widgets.Label(enabledHeaderRect, "Enabled");
-                        Widgets.Label(priceHeaderRect, "Price (silver)"); // CHANGED: "Multiplier" to "Price (silver)"
+                        Widgets.Label(priceHeaderRect, "Price (silver)");
                         Text.Font = GameFont.Small;
                         y += sectionHeight;
 
-                        // Get allowed xenotypes from HAR to set default enabled state
-                        var allowedXenotypes = GetAllowedXenotypes(selectedRace);
-                        Logger.Debug($"HAR allows {allowedXenotypes.Count} xenotypes for {selectedRace.defName}");
-
-                        // Xenotype rows - show ALL xenotypes
-                        foreach (var xenotype in allXenotypes)
+                        // Xenotype rows - now only allowed/spawnable ones
+                        foreach (var xenotype in allowedXenotypes)
                         {
                             // Initialize if not exists
                             if (!settings.EnabledXenotypes.ContainsKey(xenotype))
                             {
-                                // Default enabled based on HAR restrictions
-                                bool defaultEnabled = xenotype == "Baseliner" ||
-                                                    allowedXenotypes.Contains(xenotype) ||
-                                                    allowedXenotypes.Count == 0; // If no restrictions, enable all
-
+                                // Default enabled: true for all allowed (Baseliner special not needed since if allowed, enable)
+                                bool defaultEnabled = true; // Or keep your original: xenotype == "Baseliner" || allowedXenotypes.Contains(xenotype); but Contains always true here
                                 settings.EnabledXenotypes[xenotype] = defaultEnabled;
-                                Logger.Debug($"Default enabled for {xenotype}: {defaultEnabled} (HAR allowed: {allowedXenotypes.Contains(xenotype)})");
+                                Logger.Debug($"Default enabled for {xenotype}: {defaultEnabled}");
                             }
                             if (!settings.XenotypePrices.ContainsKey(xenotype))
                             {
@@ -644,12 +637,11 @@ namespace CAP_ChatInteractive
                             // Price input - CHANGED: from multiplier to price
                             Rect priceRect = new Rect(leftPadding + columnWidth + 90f, y, 120f, sectionHeight);
                             float currentPriceValue = settings.XenotypePrices[xenotype];
-                            string xenotypePriceBuffer = currentPriceValue.ToString("F0"); // Changed from priceBuffer to xenotypePriceBuffer
-                            string newPriceBuffer = Widgets.TextField(priceRect, xenotypePriceBuffer); // Changed second parameter
+                            string xenotypePriceBuffer = currentPriceValue.ToString("F0");
+                            string newPriceBuffer = Widgets.TextField(priceRect, xenotypePriceBuffer);
 
-                            if (newPriceBuffer != xenotypePriceBuffer && float.TryParse(newPriceBuffer, out float parsedPrice)) // Changed comparison
+                            if (newPriceBuffer != xenotypePriceBuffer && float.TryParse(newPriceBuffer, out float parsedPrice))
                             {
-                                // Allow prices from 0 to 1,000,000 silver
                                 parsedPrice = Mathf.Clamp(parsedPrice, 0f, 1000000f);
                                 settings.XenotypePrices[xenotype] = parsedPrice;
                                 SaveRaceSettings();
@@ -659,21 +651,17 @@ namespace CAP_ChatInteractive
                             Rect resetButtonRect = new Rect(leftPadding + columnWidth + 220f, y, 60f, sectionHeight);
                             if (Widgets.ButtonText(resetButtonRect, "Reset"))
                             {
-                                // Reset to gene-based price using GeneUtils
                                 float geneBasedPrice = GeneUtils.CalculateXenotypeMarketValue(selectedRace, xenotype);
                                 settings.XenotypePrices[xenotype] = geneBasedPrice;
                                 SaveRaceSettings();
-
-                                // Show feedback message
                                 Messages.Message($"Reset {xenotype} price to {geneBasedPrice:F0} silver", MessageTypeDefOf.NeutralEvent);
                             }
 
-                            // Add tooltip explaining what reset does
-                            string resetTooltip = $"Reset {xenotype} price to gene-based value:\n";
-                            resetTooltip += $"• Race base value: {selectedRace.BaseMarketValue:F0} silver\n";
-                            resetTooltip += $"• Gene contribution: {GeneUtils.GetXenotypeGeneValueOnly(xenotype, selectedRace.BaseMarketValue):F0} silver\n";
-                            resetTooltip += $"• Total: {GeneUtils.CalculateXenotypeMarketValue(selectedRace, xenotype):F0} silver\n";
-                            resetTooltip += "\nClick to reset to Rimworld's calculated market value based on gene marketValueFactor";
+                            string resetTooltip = $"Reset {xenotype} price to gene-based value:\n" +
+                                                  $"• Race base value: {selectedRace.BaseMarketValue:F0} silver\n" +
+                                                  $"• Gene contribution: {GeneUtils.GetXenotypeGeneValueOnly(xenotype, selectedRace.BaseMarketValue):F0} silver\n" +
+                                                  $"• Total: {GeneUtils.CalculateXenotypeMarketValue(selectedRace, xenotype):F0} silver\n" +
+                                                  "\nClick to reset to Rimworld's calculated market value based on gene marketValueFactor";
                             TooltipHandler.TipRegion(resetButtonRect, new TipSignal(resetTooltip, xenotype.GetHashCode() + 1000));
 
                             y += sectionHeight;
@@ -681,9 +669,9 @@ namespace CAP_ChatInteractive
                     }
                     else
                     {
-                        // No xenotypes found
+                        // No allowed xenotypes
                         Rect noXenotypeRect = new Rect(leftPadding, y, viewRect.width - leftPadding, sectionHeight);
-                        Widgets.Label(noXenotypeRect, "No xenotypes found");
+                        Widgets.Label(noXenotypeRect, "No xenotypes allowed for this race (HAR restrictions apply)");
                         y += sectionHeight;
                     }
                 }
@@ -735,24 +723,136 @@ namespace CAP_ChatInteractive
 
         private List<string> GetAllowedXenotypes(ThingDef raceDef)
         {
-            // Use centralized race settings instead of direct HAR calls
-            var raceSettings = RaceSettingsManager.GetRaceSettings(raceDef.defName);
-            if (raceSettings?.EnabledXenotypes != null)
+            if (!ModsConfig.BiotechActive)
+                return new List<string>();
+
+            if (raceDef == ThingDefOf.Human)
+                return DefDatabase<XenotypeDef>.AllDefs
+                    .Where(x => !string.IsNullOrEmpty(x.defName))
+                    .Select(x => x.defName)
+                    .OrderBy(x => x)
+                    .ToList();
+
+            // Check if HAR is active
+            const string harModId = "erdelf.HumanoidAlienRaces";
+            if (!ModsConfig.IsActive(harModId))
             {
-                // Return only enabled xenotypes from settings
-                return raceSettings.EnabledXenotypes
-                    .Where(kvp => kvp.Value) // Only enabled ones
-                    .Select(kvp => kvp.Key)
+                // No HAR: allow all
+                return DefDatabase<XenotypeDef>.AllDefs
+                    .Where(x => !string.IsNullOrEmpty(x.defName))
+                    .Select(x => x.defName)
+                    .OrderBy(x => x)
                     .ToList();
             }
 
-            // Fallback: return all xenotypes if no restrictions in settings
-            if (ModsConfig.BiotechActive)
+            try
             {
-                return DefDatabase<XenotypeDef>.AllDefs.Select(x => x.defName).ToList();
-            }
+                // Reflection to get alienRace field (object)
+                var alienRaceField = raceDef.GetType().GetField("alienRace", BindingFlags.Public | BindingFlags.Instance);
+                if (alienRaceField == null)
+                {
+                    Logger.Debug($"[RICS] No alienRace field found for {raceDef.defName} - treating as non-HAR race");
+                    return DefDatabase<XenotypeDef>.AllDefs
+                        .Where(x => !string.IsNullOrEmpty(x.defName))
+                        .Select(x => x.defName)
+                        .OrderBy(x => x)
+                        .ToList();
+                }
 
-            return new List<string>();
+                var alienRaceObj = alienRaceField.GetValue(raceDef);
+                if (alienRaceObj == null)
+                    return new List<string>(); // No settings: none allowed (edge case)
+
+                // Get raceRestriction
+                var raceRestrictionField = alienRaceObj.GetType().GetField("raceRestriction", BindingFlags.Public | BindingFlags.Instance);
+                if (raceRestrictionField == null)
+                    return new List<string>(); // No restrictions: none? Or all? Adjust to all if preferred
+
+                var restrictionObj = raceRestrictionField.GetValue(alienRaceObj);
+                if (restrictionObj == null)
+                    return DefDatabase<XenotypeDef>.AllDefs
+                        .Where(x => !string.IsNullOrEmpty(x.defName))
+                        .Select(x => x.defName)
+                        .OrderBy(x => x)
+                        .ToList();
+
+                // Extract onlyUseRaceRestrictedXenotypes (bool)
+                var onlyRestrictedField = restrictionObj.GetType().GetField("onlyUseRaceRestrictedXenotypes", BindingFlags.Public | BindingFlags.Instance);
+                Logger.Debug($"[RICS] HAR restriction object for {raceDef.defName}: onlyUseRaceRestrictedXenotypes field found: {onlyRestrictedField != null}");
+                bool onlyRestricted = onlyRestrictedField != null && (bool)onlyRestrictedField.GetValue(restrictionObj);
+
+                // Extract lists (as IEnumerable<object>, then get defNames)
+                var xenoListField = restrictionObj.GetType().GetField("xenotypeList", BindingFlags.Public | BindingFlags.Instance);
+                var whiteListField = restrictionObj.GetType().GetField("whiteXenotypeList", BindingFlags.Public | BindingFlags.Instance);
+                var blackListField = restrictionObj.GetType().GetField("blackXenotypeList", BindingFlags.Public | BindingFlags.Instance);
+
+                var xenoList = (xenoListField?.GetValue(restrictionObj) as IEnumerable<object>)?.Select(x => GetDefName(x)).Where(n => n != null).ToList() ?? new List<string>();
+                var whiteList = (whiteListField?.GetValue(restrictionObj) as IEnumerable<object>)?.Select(x => GetDefName(x)).Where(n => n != null).ToList() ?? new List<string>();
+                var blackList = (blackListField?.GetValue(restrictionObj) as IEnumerable<object>)?.Select(x => GetDefName(x)).Where(n => n != null).ToList() ?? new List<string>();
+
+                Logger.Debug($"[RICS] HAR restrictions for {raceDef.defName}: onlyRestricted={onlyRestricted}, xenoList={xenoList.Count}, white={whiteList.Count}, black={blackList.Count}");
+
+                // Build allowed list per HAR logic
+                var result = new HashSet<string>(); // Use set to avoid dups
+                foreach (var xenDef in DefDatabase<XenotypeDef>.AllDefs)
+                {
+                    string defName = xenDef.defName;
+                    if (string.IsNullOrEmpty(defName)) continue;
+
+                    // Always exclude blacklist
+                    if (blackList.Contains(defName)) continue;
+
+                    // If whitelist present, only allow from whitelist
+                    if (whiteList.Count > 0)
+                    {
+                        if (whiteList.Contains(defName)) result.Add(defName);
+                        continue;
+                    }
+
+                    // If only restricted, only allow from xenotypeList
+                    if (onlyRestricted)
+                    {
+                        if (xenoList.Contains(defName)) result.Add(defName);
+                        continue;
+                    }
+
+                    // If xenotypeList present (without onlyRestricted), prefer it but allow others? Wait, per wiki: xenotypeList is exclusive only if onlyRestricted=true
+                    // But wiki says xenotypeList is for "only members of your race can have" (i.e., race-exclusive), but for allowed, it's combined with white when onlyRestricted.
+                    // To match: If onlyRestricted, allow xenotypeList + whiteList; else allow all except black (but xenotypeList marks race-exclusive, not allowance filter)
+
+                    // Correct per wiki/tool: When onlyRestricted=true, allow only xenotypeList + whiteList; else allow all except black (xenotypeList/white are additives? But wiki says white is for non-exclusive allowance)
+                    // Adjust: Always allow all except black, but if onlyRestricted, restrict to (xenotypeList + whiteList) minus black
+
+                    if (onlyRestricted)
+                    {
+                        if (xenoList.Contains(defName) || whiteList.Contains(defName))
+                            result.Add(defName);
+                    }
+                    else
+                    {
+                        result.Add(defName); // Allow all minus black (already skipped)
+                    }
+                }
+
+                return result.OrderBy(n => n).ToList();
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[RICS] Failed to apply HAR xenotype restrictions for {raceDef.defName}: {ex.Message}");
+                return DefDatabase<XenotypeDef>.AllDefs
+                    .Where(x => !string.IsNullOrEmpty(x.defName))
+                    .Select(x => x.defName)
+                    .OrderBy(x => x)
+                    .ToList();
+            }
+        }
+
+        // Helper method (add this new private method in the class)
+        private string GetDefName(object defObj)
+        {
+            if (defObj == null) return null;
+            var defNameField = defObj.GetType().GetField("defName", BindingFlags.Public | BindingFlags.Instance);
+            return defNameField?.GetValue(defObj) as string;
         }
 
         private void SaveRaceSettings()
