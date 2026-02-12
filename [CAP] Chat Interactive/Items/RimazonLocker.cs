@@ -30,7 +30,9 @@ using UnityEngine;
 using Verse;
 namespace CAP_ChatInteractive
 {
-
+    /// <summary>
+    /// 
+    /// </summary>
     public class LockerExtension : DefModExtension
     {
         public int maxStacks = 24;
@@ -38,9 +40,34 @@ namespace CAP_ChatInteractive
         // Add tab types if you want
         public List<Type> inspectorTabs = new List<Type>
         {
-            typeof(ITab_ContainerStorage),
+            // typeof(ITab_ContainerStorage),
             typeof(ITab_LockerContents)
         };
+    }
+
+    // Add this new class near the top of the file, after the LockerExtension
+    public class LockerThingOwner : ThingOwner<Thing>
+    {
+        private Building_RimazonLocker Locker => (Building_RimazonLocker)owner;
+
+        public LockerThingOwner(IThingHolder parentHolder, bool oneStackOnly, LookMode lookMode)
+                : base(parentHolder, oneStackOnly, lookMode)
+        {
+        }
+
+        public override bool TryAdd(Thing thing, bool allowSpecialEffects = false)
+        {
+            if (Count >= Locker.MaxStacks)
+                return false;
+            return base.TryAdd(thing, allowSpecialEffects);
+        }
+
+        public bool CanAcceptAnyOf(Thing thing)
+        {
+            if (Count >= Locker.MaxStacks)
+                return false;
+            return base.CanAcceptAnyOf(thing);
+        }
     }
     // Main Class
     // public class Building_RimazonLocker : v, IThingHolder, IHaulDestination, IStoreSettingsParent
@@ -53,19 +80,28 @@ namespace CAP_ChatInteractive
         private ThingOwner<Thing> innerContainer;
         public ThingOwner InnerContainer
         {
+            //get
+            //{
+            //    if (innerContainer == null)
+            //    {
+            //        innerContainer = new ThingOwner<Thing>(this, false, LookMode.Deep);
+            //    }
+            //    return innerContainer;
+            //}
             get
             {
                 if (innerContainer == null)
                 {
-                    innerContainer = new ThingOwner<Thing>(this, false, LookMode.Deep);
+                    innerContainer = new LockerThingOwner(this, false, LookMode.Deep);
                 }
                 return innerContainer;
             }
+
         }
         public int MaxStacks => def.GetModExtension<LockerExtension>().maxStacks;
         public StorageSettings settings;
         public int instanceId = 0;
-        public int instanceCounter = 0;
+        private static int instanceCounter = 0;
 
         // Constructor
         public Building_RimazonLocker()
@@ -77,7 +113,7 @@ namespace CAP_ChatInteractive
             // 1. parentHolder (this)
             // 2. oneStackOnly (false - we want multiple stacks)
             // 3. lookMode (LookMode.Deep for proper serialization)
-            innerContainer = new ThingOwner<Thing>(this, false, LookMode.Deep);
+            // innerContainer = new ThingOwner<Thing>(this, false, LookMode.Deep);
             // innerContainer.maxStacks = MaxStacks; Set in Def         <maxStacks>24</maxStacks>
         }
 
@@ -183,10 +219,10 @@ namespace CAP_ChatInteractive
             // Logger.Debug($"ThingOwner: {this.GetDirectlyHeldThings() != null}");
             // Logger.Debug($"Locker {this} settings after init: {(settings != null ? "exists" : "NULL")} | Parent defaults: {(def.building?.defaultStorageSettings != null ? "exists" : "NULL")}");
             // Initialize innerContainer if null (shouldn't be, but just in case)
-            if (innerContainer == null)
-            {
-                innerContainer = new ThingOwner<Thing>(this, LookMode.Deep);
-            }
+            //if (innerContainer == null)
+            //{
+            //    innerContainer = new ThingOwner<Thing>(this, LookMode.Deep);
+            //}
 
             // GetStoreSettings will initialize settings if null
             var s = GetStoreSettings();
@@ -197,11 +233,11 @@ namespace CAP_ChatInteractive
         {
             base.SpawnSetup(map, respawningAfterReload);
 
-            if (innerContainer == null)
-            {
-                innerContainer = new ThingOwner<Thing>(this, false, LookMode.Deep);
-            }
-
+            //if (innerContainer == null)
+            //{
+            //    innerContainer = new ThingOwner<Thing>(this, false, LookMode.Deep);
+            //}
+            _ = InnerContainer;
             Logger.Debug($"[RICS] Locker has {innerContainer.Count} items after spawn");
 
             _ = GetStoreSettings();
