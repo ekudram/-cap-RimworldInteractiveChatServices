@@ -15,6 +15,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // A dialog window for configuring Chat Interactive settings with multiple tabs
+
+// Sets up the Tabs and window for Settings, but the actual content of each tab is drawn in separate classes for better organization and maintainability.
+
 using _CAP__Chat_Interactive;
 using UnityEngine;
 using Verse;
@@ -35,7 +38,7 @@ namespace CAP_ChatInteractive
             absorbInputAroundWindow = true;
             closeOnAccept = false;
             closeOnCancel = true;
-            optionalTitle = "[CAP] Rimworld Interactive Chat Service";
+            optionalTitle = "RICS.CIS.OptionalTitle".Translate();
             forceCatchAcceptAndCancelEventEvenIfUnfocused = true;
         }
 
@@ -47,22 +50,22 @@ namespace CAP_ChatInteractive
 
             _tabWorker.AddTab(new TabItem
             {
-                Label = "Global",
-                Tooltip = "Configure global chat and economy settings",
+                Label = "RICS.CIS.Global".Translate(),
+                Tooltip = "RICS.CIS.Global.Tooltip".Translate(),
                 ContentDrawer = TabDrawer_Global.Draw
             });
 
             _tabWorker.AddTab(new TabItem
             {
-                Label = "Twitch",
-                Tooltip = "Configure Twitch integration settings",
+                Label = "RICS.CIS.Twitch".Translate(),
+                Tooltip = "RICS.CIS.Global.Tooltip".Translate(),
                 ContentDrawer = TabDrawer_Twitch.Draw
             });
 
             _tabWorker.AddTab(new TabItem
             {
-                Label = "YouTube",
-                Tooltip = "Configure YouTube integration settings",
+                Label = "RICS.CIS.YouTube".Translate(),
+                Tooltip = "RICS.CIS.Twitch.Tooltip".Translate(),
                 ContentDrawer = TabDrawer_YouTube.Draw
             });
 
@@ -76,22 +79,22 @@ namespace CAP_ChatInteractive
 
             _tabWorker.AddTab(new TabItem
             {
-                Label = "Economy",
-                Tooltip = "Configure karma and coin economy settings",
+                Label = "RICS.CIS.Economy".Translate(),
+                Tooltip = "RICS.CIS.Economy.Tooltip".Translate(),
                 ContentDrawer = TabDrawer_Economy.Draw
             });
 
             _tabWorker.AddTab(new TabItem
             {
-                Label = "Game Events",
-                Tooltip = "Manage events, traits, store items and cooldowns",
+                Label = "RICS.CIS.GameEvents".Translate(),
+                Tooltip = "RICS.CIS.GameEvents.Tooltip".Translate(),
                 ContentDrawer = TabDrawer_GameEvents.Draw
             });
 
             _tabWorker.AddTab(new TabItem
             {
-                Label = "Rewards",
-                Tooltip = "Configure channel points and lootbox rewards",
+                Label = "RICS.CIS.Rewards".Translate(),
+                Tooltip = "RICS.CIS.Rewards.Tooltip".Translate(),
                 ContentDrawer = TabDrawer_Rewards.Draw
             });
         }

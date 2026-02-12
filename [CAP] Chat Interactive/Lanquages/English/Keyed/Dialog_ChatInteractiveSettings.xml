@@ -1,20 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
+  <!-- Dialog_ChatInteractiveSettings.cs Translations -->
+  
   <!-- Tab Labels -->
-  <RICS.Dialog.Global>Global</RICS.Dialog.Global>
-  <RICS.Dialog.Twitch>Twitch</RICS.Dialog.Twitch>
-  <RICS.Dialog.YouTube>YouTube</RICS.Dialog.YouTube>
-  <RICS.Dialog.OAuth>OAuth</RICS.Dialog.OAuth>
-  <RICS.Dialog.Economy>Economy</RICS.Dialog.Economy>
-  <RICS.Dialog.GameEvents>Game Events</RICS.Dialog.GameEvents>
-  <RICS.Dialog.Rewards>Rewards</RICS.Dialog.Rewards>
+  <RICS.CIS.OptionalTitle>[CAP] Rimworld Interactive Chat Service</RICS.CIS.OptionalTitle>
+  
+  <RICS.CIS.Global>Global</RICS.CIS.Global>
+  <RICS.CIS.Twitch>Twitch</RICS.CIS.Twitch>
+  <RICS.CIS.YouTube>YouTube</RICS.CIS.YouTube>
+  <RICS.CIS.OAuth>OAuth</RICS.CIS.OAuth>
+  <RICS.CIS.Economy>Economy</RICS.CIS.Economy>
+  <RICS.CIS.GameEvents>Game Events</RICS.CIS.GameEvents>
+  <RICS.CIS.Rewards>Rewards</RICS.CIS.Rewards>
 
   <!-- Tab Tooltips -->
-  <RICS.Dialog.Global.Tooltip>Configure global chat and economy settings</RICS.Dialog.Global.Tooltip>
-  <RICS.Dialog.Twitch.Tooltip>Configure Twitch integration settings</RICS.Dialog.Twitch.Tooltip>
-  <RICS.Dialog.YouTube.Tooltip>Configure YouTube integration settings</RICS.Dialog.YouTube.Tooltip>
-  <RICS.Dialog.OAuth.Tooltip>Configure YouTube OAuth settings</RICS.Dialog.OAuth.Tooltip>
-  <RICS.Dialog.Economy.Tooltip>Configure karma and coin economy settings</RICS.Dialog.Economy.Tooltip>
-  <RICS.Dialog.GameEvents.Tooltip>Manage events, traits, store items and cooldowns</RICS.Dialog.GameEvents.Tooltip>
-  <RICS.Dialog.Rewards.Tooltip>Configure channel points and lootbox rewards</RICS.Dialog.Rewards.Tooltip>
+  <RICS.CIS.Global.Tooltip>Configure global chat and economy settings</RICS.CIS.Global.Tooltip>
+  <RICS.CIS.Twitch.Tooltip>Configure Twitch integration settings</RICS.CIS.Twitch.Tooltip>
+  <RICS.CIS.YouTube.Tooltip>Configure YouTube integration settings</RICS.CIS.YouTube.Tooltip>
+  <RICS.CIS.OAuth.Tooltip>Configure YouTube OAuth settings</RICS.CIS.OAuth.Tooltip>
+  <RICS.CIS.Economy.Tooltip>Configure karma and coin economy settings</RICS.CIS.Economy.Tooltip>
+  <RICS.CIS.GameEvents.Tooltip>Manage events, traits, store items and cooldowns</RICS.CIS.GameEvents.Tooltip>
+  <RICS.CIS.Rewards.Tooltip>Configure channel points and lootbox rewards</RICS.CIS.Rewards.Tooltip>
 </LanguageData>
