@@ -38,7 +38,7 @@ namespace CAP_ChatInteractive
         private string selectedCategory = "All";
         private Dictionary<string, int> modSourceCounts = new Dictionary<string, int>();
         private Dictionary<string, int> categoryCounts = new Dictionary<string, int>();
-        public List<BuyableIncident> filteredEvents = new List<BuyableIncident>();
+        public List<BuyableIncident> filteredEvents = new List<BuyableIncident>();  //
         private Dictionary<string, (int baseCost, string karmaType)> originalSettings = new Dictionary<string, (int, string)>();
         private EventListViewType listViewType = EventListViewType.ModSource;
 

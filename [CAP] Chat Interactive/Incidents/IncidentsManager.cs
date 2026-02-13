@@ -53,7 +53,11 @@ namespace CAP_ChatInteractive.Incidents
 {
     public static class IncidentsManager
     {
+        // Point of truth
         public static Dictionary<string, BuyableIncident> AllBuyableIncidents { get; private set; } = new Dictionary<string, BuyableIncident>();
+        // Complete Settings data, includes inactive mods
+        private static Dictionary<string, BuyableIncident> _completeIncidentData = new Dictionary<string, BuyableIncident>();
+        public static IReadOnlyDictionary<string, BuyableIncident> CompleteIncidentData => _completeIncidentData;
         private static bool isInitialized = false;
         private static readonly object lockObject = new object();
 
@@ -94,22 +98,23 @@ namespace CAP_ChatInteractive.Incidents
             {
                 var loadedIncidents = JsonFileManager.DeserializeIncidents(jsonContent);
 
-                // Validation: Check if data is valid
-                if (loadedIncidents == null || loadedIncidents.Count == 0)
+                if (loadedIncidents == null)
                 {
-                    Logger.Error("Incidents.json exists but contains no valid data - corrupted or empty");
-                    HandleIncidentsCorruption("File contains no valid data", jsonContent);
+                    Logger.Error("Incidents.json exists but contains no valid data");
                     return false;
                 }
 
-                // Success! Load into memory
-                AllBuyableIncidents.Clear();
+                // Store COMPLETE data (preserves all incidents ever saved)
+                _completeIncidentData.Clear();
                 foreach (var kvp in loadedIncidents)
                 {
-                    AllBuyableIncidents[kvp.Key] = kvp.Value;
+                    _completeIncidentData[kvp.Key] = kvp.Value;
                 }
 
-                Logger.Debug($"Loaded {AllBuyableIncidents.Count} incidents from JSON");
+                // Now filter to ACTIVE incidents for runtime use
+                RebuildActiveIncidentsFromCompleteData();
+
+                Logger.Debug($"Loaded {_completeIncidentData.Count} total incidents from JSON, {AllBuyableIncidents.Count} active");
                 return true;
             }
             catch (Newtonsoft.Json.JsonException jsonEx)
@@ -143,7 +148,7 @@ namespace CAP_ChatInteractive.Incidents
                 return false;
             }
         }
-        // Handles incidents JSON corruption by backing up the corrupted file, notifying the player, and logging details
+        // === Handles Curruption ===
         private static void HandleIncidentsCorruption(string errorDetails, string corruptedJson)
         {
             // Backup corrupted file for debugging
@@ -181,6 +186,7 @@ namespace CAP_ChatInteractive.Incidents
             }
         }
 
+        // === JSON for Store ===
         private static void CreateDefaultIncidents()
         {
             AllBuyableIncidents.Clear();
@@ -220,29 +226,88 @@ namespace CAP_ChatInteractive.Incidents
 
             Logger.Debug($"Created {AllBuyableIncidents.Count} store-suitable incidents");
         }
-        // Currently unused - for future roadmap logging
-        private static void LogImplementationSummary()
+
+        private static void RebuildActiveIncidentsFromCompleteData()
         {
-            var incidentsByMod = IncidentsManager.AllBuyableIncidents.Values
-                .GroupBy(i => i.ModSource)
-                .OrderByDescending(g => g.Count());
+            AllBuyableIncidents.Clear();
 
-            Logger.Message("=== INCIDENT IMPLEMENTATION ROADMAP ===");
-            foreach (var modGroup in incidentsByMod)
+            var allIncidentDefs = DefDatabase<IncidentDef>.AllDefs.ToList();
+            var activeDefNames = new HashSet<string>(allIncidentDefs.Select(d => d.defName));
+
+            // First, add all existing incidents from complete data (JSON settings)
+            foreach (var kvp in _completeIncidentData)
             {
-                Logger.Message($"{modGroup.Key}: {modGroup.Count()} incidents");
+                if (activeDefNames.Contains(kvp.Key))
+                {
+                    // Incident is from an active mod - use JSON settings exactly as saved
+                    AllBuyableIncidents[kvp.Key] = kvp.Value;
+
+                    // Still validate game-state properties (like BaseChance, PointsScaleable)
+                    // but NEVER change Enabled/DisabledReason from JSON
+                    var incidentDef = allIncidentDefs.FirstOrDefault(d => d.defName == kvp.Key);
+                    if (incidentDef != null)
+                    {
+                        // Update only game-derived properties, not user settings
+                        kvp.Value.BaseChance = incidentDef.baseChance;
+                        kvp.Value.PointsScaleable = incidentDef.pointsScaleable;
+                        kvp.Value.MinThreatPoints = incidentDef.minThreatPoints;
+                        kvp.Value.MaxThreatPoints = incidentDef.maxThreatPoints;
+
+                        // Update availability flags based on current game state
+                        kvp.Value.ShouldBeInStore = BuyableIncident.DetermineStoreSuitability(incidentDef);
+                        kvp.Value.IsAvailableForCommands = BuyableIncident.DetermineCommandAvailability(incidentDef);
+
+                        // But NEVER change Enabled/DisabledReason - those come from JSON
+                    }
+                }
             }
 
-            Logger.Message("=== START WITH THESE CORE INCIDENTS ===");
-            var easyCore = IncidentsManager.AllBuyableIncidents.Values
-                .Where(i => i.ModSource == "Core")
-                .Where(i => !i.DefName.Contains("Anomaly") && !i.PointsScaleable && !i.IsQuestIncident)
-                .Take(5);
-
-            foreach (var incident in easyCore)
+            // Now check for NEW incidents that aren't in JSON
+            foreach (var incidentDef in allIncidentDefs)
             {
-                Logger.Message($"  - {incident.DefName}: {incident.Label} (Cost: {incident.BaseCost})");
+                string key = GetIncidentKey(incidentDef);
+                if (!_completeIncidentData.ContainsKey(key) && IsIncidentSuitableForStore(incidentDef))
+                {
+                    // This is a NEW incident - let the constructor handle auto-disabling
+                    var buyableIncident = new BuyableIncident(incidentDef);
+
+                    _completeIncidentData[key] = buyableIncident;
+
+                    // Add to runtime if suitable
+                    if (buyableIncident.ShouldBeInStore)
+                    {
+                        AllBuyableIncidents[key] = buyableIncident;
+                    }
+
+                    Logger.Debug($"Added NEW incident from constructor: {key} from {incidentDef.modContentPack?.Name ?? "Unknown"} - Enabled: {buyableIncident.Enabled}");
+                }
             }
+        }
+
+        private static void ValidateSingleIncident(BuyableIncident incident, IncidentDef incidentDef)
+        {
+            if (incidentDef == null) return;
+
+            // Check if store suitability changed
+            bool shouldBeInStore = BuyableIncident.DetermineStoreSuitability(incidentDef);
+            if (incident.ShouldBeInStore != shouldBeInStore)
+            {
+                incident.ShouldBeInStore = shouldBeInStore;
+                if (!shouldBeInStore)
+                {
+                    incident.Enabled = false;
+                    incident.DisabledReason = "No longer suitable for store system";
+                }
+            }
+
+            // Update command availability
+            incident.IsAvailableForCommands = BuyableIncident.DetermineCommandAvailability(incidentDef);
+
+            // Update other properties that might have changed due to game updates
+            incident.BaseChance = incidentDef.baseChance;
+            incident.PointsScaleable = incidentDef.pointsScaleable;
+            incident.MinThreatPoints = incidentDef.minThreatPoints;
+            incident.MaxThreatPoints = incidentDef.maxThreatPoints;
         }
 
         private static bool IsIncidentSuitableForStore(IncidentDef incidentDef)
@@ -262,159 +327,90 @@ namespace CAP_ChatInteractive.Incidents
 
         private static void ValidateAndUpdateIncidents()
         {
-            var allIncidentDefs = DefDatabase<IncidentDef>.AllDefs;
+            var allIncidentDefs = DefDatabase<IncidentDef>.AllDefs.ToList();
+            var activeDefNames = new HashSet<string>(allIncidentDefs.Select(d => d.defName));
+
             int addedIncidents = 0;
+            int updatedGameProperties = 0;
             int removedIncidents = 0;
-            int updatedCommandAvailability = 0;
-            int updatedPricing = 0;
-            int updatedKarmaTypes = 0;
-            int updatedStoreSuitability = 0;
-            int autoDisabledModEvents = 0;
 
-            // Track all valid incident keys that should be in our system
-            var validIncidentKeys = new HashSet<string>();
-
-            // Process all incident definitions
-            foreach (var incidentDef in allIncidentDefs)
+            // Check for NEW incidents not in JSON
+            foreach (var incidentDef in allIncidentDefs)  // 'incidentDef' is the loop variable
             {
                 string key = GetIncidentKey(incidentDef);
-                validIncidentKeys.Add(key);
 
-                // Check if this incident should be in store at all
-                bool shouldBeInStore = IsIncidentSuitableForStore(incidentDef);
-
-                if (!shouldBeInStore)
+                if (!_completeIncidentData.ContainsKey(key) && IsIncidentSuitableForStore(incidentDef))
                 {
-                    // If it shouldn't be in store, remove it if it exists
-                    if (AllBuyableIncidents.ContainsKey(key))
-                    {
-                        AllBuyableIncidents.Remove(key);
-                        removedIncidents++;
-                    }
-                    continue; // Skip to next incident
-                }
-
-                // If we get here, the incident should be in store
-                if (!AllBuyableIncidents.ContainsKey(key))
-                {
-                    // Add new incident
-                    var buyableIncident = new BuyableIncident(incidentDef);
-                    AllBuyableIncidents[key] = buyableIncident;
+                    // New incident - let constructor handle it (including auto-disable)
+                    var newIncident = new BuyableIncident(incidentDef);
+                    _completeIncidentData[key] = newIncident;
+                    AllBuyableIncidents[key] = newIncident;
                     addedIncidents++;
-
-                    // Count newly auto-disabled mod events
-                    if (!buyableIncident.Enabled && buyableIncident.DisabledReason?.Contains("Auto-disabled") == true)
-                    {
-                        autoDisabledModEvents++;
-                    }
                 }
-                else
+                else if (_completeIncidentData.ContainsKey(key))
                 {
-                    // Validate and update existing incidents
-                    var existingIncident = AllBuyableIncidents[key];
-                    var tempIncident = new BuyableIncident(incidentDef); // Create temp to get current values
+                    // Existing incident - update game properties but preserve user settings
+                    var existingIncident = _completeIncidentData[key];
 
-                    // Store the original enabled state to check if we should preserve it
-                    bool wasOriginallyEnabled = existingIncident.Enabled;
+                    // FIX: Rename this variable to avoid conflict with loop variable
+                    var currentIncidentDef = allIncidentDefs.FirstOrDefault(d => d.defName == key);
 
-                    // Check if store suitability needs updating
-                    bool currentStoreSuitability = existingIncident.ShouldBeInStore;
-                    if (existingIncident.ShouldBeInStore != tempIncident.ShouldBeInStore)
+                    if (currentIncidentDef != null)
                     {
-                        existingIncident.ShouldBeInStore = tempIncident.ShouldBeInStore;
-                        updatedStoreSuitability++;
+                        // Store user settings before any updates
+                        bool userEnabled = existingIncident.Enabled;
+                        string userDisabledReason = existingIncident.DisabledReason;
+                        int userPrice = existingIncident.BaseCost;
+                        string userKarma = existingIncident.KarmaType;
 
-                        // Auto-disable if no longer suitable for store
-                        if (!existingIncident.ShouldBeInStore)
-                        {
-                            existingIncident.Enabled = false;
-                            existingIncident.DisabledReason = "No longer suitable for store system";
-                        }
-                    }
+                        // Update game-derived properties
+                        existingIncident.BaseChance = currentIncidentDef.baseChance;
+                        existingIncident.PointsScaleable = currentIncidentDef.pointsScaleable;
+                        existingIncident.MinThreatPoints = currentIncidentDef.minThreatPoints;
+                        existingIncident.MaxThreatPoints = currentIncidentDef.maxThreatPoints;
 
-                    // Check if command availability needs updating
-                    bool currentAvailability = existingIncident.IsAvailableForCommands;
-                    if (existingIncident.IsAvailableForCommands != tempIncident.IsAvailableForCommands)
-                    {
-                        existingIncident.IsAvailableForCommands = tempIncident.IsAvailableForCommands;
-                        updatedCommandAvailability++;
-                    }
+                        // Update flags based on current game state
+                        existingIncident.ShouldBeInStore = BuyableIncident.DetermineStoreSuitability(currentIncidentDef);
+                        existingIncident.IsAvailableForCommands = BuyableIncident.DetermineCommandAvailability(currentIncidentDef);
 
-                    // Check if pricing needs updating (if default pricing changed significantly)
-                    int priceDifference = Math.Abs(existingIncident.BaseCost - tempIncident.BaseCost);
-                    if (priceDifference > existingIncident.BaseCost * 0.2f) // More than 20% difference
-                    {
-                        // Only update if user hasn't customized the price (check against original)
-                        if (IsPriceCloseToDefault(existingIncident, tempIncident.BaseCost))
-                        {
-                            existingIncident.BaseCost = tempIncident.BaseCost;
-                            updatedPricing++;
-                        }
-                    }
+                        // CRITICAL: Restore ALL user settings from JSON
+                        existingIncident.Enabled = userEnabled;
+                        existingIncident.DisabledReason = userDisabledReason;
+                        existingIncident.BaseCost = userPrice;
+                        existingIncident.KarmaType = userKarma;
 
-                    // Check if karma type needs updating (if logic changed)
-                    if (existingIncident.KarmaType != tempIncident.KarmaType)
-                    {
-                        // Use the new similarity check from BuyableIncident
-                        if (existingIncident.IsKarmaTypeSimilar(existingIncident.KarmaType, tempIncident.KarmaType))
-                        {
-                            existingIncident.KarmaType = tempIncident.KarmaType;
-                            updatedKarmaTypes++;
-                        }
-                    }
+                        // Don't change EventCap either if user might have customized it
+                        // But if you want to allow EventCap updates, add logic here
 
-                    // NEW: For existing incidents, don't auto-disable if user already enabled them
-                    // This preserves user choice while still applying auto-disable to new incidents
-                    if (ShouldAutoDisableModEvent(incidentDef) && wasOriginallyEnabled)
-                    {
-                        // User already enabled this mod event, so don't auto-disable it
-                        existingIncident.Enabled = true;
-                        existingIncident.DisabledReason = "";
+                        updatedGameProperties++;
                     }
                 }
             }
 
-            // Remove incidents that no longer exist in the game OR are no longer valid
-            var keysToRemove = new List<string>();
-            foreach (var kvp in AllBuyableIncidents)
-            {
-                var incidentDef = DefDatabase<IncidentDef>.GetNamedSilentFail(kvp.Key);
-                if (incidentDef == null || !validIncidentKeys.Contains(kvp.Key))
-                {
-                    keysToRemove.Add(kvp.Key);
-                }
-            }
-
+            // Remove incidents from runtime that are no longer active
+            var keysToRemove = AllBuyableIncidents.Keys.Where(k => !activeDefNames.Contains(k)).ToList();
             foreach (var key in keysToRemove)
             {
                 AllBuyableIncidents.Remove(key);
                 removedIncidents++;
             }
 
-            // Log all changes
-            if (addedIncidents > 0 || removedIncidents > 0 || updatedCommandAvailability > 0 ||
-                updatedPricing > 0 || updatedKarmaTypes > 0 || updatedStoreSuitability > 0 || autoDisabledModEvents > 0)
+            // Mark all active incidents as modactive = true for online store
+            foreach (var incident in AllBuyableIncidents.Values)
             {
-                StringBuilder changes = new StringBuilder("Incidents updated:");
-                if (addedIncidents > 0) changes.Append($" +{addedIncidents} incidents");
-                if (removedIncidents > 0) changes.Append($" -{removedIncidents} incidents");
-                if (autoDisabledModEvents > 0) changes.Append($" {autoDisabledModEvents} mod events auto-disabled");
-                if (updatedStoreSuitability > 0) changes.Append($" {updatedStoreSuitability} store suitability flags updated");
-                if (updatedCommandAvailability > 0) changes.Append($" {updatedCommandAvailability} availability flags updated");
-                if (updatedPricing > 0) changes.Append($" {updatedPricing} prices updated");
-                if (updatedKarmaTypes > 0) changes.Append($" {updatedKarmaTypes} karma types updated");
+                incident.modactive = true;
+            }
 
-                Logger.Message(changes.ToString());
+            // Log changes
+            if (addedIncidents > 0 || removedIncidents > 0 || updatedGameProperties > 0)
+            {
+                Logger.Message($"Incidents updated: +{addedIncidents} new, -{removedIncidents} removed, {updatedGameProperties} game properties refreshed");
 
-                // Add a helpful message about auto-disabled mod events
-                if (autoDisabledModEvents > 0)
-                {
-                    Logger.Message($"Safety feature: {autoDisabledModEvents} mod events were auto-disabled. Enable them manually in the Events Editor if desired.");
-                }
-
-                SaveIncidentsToJson(); // Save changes
+                // Save changes (new incidents added to JSON)
+                SaveIncidentsToJson();
             }
         }
+
         public static void SaveIncidentsToJson()
         {
             LongEventHandler.QueueLongEvent(() =>
@@ -423,9 +419,9 @@ namespace CAP_ChatInteractive.Incidents
                 {
                     try
                     {
-                        string jsonContent = JsonFileManager.SerializeIncidents(AllBuyableIncidents);
+                        string jsonContent = JsonFileManager.SerializeIncidents(_completeIncidentData);
                         JsonFileManager.SaveFile("Incidents.json", jsonContent);
-                        Logger.Debug($"Incidents JSON saved. Items: {AllBuyableIncidents?.Count ?? 0}");
+                        Logger.Debug($"Incidents JSON saved. Total items: {_completeIncidentData?.Count ?? 0}, Active: {AllBuyableIncidents?.Count ?? 0}");
                     }
                     catch (JsonException jsonEx)
                     {
@@ -448,7 +444,6 @@ namespace CAP_ChatInteractive.Incidents
             forceHideUI: true);
         }
 
-        // For post-close saves (show feedback to user)
         public static void SaveIncidentsToJsonPostClose()
         {
             LongEventHandler.QueueLongEvent(() =>
@@ -457,7 +452,7 @@ namespace CAP_ChatInteractive.Incidents
                 {
                     try
                     {
-                        string jsonContent = JsonFileManager.SerializeIncidents(AllBuyableIncidents);
+                        string jsonContent = JsonFileManager.SerializeIncidents(_completeIncidentData);
                         JsonFileManager.SaveFile("Incidents.json", jsonContent);
                         Logger.Message("Incidents JSON saved successfully");
                     }
@@ -493,7 +488,6 @@ namespace CAP_ChatInteractive.Incidents
             forceHideUI: false);
         }
 
-        // Custom exception handler for LongEventHandler
         private static void HandleSaveException(Exception ex)
         {
             Logger.Error($"LongEventHandler caught exception during save: {ex}");
@@ -507,7 +501,6 @@ namespace CAP_ChatInteractive.Incidents
             }
         }
 
-        // Shared exception handlers
         private static void HandleJsonException(JsonException jsonEx, string filename)
         {
             Logger.Error($"JSON CORRUPTION in {filename}: {jsonEx.Message}\n" +

@@ -1,4 +1,4 @@
-﻿ // BuyableIncident.cs
+﻿// BuyableIncident.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -36,7 +36,7 @@ namespace CAP_ChatInteractive.Incidents
         public int BaseCost { get; set; } = 500;
         public string KarmaType { get; set; } = "Neutral";
         public int EventCap { get; set; } = 2;
-        public bool Enabled { get; set; } = true;
+        public bool Enabled { get; set; } = false;
         public string DisabledReason { get; set; } = "";
         public bool ShouldBeInStore { get; set; } = true;
         public bool IsAvailableForCommands { get; set; } = true;
@@ -44,6 +44,7 @@ namespace CAP_ChatInteractive.Incidents
 
         // Additional data
         public string ModSource { get; set; } = "RimWorld";
+        public bool modactive { get; set; } = false;
         public int Version { get; set; } = 1;
 
         // Incident-specific properties
@@ -103,7 +104,7 @@ namespace CAP_ChatInteractive.Incidents
         }
 
         // Determine if the incident is suitable for inclusion in the store
-        private bool DetermineStoreSuitability(IncidentDef incidentDef)
+        public static bool DetermineStoreSuitability(IncidentDef incidentDef)
         {
             // Skip incidents without workers
             if (incidentDef.Worker == null)
@@ -137,7 +138,7 @@ namespace CAP_ChatInteractive.Incidents
             return true;
         }
 
-        private bool ShouldSkipByDefName(IncidentDef incidentDef)
+        public static bool ShouldSkipByDefName(IncidentDef incidentDef)
         {
             string[] skipDefNames = {
                 "RaidEnemy", "RaidFriendly", "MechCluster", "DeepDrillInfestation",
@@ -147,7 +148,7 @@ namespace CAP_ChatInteractive.Incidents
             return skipDefNames.Contains(incidentDef.defName, StringComparer.OrdinalIgnoreCase);
         }
 
-        private bool ShouldSkipBySpecialCriteria(IncidentDef incidentDef)
+        public static bool ShouldSkipBySpecialCriteria(IncidentDef incidentDef)
         {
             // Skip endgame quests
             if (incidentDef.defName.Contains("EndGame"))
@@ -171,8 +172,12 @@ namespace CAP_ChatInteractive.Incidents
 
             return false;
         }
-        // Determine if the incident should be available for command use, disables combat incidents with dedicated commands
-        private bool DetermineCommandAvailability(IncidentDef incidentDef)
+        /// <summary>
+        /// Checks to see if we want this in the event store.
+        /// </summary>
+        /// <param name="incidentDef"></param>
+        /// <returns></returns>
+        public static bool DetermineCommandAvailability(IncidentDef incidentDef)
         {
             string defName = incidentDef.defName;
 
