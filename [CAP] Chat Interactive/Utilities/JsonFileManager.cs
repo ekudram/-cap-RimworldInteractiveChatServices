@@ -140,6 +140,7 @@ namespace CAP_ChatInteractive
                     itemObject["BasePrice"] = storeItem.BasePrice;
                     itemObject["Category"] = storeItem.Category ?? "Misc";
                     itemObject["Enabled"] = storeItem.Enabled;
+                    itemObject["modactive"] = storeItem.modactive;  // ADD THIS LINE
 
                     itemsObject[kvp.Key] = itemObject;
                 }
@@ -177,14 +178,14 @@ namespace CAP_ChatInteractive
 
                     storeItem.DefName = property.Name;
                     storeItem.CustomName = itemToken["CustomName"]?.Value<string>();
-                    storeItem.HasQuantityLimit = itemToken["HasQuantityLimit"]?.Value<bool>() ?? true; // Changed default to true
+                    storeItem.HasQuantityLimit = itemToken["HasQuantityLimit"]?.Value<bool>() ?? true;
                     storeItem.IsMelee = itemToken["IsMelee"]?.Value<bool>() ?? false;
                     storeItem.IsRanged = itemToken["IsRanged"]?.Value<bool>() ?? false;
                     storeItem.IsStuffAllowed = itemToken["IsStuffAllowed"]?.Value<bool>() ?? true;
                     storeItem.IsWeapon = itemToken["IsWeapon"]?.Value<bool>() ?? false;
-                    storeItem.QuantityLimit = itemToken["QuantityLimit"]?.Value<int>() ?? 1; // Changed default to 1
+                    storeItem.QuantityLimit = itemToken["QuantityLimit"]?.Value<int>() ?? 1;
 
-                    // ADD THIS: Deserialize LimitMode with fallback
+                    // Deserialize LimitMode with fallback
                     string limitModeString = itemToken["LimitMode"]?.Value<string>();
                     if (!string.IsNullOrEmpty(limitModeString) && Enum.TryParse<QuantityLimitMode>(limitModeString, out var limitMode))
                     {
@@ -192,7 +193,7 @@ namespace CAP_ChatInteractive
                     }
                     else
                     {
-                        storeItem.LimitMode = QuantityLimitMode.OneStack; // Default fallback
+                        storeItem.LimitMode = QuantityLimitMode.OneStack;
                     }
 
                     storeItem.IsUsable = itemToken["IsUsable"]?.Value<bool>() ?? true;
@@ -202,6 +203,9 @@ namespace CAP_ChatInteractive
                     storeItem.BasePrice = itemToken["BasePrice"]?.Value<int>() ?? 0;
                     storeItem.Category = itemToken["Category"]?.Value<string>() ?? "Misc";
                     storeItem.Enabled = itemToken["Enabled"]?.Value<bool>() ?? true;
+
+                    // ADD THIS: Deserialize modactive with fallback to false for backward compatibility
+                    storeItem.modactive = itemToken["modactive"]?.Value<bool>() ?? false;
 
                     storeItems[property.Name] = storeItem;
                 }

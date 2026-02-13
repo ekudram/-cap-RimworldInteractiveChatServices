@@ -41,6 +41,7 @@ namespace CAP_ChatInteractive.Store
         public List<string> ResearchOverrides { get; set; }
         public string Category { get; set; }
         public string ModSource { get; set; }
+        public bool modactive { get; set; } = false;
         public bool Enabled { get; set; } = true;
 
         // REMOVE the entire ExposeData method
@@ -124,7 +125,7 @@ namespace CAP_ChatInteractive.Store
             return Math.Max(1, (int)Math.Round(thingDef.BaseMarketValue));
         }
 
-        private string GetCategoryFromThingDef(ThingDef thingDef)
+        public static string GetCategoryFromThingDef(ThingDef thingDef)
         {
             // 1. Detect and separate children's clothing (Biotech / modded)
             if (thingDef.IsApparel && thingDef.apparel != null)

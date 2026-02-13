@@ -56,6 +56,8 @@ namespace CAP_ChatInteractive.Store
         public static Dictionary<string, StoreItem> AllStoreItems { get; private set; } = new Dictionary<string, StoreItem>();
         private static bool isInitialized = false;
         private static readonly object lockObject = new object();
+        private static Dictionary<string, StoreItem> _completeStoreData = new Dictionary<string, StoreItem>();
+        public static IReadOnlyDictionary<string, StoreItem> CompleteStoreData => _completeStoreData;
 
 
         // In InitializeStore() - remove the empty database check
@@ -89,7 +91,6 @@ namespace CAP_ChatInteractive.Store
         {
             string jsonContent = JsonFileManager.LoadFile("StoreItems.json");
 
-            // Case 1: No file exists (fresh install or deleted)
             if (string.IsNullOrEmpty(jsonContent))
             {
                 Logger.Debug("No StoreItems.json found - will create defaults");
@@ -98,42 +99,37 @@ namespace CAP_ChatInteractive.Store
 
             try
             {
-                // Attempt to deserialize
                 var loadedItems = JsonFileManager.DeserializeStoreItems(jsonContent);
 
-                // Case 2: File exists but is empty/whitespace
-                if (loadedItems == null || loadedItems.Count == 0)
+                if (loadedItems == null)
                 {
-                    Logger.Error("StoreItems.json exists but contains no valid data - corrupted or empty");
+                    Logger.Error("StoreItems.json exists but contains no valid data");
                     HandleJsonCorruption("File contains no valid data (empty or malformed JSON)", jsonContent);
                     return false;
                 }
 
-                // Success! Load into memory
-                AllStoreItems.Clear();
+                // Store COMPLETE data (preserves all items ever saved)
+                _completeStoreData.Clear();
                 foreach (var kvp in loadedItems)
                 {
-                    AllStoreItems[kvp.Key] = kvp.Value;
+                    _completeStoreData[kvp.Key] = kvp.Value;
                 }
 
-                Logger.Debug($"Successfully loaded {AllStoreItems.Count} store items from JSON");
+                // Now filter to ACTIVE items for runtime use
+                RebuildActiveStoreFromCompleteData();
+
+                Logger.Debug($"Loaded {_completeStoreData.Count} total items from JSON, {AllStoreItems.Count} active");
                 return true;
             }
-            catch (Newtonsoft.Json.JsonException jsonEx)  // If using Newtonsoft
+            catch (Newtonsoft.Json.JsonException jsonEx)
             {
-                Logger.Error($"JSON CORRUPTION in StoreItems.json: {jsonEx.Message}\n" +
-                             $"File may be partially written, damaged, or from incompatible version.\n" +
-                             $"Rebuilding with defaults...");
+                Logger.Error($"JSON CORRUPTION in StoreItems.json: {jsonEx.Message}");
                 HandleJsonCorruption($"JSON parsing error: {jsonEx.Message}", jsonContent);
                 return false;
             }
             catch (System.IO.IOException ioEx)
             {
-                // Disk-level failure - serious hardware issue
-                Logger.Error($"DISK ACCESS ERROR reading StoreItems.json: {ioEx.Message}\n" +
-                             $"Streamer should check hard drive health immediately!");
-
-                // Show urgent in-game warning
+                Logger.Error($"DISK ACCESS ERROR reading StoreItems.json: {ioEx.Message}");
                 if (Current.ProgramState == ProgramState.Playing && Find.LetterStack != null)
                 {
                     Find.LetterStack.ReceiveLetter(
@@ -147,10 +143,44 @@ namespace CAP_ChatInteractive.Store
             }
             catch (System.Exception e)
             {
-                Logger.Error($"Unexpected error loading store JSON: {e}\n" +
-                             $"Rebuilding with defaults...");
+                Logger.Error($"Unexpected error loading store JSON: {e}");
                 HandleJsonCorruption($"Unexpected error: {e.Message}", jsonContent);
                 return false;
+            }
+        }
+
+        private static void RebuildActiveStoreFromCompleteData()
+        {
+            AllStoreItems.Clear();
+
+            var tradeableItems = GetDefaultTradeableItems().ToList();
+            var activeDefNames = new HashSet<string>(tradeableItems.Select(t => t.defName));
+
+            // First, add all existing items from complete data (JSON settings)
+            foreach (var kvp in _completeStoreData)
+            {
+                if (activeDefNames.Contains(kvp.Key))
+                {
+                    // Item is from an active mod - use JSON settings exactly as saved
+                    AllStoreItems[kvp.Key] = kvp.Value;
+                }
+            }
+
+            // Now check for NEW items that aren't in JSON
+            foreach (var thingDef in tradeableItems)
+            {
+                string key = thingDef.defName;
+                if (!_completeStoreData.ContainsKey(key))
+                {
+                    // This is a NEW item - create it
+                    var storeItem = new StoreItem(thingDef);
+                    _completeStoreData[key] = storeItem;
+
+                    // Add to runtime
+                    AllStoreItems[key] = storeItem;
+
+                    Logger.Debug($"Added NEW store item from constructor: {key} from {thingDef.modContentPack?.Name ?? "Unknown"}");
+                }
             }
         }
 
@@ -192,6 +222,7 @@ namespace CAP_ChatInteractive.Store
         private static void CreateDefaultStore()
         {
             AllStoreItems.Clear();
+            _completeStoreData.Clear();
 
             var tradeableItems = GetDefaultTradeableItems().ToList();
 
@@ -200,16 +231,12 @@ namespace CAP_ChatInteractive.Store
             {
                 try
                 {
-                    if (!AllStoreItems.ContainsKey(thingDef.defName))
+                    if (!_completeStoreData.ContainsKey(thingDef.defName))
                     {
                         var storeItem = new StoreItem(thingDef);
+                        _completeStoreData[thingDef.defName] = storeItem;
                         AllStoreItems[thingDef.defName] = storeItem;
                         itemsCreated++;
-
-                        // Log every 100 items to see progress
-                        //if (itemsCreated % 100 == 0)
-                        //{
-                        //}
                     }
                 }
                 catch (Exception ex)
@@ -234,65 +261,78 @@ namespace CAP_ChatInteractive.Store
         // Validate and update store items
         private static void ValidateAndUpdateStore()
         {
-            var tradeableItems = GetDefaultTradeableItems();
+            var tradeableItems = GetDefaultTradeableItems().ToList();
+            var activeDefNames = new HashSet<string>(tradeableItems.Select(t => t.defName));
+
             int addedItems = 0;
+            int updatedItems = 0;
             int removedItems = 0;
-            int updatedQuantityLimits = 0;
-            int updatedCategories = 0;
-            int updatedTypeFlags = 0;
             int migratedItems = 0;
             int removedInvalidItems = 0;
 
             Logger.Message("=== Validating and updating store items... ===");
             Logger.Debug($"Current store items: {AllStoreItems.Count}");
-            Logger.Debug($"Tradeable items in game: {tradeableItems.Count()}");
+            Logger.Debug($"Tradeable items in game: {tradeableItems.Count}");
 
-            // TODO; if we are loading a game it will have the dictionary in it.
-            // We should check that to see if there is data that is missing from the json
-
-            // Add any new items that aren't in the store
+            // Check for NEW items not in JSON
             foreach (var thingDef in tradeableItems)
             {
-                if (!AllStoreItems.ContainsKey(thingDef.defName))
+                string key = thingDef.defName;
+
+                if (!_completeStoreData.ContainsKey(key))
                 {
-                    var storeItem = new StoreItem(thingDef);
-                    AllStoreItems[thingDef.defName] = storeItem;
-                    AllStoreItems[thingDef.defName] = new StoreItem(thingDef);
+                    // New item - create it
+                    var newItem = new StoreItem(thingDef);
+                    _completeStoreData[key] = newItem;
+                    AllStoreItems[key] = newItem;
                     addedItems++;
                 }
-                else
+                else if (_completeStoreData.ContainsKey(key))
                 {
-                    // Validate and update existing items
-                    // DO NOT overwrite user customizations like Enabled, CustomName, use, wear, equip etc.
-                    var existingItem = AllStoreItems[thingDef.defName];
-                    var tempStoreItem = new StoreItem(thingDef); // Create temp to get current values
+                    // Existing item - preserve user settings but update game properties
+                    var existingItem = _completeStoreData[key];
+
+                    // Store user settings before any updates
+                    bool userEnabled = existingItem.Enabled;
+                    string userCustomName = existingItem.CustomName;
+                    int userBasePrice = existingItem.BasePrice;
+                    bool userHasQuantityLimit = existingItem.HasQuantityLimit;
+                    int userQuantityLimit = existingItem.QuantityLimit;
+                    QuantityLimitMode userLimitMode = existingItem.LimitMode;
+                    bool userIsUsable = existingItem.IsUsable;
+                    bool userIsEquippable = existingItem.IsEquippable;
+                    bool userIsWearable = existingItem.IsWearable;
 
                     // MIGRATE: Update item format for existing items
                     MigrateStoreItemFormat(existingItem, thingDef.defName);
                     migratedItems++;
 
+                    // Update game-derived properties
                     // Special case: rename old "Animal" category to "Mechs" for mechanoids
                     if (existingItem.Category == "Animal" && thingDef.race?.IsMechanoid == true)
                     {
                         existingItem.Category = "Mechs";
-                        updatedCategories++;
                     }
                     else if ("VehiclePawn".Equals(thingDef.thingClass?.Name, StringComparison.OrdinalIgnoreCase))
                     {
                         existingItem.Category = "Vehicles";
-                        updatedCategories++;
                     }
                     else if (thingDef.thingClass?.FullName?.Contains("vehiclePawn") == true)
                     {
                         existingItem.Category = "Vehicles";
-                        updatedCategories++;
                     }
-                    // Check if category needs updating (if Def category changed)
-                    else if (existingItem.Category != tempStoreItem.Category)
+                    else
                     {
-                        existingItem.Category = tempStoreItem.Category;
-                        updatedCategories++;
+                        // Update category from thing def
+                        string newCategory = StoreItem.GetCategoryFromThingDef(thingDef) ?? "Uncategorized";
+                        if (existingItem.Category != newCategory)
+                        {
+                            existingItem.Category = newCategory;
+                        }
                     }
+
+                    // Update mod source
+                    existingItem.ModSource = thingDef.modContentPack?.Name ?? "RimWorld";
 
                     // Check if quantity limit needs fixing (0 or invalid)
                     if (existingItem.QuantityLimit <= 0)
@@ -301,52 +341,50 @@ namespace CAP_ChatInteractive.Store
                         existingItem.QuantityLimit = baseStack;
                         existingItem.LimitMode = QuantityLimitMode.OneStack;
                         existingItem.HasQuantityLimit = true;
-                        updatedQuantityLimits++;
                     }
+
+                    // CRITICAL: Restore ALL user settings from JSON
+                    existingItem.Enabled = userEnabled;
+                    existingItem.CustomName = userCustomName;
+                    existingItem.BasePrice = userBasePrice;
+                    existingItem.HasQuantityLimit = userHasQuantityLimit;
+                    existingItem.QuantityLimit = userQuantityLimit;
+                    existingItem.LimitMode = userLimitMode;
+                    existingItem.IsUsable = userIsUsable;
+                    existingItem.IsEquippable = userIsEquippable;
+                    existingItem.IsWearable = userIsWearable;
+
+                    updatedItems++;
                 }
             }
 
-            // Remove items that no longer exist in the game OR are humanlike races
-            var defNamesToRemove = new List<string>();
-            foreach (var kvp in AllStoreItems.ToList())
+            // Remove items from runtime that are no longer active
+            var keysToRemove = AllStoreItems.Keys.Where(k => !activeDefNames.Contains(k)).ToList();
+            foreach (var key in keysToRemove)
             {
-                var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(kvp.Key);
-
-                if (ShouldRemoveStoreItem(kvp.Key, thingDef, tradeableItems, out string reason))
-                {
-                    Logger.Debug($"Removing item {kvp.Key}: {reason}");
-                    defNamesToRemove.Add(kvp.Key);
-
-                    if (reason.Contains("Failed item validation"))
-                    {
-                        removedInvalidItems++;
-                    }
-                }
-            }
-
-
-            foreach (var defName in defNamesToRemove)
-            {
-                AllStoreItems.Remove(defName);
+                AllStoreItems.Remove(key);
                 removedItems++;
             }
 
-            // Update logging to include invalid items removed
-            if (addedItems > 0 || removedItems > 0 || updatedQuantityLimits > 0 ||
-                updatedCategories > 0 || updatedTypeFlags > 0 || migratedItems > 0 || removedInvalidItems > 0)
+            // Mark all active items as modactive = true for online store
+            // Note: You'll need to add a modactive property to StoreItem class first
+            foreach (var item in AllStoreItems.Values)
+            {
+                item.modactive = true; // Add this property to StoreItem
+            }
+
+            // Update logging
+            if (addedItems > 0 || removedItems > 0 || updatedItems > 0 || migratedItems > 0)
             {
                 StringBuilder changes = new StringBuilder("Store updated:");
                 if (addedItems > 0) changes.Append($" +{addedItems} items");
                 if (removedItems > 0) changes.Append($" -{removedItems} items");
-                if (removedInvalidItems > 0) changes.Append($" ({removedInvalidItems} invalid)");
-                if (updatedQuantityLimits > 0) changes.Append($" {updatedQuantityLimits} quantity limits fixed");
-                if (updatedCategories > 0) changes.Append($" {updatedCategories} categories updated");
-                if (updatedTypeFlags > 0) changes.Append($" {updatedTypeFlags} type flags updated");
-                if (migratedItems > 0) changes.Append($" {migratedItems} items migrated to new format");
+                if (updatedItems > 0) changes.Append($" ~{updatedItems} items updated");
+                if (migratedItems > 0) changes.Append($" {migratedItems} items migrated");
 
                 Logger.Message(changes.ToString());
-                SaveStoreToJson(); // Save changes
             }
+            SaveStoreToJson(); // Save changes
         }
 
         private static bool IsItemValidForStore(ThingDef thingDef)
@@ -556,9 +594,9 @@ namespace CAP_ChatInteractive.Store
             {
                 try
                 {
-                    string jsonContent = JsonFileManager.SerializeStoreItems(AllStoreItems);
+                    string jsonContent = JsonFileManager.SerializeStoreItems(_completeStoreData);
                     JsonFileManager.SaveFile("StoreItems.json", jsonContent);
-                    Logger.Debug("Store data saved successfully");
+                    Logger.Debug($"Store data saved successfully. Total items: {_completeStoreData?.Count ?? 0}, Active: {AllStoreItems?.Count ?? 0}");
                 }
                 catch (System.Exception e)
                 {
