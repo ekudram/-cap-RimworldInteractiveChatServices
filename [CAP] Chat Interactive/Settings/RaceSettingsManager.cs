@@ -30,6 +30,7 @@ namespace _CAP__Chat_Interactive.Utilities
     {
         public string DisplayName { get; set; } = string.Empty;
         public bool Enabled { get; set; } = true;
+        public bool ModActive { get; set; } = true;  // This can be used to track if the mod that added
         public int BasePrice { get; set; } = 1000;
         public int MinAge { get; set; } = 16;
         public int MaxAge { get; set; } = 65;
@@ -57,9 +58,10 @@ namespace _CAP__Chat_Interactive.Utilities
 
     public static class RaceSettingsManager
     {
-        public static Dictionary<string, RaceSettings> _raceSettings;  // SHout be point of truth!  if not Adjust code
+        // This dictionary loads the JSON file to check against what actually exists in the game.  
+        public static Dictionary<string, RaceSettings> _raceSettings;  
         private static bool _isInitialized = false;
-
+        // This is the point of truth
         public static Dictionary<string, RaceSettings> RaceSettings
         {
             get
@@ -81,6 +83,12 @@ namespace _CAP__Chat_Interactive.Utilities
             // Load from JSON file
             _raceSettings = JsonFileManager.LoadRaceSettings();
 
+            // First pass: Mark all existing settings as inactive initially
+            foreach (var key in _raceSettings.Keys.ToList())
+            {
+                _raceSettings[key].ModActive = false;
+            }
+
             // Initialize defaults for any missing NON-EXCLUDED races AND update existing ones
             foreach (var race in RaceUtils.GetAllHumanlikeRaces())
             {
@@ -95,6 +103,11 @@ namespace _CAP__Chat_Interactive.Utilities
                 {
                     // New race - create default settings
                     _raceSettings[race.defName] = CreateDefaultSettings(race);
+                }
+                else
+                {
+                    // Existing race - mark as active
+                    _raceSettings[race.defName].ModActive = true;
                 }
             }
 
@@ -126,8 +139,24 @@ namespace _CAP__Chat_Interactive.Utilities
         {
             if (RaceSettings.TryGetValue(raceDefName, out var settings))
             {
+                // If race is from an inactive mod, still return the settings but with Enabled=false
+                if (!settings.ModActive)
+                {
+                    var disabledSettings = new RaceSettings
+                    {
+                        DisplayName = settings.DisplayName,
+                        Enabled = false,
+                        ModActive = false
+                        // Keep other settings for web UI but disable in-game
+                    };
+                    return disabledSettings;
+                }
                 return settings;
             }
+            //if (RaceSettings.TryGetValue(raceDefName, out var settings))
+            //{
+            //    return settings;
+            //}
 
             // If race is not in settings but is a valid non-excluded race, create default settings
             var raceDef = RaceUtils.FindRaceByName(raceDefName);
@@ -151,6 +180,7 @@ namespace _CAP__Chat_Interactive.Utilities
             {
                 DisplayName = race.label ?? race.defName,
                 Enabled = true,
+                ModActive = true,
                 BasePrice = CalculateDefaultPrice(race),  // This is race.BaseMarketValue
                 MinAge = 16,
                 MaxAge = 65,
