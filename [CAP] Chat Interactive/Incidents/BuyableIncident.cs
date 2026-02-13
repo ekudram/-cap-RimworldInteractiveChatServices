@@ -356,14 +356,12 @@ namespace CAP_ChatInteractive.Incidents
 
             // Enable official DLCs
             string[] officialDLCs = {
-        "Royalty", "Ideology", "Biotech", "Odyssey"  // Removed "Anomaly" to be disabled by default
-    };
+            "Royalty", "Ideology", "Biotech", "Odyssey"  // Removed "Anomaly" to be disabled by default
+            };
 
             if (officialDLCs.Any(dlc => ModSource.Contains(dlc)))
                 return false;
-
-            // Auto-disable all other mod events for safety
-            Logger.Debug($"Auto-disabling mod event: {DefName} from {ModSource}");
+            
             return true;
         }
 
