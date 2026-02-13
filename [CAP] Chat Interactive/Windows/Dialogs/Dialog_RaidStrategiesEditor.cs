@@ -14,9 +14,10 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-// A dialog window for editing allowed raid strategies in chat commands
 using RimWorld;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Verse;
 
@@ -27,18 +28,73 @@ namespace CAP_ChatInteractive
         private CommandSettings settings;
         private Vector2 scrollPosition = Vector2.zero;
 
-        // All possible raid strategies with display names
-        private static readonly Dictionary<string, string> AllStrategies = new Dictionary<string, string>
+        // Mirror the StrategyAliases from your command handler
+        private static readonly Dictionary<string, RaidStrategyDef> StrategyAliases = new Dictionary<string, RaidStrategyDef>(StringComparer.OrdinalIgnoreCase)
         {
-            { "default", "Default (Storyteller Choice)" },
-            { "immediate", "Immediate Attack" },
-            { "smart", "Smart Attack (Avoids Traps)" },
-            { "sappers", "Sappers (Uses Explosives)" },
-            { "breach", "Breach (Focuses on Walls)" },
-            { "breachsmart", "Smart Breach" },
-            { "stage", "Stage Then Attack" },
-            { "siege", "Siege (Builds Mortars)" }
+            { "default", null }, // Special case for storyteller choice
+            { "immediate", RaidStrategyDefOf.ImmediateAttack },
+            { "smart", DefDatabase<RaidStrategyDef>.GetNamedSilentFail("ImmediateAttackSmart") ?? RaidStrategyDefOf.ImmediateAttack },
+            { "sappers", DefDatabase<RaidStrategyDef>.GetNamedSilentFail("ImmediateAttackSappers") ?? RaidStrategyDefOf.ImmediateAttack },
+            { "breach", DefDatabase<RaidStrategyDef>.GetNamedSilentFail("ImmediateAttackBreaching") ?? RaidStrategyDefOf.ImmediateAttack },
+            { "breachsmart", DefDatabase<RaidStrategyDef>.GetNamedSilentFail("ImmediateAttackBreachingSmart") ?? RaidStrategyDefOf.ImmediateAttack },
+            { "stage", DefDatabase<RaidStrategyDef>.GetNamedSilentFail("StageThenAttack") ?? RaidStrategyDefOf.ImmediateAttack },
+            { "siege", DefDatabase<RaidStrategyDef>.GetNamedSilentFail("Siege") ?? RaidStrategyDefOf.ImmediateAttack }
         };
+
+        // Build display names from the actual Defs
+        private static Dictionary<string, string> strategyDisplayNames;
+
+        static Dialog_RaidStrategiesEditor()
+        {
+            strategyDisplayNames = new Dictionary<string, string>();
+
+            foreach (var kvp in StrategyAliases)
+            {
+                string displayName;
+
+                if (kvp.Key == "default")
+                {
+                    displayName = "RICS.RSE.Strategy.Default".Translate();
+                }
+                else if (kvp.Value != null)
+                {
+                    // Use the def's label and add friendly description
+                    displayName = kvp.Value.LabelCap.Resolve();
+
+                    // Add contextual hints based on the key
+                    switch (kvp.Key)
+                    {
+                        case "smart":
+                            displayName += " (" + "RICS.RSE.Strategy.SmartHint".Translate() + ")";
+                            break;
+                        case "sappers":
+                            displayName += " (" + "RICS.RSE.Strategy.SappersHint".Translate() + ")";
+                            break;
+                        case "breach":
+                            displayName += " (" + "RICS.RSE.Strategy.BreachHint".Translate() + ")";
+                            break;
+                        case "breachsmart":
+                            displayName += " (" + "RICS.RSE.Strategy.BreachSmartHint".Translate() + ")";
+                            break;
+                        case "stage":
+                            displayName += " (" + "RICS.RSE.Strategy.StageHint".Translate() + ")";
+                            break;
+                        case "siege":
+                            displayName += " (" + "RICS.RSE.Strategy.SiegeHint".Translate() + ")";
+                            break;
+                    }
+                }
+                else
+                {
+                    displayName = kvp.Key.CapitalizeFirst();
+                }
+
+                strategyDisplayNames[kvp.Key] = displayName;
+            }
+        }
+
+        // Property to maintain backward compatibility
+        private static Dictionary<string, string> AllStrategies => strategyDisplayNames;
 
         public override Vector2 InitialSize => new Vector2(400f, 500f);
 
@@ -48,25 +104,19 @@ namespace CAP_ChatInteractive
             doCloseButton = true;
             forcePause = true;
             absorbInputAroundWindow = true;
-            // optionalTitle = "Configure Raid Strategies";
         }
 
         public override void DoWindowContents(Rect inRect)
         {
-
-            // Make OptionalTitle the Header.
-            // GUI.color = ColorLibrary.HeaderAccent;
-
             // Header
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.HeaderAccent;
-            Widgets.Label(new Rect(0f, 0f, inRect.width, 30f), "Allowed Raid Strategies");
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 30f), "RICS.RSE.Header.RaidStrategies".Translate());
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
 
             // Description
-            Widgets.Label(new Rect(0f, 35f, inRect.width, 40f),
-                "Check which raid strategies viewers can use. Unchecked strategies will be disabled.");
+            Widgets.Label(new Rect(0f, 35f, inRect.width, 40f), "RICS.RSE.Description".Translate());
 
             // Quick action buttons
             Rect quickActionsRect = new Rect(0f, 80f, inRect.width, 30f);
@@ -111,30 +161,37 @@ namespace CAP_ChatInteractive
             float x = 0f;
 
             // Select All button
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Select All"))
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "RICS.RSE.SelectAll".Translate()))
             {
                 settings.AllowedRaidStrategies.Clear();
-                foreach (var strategy in AllStrategies.Keys)
+                foreach (var strategyKey in AllStrategies.Keys)
                 {
-                    settings.AllowedRaidStrategies.Add(strategy);
+                    settings.AllowedRaidStrategies.Add(strategyKey);
                 }
             }
             x += buttonWidth + spacing;
 
             // Select None button
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Select None"))
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "RICS.RSE.SelectNone".Translate()))
             {
                 settings.AllowedRaidStrategies.Clear();
             }
             x += buttonWidth + spacing;
 
             // Select Basic button
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Basic Only"))
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "RICS.RSE.SelectBasic".Translate()))
             {
                 settings.AllowedRaidStrategies.Clear();
-                settings.AllowedRaidStrategies.Add("default");
-                settings.AllowedRaidStrategies.Add("immediate");
-                settings.AllowedRaidStrategies.Add("smart");
+
+                // Match your command handler's basic strategies
+                var basicStrategies = new[] { "default", "immediate", "smart" };
+                foreach (var key in basicStrategies)
+                {
+                    if (AllStrategies.ContainsKey(key))
+                    {
+                        settings.AllowedRaidStrategies.Add(key);
+                    }
+                }
             }
 
             Widgets.EndGroup();

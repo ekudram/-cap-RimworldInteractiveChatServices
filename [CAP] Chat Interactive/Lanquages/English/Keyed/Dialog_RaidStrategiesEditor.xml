@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<language>
+  <!-- RICS.RSE.Header.RaidStrategies.cs Language Translate -->
+
+  <RICS.RSE.Header.RaidStrategies>Raid Strategies</RICS.RSE.Header.RaidStrategies>
+  
+  <RICS.RSE.Description>Check which raid strategies viewers can use. Unchecked strategies will be disabled.</RICS.RSE.Description>
+
+  <RICS.RSE.SelectAll>Select All</RICS.RSE.SelectAll>
+  <RICS.RSE.SelectNone>Select None</RICS.RSE.SelectNone>
+  <RICS.RSE.SelectBasic>Basic Only</RICS.RSE.SelectBasic>
+
+  <RICS.RSE.Strategy.Default>Default (Storyteller Choice)</RICS.RSE.Strategy.Default>
+  <RICS.RSE.Strategy.SmartHint>Avoids Traps</RICS.RSE.Strategy.SmartHint>
+  <RICS.RSE.Strategy.SappersHint>Uses Explosives</RICS.RSE.Strategy.SappersHint>
+  <RICS.RSE.Strategy.BreachHint>Focuses on Walls</RICS.RSE.Strategy.BreachHint>
+  <RICS.RSE.Strategy.BreachSmartHint>Intelligent Breaching</RICS.RSE.Strategy.BreachSmartHint>
+  <RICS.RSE.Strategy.StageHint>Stages Before Attack</RICS.RSE.Strategy.StageHint>
+  <RICS.RSE.Strategy.SiegeHint>Builds Mortars</RICS.RSE.Strategy.SiegeHint>
+
+
+</language>
