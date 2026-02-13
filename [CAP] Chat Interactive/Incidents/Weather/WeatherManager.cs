@@ -27,15 +27,19 @@ namespace CAP_ChatInteractive.Incidents.Weather
 {
     public static class BuyableWeatherManager
     {
+
+
         public static Dictionary<string, BuyableWeather> AllBuyableWeather { get; private set; } = new Dictionary<string, BuyableWeather>();
+        private static Dictionary<string, BuyableWeather> _completeWeatherData = new Dictionary<string, BuyableWeather>();
+        public static IReadOnlyDictionary<string, BuyableWeather> CompleteWeatherData => _completeWeatherData;
         private static bool isInitialized = false;
         private static readonly object lockObject = new object();
 
-//        private static List<TemperatureVariant> temperatureVariants = new List<TemperatureVariant>
-//{
-//    new TemperatureVariant { BaseWeatherDefName = "RainyThunderstorm", ColdVariantDefName = "SnowyThunderStorm", ThresholdTemperature = 0f },
-//    new TemperatureVariant { BaseWeatherDefName = "Rain", ColdVariantDefName = "SnowHard", ThresholdTemperature = 2f }
-//};
+        //        private static List<TemperatureVariant> temperatureVariants = new List<TemperatureVariant>
+        //{
+        //    new TemperatureVariant { BaseWeatherDefName = "RainyThunderstorm", ColdVariantDefName = "SnowyThunderStorm", ThresholdTemperature = 0f },
+        //    new TemperatureVariant { BaseWeatherDefName = "Rain", ColdVariantDefName = "SnowHard", ThresholdTemperature = 2f }
+        //};
         public static void InitializeWeather()
         {
             if (isInitialized) return;
@@ -71,14 +75,23 @@ namespace CAP_ChatInteractive.Incidents.Weather
             {
                 var loadedWeather = JsonFileManager.DeserializeWeather(jsonContent);
 
-                if (loadedWeather == null || loadedWeather.Count == 0)
+                if (loadedWeather == null)
                 {
-                    Logger.Error("Weather.json exists but contains no valid data - corrupted");
-                    HandleWeatherCorruption("File contains no valid data", jsonContent);
+                    Logger.Error("Weather.json exists but contains no valid data");
                     return false;
                 }
 
-                // ... load into memory ...
+                // Store COMPLETE data (preserves all weather ever saved)
+                _completeWeatherData.Clear();
+                foreach (var kvp in loadedWeather)
+                {
+                    _completeWeatherData[kvp.Key] = kvp.Value;
+                }
+
+                // Now filter to ACTIVE weather for runtime use
+                RebuildActiveWeatherFromCompleteData();
+
+                Logger.Debug($"Loaded {_completeWeatherData.Count} total weather from JSON, {AllBuyableWeather.Count} active");
                 return true;
             }
             catch (Newtonsoft.Json.JsonException jsonEx)
@@ -134,6 +147,7 @@ namespace CAP_ChatInteractive.Incidents.Weather
         private static void CreateDefaultWeather()
         {
             AllBuyableWeather.Clear();
+            _completeWeatherData.Clear();
 
             var allWeatherDefs = DefDatabase<WeatherDef>.AllDefs.ToList();
 
@@ -146,9 +160,10 @@ namespace CAP_ChatInteractive.Incidents.Weather
                         continue;
 
                     string key = GetWeatherKey(weatherDef);
-                    if (!AllBuyableWeather.ContainsKey(key))
+                    if (!_completeWeatherData.ContainsKey(key))
                     {
                         var buyableWeather = new BuyableWeather(weatherDef);
+                        _completeWeatherData[key] = buyableWeather;
                         AllBuyableWeather[key] = buyableWeather;
                         weatherCreated++;
                     }
@@ -156,6 +171,44 @@ namespace CAP_ChatInteractive.Incidents.Weather
                 catch (Exception ex)
                 {
                     Logger.Error($"Error creating buyable weather for {weatherDef.defName}: {ex.Message}");
+                }
+            }
+        }
+
+        private static void RebuildActiveWeatherFromCompleteData()
+        {
+            AllBuyableWeather.Clear();
+
+            var allWeatherDefs = DefDatabase<WeatherDef>.AllDefs.ToList();
+            var activeDefNames = new HashSet<string>(allWeatherDefs.Select(d => d.defName));
+
+            // First, add all existing weather from complete data (JSON settings)
+            foreach (var kvp in _completeWeatherData)
+            {
+                if (activeDefNames.Contains(kvp.Key))
+                {
+                    // Weather is from an active mod - use JSON settings exactly as saved
+                    AllBuyableWeather[kvp.Key] = kvp.Value;
+                }
+            }
+
+            // Now check for NEW weather that aren't in JSON
+            foreach (var weatherDef in allWeatherDefs)
+            {
+                string key = GetWeatherKey(weatherDef);
+                if (!_completeWeatherData.ContainsKey(key) && IsWeatherSuitableForStore(weatherDef))
+                {
+                    // This is NEW weather - create it
+                    var buyableWeather = new BuyableWeather(weatherDef);
+                    _completeWeatherData[key] = buyableWeather;
+
+                    // Add to runtime if suitable
+                    if (IsWeatherSuitableForStore(weatherDef))
+                    {
+                        AllBuyableWeather[key] = buyableWeather;
+                    }
+
+                    Logger.Debug($"Added NEW weather from constructor: {key} from {weatherDef.modContentPack?.Name ?? "Unknown"}");
                 }
             }
         }
@@ -190,35 +243,67 @@ namespace CAP_ChatInteractive.Incidents.Weather
 
         private static void ValidateAndUpdateWeather()
         {
-            // Similar to incidents validation
-            var allWeatherDefs = DefDatabase<WeatherDef>.AllDefs;
+            var allWeatherDefs = DefDatabase<WeatherDef>.AllDefs.ToList();
+            var activeDefNames = new HashSet<string>(allWeatherDefs.Select(d => d.defName));
 
+            int addedWeather = 0;
+            int removedWeather = 0;
+
+            // Check for NEW weather not in JSON
             foreach (var weatherDef in allWeatherDefs)
             {
-                if (!IsWeatherSuitableForStore(weatherDef))
-                    continue;
-
                 string key = GetWeatherKey(weatherDef);
-                if (!AllBuyableWeather.ContainsKey(key))
+
+                if (!_completeWeatherData.ContainsKey(key) && IsWeatherSuitableForStore(weatherDef))
                 {
-                    var buyableWeather = new BuyableWeather(weatherDef);
-                    AllBuyableWeather[key] = buyableWeather;
+                    // New weather - create it
+                    var newWeather = new BuyableWeather(weatherDef);
+                    _completeWeatherData[key] = newWeather;
+                    AllBuyableWeather[key] = newWeather;
+                    addedWeather++;
+                }
+                else if (_completeWeatherData.ContainsKey(key))
+                {
+                    // Existing weather - preserve user settings but update game properties if needed
+                    var existingWeather = _completeWeatherData[key];
+
+                    // Store user settings before any updates
+                    bool userEnabled = existingWeather.Enabled;
+                    int userPrice = existingWeather.BaseCost;
+                    string userKarma = existingWeather.KarmaType;
+
+                    // Could update any game-derived properties here if needed
+                    // For weather, there might not be many dynamic properties
+
+                    // CRITICAL: Restore ALL user settings from JSON
+                    existingWeather.Enabled = userEnabled;
+                    existingWeather.BaseCost = userPrice;
+                    existingWeather.KarmaType = userKarma;
                 }
             }
 
-            var keysToRemove = new List<string>();
-            foreach (var kvp in AllBuyableWeather)
-            {
-                var weatherDef = DefDatabase<WeatherDef>.GetNamedSilentFail(kvp.Key);
-                if (weatherDef == null || !IsWeatherSuitableForStore(weatherDef))
-                {
-                    keysToRemove.Add(kvp.Key);
-                }
-            }
-
+            // Remove weather from runtime that are no longer active
+            var keysToRemove = AllBuyableWeather.Keys.Where(k => !activeDefNames.Contains(k)).ToList();
             foreach (var key in keysToRemove)
             {
                 AllBuyableWeather.Remove(key);
+                removedWeather++;
+            }
+
+            // Mark all active weather as modactive = true for online store
+            // Note: You'll need to add a modactive property to BuyableWeather class first
+            foreach (var weather in AllBuyableWeather.Values)
+            {
+                weather.modactive = true; // Add this property to BuyableWeather
+            }
+
+            // Log changes
+            if (addedWeather > 0 || removedWeather > 0)
+            {
+                Logger.Message($"Weather updated: +{addedWeather} new, -{removedWeather} removed");
+
+                // Save changes (new weather added to JSON)
+                SaveWeatherToJson();
             }
         }
 
@@ -230,8 +315,9 @@ namespace CAP_ChatInteractive.Incidents.Weather
                 {
                     try
                     {
-                        string jsonContent = JsonFileManager.SerializeWeather(AllBuyableWeather);
+                        string jsonContent = JsonFileManager.SerializeWeather(_completeWeatherData);
                         JsonFileManager.SaveFile("Weather.json", jsonContent);
+                        Logger.Debug($"Weather JSON saved. Total items: {_completeWeatherData?.Count ?? 0}, Active: {AllBuyableWeather?.Count ?? 0}");
                     }
                     catch (System.Exception e)
                     {

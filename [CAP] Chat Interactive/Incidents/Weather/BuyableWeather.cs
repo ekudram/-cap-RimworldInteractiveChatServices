@@ -35,6 +35,7 @@ namespace CAP_ChatInteractive.Incidents
 
         // Additional data
         public string ModSource { get; set; } = "RimWorld";
+        public bool modactive { get; set; } = false;
         public int Version { get; set; } = 1;
 
         public BuyableWeather() { }
