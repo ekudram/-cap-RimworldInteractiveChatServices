@@ -35,6 +35,9 @@ namespace CAP_ChatInteractive.Traits
     public static class TraitsManager
     {
         public static Dictionary<string, BuyableTrait> AllBuyableTraits { get; private set; } = new Dictionary<string, BuyableTrait>();
+        // Complete Settings data, includes inactive mods
+        private static Dictionary<string, BuyableTrait> _completeTraitData = new Dictionary<string, BuyableTrait>();
+        public static IReadOnlyDictionary<string, BuyableTrait> CompleteTraitData => _completeTraitData;
         private static bool isInitialized = false;
         private static readonly object lockObject = new object();
 
@@ -78,25 +81,28 @@ namespace CAP_ChatInteractive.Traits
             {
                 var loadedTraits = JsonFileManager.DeserializeTraits(jsonContent);
 
-                // Validation
-                if (loadedTraits == null || loadedTraits.Count == 0)
+                if (loadedTraits == null)
                 {
-                    Logger.Error("Traits.json exists but contains no valid data - corrupted");
-                    HandleTraitsCorruption("File contains no valid data", jsonContent);
+                    Logger.Error("Traits.json exists but contains no valid data");
                     return false;
                 }
 
-                AllBuyableTraits.Clear();
+                // Store COMPLETE data (preserves all traits ever saved)
+                _completeTraitData.Clear();
                 foreach (var kvp in loadedTraits)
                 {
-                    AllBuyableTraits[kvp.Key] = kvp.Value;
+                    _completeTraitData[kvp.Key] = kvp.Value;
                 }
 
+                // Now filter to ACTIVE traits for runtime use
+                RebuildActiveTraitsFromCompleteData();
+
+                Logger.Debug($"Loaded {_completeTraitData.Count} total traits from JSON, {AllBuyableTraits.Count} active");
                 return true;
             }
             catch (Newtonsoft.Json.JsonException jsonEx)
             {
-                Logger.Error($"JSON CORRUPTION in Traits.json: {jsonEx.Message}\n");
+                Logger.Error($"JSON CORRUPTION in Traits.json: {jsonEx.Message}");
                 HandleTraitsCorruption($"JSON parsing error: {jsonEx.Message}", jsonContent);
                 return false;
             }
@@ -109,6 +115,92 @@ namespace CAP_ChatInteractive.Traits
             {
                 Logger.Error($"Error loading traits JSON: {e.Message}");
                 return false;
+            }
+        }
+
+        private static void RebuildActiveTraitsFromCompleteData()
+        {
+            AllBuyableTraits.Clear();
+
+            var allTraitDefs = DefDatabase<TraitDef>.AllDefs.ToList();
+
+            // Build a set of active trait keys (defName_degree)
+            var activeTraitKeys = new HashSet<string>();
+            foreach (var traitDef in allTraitDefs)
+            {
+                if (traitDef.degreeDatas != null)
+                {
+                    foreach (var degree in traitDef.degreeDatas)
+                    {
+                        activeTraitKeys.Add(GetTraitKey(traitDef, degree.degree));
+                    }
+                }
+                else
+                {
+                    activeTraitKeys.Add(GetTraitKey(traitDef, 0));
+                }
+            }
+
+            // First, add all existing traits from complete data (JSON settings)
+            foreach (var kvp in _completeTraitData)
+            {
+                if (activeTraitKeys.Contains(kvp.Key))
+                {
+                    // Trait is from an active mod - use JSON settings exactly as saved
+                    AllBuyableTraits[kvp.Key] = kvp.Value;
+                }
+            }
+
+            // Now check for NEW traits that aren't in JSON
+            foreach (var traitDef in allTraitDefs)
+            {
+                bool isAnomalyTrait = IsAnomalyDlcTrait(traitDef);
+
+                if (traitDef.degreeDatas != null)
+                {
+                    foreach (var degree in traitDef.degreeDatas)
+                    {
+                        string key = GetTraitKey(traitDef, degree.degree);
+                        if (!_completeTraitData.ContainsKey(key))
+                        {
+                            // This is NEW trait - create it
+                            var buyableTrait = new BuyableTrait(traitDef, degree);
+
+                            // Disable new Anomaly DLC traits by default
+                            if (isAnomalyTrait)
+                            {
+                                buyableTrait.CanAdd = false;
+                                buyableTrait.CanRemove = false;
+                            }
+
+                            _completeTraitData[key] = buyableTrait;
+                            AllBuyableTraits[key] = buyableTrait;
+
+                            Logger.Debug($"Added NEW trait from constructor: {key} from {traitDef.modContentPack?.Name ?? "Unknown"}");
+                        }
+                    }
+                }
+                else
+                {
+                    string key = GetTraitKey(traitDef, 0);
+                    if (!_completeTraitData.ContainsKey(key))
+                    {
+                        // This is NEW trait - create it
+                        var buyableTrait = new BuyableTrait(traitDef);
+
+                        // Disable new Anomaly DLC traits by default
+                        if (isAnomalyTrait)
+                        {
+                            buyableTrait.CanAdd = false;
+                            buyableTrait.CanRemove = false;
+                        }
+
+                        _completeTraitData[key] = buyableTrait;
+                        AllBuyableTraits[key] = buyableTrait;
+
+                        Logger.Debug($"Added NEW trait from constructor: {key} from {traitDef.modContentPack?.Name ?? "Unknown"}");
+                    }
+                }
             }
         }
 
@@ -136,6 +228,7 @@ namespace CAP_ChatInteractive.Traits
         private static void CreateDefaultTraits()
         {
             AllBuyableTraits.Clear();
+            _completeTraitData.Clear();
 
             var allTraitDefs = DefDatabase<TraitDef>.AllDefs.ToList();
 
@@ -153,7 +246,7 @@ namespace CAP_ChatInteractive.Traits
                         foreach (var degree in traitDef.degreeDatas)
                         {
                             string key = GetTraitKey(traitDef, degree.degree);
-                            if (!AllBuyableTraits.ContainsKey(key))
+                            if (!_completeTraitData.ContainsKey(key))
                             {
                                 var buyableTrait = new BuyableTrait(traitDef, degree);
 
@@ -165,6 +258,7 @@ namespace CAP_ChatInteractive.Traits
                                     anomalyTraitsDisabled++;
                                 }
 
+                                _completeTraitData[key] = buyableTrait;
                                 AllBuyableTraits[key] = buyableTrait;
                                 traitsCreated++;
                             }
@@ -173,7 +267,7 @@ namespace CAP_ChatInteractive.Traits
                     else
                     {
                         string key = GetTraitKey(traitDef, 0);
-                        if (!AllBuyableTraits.ContainsKey(key))
+                        if (!_completeTraitData.ContainsKey(key))
                         {
                             var buyableTrait = new BuyableTrait(traitDef);
 
@@ -185,6 +279,7 @@ namespace CAP_ChatInteractive.Traits
                                 anomalyTraitsDisabled++;
                             }
 
+                            _completeTraitData[key] = buyableTrait;
                             AllBuyableTraits[key] = buyableTrait;
                             traitsCreated++;
                         }
@@ -204,13 +299,31 @@ namespace CAP_ChatInteractive.Traits
 
         private static void ValidateAndUpdateTraits()
         {
-            var allTraitDefs = DefDatabase<TraitDef>.AllDefs;
+            var allTraitDefs = DefDatabase<TraitDef>.AllDefs.ToList();
+
+            // Build a set of active trait keys (defName_degree)
+            var activeTraitKeys = new HashSet<string>();
+            foreach (var traitDef in allTraitDefs)
+            {
+                if (traitDef.degreeDatas != null)
+                {
+                    foreach (var degree in traitDef.degreeDatas)
+                    {
+                        activeTraitKeys.Add(GetTraitKey(traitDef, degree.degree));
+                    }
+                }
+                else
+                {
+                    activeTraitKeys.Add(GetTraitKey(traitDef, 0));
+                }
+            }
+
             int addedTraits = 0;
-            int removedTraits = 0;
             int updatedTraits = 0;
+            int removedTraits = 0;
             int anomalyTraitsDisabled = 0;
 
-            // Add any new traits that aren't in our system
+            // Check for NEW traits not in JSON
             foreach (var traitDef in allTraitDefs)
             {
                 bool isAnomalyTrait = IsAnomalyDlcTrait(traitDef);
@@ -220,36 +333,52 @@ namespace CAP_ChatInteractive.Traits
                     foreach (var degree in traitDef.degreeDatas)
                     {
                         string key = GetTraitKey(traitDef, degree.degree);
-                        if (!AllBuyableTraits.ContainsKey(key))
-                        {
-                            var buyableTrait = new BuyableTrait(traitDef, degree);
 
-                            // Disable new Anomaly DLC traits by default when adding them during validation
+                        if (!_completeTraitData.ContainsKey(key))
+                        {
+                            // New trait - create it
+                            var newTrait = new BuyableTrait(traitDef, degree);
+
+                            // Disable new Anomaly DLC traits by default
                             if (isAnomalyTrait)
                             {
-                                buyableTrait.CanAdd = false;
-                                buyableTrait.CanRemove = false;
+                                newTrait.CanAdd = false;
+                                newTrait.CanRemove = false;
                                 anomalyTraitsDisabled++;
                             }
 
-                            AllBuyableTraits[key] = buyableTrait;
+                            _completeTraitData[key] = newTrait;
+                            AllBuyableTraits[key] = newTrait;
                             addedTraits++;
                         }
-                        else
+                        else if (_completeTraitData.ContainsKey(key))
                         {
-                            // Check if existing trait needs to be updated
-                            var existingTrait = AllBuyableTraits[key];
+                            // Existing trait - preserve user settings but update if needed
+                            var existingTrait = _completeTraitData[key];
+
+                            // Store user settings before any updates
+                            bool userCanAdd = existingTrait.CanAdd;
+                            bool userCanRemove = existingTrait.CanRemove;
+                            bool userCustomName = existingTrait.CustomName;
+                            string userKarmaAdd = existingTrait.KarmaTypeForAdding;
+                            string userKarmaRemove = existingTrait.KarmaTypeForRemoving;
+                            bool userBypassLimit = existingTrait.BypassLimit;
+
+                            // Check if core trait data has changed
                             if (TraitNeedsUpdate(existingTrait, traitDef, degree))
                             {
+                                // Create updated version with new game data
                                 var updatedTrait = new BuyableTrait(traitDef, degree);
-                                // Preserve user settings (CanAdd, CanRemove, CustomName, etc.)
-                                updatedTrait.CanAdd = existingTrait.CanAdd;
-                                updatedTrait.CanRemove = existingTrait.CanRemove;
-                                updatedTrait.CustomName = existingTrait.CustomName;
-                                updatedTrait.KarmaTypeForAdding = existingTrait.KarmaTypeForAdding;
-                                updatedTrait.KarmaTypeForRemoving = existingTrait.KarmaTypeForRemoving;
-                                updatedTrait.BypassLimit = existingTrait.BypassLimit;
 
+                                // Restore user settings
+                                updatedTrait.CanAdd = userCanAdd;
+                                updatedTrait.CanRemove = userCanRemove;
+                                updatedTrait.CustomName = userCustomName;
+                                updatedTrait.KarmaTypeForAdding = userKarmaAdd;
+                                updatedTrait.KarmaTypeForRemoving = userKarmaRemove;
+                                updatedTrait.BypassLimit = userBypassLimit;
+
+                                _completeTraitData[key] = updatedTrait;
                                 AllBuyableTraits[key] = updatedTrait;
                                 updatedTraits++;
                             }
@@ -259,36 +388,52 @@ namespace CAP_ChatInteractive.Traits
                 else
                 {
                     string key = GetTraitKey(traitDef, 0);
-                    if (!AllBuyableTraits.ContainsKey(key))
-                    {
-                        var buyableTrait = new BuyableTrait(traitDef);
 
-                        // Disable new Anomaly DLC traits by default when adding them during validation
+                    if (!_completeTraitData.ContainsKey(key))
+                    {
+                        // New trait - create it
+                        var newTrait = new BuyableTrait(traitDef);
+
+                        // Disable new Anomaly DLC traits by default
                         if (isAnomalyTrait)
                         {
-                            buyableTrait.CanAdd = false;
-                            buyableTrait.CanRemove = false;
+                            newTrait.CanAdd = false;
+                            newTrait.CanRemove = false;
                             anomalyTraitsDisabled++;
                         }
 
-                        AllBuyableTraits[key] = buyableTrait;
+                        _completeTraitData[key] = newTrait;
+                        AllBuyableTraits[key] = newTrait;
                         addedTraits++;
                     }
-                    else
+                    else if (_completeTraitData.ContainsKey(key))
                     {
-                        // Check if existing trait needs to be updated
-                        var existingTrait = AllBuyableTraits[key];
+                        // Existing trait - preserve user settings but update if needed
+                        var existingTrait = _completeTraitData[key];
+
+                        // Store user settings before any updates
+                        bool userCanAdd = existingTrait.CanAdd;
+                        bool userCanRemove = existingTrait.CanRemove;
+                        bool userCustomName = existingTrait.CustomName;
+                        string userKarmaAdd = existingTrait.KarmaTypeForAdding;
+                        string userKarmaRemove = existingTrait.KarmaTypeForRemoving;
+                        bool userBypassLimit = existingTrait.BypassLimit;
+
+                        // Check if core trait data has changed
                         if (TraitNeedsUpdate(existingTrait, traitDef, null))
                         {
+                            // Create updated version with new game data
                             var updatedTrait = new BuyableTrait(traitDef);
-                            // Preserve user settings
-                            updatedTrait.CanAdd = existingTrait.CanAdd;
-                            updatedTrait.CanRemove = existingTrait.CanRemove;
-                            updatedTrait.CustomName = existingTrait.CustomName;
-                            updatedTrait.KarmaTypeForAdding = existingTrait.KarmaTypeForAdding;
-                            updatedTrait.KarmaTypeForRemoving = existingTrait.KarmaTypeForRemoving;
-                            updatedTrait.BypassLimit = existingTrait.BypassLimit;
 
+                            // Restore user settings
+                            updatedTrait.CanAdd = userCanAdd;
+                            updatedTrait.CanRemove = userCanRemove;
+                            updatedTrait.CustomName = userCustomName;
+                            updatedTrait.KarmaTypeForAdding = userKarmaAdd;
+                            updatedTrait.KarmaTypeForRemoving = userKarmaRemove;
+                            updatedTrait.BypassLimit = userBypassLimit;
+
+                            _completeTraitData[key] = updatedTrait;
                             AllBuyableTraits[key] = updatedTrait;
                             updatedTraits++;
                         }
@@ -296,33 +441,19 @@ namespace CAP_ChatInteractive.Traits
                 }
             }
 
-            // Remove traits that no longer exist in the game
-            var keysToRemove = new List<string>();
-            foreach (var kvp in AllBuyableTraits)
-            {
-                var traitDef = DefDatabase<TraitDef>.GetNamedSilentFail(kvp.Value.DefName);
-                if (traitDef == null)
-                {
-                    keysToRemove.Add(kvp.Key);
-                }
-                else
-                {
-                    // Check if degree still exists
-                    if (traitDef.degreeDatas != null)
-                    {
-                        bool degreeExists = traitDef.degreeDatas.Any(d => d.degree == kvp.Value.Degree);
-                        if (!degreeExists)
-                        {
-                            keysToRemove.Add(kvp.Key);
-                        }
-                    }
-                }
-            }
-
+            // Remove traits from runtime that are no longer active
+            var keysToRemove = AllBuyableTraits.Keys.Where(k => !activeTraitKeys.Contains(k)).ToList();
             foreach (var key in keysToRemove)
             {
                 AllBuyableTraits.Remove(key);
                 removedTraits++;
+            }
+
+            // Mark all active traits as modactive = true for online store
+            // Note: You'll need to add a modactive property to BuyableTrait class first
+            foreach (var trait in AllBuyableTraits.Values)
+            {
+                trait.modactive = true; // Add this property to BuyableTrait
             }
 
             if (anomalyTraitsDisabled > 0)
@@ -333,8 +464,9 @@ namespace CAP_ChatInteractive.Traits
             if (addedTraits > 0 || removedTraits > 0 || updatedTraits > 0)
             {
                 Logger.Message($"Traits updated: +{addedTraits} traits, -{removedTraits} traits, ~{updatedTraits} traits modified");
-                SaveTraitsToJson(); // Save changes
+
             }
+            SaveTraitsToJson(); // Save changes
         }
 
         private static bool TraitNeedsUpdate(BuyableTrait existingTrait, TraitDef traitDef, TraitDegreeData degreeData)
@@ -418,8 +550,9 @@ namespace CAP_ChatInteractive.Traits
                 {
                     try
                     {
-                        string jsonContent = JsonFileManager.SerializeTraits(AllBuyableTraits);
+                        string jsonContent = JsonFileManager.SerializeTraits(_completeTraitData);
                         JsonFileManager.SaveFile("Traits.json", jsonContent);
+                        Logger.Debug($"Traits JSON saved. Total items: {_completeTraitData?.Count ?? 0}, Active: {AllBuyableTraits?.Count ?? 0}");
                     }
                     catch (System.Exception e)
                     {

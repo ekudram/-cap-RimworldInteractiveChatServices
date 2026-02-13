@@ -45,6 +45,7 @@ namespace CAP_ChatInteractive.Traits
         public string KarmaTypeForAdding { get; set; } = null;
         public string KarmaTypeForRemoving { get; set; } = null;
         public string ModSource { get; set; } = "RimWorld";
+        public bool modactive { get; set; } = false;
         public int Version { get; set; } = 1;
 
         public BuyableTrait() { }
