@@ -15,14 +15,12 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 using CAP_ChatInteractive.Utilities;
 using RimWorld;
-using RimWorld.BaseGen;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using UnityEngine;
 using Verse;
-using static Verse.ParseHelper;
 
 /// <summary>
 /// Surgery Command Handler for CAP Chat Interactive
@@ -446,6 +444,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 // ── Hemogen Extraction ──
                 case "hemogen":
+                case "giveblood":
                 case "extract hemogen":
                 case "extracthemogen":
                     isAllowed = settings.SurgeryAllowHemogen;
@@ -454,6 +453,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 // ── Transfusion ──
                 case "transfusion":
+                case "getblood":
                 case "blood transfusion":
                 case "bloodtransfusion":
                 case "blood":
