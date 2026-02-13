@@ -16,6 +16,7 @@
 //
 // Command handler for buying items from Rimazon store
 using CAP_ChatInteractive.Commands.Cooldowns;
+using CAP_ChatInteractive.Store;
 using CAP_ChatInteractive.Utilities;
 using RimWorld;
 using System;
@@ -118,6 +119,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 // Calculate final price (no quality/material multipliers for usable items)
                 int finalPrice = storeItem.BasePrice * quantity;
+
+                string validationError = ValidateMechanitorImplant(storeItem, rimworldPawn, itemName, quantity);
+                if (validationError != null)
+                {
+                    return validationError;
+                }
 
                 // Check if user can afford
                 if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
@@ -690,6 +697,147 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
         }
-        
+
+        // ===== Biotech Implant Handling (example of a specific CompUsable item) =====
+
+        private static string ValidateMechanitorImplant(StoreItem storeItem, Verse.Pawn pawn, string itemName, int quantity)
+        {
+            // Skip validation if Biotech DLC is not active
+            if (!ModLister.BiotechInstalled)
+                return null;
+
+            // Check if this is a Mechanitor implant
+            bool isControlSublink = storeItem.DefName == "ControlSublink";
+            bool isControlSublinkHigh = storeItem.DefName == "ControlSublinkHigh";
+            bool isMechFormfeeder = storeItem.DefName == "MechFormfeeder";
+            bool isRemoteRepairer = storeItem.DefName == "RemoteRepairer";
+            bool isRemoteShielder = storeItem.DefName == "RemoteShielder";
+            bool isRepairProbe = storeItem.DefName == "RepairProbe";
+
+            if (!isControlSublink && !isControlSublinkHigh && !isMechFormfeeder &&
+                !isRemoteRepairer && !isRemoteShielder && !isRepairProbe)
+                return null;
+
+            // Get all hediffs on the pawn
+            var hediffs = pawn.health?.hediffSet?.hediffs;
+            if (hediffs == null)
+                return null;
+
+            // For ControlSublink implants - they use a single Hediff_Level with severity as count
+            if (isControlSublink || isControlSublinkHigh)
+            {
+                var sublinkHediff = hediffs.FirstOrDefault(h => h.def.defName == "ControlSublinkImplant") as Hediff_Level;
+                int currentLevel = sublinkHediff?.level ?? 0;
+
+                if (isControlSublink)
+                {
+                    // Standard sublink: max 3
+                    if (currentLevel >= 3)
+                    {
+                        return $"Cannot install {itemName}. Maximum of 3 already installed. Current: {currentLevel}/3";
+                    }
+
+                    // Check if quantity would exceed max limit
+                    if (quantity > 1 && (currentLevel + quantity) > 3)
+                    {
+                        int availableSlots = 3 - currentLevel;
+                        return $"Cannot install {quantity}x {itemName}. You only have {availableSlots} slot(s) available. Current: {currentLevel}/3";
+                    }
+                }
+                else if (isControlSublinkHigh)
+                {
+                    // High sublink: max 6, requires at least 3 standard first
+                    if (currentLevel < 3)
+                    {
+                        return $"Cannot install {itemName}. You need 3 standard Control Sublinks first. Current: {currentLevel}/3";
+                    }
+
+                    if (currentLevel >= 6)
+                    {
+                        return $"Cannot install {itemName}. Maximum of 6 already installed. Current: {currentLevel}/6";
+                    }
+
+                    // Check if quantity would exceed max limit
+                    if (quantity > 1 && (currentLevel + quantity) > 6)
+                    {
+                        int availableSlots = 6 - currentLevel;
+                        return $"Cannot install {quantity}x {itemName}. You only have {availableSlots} slot(s) available. Current: {currentLevel}/6";
+                    }
+                }
+            }
+
+            // For other Mechanitor implants (all use Hediff_Level with levelIsQuantity=true)
+            else if (isMechFormfeeder)
+            {
+                var hediff = hediffs.FirstOrDefault(h => h.def.defName == "MechFormfeederImplant") as Hediff_Level;
+                int currentLevel = hediff?.level ?? 0;
+                int maxAllowed = 6;
+
+                if (currentLevel >= maxAllowed)
+                {
+                    return $"Cannot install {itemName}. Maximum of {maxAllowed} already installed. Current: {currentLevel}/{maxAllowed}";
+                }
+
+                if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
+                {
+                    int availableSlots = maxAllowed - currentLevel;
+                    return $"Cannot install {quantity}x {itemName}. You only have {availableSlots} slot(s) available. Current: {currentLevel}/{maxAllowed}";
+                }
+            }
+            else if (isRemoteRepairer)
+            {
+                var hediff = hediffs.FirstOrDefault(h => h.def.defName == "RemoteRepairerImplant") as Hediff_Level;
+                int currentLevel = hediff?.level ?? 0;
+                int maxAllowed = 3;
+
+                if (currentLevel >= maxAllowed)
+                {
+                    return $"Cannot install {itemName}. Maximum of {maxAllowed} already installed. Current: {currentLevel}/{maxAllowed}";
+                }
+
+                if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
+                {
+                    int availableSlots = maxAllowed - currentLevel;
+                    return $"Cannot install {quantity}x {itemName}. You only have {availableSlots} slot(s) available. Current: {currentLevel}/{maxAllowed}";
+                }
+            }
+            else if (isRemoteShielder)
+            {
+                var hediff = hediffs.FirstOrDefault(h => h.def.defName == "RemoteShielderImplant") as Hediff_Level;
+                int currentLevel = hediff?.level ?? 0;
+                int maxAllowed = 3;
+
+                if (currentLevel >= maxAllowed)
+                {
+                    return $"Cannot install {itemName}. Maximum of {maxAllowed} already installed. Current: {currentLevel}/{maxAllowed}";
+                }
+
+                if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
+                {
+                    int availableSlots = maxAllowed - currentLevel;
+                    return $"Cannot install {quantity}x {itemName}. You only have {availableSlots} slot(s) available. Current: {currentLevel}/{maxAllowed}";
+                }
+            }
+            else if (isRepairProbe)
+            {
+                var hediff = hediffs.FirstOrDefault(h => h.def.defName == "RepairProbeImplant") as Hediff_Level;
+                int currentLevel = hediff?.level ?? 0;
+                int maxAllowed = 6;
+
+                if (currentLevel >= maxAllowed)
+                {
+                    return $"Cannot install {itemName}. Maximum of {maxAllowed} already installed. Current: {currentLevel}/{maxAllowed}";
+                }
+
+                if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
+                {
+                    int availableSlots = maxAllowed - currentLevel;
+                    return $"Cannot install {quantity}x {itemName}. You only have {availableSlots} slot(s) available. Current: {currentLevel}/{maxAllowed}";
+                }
+            }
+
+            return null;
+        }
+
     }
 }
