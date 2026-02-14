@@ -7,218 +7,253 @@
   </ColorDef>
 
   <!-- ====== EARTH TONES & NEUTRALS ====== -->
+  <!-- Grayscale Series (1000-1060) -->
 
-  <!-- Grayscale Series -->
   <ColorDef ParentName="IdeoColorBase">
     <defName>CharcoalBlack</defName>
     <label>charcoal black</label>
     <color>(40, 40, 40)</color>
+    <displayOrder>1000</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>SlateGray</defName>
     <label>slate gray</label>
     <color>(70, 70, 70)</color>
+    <displayOrder>1010</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>StoneGray</defName>
     <label>stone gray</label>
     <color>(123, 125, 125)</color>
+    <displayOrder>1020</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>AshGray</defName>
     <label>ash gray</label>
     <color>(151, 154, 154)</color>
+    <displayOrder>1030</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>SilverGray</defName>
     <label>silver gray</label>
     <color>(192, 192, 192)</color>
+    <displayOrder>1040</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>PearlWhite</defName>
     <label>pearl white</label>
     <color>(236, 240, 241)</color>
+    <displayOrder>1050</displayOrder>
   </ColorDef>
 
-  <!-- Brown/Tan Series -->
+  <!-- Brown/Tan Series (1100-1150) -->
+
   <ColorDef ParentName="IdeoColorBase">
     <defName>DarkUmber</defName>
     <label>dark umber</label>
     <color>(90, 58, 32)</color>
+    <displayOrder>1100</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>BurntSienna</defName>
     <label>burnt sienna</label>
     <color>(120, 66, 18)</color>
+    <displayOrder>1110</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Terracotta</defName>
     <label>terracotta</label>
     <color>(147, 81, 22)</color>
+    <displayOrder>1120</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>CopperBrown</defName>
     <label>copper brown</label>
     <color>(186, 74, 0)</color>
+    <displayOrder>1130</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>AmberGold</defName>
     <label>amber gold</label>
     <color>(214, 137, 16)</color>
+    <displayOrder>1140</displayOrder>
   </ColorDef>
 
-  <!-- ====== REDS & WARMS ====== -->
+  <!-- ====== REDS & WARMS ====== (1200-1240) -->
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>GarnetRed</defName>
     <label>garnet red</label>
     <color>(126, 38, 38)</color>
+    <displayOrder>1200</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Crimson</defName>
     <label>crimson</label>
     <color>(191, 86, 86)</color>
+    <displayOrder>1210</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Scarlet</defName>
     <label>scarlet</label>
     <color>(211, 84, 0)</color>
+    <displayOrder>1220</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>RubyRed</defName>
     <label>ruby red</label>
     <color>(230, 126, 34)</color>
+    <displayOrder>1230</displayOrder>
   </ColorDef>
 
-  <!-- ====== GREENS & EARTH ====== -->
+  <!-- ====== GREENS & EARTH ====== (1300-1360) -->
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>ForestMoss</defName>
     <label>forest moss</label>
     <color>(81, 95, 57)</color>
+    <displayOrder>1300</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>SageGreen</defName>
     <label>sage green</label>
     <color>(125, 160, 125)</color>
+    <displayOrder>1310</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Emerald</defName>
     <label>emerald</label>
     <color>(46, 204, 113)</color>
+    <displayOrder>1320</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Jade</defName>
     <label>jade</label>
     <color>(39, 174, 96)</color>
+    <displayOrder>1330</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Malachite</defName>
     <label>malachite</label>
     <color>(22, 160, 133)</color>
+    <displayOrder>1340</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Verdigris</defName>
     <label>verdigris</label>
     <color>(26, 188, 156)</color>
+    <displayOrder>1350</displayOrder>
   </ColorDef>
 
-  <!-- ====== BLUES & COOLS ====== -->
+  <!-- ====== BLUES & COOLS ====== (1400-1450) -->
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>SteelBlue</defName>
     <label>steel blue</label>
     <color>(70, 130, 180)</color>
+    <displayOrder>1400</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Cobalt</defName>
     <label>cobalt</label>
     <color>(41, 128, 185)</color>
+    <displayOrder>1410</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Sapphire</defName>
     <label>sapphire</label>
     <color>(52, 152, 219)</color>
+    <displayOrder>1420</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Azure</defName>
     <label>azure</label>
     <color>(86, 191, 191)</color>
+    <displayOrder>1430</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Cerulean</defName>
     <label>cerulean</label>
     <color>(36, 113, 163)</color>
+    <displayOrder>1440</displayOrder>
   </ColorDef>
 
-  <!-- ====== PURPLES & ROYALS ====== -->
+  <!-- ====== PURPLES & ROYALS ====== (1500-1540) -->
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Amethyst</defName>
     <label>amethyst</label>
     <color>(142, 68, 173)</color>
+    <displayOrder>1500</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>RoyalPurple</defName>
     <label>royal purple</label>
     <color>(125, 60, 152)</color>
+    <displayOrder>1510</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Violet</defName>
     <label>violet</label>
     <color>(136, 78, 160)</color>
+    <displayOrder>1520</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Orchid</defName>
     <label>orchid</label>
     <color>(170, 86, 191)</color>
+    <displayOrder>1530</displayOrder>
   </ColorDef>
 
-  <!-- ====== METALLICS & SPECIAL ====== -->
+  <!-- ====== METALLICS & SPECIAL ====== (1600-1630) -->
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Bronze</defName>
     <label>bronze</label>
     <color>(156, 100, 12)</color>
+    <displayOrder>1600</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Brass</defName>
     <label>brass</label>
     <color>(212, 172, 13)</color>
+    <displayOrder>1610</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="IdeoColorBase">
     <defName>Gold</defName>
     <label>gold</label>
     <color>(241, 196, 15)</color>
+    <displayOrder>1620</displayOrder>
   </ColorDef>
 
   <!-- Now link them to IdeoColorDef for ideology system -->
+  <!-- (These remain unchanged as they're references, not display items) -->
 
   <IdeoColorDef>
     <defName>CharcoalBlack</defName>

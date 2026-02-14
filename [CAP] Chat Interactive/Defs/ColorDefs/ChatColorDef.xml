@@ -4,16 +4,17 @@
   <!-- =========================================== -->
   <!-- CHAT MOD COLOR EXPANSION FOR CLOTHING DYES -->
   <!-- =========================================== -->
-  
+
   <!-- Base for Chat/Viewer Colors -->
   <ColorDef Name="ChatColorBase" Abstract="True">
-    <colorType>Structure</colorType> <!-- Use Structure type for dyeing -->
+    <colorType>Structure</colorType>
     <displayInStylingStationUI>true</displayInStylingStationUI>
     <description>Available for viewer pawn customization</description>
   </ColorDef>
 
-  <!-- ====== BASIC PRIMARY & SECONDARY COLORS ====== -->
-  
+  <!-- ====== REDS, PINKS, & CORALS ====== -->
+  <!-- Includes: Primary Reds, Deep Reds, Pinks, Corals, Salmons -->
+
   <ColorDef ParentName="ChatColorBase">
     <defName>Chat_PrimaryRed</defName>
     <label>primary red</label>
@@ -22,348 +23,714 @@
   </ColorDef>
 
   <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_PrimaryBlue</defName>
-    <label>primary blue</label>
-    <color>(0, 0, 255)</color>
+    <defName>Chat_CandyApple</defName>
+    <label>candy apple red</label>
+    <color>(255, 8, 0)</color>
     <displayOrder>1010</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_PrimaryGreen</defName>
-    <label>primary green</label>
-    <color>(0, 255, 0)</color>
+    <defName>Chat_DragonRed</defName>
+    <label>dragon red</label>
+    <color>(255, 40, 0)</color>
     <displayOrder>1020</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_PrimaryYellow</defName>
-    <label>primary yellow</label>
-    <color>(255, 255, 0)</color>
+    <defName>Chat_HolidayCrimson</defName>
+    <label>holiday crimson</label>
+    <color>(220, 20, 60)</color>
     <displayOrder>1030</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_PrimaryCyan</defName>
-    <label>primary cyan</label>
-    <color>(0, 255, 255)</color>
+    <defName>Chat_Strawberry</defName>
+    <label>strawberry red</label>
+    <color>(255, 71, 87)</color>
     <displayOrder>1040</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_PrimaryMagenta</defName>
-    <label>primary magenta</label>
-    <color>(255, 0, 255)</color>
-    <displayOrder>1050</displayOrder>
-  </ColorDef>
-
-  <!-- ====== BRIGHT VIBRANT COLORS ====== -->
-  
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_NeonPink</defName>
-    <label>neon pink</label>
-    <color>(255, 20, 147)</color>
-    <displayOrder>1100</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_NeonGreen</defName>
-    <label>neon green</label>
-    <color>(57, 255, 20)</color>
-    <displayOrder>1110</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_NeonBlue</defName>
-    <label>neon blue</label>
-    <color>(20, 20, 255)</color>
-    <displayOrder>1120</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_NeonOrange</defName>
-    <label>neon orange</label>
-    <color>(255, 95, 31)</color>
-    <displayOrder>1130</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_NeonYellow</defName>
-    <label>neon yellow</label>
-    <color>(255, 255, 51)</color>
-    <displayOrder>1140</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_NeonPurple</defName>
-    <label>neon purple</label>
-    <color>(191, 64, 191)</color>
-    <displayOrder>1150</displayOrder>
-  </ColorDef>
-
-  <!-- ====== PASTELS & SOFT COLORS ====== -->
-  
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_PastelLavender</defName>
-    <label>pastel lavender</label>
-    <color>(220, 208, 255)</color>
-    <displayOrder>1200</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_PastelMint</defName>
-    <label>pastel mint</label>
-    <color>(189, 255, 209)</color>
-    <displayOrder>1210</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_PastelPeach</defName>
-    <label>pastel peach</label>
-    <color>(255, 218, 185)</color>
-    <displayOrder>1220</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_PastelSky</defName>
-    <label>pastel sky blue</label>
-    <color>(185, 218, 255)</color>
-    <displayOrder>1230</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_PastelRose</defName>
-    <label>pastel rose</label>
-    <color>(255, 209, 220)</color>
-    <displayOrder>1240</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_PastelLemon</defName>
-    <label>pastel lemon</label>
-    <color>(255, 255, 204)</color>
-    <displayOrder>1250</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_PastelLilac</defName>
-    <label>pastel lilac</label>
-    <color>(230, 204, 255)</color>
-    <displayOrder>1260</displayOrder>
-  </ColorDef>
-
-  <!-- ====== DEEP & RICH COLORS ====== -->
-  
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_DeepRoyal</defName>
-    <label>deep royal blue</label>
-    <color>(0, 35, 102)</color>
-    <displayOrder>1300</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_DeepBurgundy</defName>
-    <label>deep burgundy</label>
-    <color>(128, 0, 32)</color>
-    <displayOrder>1310</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_DeepForest</defName>
-    <label>deep forest green</label>
-    <color>(0, 66, 37)</color>
-    <displayOrder>1320</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_DeepViolet</defName>
-    <label>deep violet</label>
-    <color>(102, 0, 102)</color>
-    <displayOrder>1330</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_DeepTeal</defName>
-    <label>deep teal</label>
-    <color>(0, 102, 102)</color>
-    <displayOrder>1340</displayOrder>
-  </ColorDef>
-
-  <!-- ====== EARTH TONES & NATURALS ====== -->
-  
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_EarthRed</defName>
-    <label>earth red</label>
-    <color>(153, 68, 34)</color>
-    <displayOrder>1400</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_EarthOchre</defName>
-    <label>ochre</label>
-    <color>(204, 119, 34)</color>
-    <displayOrder>1410</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_EarthSienna</defName>
-    <label>raw sienna</label>
-    <color>(153, 102, 51)</color>
-    <displayOrder>1420</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_EarthClay</defName>
-    <label>clay</label>
-    <color>(187, 119, 85)</color>
-    <displayOrder>1430</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_EarthMoss</defName>
-    <label>moss green</label>
-    <color>(102, 119, 51)</color>
-    <displayOrder>1440</displayOrder>
-  </ColorDef>
-
-  <!-- ====== METALLIC & SPECIAL EFFECTS ====== -->
-  
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_GoldMetallic</defName>
-    <label>metallic gold</label>
-    <color>(255, 215, 0)</color>
-    <displayOrder>1500</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_SilverMetallic</defName>
-    <label>metallic silver</label>
-    <color>(192, 192, 192)</color>
-    <displayOrder>1510</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_CopperMetallic</defName>
-    <label>metallic copper</label>
-    <color>(184, 115, 51)</color>
-    <displayOrder>1520</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_BronzeMetallic</defName>
-    <label>metallic bronze</label>
-    <color>(205, 127, 50)</color>
-    <displayOrder>1530</displayOrder>
-  </ColorDef>
-
-  <!-- ====== HOLIDAY & SEASONAL ====== -->
-  
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_HolidayCrimson</defName>
-    <label>holiday crimson</label>
-    <color>(220, 20, 60)</color>
-    <displayOrder>1600</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_HolidayEmerald</defName>
-    <label>holiday emerald</label>
-    <color>(0, 128, 0)</color>
-    <displayOrder>1610</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_HolidayGold</defName>
-    <label>holiday gold</label>
-    <color>(255, 215, 0)</color>
-    <displayOrder>1620</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_HalloweenOrange</defName>
-    <label>halloween orange</label>
-    <color>(255, 140, 0)</color>
-    <displayOrder>1630</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_HalloweenPurple</defName>
-    <label>halloween purple</label>
-    <color>(128, 0, 128)</color>
-    <displayOrder>1640</displayOrder>
-  </ColorDef>
-
-  <!-- ====== FUN & UNUSUAL COLORS ====== -->
-  
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_Bubblegum</defName>
-    <label>bubblegum pink</label>
-    <color>(255, 182, 193)</color>
-    <displayOrder>1700</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_CottonCandy</defName>
-    <label>cotton candy blue</label>
-    <color>(173, 216, 230)</color>
-    <displayOrder>1710</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_SlimeGreen</defName>
-    <label>slime green</label>
-    <color>(162, 255, 0)</color>
-    <displayOrder>1720</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_GalaxyPurple</defName>
-    <label>galaxy purple</label>
-    <color>(102, 51, 153)</color>
-    <displayOrder>1730</displayOrder>
-  </ColorDef>
-
-  <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_OceanWave</defName>
-    <label>ocean wave</label>
-    <color>(0, 119, 190)</color>
-    <displayOrder>1740</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="ChatColorBase">
     <defName>Chat_SunsetOrange</defName>
     <label>sunset orange</label>
     <color>(253, 94, 83)</color>
-    <displayOrder>1750</displayOrder>
+    <displayOrder>1050</displayOrder>
   </ColorDef>
 
-  <!-- ====== GRADIENTS & MIXES ====== -->
-  
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_GemRuby</defName>
+    <label>ruby gem</label>
+    <color>(224, 17, 95)</color>
+    <displayOrder>1060</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_DeepBurgundy</defName>
+    <label>deep burgundy</label>
+    <color>(128, 0, 32)</color>
+    <displayOrder>1070</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_GemGarnet</defName>
+    <label>garnet red</label>
+    <color>(115, 54, 53)</color>
+    <displayOrder>1080</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_EarthRed</defName>
+    <label>earth red</label>
+    <color>(153, 68, 34)</color>
+    <displayOrder>1090</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Salmon</defName>
+    <label>salmon pink</label>
+    <color>(250, 128, 114)</color>
+    <displayOrder>1100</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Coral</defName>
+    <label>coral</label>
+    <color>(255, 127, 80)</color>
+    <displayOrder>1110</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_NeonPink</defName>
+    <label>neon pink</label>
+    <color>(255, 20, 147)</color>
+    <displayOrder>1120</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_CyberPink</defName>
+    <label>cyber pink</label>
+    <color>(255, 0, 255)</color>
+    <displayOrder>1130</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_InfraRed</defName>
+    <label>infra red</label>
+    <color>(255, 0, 127)</color>
+    <displayOrder>1140</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_UnicornPink</defName>
+    <label>unicorn pink</label>
+    <color>(255, 182, 193)</color>
+    <displayOrder>1150</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Bubblegum</defName>
+    <label>bubblegum pink</label>
+    <color>(255, 182, 193)</color>
+    <displayOrder>1160</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_SpringBlossom</defName>
+    <label>spring blossom</label>
+    <color>(255, 182, 193)</color>
+    <displayOrder>1170</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_CandyCottonCandy</defName>
+    <label>cotton candy pink</label>
+    <color>(255, 188, 217)</color>
+    <displayOrder>1180</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PastelRose</defName>
+    <label>pastel rose</label>
+    <color>(255, 209, 220)</color>
+    <displayOrder>1190</displayOrder>
+  </ColorDef>
+
+  <!-- ====== ORANGES, PEACHES, & YELLOWS ====== -->
+  <!-- Includes: Oranges, Yellows, Golds, Earth Tones -->
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PhoenixOrange</defName>
+    <label>phoenix orange</label>
+    <color>(255, 140, 0)</color>
+    <displayOrder>1300</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_HalloweenOrange</defName>
+    <label>halloween orange</label>
+    <color>(255, 140, 0)</color>
+    <displayOrder>1310</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_NeonOrange</defName>
+    <label>neon orange</label>
+    <color>(255, 95, 31)</color>
+    <displayOrder>1320</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_SummerSun</defName>
+    <label>summer sun</label>
+    <color>(255, 204, 0)</color>
+    <displayOrder>1330</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PrimaryYellow</defName>
+    <label>primary yellow</label>
+    <color>(255, 255, 0)</color>
+    <displayOrder>1340</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_CandyLemon</defName>
+    <label>lemon candy</label>
+    <color>(255, 247, 0)</color>
+    <displayOrder>1350</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_NeonYellow</defName>
+    <label>neon yellow</label>
+    <color>(255, 255, 51)</color>
+    <displayOrder>1360</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_GemTopaz</defName>
+    <label>topaz gem</label>
+    <color>(255, 200, 124)</color>
+    <displayOrder>1370</displayOrder>
+  </ColorDef>
+
   <ColorDef ParentName="ChatColorBase">
     <defName>Chat_Sunrise</defName>
     <label>sunrise gradient</label>
     <color>(255, 200, 124)</color>
-    <displayOrder>1800</displayOrder>
+    <displayOrder>1380</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_Twilight</defName>
-    <label>twilight gradient</label>
-    <color>(125, 95, 175)</color>
-    <displayOrder>1810</displayOrder>
+    <defName>Chat_Apricot</defName>
+    <label>apricot</label>
+    <color>(251, 206, 177)</color>
+    <displayOrder>1390</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="ChatColorBase">
-    <defName>Chat_Midnight</defName>
-    <label>midnight gradient</label>
-    <color>(25, 25, 112)</color>
-    <displayOrder>1820</displayOrder>
+    <defName>Chat_GoldMetallic</defName>
+    <label>metallic gold</label>
+    <color>(255, 215, 0)</color>
+    <displayOrder>1400</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_HolidayGold</defName>
+    <label>holiday gold</label>
+    <color>(255, 215, 0)</color>
+    <displayOrder>1410</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_EarthOchre</defName>
+    <label>ochre</label>
+    <color>(204, 119, 34)</color>
+    <displayOrder>1420</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_EarthSienna</defName>
+    <label>raw sienna</label>
+    <color>(153, 102, 51)</color>
+    <displayOrder>1430</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_AutumnLeaf</defName>
+    <label>autumn leaf</label>
+    <color>(210, 105, 30)</color>
+    <displayOrder>1440</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Caramel</defName>
+    <label>caramel</label>
+    <color>(175, 111, 9)</color>
+    <displayOrder>1450</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_EarthClay</defName>
+    <label>clay</label>
+    <color>(187, 119, 85)</color>
+    <displayOrder>1460</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Chocolate</defName>
+    <label>chocolate brown</label>
+    <color>(123, 63, 0)</color>
+    <displayOrder>1470</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PastelPeach</defName>
+    <label>pastel peach</label>
+    <color>(255, 218, 185)</color>
+    <displayOrder>1480</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PastelLemon</defName>
+    <label>pastel lemon</label>
+    <color>(255, 255, 204)</color>
+    <displayOrder>1490</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Lemonade</defName>
+    <label>lemonade yellow</label>
+    <color>(255, 250, 105)</color>
+    <displayOrder>1500</displayOrder>
+  </ColorDef>
+
+  <!-- ====== GREENS ====== -->
+  <!-- Includes: Primary Greens, Neon Greens, Forest Greens, Pastel Greens -->
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PrimaryGreen</defName>
+    <label>primary green</label>
+    <color>(0, 255, 0)</color>
+    <displayOrder>1600</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_MatrixGreen</defName>
+    <label>matrix green</label>
+    <color>(0, 255, 0)</color>
+    <displayOrder>1610</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_NeonGreen</defName>
+    <label>neon green</label>
+    <color>(57, 255, 20)</color>
+    <displayOrder>1620</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_GlowInDark</defName>
+    <label>glow green</label>
+    <color>(57, 255, 20)</color>
+    <displayOrder>1630</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_SlimeGreen</defName>
+    <label>slime green</label>
+    <color>(162, 255, 0)</color>
+    <displayOrder>1640</displayOrder>
   </ColorDef>
 
   <ColorDef ParentName="ChatColorBase">
     <defName>Chat_Aurora</defName>
     <label>aurora green</label>
     <color>(124, 252, 0)</color>
+    <displayOrder>1650</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_GemEmerald</defName>
+    <label>emerald gem</label>
+    <color>(80, 200, 120)</color>
+    <displayOrder>1660</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_HolidayEmerald</defName>
+    <label>holiday emerald</label>
+    <color>(0, 128, 0)</color>
+    <displayOrder>1670</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_DragonGreen</defName>
+    <label>dragon green</label>
+    <color>(46, 139, 87)</color>
+    <displayOrder>1680</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_GemJade</defName>
+    <label>jade green</label>
+    <color>(0, 168, 107)</color>
+    <displayOrder>1690</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_DeepForest</defName>
+    <label>deep forest green</label>
+    <color>(0, 66, 37)</color>
+    <displayOrder>1700</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_EarthMoss</defName>
+    <label>moss green</label>
+    <color>(102, 119, 51)</color>
+    <displayOrder>1710</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Matcha</defName>
+    <label>matcha green</label>
+    <color>(186, 220, 88)</color>
+    <displayOrder>1720</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Seafoam</defName>
+    <label>seafoam green</label>
+    <color>(120, 255, 200)</color>
+    <displayOrder>1730</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PastelMint</defName>
+    <label>pastel mint</label>
+    <color>(189, 255, 209)</color>
+    <displayOrder>1740</displayOrder>
+  </ColorDef>
+
+  <!-- ====== BLUES & CYANS ====== -->
+  <!-- Includes: Primary Blues, Sky Blues, Deep Blues, Teals, Cyans -->
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PrimaryBlue</defName>
+    <label>primary blue</label>
+    <color>(0, 0, 255)</color>
+    <displayOrder>1800</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_NeonBlue</defName>
+    <label>neon blue</label>
+    <color>(20, 20, 255)</color>
+    <displayOrder>1810</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_CyberBlue</defName>
+    <label>cyber blue</label>
+    <color>(0, 255, 255)</color>
+    <displayOrder>1820</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_SkyNoon</defName>
+    <label>noon sky blue</label>
+    <color>(0, 191, 255)</color>
     <displayOrder>1830</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_CandyBlueRaspberry</defName>
+    <label>blue raspberry</label>
+    <color>(0, 113, 188)</color>
+    <displayOrder>1840</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_OceanWave</defName>
+    <label>ocean wave</label>
+    <color>(0, 119, 190)</color>
+    <displayOrder>1850</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_SkyMorning</defName>
+    <label>morning sky</label>
+    <color>(135, 206, 250)</color>
+    <displayOrder>1860</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Blueberry</defName>
+    <label>blueberry blue</label>
+    <color>(79, 134, 247)</color>
+    <displayOrder>1870</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_RainBlue</defName>
+    <label>rainy blue</label>
+    <color>(119, 158, 203)</color>
+    <displayOrder>1880</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_HologramBlue</defName>
+    <label>hologram blue</label>
+    <color>(64, 224, 208)</color>
+    <displayOrder>1890</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_GemAquamarine</defName>
+    <label>aquamarine</label>
+    <color>(127, 255, 212)</color>
+    <displayOrder>1900</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_GemOpal</defName>
+    <label>opal iridescent</label>
+    <color>(168, 228, 228)</color>
+    <displayOrder>1910</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_GemSapphire</defName>
+    <label>sapphire gem</label>
+    <color>(8, 37, 103)</color>
+    <displayOrder>1920</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_DeepRoyal</defName>
+    <label>deep royal blue</label>
+    <color>(0, 35, 102)</color>
+    <displayOrder>1930</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_DeepTeal</defName>
+    <label>deep teal</label>
+    <color>(0, 102, 102)</color>
+    <displayOrder>1940</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_MermaidTeal</defName>
+    <label>mermaid teal</label>
+    <color>(0, 140, 140)</color>
+    <displayOrder>1950</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PrimaryCyan</defName>
+    <label>primary cyan</label>
+    <color>(0, 255, 255)</color>
+    <displayOrder>1960</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PastelSky</defName>
+    <label>pastel sky blue</label>
+    <color>(185, 218, 255)</color>
+    <displayOrder>1970</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_CottonCandy</defName>
+    <label>cotton candy blue</label>
+    <color>(173, 216, 230)</color>
+    <displayOrder>1980</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_WinterFrost</defName>
+    <label>winter frost</label>
+    <color>(224, 255, 255)</color>
+    <displayOrder>1990</displayOrder>
+  </ColorDef>
+
+  <!-- ====== PURPLES, VIOLETS, & LAVENDERS ====== -->
+  <!-- Includes: Purples, Violets, Magentas, Lavenders -->
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PrimaryMagenta</defName>
+    <label>primary magenta</label>
+    <color>(255, 0, 255)</color>
+    <displayOrder>2100</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_NeonPurple</defName>
+    <label>neon purple</label>
+    <color>(191, 64, 191)</color>
+    <displayOrder>2110</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_GemAmethyst</defName>
+    <label>amethyst gem</label>
+    <color>(153, 102, 204)</color>
+    <displayOrder>2120</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_GalaxyPurple</defName>
+    <label>galaxy purple</label>
+    <color>(102, 51, 153)</color>
+    <displayOrder>2130</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_UltraViolet</defName>
+    <label>ultra violet</label>
+    <color>(102, 0, 153)</color>
+    <displayOrder>2140</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_DeepViolet</defName>
+    <label>deep violet</label>
+    <color>(102, 0, 102)</color>
+    <displayOrder>2150</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_HalloweenPurple</defName>
+    <label>halloween purple</label>
+    <color>(128, 0, 128)</color>
+    <displayOrder>2160</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_CandyGrape</defName>
+    <label>grape candy</label>
+    <color>(108, 52, 97)</color>
+    <displayOrder>2170</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_BlackLight</defName>
+    <label>black light purple</label>
+    <color>(132, 0, 255)</color>
+    <displayOrder>2180</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Twilight</defName>
+    <label>twilight gradient</label>
+    <color>(125, 95, 175)</color>
+    <displayOrder>2190</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_LavenderTea</defName>
+    <label>lavender tea</label>
+    <color>(209, 159, 232)</color>
+    <displayOrder>2200</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Periwinkle</defName>
+    <label>periwinkle</label>
+    <color>(204, 204, 255)</color>
+    <displayOrder>2210</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PastelLavender</defName>
+    <label>pastel lavender</label>
+    <color>(220, 208, 255)</color>
+    <displayOrder>2220</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PastelLilac</defName>
+    <label>pastel lilac</label>
+    <color>(230, 204, 255)</color>
+    <displayOrder>2230</displayOrder>
+  </ColorDef>
+
+  <!-- ====== NEUTRALS, GRAYS & METALLICS ====== -->
+  <!-- Includes: Whites, Grays, Browns, Metallics -->
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Ivory</defName>
+    <label>ivory</label>
+    <color>(255, 255, 240)</color>
+    <displayOrder>2400</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_GemPearl</defName>
+    <label>pearl white</label>
+    <color>(234, 224, 200)</color>
+    <displayOrder>2410</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Fog</defName>
+    <label>fog gray</label>
+    <color>(210, 210, 210)</color>
+    <displayOrder>2420</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Smoke</defName>
+    <label>smoke gray</label>
+    <color>(132, 136, 132)</color>
+    <displayOrder>2430</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_StormGray</defName>
+    <label>storm gray</label>
+    <color>(79, 79, 79)</color>
+    <displayOrder>2440</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Charcoal</defName>
+    <label>charcoal</label>
+    <color>(54, 69, 79)</color>
+    <displayOrder>2450</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_SilverMetallic</defName>
+    <label>metallic silver</label>
+    <color>(192, 192, 192)</color>
+    <displayOrder>2460</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_CopperMetallic</defName>
+    <label>metallic copper</label>
+    <color>(184, 115, 51)</color>
+    <displayOrder>2470</displayOrder>
+  </ColorDef>
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_BronzeMetallic</defName>
+    <label>metallic bronze</label>
+    <color>(205, 127, 50)</color>
+    <displayOrder>2480</displayOrder>
+  </ColorDef>
+
+  <!-- ====== DARK & MIDNIGHT COLORS ====== -->
+  <!-- Includes: Very Dark Colors, Night Shades -->
+
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_Midnight</defName>
+    <label>midnight gradient</label>
+    <color>(25, 25, 112)</color>
+    <displayOrder>2600</displayOrder>
   </ColorDef>
 
 </Defs>
