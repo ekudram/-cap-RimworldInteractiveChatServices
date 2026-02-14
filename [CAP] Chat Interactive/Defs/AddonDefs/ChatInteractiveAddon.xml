@@ -36,6 +36,48 @@ Button Type Documentation:
     <iconPath>UI/QuickButtons/CommandEditor</iconPath>
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
+  <!-- Quick Access: Store Editor -->
+  <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+    <defName>Quick_StoreEditor</defName>
+    <label>Store Editor</label>
+    <description>Open store item editor</description>
+    <dialogClass>CAP_ChatInteractive.Dialog_StoreEditor</dialogClass>
+    <buttonType>DirectDialogButton</buttonType>
+    <enabled>true</enabled>
+    <sourceMod>RICS</sourceMod>
+    <displayOrder>91</displayOrder>
+    <showInToolbar>true</showInToolbar>
+    <iconPath>UI/QuickButtons/StoreEditor</iconPath>
+  </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+
+  <!-- Quick Access: Trait Editor -->
+  <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+    <defName>Quick_TraitEditor</defName>
+    <label>Trait Editor</label>
+    <description>Open trait editor</description>
+    <dialogClass>CAP_ChatInteractive.Dialog_TraitsEditor</dialogClass>
+    <buttonType>DirectDialogButton</buttonType>
+    <enabled>true</enabled>
+    <sourceMod>RICS</sourceMod>
+    <displayOrder>92</displayOrder>
+    <showInToolbar>true</showInToolbar>
+    <iconPath>UI/QuickButtons/TraitEditor</iconPath>
+  </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+
+  <!-- Quick Access: Events Editor -->
+  <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+    <defName>Quick_EventsEditor</defName>
+    <label>Events Editor</label>
+    <description>Open events editor</description>
+    <dialogClass>CAP_ChatInteractive.Dialog_EventsEditor</dialogClass>
+    <buttonType>DirectDialogButton</buttonType>
+    <enabled>true</enabled>
+    <sourceMod>RICS</sourceMod>
+    <displayOrder>93</displayOrder>
+    <showInToolbar>true</showInToolbar>
+    <iconPath>UI/QuickButtons/EventsEditor</iconPath>
+  </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+
   <!-- Quick Access: Viewer Manager -->
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
     <defName>Quick_ViewerManager</defName>
@@ -45,7 +87,7 @@ Button Type Documentation:
     <buttonType>DirectDialogButton</buttonType>
     <enabled>true</enabled>
     <sourceMod>RICS</sourceMod>
-    <displayOrder>91</displayOrder>
+    <displayOrder>94</displayOrder>
     <showInToolbar>true</showInToolbar>
     <iconPath>UI/QuickButtons/ViewerManager</iconPath>
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
@@ -64,46 +106,18 @@ Button Type Documentation:
     <iconPath>UI/QuickButtons/PawnQueue</iconPath>
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
-  <!-- Quick Access: Store Editor -->
+  <!-- Quick Access: Pawn Race Dialog -->
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
-    <defName>Quick_StoreEditor</defName>
-    <label>Store Editor</label>
-    <description>Open store item editor</description>
-    <dialogClass>CAP_ChatInteractive.Dialog_StoreEditor</dialogClass>
-    <buttonType>DirectDialogButton</buttonType>
-    <enabled>true</enabled>
-    <sourceMod>RICS</sourceMod>
-    <displayOrder>93</displayOrder>
-    <showInToolbar>true</showInToolbar>
-    <iconPath>UI/QuickButtons/StoreEditor</iconPath>
-  </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
-
-  <!-- Quick Access: Trait Editor -->
-  <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
-    <defName>Quick_TraitEditor</defName>
-    <label>Trait Editor</label>
-    <description>Open trait editor</description>
-    <dialogClass>CAP_ChatInteractive.Dialog_TraitsEditor</dialogClass>
-    <buttonType>DirectDialogButton</buttonType>
-    <enabled>true</enabled>
-    <sourceMod>RICS</sourceMod>
-    <displayOrder>94</displayOrder>
-    <showInToolbar>true</showInToolbar>
-    <iconPath>UI/QuickButtons/TraitEditor</iconPath>
-  </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
-
-  <!-- Quick Access: Events Editor -->
-  <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
-    <defName>Quick_EventsEditor</defName>
-    <label>Events Editor</label>
-    <description>Open events editor</description>
-    <dialogClass>CAP_ChatInteractive.Dialog_EventsEditor</dialogClass>
+    <defName>Quick_PawnRace</defName>
+    <label>Pawn Race Settings</label>
+    <description>Quick access to pawn race management</description>
+    <dialogClass>CAP_ChatInteractive.Dialog_PawnRaceSettings</dialogClass>
     <buttonType>DirectDialogButton</buttonType>
     <enabled>true</enabled>
     <sourceMod>RICS</sourceMod>
     <displayOrder>95</displayOrder>
     <showInToolbar>true</showInToolbar>
-    <iconPath>UI/QuickButtons/EventsEditor</iconPath>
+    <iconPath>UI/QuickButtons/PawnRace</iconPath>
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
   
 </Defs>
