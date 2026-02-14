@@ -18,6 +18,9 @@
 using CAP_ChatInteractive.Commands.CommandHandlers;
 using CAP_ChatInteractive.Helpers;
 using RimWorld;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Verse;
 
@@ -25,28 +28,81 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 {
     internal static class DyeCommandHandler
     {
-        // In DyeCommandHandler.cs, update the HandleDyeCommand method
+        private static Dictionary<string, Color> _rimColorCache;
+
+        private static Dictionary<string, Color> GetAllRimColorDefs()
+        {
+            if (_rimColorCache != null) return _rimColorCache;
+
+            _rimColorCache = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase);
+
+            // Get all ColorDefs from RimWorld
+            var allColorDefs = DefDatabase<ColorDef>.AllDefs;
+
+            foreach (var colorDef in allColorDefs)
+            {
+                if (colorDef.colorType == ColorType.Hair || colorDef.defName.Contains("Hair"))
+                {
+                    // Convert RGB values (0-255) to Unity Color (0-1)
+                    Color color = new Color(
+                        colorDef.color.r / 255f,
+                        colorDef.color.g / 255f,
+                        colorDef.color.b / 255f
+                    );
+
+                    // Add by defName
+                    if (!_rimColorCache.ContainsKey(colorDef.defName))
+                        _rimColorCache.Add(colorDef.defName, color);
+
+                    // Add by label if it exists and is different
+                    if (!string.IsNullOrEmpty(colorDef.label) && !_rimColorCache.ContainsKey(colorDef.label))
+                        _rimColorCache.Add(colorDef.label, color);
+                }
+            }
+
+            return _rimColorCache;
+        }
+
         internal static string HandleDyeCommand(ChatMessageWrapper messageWrapper, string[] args)
         {
             // Get the viewer's pawn
             Verse.Pawn viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
             if (viewerPawn == null)
             {
-                return "You need to have a pawn in the colony to dye thier clothing. Use !buy pawn first.";
+                return "You need to have a pawn in the colony to dye their clothing or hair. Use !buy pawn first.";
             }
+
+            // Check for subcommand
+            bool isHairDye = args.Length > 0 && args[0].ToLower() == "hair";
 
             // Parse color from arguments
             Color? color = null;
-            if (args.Length > 0 && !string.IsNullOrEmpty(args[0]))
+            string colorInput = null;
+            int colorArgIndex = isHairDye ? 1 : 0;
+
+            if (args.Length > colorArgIndex && !string.IsNullOrEmpty(args[colorArgIndex]))
             {
-                color = ColorHelper.ParseColor(args[0]);
+                colorInput = args[colorArgIndex];
+
+                // First check RimWorld hair colors
+                var rimColors = GetAllRimColorDefs();
+                if (rimColors.TryGetValue(colorInput, out Color rimColor))
+                {
+                    color = rimColor;
+                }
+                else
+                {
+                    // Fall back to ColorHelper
+                    color = ColorHelper.ParseColor(colorInput);
+                }
+
                 if (!color.HasValue)
                 {
-                    return $"'{args[0]}' is not a valid color. Use color names or hex codes like #FF0000.";
+                    return $"'{args[colorArgIndex]}' is not a valid color. Use color names (like 'PitchBlack' or 'Blonde'), hex codes like #FF0000, or common color names.";
                 }
             }
 
-            // Use favorite color if no color specified, but check for Ideology DLC
+            // Use favorite color if no color specified
             if (!color.HasValue)
             {
                 if (!ModsConfig.IdeologyActive)
@@ -55,17 +111,60 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 }
 
                 color = viewerPawn.story?.favoriteColor?.color ?? new Color(0.6f, 0.6f, 0.6f);
+                colorInput = "favorite color";
             }
 
+            if (isHairDye)
+            {
+                return HandleHairDye(viewerPawn, color.Value, colorInput);
+            }
+            else
+            {
+                return HandleApparelDye(viewerPawn, color.Value, colorInput);
+            }
+        }
+
+        private static string HandleHairDye(Verse.Pawn pawn, Color color, string colorInput = null)
+        {
+            if (pawn.story == null || pawn.story.hairDef == null)
+            {
+                return "Your pawn doesn't have hair to dye.";
+            }
+
+            // Check if the pawn has a hair color tracker (for mod compatibility)
+            //var hairComp = pawn.GetComp<CompHairColor>();
+            //if (hairComp != null)
+            //{
+            //    hairComp.SetColor(color);
+            //    string colorName = GetColorNameForResponse(color, colorInput);
+            //    return $"Successfully dyed hair to {colorName}.";
+            //}
+
+            // For vanilla, we can try to set the hair color through story
+            if (pawn.story != null)
+            {
+                // Note: This uses reflection or a Harmony patch in practice
+                // as vanilla doesn't have a direct SetHairColor method
+                pawn.story.HairColor = color;
+                string colorName = GetColorNameForResponse(color, colorInput);
+                return $"Successfully dyed hair to {colorName}.";
+            }
+
+            return "Could not dye hair. Your pawn might not support hair dyeing.";
+        }
+
+        private static string HandleApparelDye(Verse.Pawn pawn, Color color, string colorInput = null)
+        {
             // Apply dye to appropriate apparel
-            int dyedCount = ApplyDyeToApparel(viewerPawn, color.Value);
+            int dyedCount = ApplyDyeToApparel(pawn, color);
 
             if (dyedCount == 0)
             {
                 return "No dyeable clothing found on your pawn.";
             }
 
-            return $"Successfully dyed {dyedCount} piece(s) of clothing.";
+            string colorName = GetColorNameForResponse(color, colorInput);
+            return $"Successfully dyed {dyedCount} piece(s) of clothing to {colorName}.";
         }
 
         private static int ApplyDyeToApparel(Verse.Pawn pawn, Color color)
@@ -89,6 +188,51 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             }
 
             return count;
+        }
+
+        private static string GetColorNameForResponse(Color color, string colorInput = null)
+        {
+            // If we have the original input and it's not just a hex code, use it
+            if (!string.IsNullOrEmpty(colorInput) && !colorInput.StartsWith("#"))
+            {
+                return colorInput;
+            }
+
+            // Try to find in RimWorld color defs first
+            var rimColors = GetAllRimColorDefs();
+            foreach (var kvp in rimColors)
+            {
+                if (kvp.Value.r == color.r && kvp.Value.g == color.g && kvp.Value.b == color.b)
+                {
+                    return kvp.Key;
+                }
+            }
+
+            // Then try ColorHelper dictionary
+            foreach (var kvp in ColorHelper.GetColorDictionary())
+            {
+                if (kvp.Value.r == color.r && kvp.Value.g == color.g && kvp.Value.b == color.b)
+                {
+                    return kvp.Key;
+                }
+            }
+
+            // Otherwise approximate
+            return ApproximateColorName(color);
+        }
+
+        private static string ApproximateColorName(Color color)
+        {
+            if (color.r > 0.8f && color.g < 0.3f && color.b < 0.3f) return "red";
+            if (color.r > 0.8f && color.g > 0.8f && color.b < 0.3f) return "yellow";
+            if (color.r < 0.3f && color.g > 0.8f && color.b < 0.3f) return "green";
+            if (color.r < 0.3f && color.g < 0.3f && color.b > 0.8f) return "blue";
+            if (color.r > 0.8f && color.g < 0.3f && color.b > 0.8f) return "purple";
+            if (color.r > 0.8f && color.g > 0.5f && color.b < 0.3f) return "orange";
+            if (color.r > 0.9f && color.g > 0.9f && color.b > 0.9f) return "white";
+            if (color.r < 0.2f && color.g < 0.2f && color.b < 0.2f) return "black";
+            if (Mathf.Abs(color.r - color.g) < 0.1f && Mathf.Abs(color.g - color.b) < 0.1f) return "gray";
+            return "custom";
         }
 
         private static bool IsDyeableApparel(Apparel apparel)

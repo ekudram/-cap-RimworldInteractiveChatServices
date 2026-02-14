@@ -32,8 +32,6 @@
 
   <RICS.DIW.DeliverySection>--- Delivery Information ---</RICS.DIW.DeliverySection>
   <RICS.DIW.WillMinify>Will be minified for delivery: {0}</RICS.DIW.WillMinify>
-  <RICS.DIW.StackLimit>Maximum stack size: {0}</RICS.DIW.StackLimit>
-  <RICS.DIW.Size>Size: {width}×{height}</RICS.DIW.Size>
 
   <RICS.DIW.CompSection>--- Comp Properties ({0}) ---</RICS.DIW.CompSection>
   <RICS.DIW.CompBullet>• {0}</RICS.DIW.CompBullet>

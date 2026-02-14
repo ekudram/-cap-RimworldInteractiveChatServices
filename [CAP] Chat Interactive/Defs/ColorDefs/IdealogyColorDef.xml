@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <!-- Abstract Base for Ideology Colors -->
+  <ColorDef Name="IdeoColorBase" Abstract="True">
+    <colorType>Ideo</colorType>
+  </ColorDef>
+
+  <!-- ====== EARTH TONES & NEUTRALS ====== -->
+
+  <!-- Grayscale Series -->
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>CharcoalBlack</defName>
+    <label>charcoal black</label>
+    <color>(40, 40, 40)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>SlateGray</defName>
+    <label>slate gray</label>
+    <color>(70, 70, 70)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>StoneGray</defName>
+    <label>stone gray</label>
+    <color>(123, 125, 125)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>AshGray</defName>
+    <label>ash gray</label>
+    <color>(151, 154, 154)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>SilverGray</defName>
+    <label>silver gray</label>
+    <color>(192, 192, 192)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>PearlWhite</defName>
+    <label>pearl white</label>
+    <color>(236, 240, 241)</color>
+  </ColorDef>
+
+  <!-- Brown/Tan Series -->
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>DarkUmber</defName>
+    <label>dark umber</label>
+    <color>(90, 58, 32)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>BurntSienna</defName>
+    <label>burnt sienna</label>
+    <color>(120, 66, 18)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Terracotta</defName>
+    <label>terracotta</label>
+    <color>(147, 81, 22)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>CopperBrown</defName>
+    <label>copper brown</label>
+    <color>(186, 74, 0)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>AmberGold</defName>
+    <label>amber gold</label>
+    <color>(214, 137, 16)</color>
+  </ColorDef>
+
+  <!-- ====== REDS & WARMS ====== -->
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>GarnetRed</defName>
+    <label>garnet red</label>
+    <color>(126, 38, 38)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Crimson</defName>
+    <label>crimson</label>
+    <color>(191, 86, 86)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Scarlet</defName>
+    <label>scarlet</label>
+    <color>(211, 84, 0)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>RubyRed</defName>
+    <label>ruby red</label>
+    <color>(230, 126, 34)</color>
+  </ColorDef>
+
+  <!-- ====== GREENS & EARTH ====== -->
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>ForestMoss</defName>
+    <label>forest moss</label>
+    <color>(81, 95, 57)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>SageGreen</defName>
+    <label>sage green</label>
+    <color>(125, 160, 125)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Emerald</defName>
+    <label>emerald</label>
+    <color>(46, 204, 113)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Jade</defName>
+    <label>jade</label>
+    <color>(39, 174, 96)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Malachite</defName>
+    <label>malachite</label>
+    <color>(22, 160, 133)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Verdigris</defName>
+    <label>verdigris</label>
+    <color>(26, 188, 156)</color>
+  </ColorDef>
+
+  <!-- ====== BLUES & COOLS ====== -->
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>SteelBlue</defName>
+    <label>steel blue</label>
+    <color>(70, 130, 180)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Cobalt</defName>
+    <label>cobalt</label>
+    <color>(41, 128, 185)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Sapphire</defName>
+    <label>sapphire</label>
+    <color>(52, 152, 219)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Azure</defName>
+    <label>azure</label>
+    <color>(86, 191, 191)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Cerulean</defName>
+    <label>cerulean</label>
+    <color>(36, 113, 163)</color>
+  </ColorDef>
+
+  <!-- ====== PURPLES & ROYALS ====== -->
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Amethyst</defName>
+    <label>amethyst</label>
+    <color>(142, 68, 173)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>RoyalPurple</defName>
+    <label>royal purple</label>
+    <color>(125, 60, 152)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Violet</defName>
+    <label>violet</label>
+    <color>(136, 78, 160)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Orchid</defName>
+    <label>orchid</label>
+    <color>(170, 86, 191)</color>
+  </ColorDef>
+
+  <!-- ====== METALLICS & SPECIAL ====== -->
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Bronze</defName>
+    <label>bronze</label>
+    <color>(156, 100, 12)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Brass</defName>
+    <label>brass</label>
+    <color>(212, 172, 13)</color>
+  </ColorDef>
+
+  <ColorDef ParentName="IdeoColorBase">
+    <defName>Gold</defName>
+    <label>gold</label>
+    <color>(241, 196, 15)</color>
+  </ColorDef>
+
+  <!-- Now link them to IdeoColorDef for ideology system -->
+
+  <IdeoColorDef>
+    <defName>CharcoalBlack</defName>
+    <colorDef>CharcoalBlack</colorDef>
+    <memes>
+      <li>Darkness</li>
+      <li>Supremacist</li>
+    </memes>
+  </IdeoColorDef>
+
+  <IdeoColorDef>
+    <defName>SlateGray</defName>
+    <colorDef>SlateGray</colorDef>
+    <memes>
+      <li>Transhumanist</li>
+    </memes>
+  </IdeoColorDef>
+
+  <IdeoColorDef>
+    <defName>StoneGray</defName>
+    <colorDef>StoneGray</colorDef>
+    <memes>
+      <li>Transhumanist</li>
+    </memes>
+  </IdeoColorDef>
+
+  <IdeoColorDef>
+    <defName>Mahogany</defName>
+    <colorDef>Mahogany</colorDef>
+    <memes>
+      <li>PainIsVirtue</li>
+    </memes>
+  </IdeoColorDef>
+
+  <IdeoColorDef>
+    <defName>Crimson</defName>
+    <colorDef>Crimson</colorDef>
+    <memes>
+      <li>Cannibal</li>
+      <li>Supremacist</li>
+      <li>PainIsVirtue</li>
+    </memes>
+  </IdeoColorDef>
+
+  <IdeoColorDef>
+    <defName>ForestMoss</defName>
+    <colorDef>ForestMoss</colorDef>
+    <memes>
+      <li>NaturePrimacy</li>
+      <li>TreeConnection</li>
+    </memes>
+  </IdeoColorDef>
+
+  <IdeoColorDef>
+    <defName>Emerald</defName>
+    <colorDef>Emerald</colorDef>
+    <memes>
+      <li>NaturePrimacy</li>
+      <li>TreeConnection</li>
+    </memes>
+  </IdeoColorDef>
+
+  <IdeoColorDef>
+    <defName>Jade</defName>
+    <colorDef>Jade</colorDef>
+    <memes>
+      <li>NaturePrimacy</li>
+      <li>TreeConnection</li>
+    </memes>
+  </IdeoColorDef>
+
+  <IdeoColorDef>
+    <defName>Sapphire</defName>
+    <colorDef>Sapphire</colorDef>
+    <memes>
+      <li>Transhumanist</li>
+    </memes>
+  </IdeoColorDef>
+
+  <IdeoColorDef>
+    <defName>Amethyst</defName>
+    <colorDef>Amethyst</colorDef>
+    <memes>
+      <li>FemaleSupremacy</li>
+    </memes>
+  </IdeoColorDef>
+
+  <IdeoColorDef>
+    <defName>RoyalPurple</defName>
+    <colorDef>RoyalPurple</colorDef>
+    <memes>
+      <li>Supremacist</li>
+    </memes>
+  </IdeoColorDef>
+
+  <IdeoColorDef>
+    <defName>Gold</defName>
+    <colorDef>Gold</colorDef>
+    <memes>
+      <li>Collectivist</li>
+    </memes>
+  </IdeoColorDef>
+
+  <!-- Add more IdeoColorDef entries for all your colors... -->
+
+</Defs>

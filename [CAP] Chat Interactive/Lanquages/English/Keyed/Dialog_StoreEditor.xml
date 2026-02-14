@@ -21,8 +21,7 @@
   <RICS.SE.Reset>Reset</RICS.SE.Reset>
   <RICS.SE.EnableArrow>Enable →</RICS.SE.EnableArrow>
   <RICS.SE.DisableArrow>Disable →</RICS.SE.DisableArrow>
-  <RICS.SE.ResetAll>Reset All</RICS.SE.ResetAll>
-  
+    
   <!-- Checkboxes -->
   <RICS.SE.Usable>Usable</RICS.SE.Usable>
   <RICS.SE.Wearable>Wearable</RICS.SE.Wearable>

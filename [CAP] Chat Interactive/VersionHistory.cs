@@ -446,6 +446,10 @@ NEW FEATURES:
 - Consolidated GameComponent Files into single file
   • Better control over data file loading
 
+- Expanded !dye command
+  • !dye hair {color} or favorite color if left bland and Biotech loaded
+  • Add more hair colors to mod.
+
 ===============================================================================
 UPDATES:
 ===============================================================================
