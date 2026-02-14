@@ -405,10 +405,8 @@ namespace CAP_ChatInteractive.Incidents
             if (addedIncidents > 0 || removedIncidents > 0 || updatedGameProperties > 0)
             {
                 Logger.Message($"Incidents updated: +{addedIncidents} new, -{removedIncidents} removed, {updatedGameProperties} game properties refreshed");
-
-                // Save changes (new incidents added to JSON)
-                SaveIncidentsToJson();
             }
+            SaveIncidentsToJson();
         }
 
         public static void SaveIncidentsToJson()

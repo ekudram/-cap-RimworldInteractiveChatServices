@@ -303,8 +303,9 @@ namespace CAP_ChatInteractive.Incidents.Weather
                 Logger.Message($"Weather updated: +{addedWeather} new, -{removedWeather} removed");
 
                 // Save changes (new weather added to JSON)
-                SaveWeatherToJson();
+                
             }
+            SaveWeatherToJson();
         }
 
         public static void SaveWeatherToJson()
