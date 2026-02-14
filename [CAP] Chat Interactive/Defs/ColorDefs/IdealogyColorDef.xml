@@ -246,14 +246,6 @@
   </IdeoColorDef>
 
   <IdeoColorDef>
-    <defName>Mahogany</defName>
-    <colorDef>Mahogany</colorDef>
-    <memes>
-      <li>PainIsVirtue</li>
-    </memes>
-  </IdeoColorDef>
-
-  <IdeoColorDef>
     <defName>Crimson</defName>
     <colorDef>Crimson</colorDef>
     <memes>
@@ -303,14 +295,6 @@
     <colorDef>Amethyst</colorDef>
     <memes>
       <li>FemaleSupremacy</li>
-    </memes>
-  </IdeoColorDef>
-
-  <IdeoColorDef>
-    <defName>RoyalPurple</defName>
-    <colorDef>RoyalPurple</colorDef>
-    <memes>
-      <li>Supremacist</li>
     </memes>
   </IdeoColorDef>
 
