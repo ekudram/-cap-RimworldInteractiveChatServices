@@ -126,13 +126,13 @@ namespace CAP_ChatInteractive
                     itemObject["DefName"] = storeItem.DefName;
                     itemObject["CustomName"] = storeItem.CustomName ?? null;
                     itemObject["HasQuantityLimit"] = storeItem.HasQuantityLimit;
-                    itemObject["IsMelee"] = storeItem.IsMelee;
-                    itemObject["IsRanged"] = storeItem.IsRanged;
-                    itemObject["IsStuffAllowed"] = storeItem.IsStuffAllowed;
-                    itemObject["IsWeapon"] = storeItem.IsWeapon;
+                    // itemObject["IsMelee"] = storeItem.IsMelee; DOES NOT NEED TO BE SAVED
+                    // itemObject["IsRanged"] = storeItem.IsRanged;DOES NOT NEED TO BE SAVED
+                    // itemObject["IsStuffAllowed"] = storeItem.IsStuffAllowed;  NOT USED
+                    // itemObject["IsWeapon"] = storeItem.IsWeapon; 
                     itemObject["QuantityLimit"] = storeItem.QuantityLimit;
                     itemObject["LimitMode"] = storeItem.LimitMode.ToString();
-                    itemObject["ResearchOverrides"] = null;
+                    // itemObject["ResearchOverrides"] = null; DOES NOT NEED TO BE SAVED
                     itemObject["IsUsable"] = storeItem.IsUsable;
                     itemObject["IsEquippable"] = storeItem.IsEquippable;
                     itemObject["IsWearable"] = storeItem.IsWearable;
@@ -179,10 +179,10 @@ namespace CAP_ChatInteractive
                     storeItem.DefName = property.Name;
                     storeItem.CustomName = itemToken["CustomName"]?.Value<string>();
                     storeItem.HasQuantityLimit = itemToken["HasQuantityLimit"]?.Value<bool>() ?? true;
-                    storeItem.IsMelee = itemToken["IsMelee"]?.Value<bool>() ?? false;
-                    storeItem.IsRanged = itemToken["IsRanged"]?.Value<bool>() ?? false;
-                    storeItem.IsStuffAllowed = itemToken["IsStuffAllowed"]?.Value<bool>() ?? true;
-                    storeItem.IsWeapon = itemToken["IsWeapon"]?.Value<bool>() ?? false;
+                    // storeItem.IsMelee = itemToken["IsMelee"]?.Value<bool>() ?? false;
+                    // storeItem.IsRanged = itemToken["IsRanged"]?.Value<bool>() ?? false;
+                    // storeItem.IsStuffAllowed = itemToken["IsStuffAllowed"]?.Value<bool>() ?? true;
+                    // storeItem.IsWeapon = itemToken["IsWeapon"]?.Value<bool>() ?? false;
                     storeItem.QuantityLimit = itemToken["QuantityLimit"]?.Value<int>() ?? 1;
 
                     // Deserialize LimitMode with fallback
@@ -203,10 +203,7 @@ namespace CAP_ChatInteractive
                     storeItem.BasePrice = itemToken["BasePrice"]?.Value<int>() ?? 0;
                     storeItem.Category = itemToken["Category"]?.Value<string>() ?? "Misc";
                     storeItem.Enabled = itemToken["Enabled"]?.Value<bool>() ?? true;
-
-                    // ADD THIS: Deserialize modactive with fallback to false for backward compatibility
                     storeItem.modactive = itemToken["modactive"]?.Value<bool>() ?? false;
-
                     storeItems[property.Name] = storeItem;
                 }
             }

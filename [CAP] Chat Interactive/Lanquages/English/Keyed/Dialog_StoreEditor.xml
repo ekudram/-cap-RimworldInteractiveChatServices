@@ -31,7 +31,7 @@
   
   <!-- Message -->
 
-  <RICS.SE.ResetConfirmation>Are you sure you want to reset all store settings? This action cannot be undone.</RICS.SE.ResetConfirmation>
+  <RICS.SE.ResetAllConfirmation>Are you sure you want to reset all store settings? This action cannot be undone.</RICS.SE.ResetAllConfirmation>
   <RICS.SE.EnabledCategory>Enabled {0} {1} items</RICS.SE.EnabledCategory>
   <RICS.SE.DisabledCategory>Disabled {0} {1} items</RICS.SE.DisabledCategory>
   <RICS.SE.DisabledType>Disabled {0} {1}</RICS.SE.DisabledType>
@@ -51,13 +51,13 @@
 
   <RICS.SE.EnableAll>Enable All Items</RICS.SE.EnableAll>
   <RICS.SE.EnableCategory>Enable {0} Items</RICS.SE.EnableCategory>
-  <RICS.SE.EnableWeapons>Enable All Weapons</RICS.SE.EnableWeapons>
+  <RICS.SE.EnableWeapons>Enable All Equipable</RICS.SE.EnableWeapons>
   <RICS.SE.EnableApparel>Enable All Apparel</RICS.SE.EnableApparel>
   <RICS.SE.EnableUsable>Enable All Usable Items</RICS.SE.EnableUsable>
 
   <RICS.SE.DisableAll>Disable All Items</RICS.SE.DisableAll>
   <RICS.SE.DisableCategory>Disable {0} Items</RICS.SE.DisableCategory>
-  <RICS.SE.DisableWeapons>Disable All Weapons</RICS.SE.DisableWeapons>
+  <RICS.SE.DisableWeapons>Disable All Equipable</RICS.SE.DisableWeapons>
   <RICS.SE.DisableApparel>Disable All Apparel</RICS.SE.DisableApparel>
   <RICS.SE.DisableUsable>Disable All Usable Items</RICS.SE.DisableUsable>
 

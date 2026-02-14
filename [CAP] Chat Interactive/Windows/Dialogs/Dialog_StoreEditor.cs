@@ -361,7 +361,7 @@ namespace CAP_ChatInteractive
             //options.Add(new FloatMenuOption("Enable All Weapons", () =>
             options.Add(new FloatMenuOption("RICS.SE.EnableWeapons".Translate(), () =>
             {
-                EnableItemsByPredicate(item => item.IsWeapon, "weapons");
+                EnableItemsByPredicate(item => item.IsEquippable, "equippable");
             }));
 
             // options.Add(new FloatMenuOption("Enable All Apparel", () =>
@@ -447,7 +447,7 @@ namespace CAP_ChatInteractive
             // options.Add(new FloatMenuOption("Disable All Weapons", () =>
             options.Add(new FloatMenuOption("RICS.SE.DisableWeapons".Translate(), () =>
             {
-                DisableItemsByPredicate(item => item.IsWeapon, "weapons");
+                DisableItemsByPredicate(item => item.IsEquippable, "equippable");
             }));
 
             // options.Add(new FloatMenuOption("Disable All Apparel", () =>

@@ -34,11 +34,11 @@ namespace CAP_ChatInteractive.Store
         public bool IsUsable { get; set; } = true;
         public bool IsEquippable { get; set; }
         public bool IsWearable { get; set; }
-        public bool IsWeapon { get; set; }
-        public bool IsMelee { get; set; }
-        public bool IsRanged { get; set; }
-        public bool IsStuffAllowed { get; set; }
-        public List<string> ResearchOverrides { get; set; }
+        // public bool IsWeapon { get; set; }  // Not needed for store json 4 ref but we can really just pull this from def
+        // public bool IsMelee { get; set; }// Not needed for store json
+        // public bool IsRanged { get; set; }// Not needed for store json
+        // public bool IsStuffAllowed { get; set; } // Not needed for store json
+        // public List<string> ResearchOverrides { get; set; }// Not needed for store json
         public string Category { get; set; }
         public string ModSource { get; set; }
         public bool modactive { get; set; } = false;
@@ -58,13 +58,13 @@ namespace CAP_ChatInteractive.Store
             ModSource = thingDef.modContentPack?.Name ?? "RimWorld";
 
             // Set default properties based on thing type - IMPROVED LOGIC
-            IsWeapon = thingDef.IsWeapon;
-            IsMelee = thingDef.IsMeleeWeapon;
-            IsRanged = thingDef.IsRangedWeapon;
+            // IsWeapon = thingDef.IsWeapon;
+            // IsMelee = thingDef.IsMeleeWeapon;
+            // IsRanged = thingDef.IsRangedWeapon;
             IsUsable = IsItemUsable(thingDef);
             IsEquippable = !IsUsable && thingDef.IsWeapon;
             IsWearable = !IsUsable && !IsEquippable && thingDef.IsApparel;
-            IsStuffAllowed = thingDef.IsStuff;
+            // IsStuffAllowed = thingDef.IsStuff;
 
             // FIX: Set default quantity limit to 1 stack instead of 0
             HasQuantityLimit = true;
