@@ -18,9 +18,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Verse;
 
 // Add this class to a new file or within your existing files
@@ -424,8 +421,65 @@ Rimazon locker translation keys complete
 Dialog Pawn Queue translation keys complete
 Dialog Pawn Race Settings translation keys complete
 Window For Quality and Research translation keys complete"
-                }
+                },
+            {"1.19",@"
+===============================================================================
+                            RICS 1.19 - Update
+===============================================================================
+Released: February 14, 2026
 
+===============================================================================
+NEW FEATURES:
+===============================================================================
+- Json files now persist across all saves and games
+  • Data from all mods in any savegame is preserved
+  • Settings remain intact when adding/removing mods between playthroughs
+
+- New version numbering format: 1.19 (instead of 1.0.19)
+  • All future versions will follow this format
+
+- Updated Github Purchase List structure
+  • Sync your fork to Main/Master branch
+  • Alternative: Copy assets/js/rics-store.js from main
+  • Optional CSS improvement: Copy assets/css/rics-store.css
+
+- Consolidated GameComponent Files into single file
+  • Better control over data file loading
+
+===============================================================================
+UPDATES:
+===============================================================================
+- Store Items Editor enhancements:
+  • Can now select from Categories or Mod Sources
+  • Added ability to enable/disable items from Mod Sources
+
+===============================================================================
+FIXES:
+===============================================================================
+- Consolidated GameComponent Files properly implemented
+- RaceSettings now correctly called with Dictionary as source of truth
+- RaceSettings now correctly shows xenotypes availible for Race
+- Fixed Ownership issues for Possession Mod
+- Rimazon Locker adjusted: occupies 1x1 floor space but extends 2 tiles tall
+
+===============================================================================
+TRANSLATIONS:
+===============================================================================
+Added or fixed translation keys for:
+- Store Items Editor
+- Debug Def Window (Store Items Editor)
+- Chat Interactive Settings window
+- Pawn Race Settings Window
+- Raid Strategies Window
+
+===============================================================================
+NOTES:
+===============================================================================
+Please sync your GitHub repository to Main/Master branch
+for all changes to work properly.
+"
+
+            }
             
             // Add more versions here as they're released
         };
