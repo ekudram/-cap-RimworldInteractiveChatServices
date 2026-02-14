@@ -609,7 +609,8 @@ namespace CAP_ChatInteractive
             // Safety: don't crash if no categories yet
             if (categoryCounts == null || categoryCounts.Count == 0)
             {
-                Widgets.Label(listRect, "No categories loaded");
+                // Widgets.Label(listRect, "No categories loaded");
+                Widgets.Label(listRect, "RICS.SE.NoCategories".Translate());
                 return;
             }
 
@@ -702,7 +703,8 @@ namespace CAP_ChatInteractive
             // Safety: don't crash if no mod sources yet
             if (modSourceCounts == null || modSourceCounts.Count == 0)
             {
-                Widgets.Label(listRect, "No mod sources loaded");
+                //Widgets.Label(listRect, "No mod sources loaded");
+                Widgets.Label(listRect, "RICS.SE.NoModSources".Translate());
                 return;
             }
 
@@ -1145,11 +1147,18 @@ namespace CAP_ChatInteractive
             // Stack preset buttons (only show if there are items with quantity limits)
             if (anyHasLimit)
             {
-                (string icon, string tooltip, int stacks)[] presets =
+                //(string icon, string tooltip, int stacks)[] presets =
+                //{
+                //    ("Stack1", "Set all visible items to 1 stack limit", 1),
+                //    ("Stack3", "Set all visible items to 3 stacks limit", 3),
+                //    ("Stack5", "Set all visible items to 5 stacks limit", 5)
+                //};
+
+                (string icon, string tooltipKey, int stacks)[] presets =
                 {
-                    ("Stack1", "Set all visible items to 1 stack limit", 1),
-                    ("Stack3", "Set all visible items to 3 stacks limit", 3),
-                    ("Stack5", "Set all visible items to 5 stacks limit", 5)
+                    ("Stack1", "RICS.SE.SetAllOneStackTooltip", 1),
+                    ("Stack3", "RICS.SE.SetAllThreeStacksTooltip", 3),
+                    ("Stack5", "RICS.SE.SetAllFiveStacksTooltip", 5)
                 };
 
                 foreach (var preset in presets)
@@ -1175,7 +1184,7 @@ namespace CAP_ChatInteractive
                         Widgets.DrawTextureFitted(iconRect, icon, 1f);
                     }
 
-                    TooltipHandler.TipRegion(iconRect, preset.tooltip);
+                    TooltipHandler.TipRegion(iconRect, preset.tooltipKey.Translate());
 
                     // Click handler
                     if (Widgets.ButtonInvisible(iconRect))
@@ -1258,10 +1267,10 @@ namespace CAP_ChatInteractive
                     // === Stack preset buttons ===
                     (string icon, string tooltip, int stacks)[] presets =
                     {
-                ("Stack1", "Set to 1 stack", 1),
-                ("Stack3", "Set to 3 stacks", 3),
-                ("Stack5", "Set to 5 stacks", 5)
-            };
+                        ("Stack1", "RICS.SE.SetAllOneStackTooltip", 1),
+                        ("Stack3", "RICS.SE.SetAllThreeStacksTooltip", 3),
+                        ("Stack5", "RICS.SE.SetAllFiveStacksTooltip", 5)
+                    };
 
                     foreach (var preset in presets)
                     {
@@ -1476,7 +1485,7 @@ namespace CAP_ChatInteractive
             // Enable button
             Rect enableRect = new Rect(x, 2f, buttonWidth + 20f, 28f);
             Text.Anchor = TextAnchor.MiddleRight;
-            if (Widgets.ButtonText(enableRect, "RICS.SE.EnableArrow"))
+            if (Widgets.ButtonText(enableRect, "RICS.SE.EnableArrow".Translate()))
             {
                 // For mod source - we can either reuse category logic or make a mod-specific one
                 // Simplest: use the same category-style menu but apply to current mod source items
@@ -1486,7 +1495,7 @@ namespace CAP_ChatInteractive
 
             // Disable button
             Rect disableRect = new Rect(x, 2f, buttonWidth + 20f, 28f);
-            if (Widgets.ButtonText(disableRect, "RICS.SE.DisableArrow"))
+            if (Widgets.ButtonText(disableRect, "RICS.SE.DisableArrow".Translate()))
             {
                 ShowModSourceDisableMenu();
             }
@@ -1636,8 +1645,13 @@ namespace CAP_ChatInteractive
             if (changedCount > 0)
             {
                 StoreInventory.SaveStoreToJson();
-                Messages.Message($"{(enable ? "Enabled" : "Disabled")} {changedCount} {flagType.ToLower()} items from '{GetDisplayModName(selectedModSource)}'",
-                    MessageTypeDefOf.PositiveEvent);
+                //Messages.Message($"{(enable ? "Enabled" : "Disabled")} {changedCount} {flagType.ToLower()} items from '{GetDisplayModName(selectedModSource)}'",
+                //    MessageTypeDefOf.PositiveEvent);
+                string messageKey = enable ? "RICS.SE.Enabled" : "RICS.SE.Disabled";
+                Messages.Message(
+                    messageKey.Translate(changedCount, flagType.ToLower(), GetDisplayModName(selectedModSource)),
+                    MessageTypeDefOf.PositiveEvent
+                );
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 FilterItems(); // Refresh
             }

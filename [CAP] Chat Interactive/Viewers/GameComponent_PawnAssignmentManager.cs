@@ -163,7 +163,7 @@ namespace CAP_ChatInteractive
         // 9 references
         public Pawn GetAssignedPawn(ChatMessageWrapper message)
         {
-            string identifier = FindViewerIdentifier(message.Username, message);
+            string identifier = GetViewerIdentifier(message);
 
             if (viewerPawnAssignments.TryGetValue(identifier, out string thingId))
             {

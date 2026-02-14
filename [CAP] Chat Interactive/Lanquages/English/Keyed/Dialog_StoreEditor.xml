@@ -14,6 +14,7 @@
   
   <!-- Labels -->
   <RICS.SE.Price>Price:</RICS.SE.Price>
+  <RICS.SE.NoCategories>No categories loaded</RICS.SE.NoCategories>
 
   <!-- Buttons -->
   <RICS.SE.ResetAll>Reset All</RICS.SE.ResetAll>
@@ -27,6 +28,7 @@
   <RICS.SE.Wearable>Wearable</RICS.SE.Wearable>
   <RICS.SE.Equippable>Equippable</RICS.SE.Equippable>
   <RICS.SE.Enabled>Enabled</RICS.SE.Enabled>
+  <RICS.SE.Disabled>Disabled</RICS.SE.Disabled>
   
   <!-- Message -->
 
@@ -45,6 +47,8 @@
   <RICS.SE.SetQuantityLimitMessage>Set quantity limit to {stacks} stacks for {count} items</RICS.SE.SetQuantityLimitMessage>
   <RICS.SE.EnabledQuantityLimit>Enabled quantity limit for {0} items</RICS.SE.EnabledQuantityLimit>
   <RICS.SE.DisabledQuantityLimit>Disabled quantity limit for {0} items</RICS.SE.DisabledQuantityLimit>
+  <RICS.SE.NoModSources>No mod sources loaded</RICS.SE.NoModSources>
+  
   
   <!-- Floating Menus -->
 
@@ -111,6 +115,9 @@
   <RICS.SE.CustomNameIndicatorTooltip>Custom name is set</RICS.SE.CustomNameIndicatorTooltip>
   <RICS.SE.SetAllQtyTooltip>Enable/disable quantity limits for all visible items</RICS.SE.SetAllQtyTooltip>
   <RICS.SE.ManualLimitTooltip>Manual limit (current: {0})</RICS.SE.ManualLimitTooltip>
+  <RICS.SE.SetAllOneStackTooltip>Set all visible items to 1 stack limit</RICS.SE.SetAllOneStackTooltip>
+  <RICS.SE.SetAllThreeStacksTooltip>Set all visible items to 3 stacks limit</RICS.SE.SetAllThreeStacksTooltip>
+  <RICS.SE.SetAllFiveStacksTooltip>Set all visible items to 5 stacks limit</RICS.SE.SetAllFiveStacksTooltip>
   
   
   

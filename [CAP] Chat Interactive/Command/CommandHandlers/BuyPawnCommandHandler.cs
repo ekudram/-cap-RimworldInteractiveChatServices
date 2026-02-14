@@ -36,7 +36,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var viewer = Viewers.GetViewer(messageWrapper);
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-
+                // NOTE THIS WORKS NOW, returns any pawn ase
+                Pawn existingPawn = assignmentManager.GetAssignedPawn(messageWrapper);
+                if (existingPawn != null)
+                {
+                    return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn health to check on them.";
+                }
+                // EXtra check and modified.  Redundant now but lets keep it for a bit.
                 // SIMPLIFIED: Check if viewer already has a pawn assigned using direct dictionary lookup
                 if (assignmentManager != null)
                 {
@@ -46,8 +52,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     // Check if this platform ID exists in the assignments dictionary
                     if (assignmentManager.viewerPawnAssignments.TryGetValue(platformId, out string thingId))
                     {
-                        Pawn existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
-                        if (existingPawn != null && !existingPawn.Dead && existingPawn.Spawned)
+                        existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
+                        if (existingPawn != null && !existingPawn.Dead && existingPawn.Faction == Faction.OfPlayer)
                         {
                             return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
                         }
@@ -57,7 +63,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     string usernameLower = messageWrapper.Username.ToLowerInvariant();
                     if (assignmentManager.viewerPawnAssignments.TryGetValue(usernameLower, out thingId))
                     {
-                        Pawn existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
+                        existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
                         if (existingPawn != null && !existingPawn.Dead && existingPawn.Spawned)
                         {
                             return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
