@@ -432,8 +432,8 @@ Released: February 15, 2026
 HOTFIX:
 ===============================================================================
 - Json persistence files now persist across saves and games,
-  • Was not saving properly before, when changed from Settings.
-
+  • Was not saving properly with 1.19.
+- Fix buy pawn, not finding pawns on quests or caravan.
 
 ===============================================================================
 NEW FEATURES:
