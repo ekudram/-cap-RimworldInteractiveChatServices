@@ -385,8 +385,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (lockerCount > 0 && dropPodCount > 0)
             {
-                deliveryLine = "RICS.BICH.Letter.Delivery.Mixed".Translate(lockerCount, dropPodCount);
-            }
+                deliveryLine = "RICS.BICH.Letter.Delivery.Mixed".Translate(lockerCount, dropPodCount);             }
             else if (lockerCount > 0)
             {
                 deliveryLine = "RICS.BICH.Letter.Delivery.Locker".Translate(lockerCount);
@@ -397,10 +396,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // Optional quality & material as separate lines
-            string extraSpecs = "";
+             string extraSpecs = "";
             if (quality.HasValue)
             {
-                extraSpecs += "\n" + "RICS.BICH.Letter.Quality".Translate(quality.Value.ToStringHuman());
+                extraSpecs += "\n" + "RICS.BICH.Letter.Quality".Translate(quality.Value.ToString());
             }
             if (material != null)
             {
