@@ -69,8 +69,7 @@ namespace CAP_ChatInteractive
         {
             get
             {
-                bool canConnect = !string.IsNullOrEmpty(BotUsername) &&
-                                 !string.IsNullOrEmpty(AccessToken) &&
+                bool canConnect = !string.IsNullOrEmpty(AccessToken) &&
                                  !string.IsNullOrEmpty(ChannelName);
 
                 //Logger.Debug($"CanConnect check - BotUsername: {!string.IsNullOrEmpty(BotUsername)}, " +

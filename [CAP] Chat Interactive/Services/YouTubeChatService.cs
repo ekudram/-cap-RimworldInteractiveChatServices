@@ -600,6 +600,7 @@ namespace CAP_ChatInteractive
                 var messages = MessageSplitter.SplitMessage(message, "youtube");
                 SendMessagesAsLetters(messages, "YouTube Chat Error");
             }
+           
         }
 
         private void SendSingleYouTubeMessage(string message)
