@@ -1,0 +1,79 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- Already Has Pawn -->
+  <RICS.BPCH.AlreadyHasPawn>You already have a pawn in the colony: {0}! Use !mypawn health to check on them.</RICS.BPCH.AlreadyHasPawn>
+
+  <!-- Race Validation -->
+  <RICS.BPCH.RaceNotFound>Race '{0}' not found or not humanlike.</RICS.BPCH.RaceNotFound>
+  <RICS.BPCH.RaceDisabled>Race '{0}' is disabled for purchase.</RICS.BPCH.RaceDisabled>
+  <RICS.BPCH.InvalidRaceRequest>Invalid pawn request for {0}.</RICS.BPCH.InvalidRaceRequest>
+
+  <!-- Age Validation -->
+  <RICS.BPCH.AgeOutOfRange>Age must be between {0} and {1} for {2}.</RICS.BPCH.AgeOutOfRange>
+
+  <!-- Xenotype Validation -->
+  <RICS.BPCH.XenotypeDisabled>Xenotype '{0}' is disabled for {1}.</RICS.BPCH.XenotypeDisabled>
+  <RICS.BPCH.CustomXenotypesDisabled>Custom xenotypes are not allowed for {0}.</RICS.BPCH.CustomXenotypesDisabled>
+
+  <!-- Price -->
+  <RICS.BPCH.InsufficientFunds>You need {0}{1} to purchase a {2} pawn! You have {3}{1}.</RICS.BPCH.InsufficientFunds>
+
+  <!-- Game State -->
+  <RICS.BPCH.GameNotReady>Game not ready for pawn purchase (no colony, in menu, etc.)</RICS.BPCH.GameNotReady>
+
+  <!-- Success - FIXED: Added missing parameters -->
+  <RICS.BPCH.PurchaseSuccess>Successfully purchased {0}{1} pawn for {2:N0}{3}! Welcome to the colony, {4}!</RICS.BPCH.PurchaseSuccess>
+
+  <!-- Generation Failures -->
+  <RICS.BPCH.NoHomeMap>No player home maps found.</RICS.BPCH.NoHomeMap>
+  <RICS.BPCH.PawnKindNotFound>Could not find pawn kind for race: {0}</RICS.BPCH.PawnKindNotFound>
+  <RICS.BPCH.RaceDefNotFound>Race '{0}' not found.</RICS.BPCH.RaceDefNotFound>
+  <RICS.BPCH.GenderNotAllowed>The {0} race allows {1}. Please choose a different gender or use 'random'.</RICS.BPCH.GenderNotAllowed>
+  <RICS.BPCH.SpawnLocationNotFound>Could not find valid spawn location for pawn.</RICS.BPCH.SpawnLocationNotFound>
+  <RICS.BPCH.GenerationError>Generation error: {0}</RICS.BPCH.GenerationError>
+  <RICS.BPCH.PawnGenerated>Pawn purchased successfully!</RICS.BPCH.PawnGenerated>
+
+  <!-- Gender Descriptions -->
+  <RICS.BPCH.Gender.None>no genders (custom race)</RICS.BPCH.Gender.None>
+  <RICS.BPCH.Gender.OnlyMale>only male</RICS.BPCH.Gender.OnlyMale>
+  <RICS.BPCH.Gender.OnlyFemale>only female</RICS.BPCH.Gender.OnlyFemale>
+  <RICS.BPCH.Gender.MaleOrFemale>male or female only (no other)</RICS.BPCH.Gender.MaleOrFemale>
+  <RICS.BPCH.Gender.Any>any gender</RICS.BPCH.Gender.Any>
+
+  <!-- Command Usage -->
+  <RICS.BPCH.Usage>You must specify a race. Usage: !pawn [race] [xenotype] [gender] [age]</RICS.BPCH.Usage>
+  <RICS.BPCH.RaceNotFound.Suggestion>Did you mean: {0}?</RICS.BPCH.RaceNotFound.Suggestion>
+  <RICS.BPCH.RaceNotFound.UseList>Use !races to see available races.</RICS.BPCH.RaceNotFound.UseList>
+  <RICS.BPCH.ParseError>Error parsing command. Usage: !pawn [race] [xenotype] [gender] [age]</RICS.BPCH.ParseError>
+
+  <!-- List Commands - FIXED: Removed {2} placeholder -->
+  <RICS.BPCH.NoRacesAvailable>No races available for purchase.</RICS.BPCH.NoRacesAvailable>
+  <RICS.BPCH.RacesList>Available races ({0} of {1} total)</RICS.BPCH.RacesList>
+  <RICS.BPCH.RacesList.More>(and {0} more...)</RICS.BPCH.RacesList.More>
+  <RICS.BPCH.RacesList.New>[NEW]</RICS.BPCH.RacesList.New>
+
+  <!-- Xenotypes - FIXED: Key name consistency -->
+  <RICS.BPCH.BiotechNotActive>Biotech DLC not active - only baseliners available.</RICS.BPCH.BiotechNotActive>
+  <RICS.BPCH.XenotypesForRace>Xenotypes available for {0}: {1}</RICS.BPCH.XenotypesForRace>
+  <RICS.BPCH.XenotypesForRace.More>(... {0} more)</RICS.BPCH.XenotypesForRace.More>
+  <RICS.BPCH.NoXenotypesFound>No xenotypes found (except Baseliner).</RICS.BPCH.NoXenotypesFound>
+  <RICS.BPCH.CommonXenotypes>Common xenotypes: {0}</RICS.BPCH.CommonXenotypes>
+  <RICS.BPCH.CommonXenotypes.More> (and many more - try !pawn [race] to see race-specific xenotypes)</RICS.BPCH.CommonXenotypes.More>
+  <RICS.BPCH.XenotypeListError>Error retrieving xenotype list. You can still use custom xenotype names.</RICS.BPCH.XenotypeListError>
+
+  <!-- MyPawn Command -->
+  <RICS.BPCH.MyPawn.HasPawn>Your pawn {0} is {1}. Health: {2}, Age: {3}, Traits: {4}/{5}</RICS.BPCH.MyPawn.HasPawn>
+  <RICS.BPCH.MyPawn.Status.AliveAndInColony>alive and in colony</RICS.BPCH.MyPawn.Status.AliveAndInColony>
+  <RICS.BPCH.MyPawn.Status.AliveNotInColony>alive but not in colony</RICS.BPCH.MyPawn.Status.AliveNotInColony>
+  <RICS.BPCH.MyPawn.NoPawn>You don't have an active pawn in the colony. Use !pawn to purchase one!</RICS.BPCH.MyPawn.NoPawn>
+
+  <!-- Letters -->
+  <RICS.BPCH.Letter.Title>New Colonist - {0}</RICS.BPCH.Letter.Title>
+  <RICS.BPCH.Letter.Text>{0} has purchased a {1}{2} of {3} years.\n\nCost: {4:N0}{5}\nPawn: {6}</RICS.BPCH.Letter.Text>
+
+  <!-- Debug -->
+  <RICS.BPCH.Debug.RaceNotFound>Race not found: {0}</RICS.BPCH.Debug.RaceNotFound>
+  <RICS.BPCH.Debug.NoPawnKindFound>No pawn kind found for race: {0}, using default Colonist</RICS.BPCH.Debug.NoPawnKindFound>
+  
+</LanguageData>

@@ -20,6 +20,7 @@ using _CAP__Chat_Interactive.Utilities;
 using RimWorld;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Verse;
 
@@ -40,7 +41,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Pawn existingPawn = assignmentManager.GetAssignedPawn(messageWrapper);
                 if (existingPawn != null)
                 {
-                    return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn health to check on them.";
+                    // return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn health to check on them.";
+                    return "RICS.BPCH.AlreadyHasPawn".Translate(existingPawn.Name.ToStringFull);
                 }
                 // EXtra check and modified.  Redundant now but lets keep it for a bit.
                 // SIMPLIFIED: Check if viewer already has a pawn assigned using direct dictionary lookup
@@ -55,7 +57,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
                         if (existingPawn != null && !existingPawn.Dead && existingPawn.Faction == Faction.OfPlayer)
                         {
-                            return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
+                            // return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
+                            return "RICS.BPCH.AlreadyHasPawn".Translate(existingPawn.Name.ToStringFull);
                         }
                     }
 
@@ -66,7 +69,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
                         if (existingPawn != null && !existingPawn.Dead && existingPawn.Spawned)
                         {
-                            return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
+                            // return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
+                            return "RICS.BPCH.AlreadyHasPawn".Translate(existingPawn.Name.ToStringFull);
                         }
                     }
                 }
@@ -79,12 +83,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     // Provide specific error messages
                     if (raceSettings == null)
-                        return $"Race '{raceName}' not found or not humanlike.";
+                        // return $"Race '{raceName}' not found or not humanlike.";
+                        return "RICS.BPCH.RaceNotFound".Translate(raceName);
 
                     if (!raceSettings.Enabled)
-                        return $"Race '{raceName}' is disabled for purchase.";
+                        // return $"Race '{raceName}' is disabled for purchase.";
+                        return "RICS.BPCH.RaceDisabled".Translate(raceName);
 
-                    return $"Invalid pawn request for {raceName}.";
+                    // return $"Invalid pawn request for {raceName}.";
+                    return "RICS.BPCH.InvalidRaceRequest".Translate(raceName);  
                 }
 
                 // NOW parse age with the validated raceSettings
@@ -93,7 +100,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Validate age against race settings
                 if (age < raceSettings.MinAge || age > raceSettings.MaxAge)
                 {
-                    return $"Age must be between {raceSettings.MinAge} and {raceSettings.MaxAge} for {raceName}.";
+                    // return $"Age must be between {raceSettings.MinAge} and {raceSettings.MaxAge} for {raceName}.";
+                    return "RICS.BPCH.AgeOutOfRange".Translate(raceName, raceSettings.MinAge, raceSettings.MaxAge);
                 }
 
                 // Validate xenotype if applicable - FIXED: Added null check for raceSettings
@@ -104,13 +112,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         raceSettings.EnabledXenotypes.ContainsKey(xenotypeName) &&
                         !raceSettings.EnabledXenotypes[xenotypeName])
                     {
-                        return $"Xenotype '{xenotypeName}' is disabled for {raceName}.";
+                        // return $"Xenotype '{xenotypeName}' is disabled for {raceName}.";
+                        return "RICS.BPCH.XenotypeDisabled".Translate(xenotypeName, raceName);
                     }
 
                     // Or if you want to check if it's allowed at all
                     if (!raceSettings.AllowCustomXenotypes && xenotypeName != "Baseliner")
                     {
-                        return $"Custom xenotypes are not allowed for {raceName}.";
+                        // return $"Custom xenotypes are not allowed for {raceName}.";
+                        return "RICS.BPCH.CustomXenotypesDisabled".Translate(raceName);
                     }
                 }
 
@@ -122,12 +132,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Check if viewer can afford
                 if (viewer.Coins < finalPrice)
                 {
-                    return $"You need {finalPrice}{currencySymbol} to purchase a {raceName} pawn! You have {viewer.Coins}{currencySymbol}.";
+                    // return $"You need {finalPrice}{currencySymbol}
+                    // to purchase a {raceName} pawn! You have {viewer.Coins}{currencySymbol}.";
+                    return "RICS.BPCH.InsufficientFunds"
+                        .Translate(finalPrice, currencySymbol, raceName, viewer.Coins, currencySymbol);
                 }
 
                 if (!IsGameReadyForPawnPurchase())
                 {
-                    return "Game not ready for pawn purchase (no colony, in menu, etc.)";
+                    // return "Game not ready for pawn purchase (no colony, in menu, etc.)";
+                    return "RICS.BPCH.GameNotReady".Translate();
                 }
 
                 var result = GenerateAndSpawnPawn(messageWrapper.Username, raceName, xenotypeName, genderName, age, raceSettings);
@@ -149,12 +163,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     string ageInfo = ageString != "Random" ? $", Age: {age}" : "";
 
                     // Send gold letter for pawn purchases (always considered major)
-                    MessageHandler.SendGoldLetter(
-                        $"New Colonist - {messageWrapper.Username}",
-                        $"{messageWrapper.Username} has purchased a {raceName}{xenotypeInfo} of {ageInfo} years.\n\nCost: {finalPrice:N0}{currencySymbol}\nPawn: {result.Pawn?.Name?.ToStringFull ?? "Unknown"}"
-                    );
+                    string goldLetterTitle = "RICS.BPCH.Letter.Title".Translate(raceName);
+                    string goldLetterText = "RICS.BPCH.Letter.Text"
+                        .Translate(messageWrapper.Username, raceName, xenotypeInfo, ageInfo, finalPrice,
+                        currencySymbol, result.Pawn?.Name?.ToStringFull ?? "Unknown");
+                    //MessageHandler.SendGoldLetter(
+                    //    $"New Colonist - {messageWrapper.Username}",
+                    //    $"{messageWrapper.Username} has purchased a {raceName}{xenotypeInfo} of {ageInfo} years.
+                    //    \n\nCost: {finalPrice:N0}{currencySymbol}\nPawn: {result.Pawn?.Name?.ToStringFull ?? "Unknown"}"
+                    //    );
+                    MessageHandler.SendGoldLetter(goldLetterTitle, goldLetterText);
 
-                    return $"Successfully purchased {raceName} pawn for {finalPrice:N0}{currencySymbol}! Welcome to the colony!";
+
+                    // return $"Successfully purchased {raceName} pawn for {finalPrice:N0}{currencySymbol}! Welcome to the colony!";
+                    return "RICS.BPCH.PurchaseSuccess".Translate(
+                        raceName,           // {0}
+                        xenotypeInfo,       // {1}
+                        finalPrice,         // {2}
+                        currencySymbol,     // {3}
+                        messageWrapper.Username // {4}
+                    );
                 }
                 else
                 {
@@ -164,7 +192,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error handling buy pawn command: {ex}");
-                return "Error purchasing pawn. Please try again.";
+                return "Error purchasing pawn. Check log and copy stack trace for developer!";
             }
         }
 
@@ -175,7 +203,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var playerMaps = Current.Game.Maps.Where(map => map.IsPlayerHome).ToList();
                 if (!playerMaps.Any())
                 {
-                    return new BuyPawnResult(false, "No player home maps found.");
+                    // return new BuyPawnResult(false, "No player home maps found.");
+                    return new BuyPawnResult(false, "RICS.BPCH.NoHomeMap".Translate()); 
                 }
 
                 var map = playerMaps.First();
@@ -184,7 +213,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var pawnKindDef = GetPawnKindDefForRace(raceName);
                 if (pawnKindDef == null)
                 {
-                    return new BuyPawnResult(false, $"Could not find pawn kind for race: {raceName}");
+                    // return new BuyPawnResult(false, $"Could not find pawn kind for race: {raceName}");
+                    return new BuyPawnResult(false, "RICS.BPCH.PawnKindNotFound".Translate(raceName));
                 }
 
                 // Get xenotype def if specified and Biotech is active
@@ -204,11 +234,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var raceDef = RaceUtils.FindRaceByName(raceName);
                 if (raceDef == null)
                 {
-                    return new BuyPawnResult(false, $"Race '{raceName}' not found.");
+                    // return new BuyPawnResult(false, $"Race '{raceName}' not found.");
+                    return new BuyPawnResult(false, "RICS.BPCH.RaceDefNotFound".Translate(raceName));
                 }
 
                 // Validate gender against race restrictions
-                // Validate gender against race restrictions - USE CENTRALIZED SETTINGS
                 //var raceSettings = RaceSettingsManager.GetRaceSettings(raceDef.defName);
                 if (raceSettings != null)
                 {
@@ -216,8 +246,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     if (requestedGender.HasValue && !IsGenderAllowed(raceSettings.AllowedGenders, requestedGender.Value))
                     {
                         string allowedText = GetAllowedGendersDescription(raceSettings.AllowedGenders);
+                        //return new BuyPawnResult(false,
+                        //    $"The {raceName} race allows {allowedText}. Please choose a different gender or use 'random'.");
                         return new BuyPawnResult(false,
-                            $"The {raceName} race allows {allowedText}. Please choose a different gender or use 'random'.");
+                            "RICS.BPCH.GenderNotAllowed".Translate(raceName, allowedText)); 
                     }
                 }
 
@@ -265,7 +297,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Use improved pawn spawning that works for space biomes
                 if (!TrySpawnPawnInSpaceBiome(pawn, map))
                 {
-                    return new BuyPawnResult(false, "Could not find valid spawn location for pawn.");
+                    // return new BuyPawnResult(false, "Could not find valid spawn location for pawn.");
+                    return new BuyPawnResult(false, "RICS.BPCH.SpawnLocationNotFound".Translate());
                 }
 
                 // Send letter notification we do this when we reture
@@ -275,12 +308,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 // Find.LetterStack.ReceiveLetter(letterTitle, letterText, LetterDefOf.PositiveEvent, pawn);
 
-                return new BuyPawnResult(true, "Pawn purchased successfully!", pawn);
+                // return new BuyPawnResult(true, "Pawn purchased successfully!", pawn);
+                return new BuyPawnResult(true, "RICS.BPCH.PawnGenerated".Translate(), pawn);
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error generating pawn: {ex}");
-                return new BuyPawnResult(false, $"Generation error: {ex.Message}");
+                // return new BuyPawnResult(false, $"Generation error: {ex.Message}");
+                return new BuyPawnResult(false, "RICS.BPCH.GenerationError".Translate(ex.Message)); 
             }
         }
 
@@ -290,13 +325,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Use centralized race lookup
             var raceDef = RaceUtils.FindRaceByName(raceName);
             
-            
-            
             if (raceDef == null)
-
-
             {
-                Logger.Warning($"Race not found: {raceName}");
+                // Logger.Warning($"Race not found: {raceName}");
+                Logger.Warning("RICS.BPCH.Debug.RaceNotFound".Translate(raceName));
                 return PawnKindDefOf.Colonist;
             }
 
@@ -354,7 +386,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // Final fallback
-            Logger.Warning($"No pawn kind found for race: {raceDef.defName}, using default Colonist");
+            // Logger.Warning($"No pawn kind found for race: {raceDef.defName}, using default Colonist");
+            Logger.Warning("RICS.BPCH.Debug.NoPawnKindFound".Translate(raceDef.defName));   
             return PawnKindDefOf.Colonist;
         }
 
@@ -587,28 +620,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return null;
         }
 
-        private static bool DoesViewerHavePawnByName(string username)
-        {
-            // Search all maps for pawns with the viewer's username as nickname
-            foreach (var map in Find.Maps)
-            {
-                foreach (var pawn in map.mapPawns.AllPawns)
-                {
-                    if (pawn.Name is NameTriple nameTriple &&
-                        nameTriple.Nick.Equals(username, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return true;
-                    }
-                    else if (pawn.Name is NameSingle nameSingle &&
-                             nameSingle.Name.Equals(username, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
         private static Gender? ParseGender(string genderName)
         {
             if (string.IsNullOrEmpty(genderName)) return null;
@@ -619,22 +630,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 "female" or "f" => Gender.Female,
                 _ => null // Random gender
             };
-        }
-
-        public static void CleanupDeadPawnAssignments()
-        {
-            foreach (var viewer in Viewers.All)
-            {
-                if (!string.IsNullOrEmpty(viewer.AssignedPawnId))
-                {
-                    var pawn = FindPawnByThingId(viewer.AssignedPawnId);
-                    if (pawn == null || pawn.Dead)
-                    {
-                        viewer.AssignedPawnId = null;
-                    }
-                }
-            }
-            Viewers.SaveViewers();
         }
 
         // Helper methods
@@ -653,18 +648,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string GetAllowedGendersDescription(AllowedGenders allowedGenders)
         {
             if (!allowedGenders.AllowMale && !allowedGenders.AllowFemale && !allowedGenders.AllowOther)
-                return "no genders (custom race)";
+                // return "no genders (custom race)";
+                return "RICS.BPCH.Gender.None".Translate();
 
             if (allowedGenders.AllowMale && !allowedGenders.AllowFemale && !allowedGenders.AllowOther)
-                return "only male";
+                // return "only male";
+                return "RICS.BPCH.Gender.OnlyMale".Translate();
 
             if (!allowedGenders.AllowMale && allowedGenders.AllowFemale && !allowedGenders.AllowOther)
-                return "only female";
+                // return "only female";
+                return "RICS.BPCH.Gender.OnlyFemale".Translate();   
 
             if (allowedGenders.AllowMale && allowedGenders.AllowFemale && !allowedGenders.AllowOther)
-                return "male or female only (no other)";
+                // return "male or female only (no other)";
+                return "RICS.BPCH.Gender.MaleOrFemale".Translate();
 
-            return "any gender";
+            // return "any gender";
+            return "RICS.BPCH.Gender.Any".Translate();
         }
 
         private static bool TrySpawnPawnInSpaceBiome(Pawn pawn, Map map)
@@ -776,7 +776,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Validate that we have at least a race name
                 if (string.IsNullOrEmpty(raceName))
                 {
-                    return "You must specify a race. Usage: !pawn [race] [xenotype] [gender] [age]";
+                    // return "You must specify a race. Usage: !pawn [race] [xenotype] [gender] [age]";
+                    return "RICS.BPCH.Usage".Translate();   
                 }
 
                 // Check if the race exists - try to find it
@@ -793,15 +794,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         .Take(3)
                         .ToList();
 
-                    string errorMessage = $"Race '{raceName}' not found.";
+                    string errorMessage = "RICS.BPCH.RaceNotFound".Translate(raceName);
 
                     if (similarRaces.Any())
                     {
-                        errorMessage += $" Did you mean: {string.Join(", ", similarRaces)}?";
+                        errorMessage += " " + "RICS.BPCH.RaceNotFound.Suggestion".Translate(string.Join(", ", similarRaces));
                     }
                     else
                     {
-                        errorMessage += " Use !races to see available races.";
+                        errorMessage += " " + "RICS.BPCH.RaceNotFound.UseList".Translate();
                     }
 
                     return errorMessage;
@@ -973,7 +974,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (availableRaces.Count == 0)
             {
-                return "No races available for purchase.";
+                // return "No races available for purchase.";
+                return "RICS.BPCH.NoRacesAvailable".Translate();
             }
 
             // Also show how many total races exist for context
@@ -992,13 +994,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 var inSettings = raceSettings.ContainsKey(r.defName);
                 var settings = inSettings ? raceSettings[r.defName] : null;
-                return $"{r.LabelCap.RawText}{(inSettings ? "" : " [NEW]")}";
+                return $"{r.LabelCap.RawText}{(inSettings ? "" : " " + "RICS.BPCH.RacesList.New".Translate())}";
             });
 
-            string result = $"Available races ({availableRaces.Count} of {allRaces.Count()} total): {string.Join(", ", raceList.Take(8))}";
-
+            // string result = $"Available races ({availableRaces.Count} of {allRaces.Count()} total): {string.Join(", ", raceList.Take(8))}";
+            string result = "RICS.BPCH.RacesList".Translate(availableRaces.Count, allRaces.Count()) +
+                ": " + string.Join(", ", raceList.Take(8));
             if (availableRaces.Count > 8)
-                result += $" (and {availableRaces.Count - 8} more...)";
+                // result += $" (and {availableRaces.Count - 8} more...)";
+                result += " " + "RICS.BPCH.RacesList.More".Translate(availableRaces.Count - 8);
 
             // removed extra info
             //if (availableRaces.Count < allRaces.Count())
@@ -1011,7 +1015,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             if (!ModsConfig.BiotechActive)
             {
-                return "Biotech DLC not active - only baseliners available.";
+                // return "Biotech DLC not active - only baseliners available.";
+                return "RICS.BPCH.BiotechNotActive".Translate();
             }
 
             try
@@ -1033,8 +1038,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                 .Take(12)
                                 .ToList();
 
-                            return $"Xenotypes available for {raceDef.LabelCap}: {string.Join(", ", enabledXenotypes)}" +
-                                   (allowedXenotypes.Count > 12 ? $" (... {allowedXenotypes.Count - 12} more)" : "");
+                            //return $"Xenotypes available for {raceDef.LabelCap}: {string.Join(", ", enabledXenotypes)}" +
+                            //       (allowedXenotypes.Count > 12 ? $" (... {allowedXenotypes.Count - 12} more)" : "");
+
+                            var resultRace = "RICS.BPCH.XenotypesForRace".Translate(
+                                raceDef.LabelCap,
+                                string.Join(", ", enabledXenotypes)
+                            );
+
+                            if (allowedXenotypes.Count > 12)
+                            {
+                                resultRace += " " + "RICS.BPCH.XenotypesForRace.More".Translate(allowedXenotypes.Count - 12);
+                            }
+
+                            return resultRace;
                         }
                     }
                 }
@@ -1051,16 +1068,25 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (!allXenotypes.Any())
                 {
-                    return "No xenotypes found (except Baseliner).";
+                    // return "No xenotypes found (except Baseliner).";
+                    return "RICS.BPCH.NoXenotypesFound".Translate();
                 }
 
-                return $"Common xenotypes: {string.Join(", ", allXenotypes)}" +
-                       (allXenotypes.Count >= 15 ? " (and many more - try !pawn <race> to see race-specific xenotypes)" : "");
+                // return $"Common xenotypes: {string.Join(", ", allXenotypes)}" + (allXenotypes.Count >= 15 ? " (and many more - try !pawn <race> to see race-specific xenotypes)" : "");
+                var result = "RICS.BPCH.CommonXenotypes".Translate(string.Join(", ", allXenotypes));
+
+                if (allXenotypes.Count >= 15)
+                {
+                    result += " " + "RICS.BPCH.CommonXenotypes.More".Translate();
+                }
+
+                return result;
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error listing xenotypes: {ex}");
-                return "Error retrieving xenotype list. You can still use custom xenotype names.";
+                // return "Error retrieving xenotype list. You can still use custom xenotype names.";
+                return "RICS.BPCH.XenotypeListError".Translate();
             }
         }
 
@@ -1094,48 +1120,29 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (pawn != null)  // Found assigned pawn even pawn.Dead 
             {
-                string status = pawn.Spawned ? "alive and in colony" : "alive but not in colony";
+                // string status = pawn.Spawned ? "alive and in colony" : "alive but not in colony";
+                string status = pawn.Spawned ? "RICS.BPCH.MyPawn.Status.AliveAndInColony".Translate() : "RICS.BPCH.MyPawn.Status.AliveNotInColony".Translate();
                 string health = pawn.health.summaryHealth.SummaryHealthPercent.ToStringPercent();
                 int traitCount = pawn.story?.traits?.allTraits?.Count ?? 0;
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 int maxTraits = settings?.MaxTraits ?? 4;
 
-                return $"Your pawn {pawn.Name} is {status}. Health: {health}, Age: {pawn.ageTracker.AgeBiologicalYears}, Traits: {traitCount}/{maxTraits}";
+                // return $"Your pawn {pawn.Name} is {status}. Health: {health}, Age: {pawn.ageTracker.AgeBiologicalYears}, Traits: {traitCount}/{maxTraits}";
+
+                return "RICS.BPCH.MyPawn.HasPawn".Translate(
+                    pawn.Name.ToString(), // Convert Name to string
+                    status,
+                    health,
+                    pawn.ageTracker.AgeBiologicalYears.ToString(), // Convert int to string
+                    traitCount.ToString(), // Convert int to string
+                    maxTraits.ToString() // Convert int to string
+                );
             }
             else
             {
-                return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
+                // return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
+                return "RICS.BPCH.MyPawn.NoPawn".Translate();
             }
-        }
-
-        public static string DebugRaceSettings(string raceName)
-        {
-            var raceDef = DefDatabase<ThingDef>.AllDefs.FirstOrDefault(
-                d => d.race?.Humanlike == true &&
-                (d.defName.Equals(raceName, StringComparison.OrdinalIgnoreCase) ||
-                 d.label.Equals(raceName, StringComparison.OrdinalIgnoreCase)));
-
-            if (raceDef == null)
-                return $"Race not found: {raceName}";
-
-            var settings = JsonFileManager.GetRaceSettings(raceDef.defName);
-
-            return $"Race: {raceDef.defName}, Enabled: {settings.Enabled}, Price: {settings.BasePrice}, " +
-                   $"MinAge: {settings.MinAge}, MaxAge: {settings.MaxAge}";
-        }
-
-        public static string TestPawnKindSelection(string raceName)
-        {
-            var raceDef = RaceUtils.FindRaceByName(raceName);
-            if (raceDef == null) return $"Race not found: {raceName}";
-
-            var selectedPawnKind = GetPawnKindDefForRace(raceName);
-            if (selectedPawnKind != null)
-            {
-                return $"Selected pawn kind for {raceName}: {selectedPawnKind.defName} (Faction: {selectedPawnKind.defaultFactionDef?.defName ?? "None"}, isPlayer: {selectedPawnKind.defaultFactionDef?.isPlayer ?? false})";
-            }
-
-            return $"No pawn kind found for {raceName}, using default Colonist";
         }
     }
 
