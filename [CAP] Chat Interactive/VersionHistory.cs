@@ -422,11 +422,18 @@ Dialog Pawn Queue translation keys complete
 Dialog Pawn Race Settings translation keys complete
 Window For Quality and Research translation keys complete"
                 },
-            {"1.19",@"
+            {"1.19a",@"
 ===============================================================================
-                            RICS 1.19 - Update
+                            RICS 1.19a - Update/Hotfix
 ===============================================================================
-Released: February 14, 2026
+Released: February 15, 2026
+
+===============================================================================
+HOTFIX:
+===============================================================================
+- Json persistence files now persist across saves and games,
+  • Was not saving properly before, when changed from Settings.
+
 
 ===============================================================================
 NEW FEATURES:
@@ -475,6 +482,8 @@ Added or fixed translation keys for:
 - Chat Interactive Settings window
 - Pawn Race Settings Window
 - Raid Strategies Window
+- Buy Items Command Handler Return Messages (1.19a)
+- Buy Pawn Command Handler Return Messages  (1.19a)
 
 ===============================================================================
 NOTES:

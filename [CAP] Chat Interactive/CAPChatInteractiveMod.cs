@@ -18,8 +18,6 @@
 // Store, Traits, Weather, and other systems will be initialized when the game starts.
 
 using _CAP__Chat_Interactive.Interfaces;
-//using _CAP__Chat_Interactive.Items;
-using HarmonyLib;
 using RimWorld;
 using System;   
 using System.IO;
