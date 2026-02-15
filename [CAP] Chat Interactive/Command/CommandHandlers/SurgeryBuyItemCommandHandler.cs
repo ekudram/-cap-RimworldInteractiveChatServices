@@ -1,4 +1,4 @@
-﻿ // Copyright (c) Captolamia
+﻿// Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+using _CAP__Chat_Interactive.Command.CommandHelpers;
 using CAP_ChatInteractive.Utilities;
 using RimWorld;
 using System;

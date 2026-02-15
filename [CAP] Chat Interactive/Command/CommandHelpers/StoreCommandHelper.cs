@@ -17,6 +17,7 @@
 //
 // Helper methods for store command handling
 using _CAP__Chat_Interactive.Utilities;
+using CAP_ChatInteractive;
 using CAP_ChatInteractive.Store;
 using RimWorld;
 using System;
@@ -24,8 +25,9 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Verse;
+using Logger = CAP_ChatInteractive.Logger;
 
-namespace CAP_ChatInteractive.Commands.CommandHandlers
+namespace _CAP__Chat_Interactive.Command.CommandHelpers
 {
     public static class StoreCommandHelper 
     {

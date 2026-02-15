@@ -16,7 +16,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Passion command handler
-using CAP_ChatInteractive.Commands.CommandHandlers;
+using _CAP__Chat_Interactive.Command.CommandHelpers;
 using RimWorld;
 using System;
 using System.Collections.Generic;

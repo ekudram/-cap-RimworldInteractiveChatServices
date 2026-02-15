@@ -15,6 +15,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Command handler for buying items from Rimazon store
+using _CAP__Chat_Interactive.Command.CommandHelpers;
 using CAP_ChatInteractive.Commands.Cooldowns;
 using CAP_ChatInteractive.Store;
 using CAP_ChatInteractive.Utilities;

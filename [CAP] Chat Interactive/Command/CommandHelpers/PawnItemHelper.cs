@@ -18,11 +18,12 @@
 //
 // Helper methods for store command handling
 
+using CAP_ChatInteractive;
 using RimWorld;
 using System;
 using Verse;
 
-namespace CAP_ChatInteractive.Commands.CommandHandlers
+namespace _CAP__Chat_Interactive.Command.CommandHelpers
 {
     public static class PawnItemHelper
     {

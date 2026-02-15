@@ -16,6 +16,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Commands for purchasing and using items from the in-game store.
+using _CAP__Chat_Interactive.Command.CommandHelpers;
 using CAP_ChatInteractive.Commands.CommandHandlers;
 using CAP_ChatInteractive.Commands.Cooldowns;
 using CAP_ChatInteractive.Utilities;

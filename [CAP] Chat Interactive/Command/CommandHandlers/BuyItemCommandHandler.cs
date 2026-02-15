@@ -15,6 +15,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Command handler for buying items from Rimazon store
+using _CAP__Chat_Interactive.Command.CommandHelpers;
 using CAP_ChatInteractive.Commands.Cooldowns;
 using CAP_ChatInteractive.Utilities;
 using RimWorld;
@@ -23,7 +24,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Verse;
-using static CAP_ChatInteractive.Commands.CommandHandlers.StoreCommandHelper;
+using static _CAP__Chat_Interactive.Command.CommandHelpers.StoreCommandHelper;
 using Pawn = CAP_ChatInteractive.Commands.ViewerCommands.Pawn;
 
 namespace CAP_ChatInteractive.Commands.CommandHandlers

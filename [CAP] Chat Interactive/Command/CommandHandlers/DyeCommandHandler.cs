@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 
-using CAP_ChatInteractive.Commands.CommandHandlers;
+using _CAP__Chat_Interactive.Command.CommandHelpers;
 using CAP_ChatInteractive.Helpers;
 using RimWorld;
 using System;

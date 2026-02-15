@@ -17,14 +17,16 @@
 //
 // Helper methods for store command handling
 
+using CAP_ChatInteractive;
 using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Verse;
-using static CAP_ChatInteractive.Commands.CommandHandlers.StoreCommandHelper;
-namespace CAP_ChatInteractive.Commands.CommandHandlers
+using static _CAP__Chat_Interactive.Command.CommandHelpers.StoreCommandHelper;
+using Logger = CAP_ChatInteractive.Logger;
+namespace _CAP__Chat_Interactive.Command.CommandHelpers
 {
     public class DeliveryResult
     {

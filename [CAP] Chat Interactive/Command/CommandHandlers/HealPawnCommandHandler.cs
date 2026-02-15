@@ -16,6 +16,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Command handler for the !healpawn command
+using _CAP__Chat_Interactive.Command.CommandHelpers;
 using CAP_ChatInteractive.Commands.Cooldowns;
 using CAP_ChatInteractive.Commands.ViewerCommands;
 using CAP_ChatInteractive.Store;

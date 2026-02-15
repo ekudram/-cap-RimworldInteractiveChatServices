@@ -17,13 +17,14 @@
 //
 // Helper methods for store command handling
 
+using CAP_ChatInteractive;
 using CAP_ChatInteractive.Store;
 using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Verse;
-namespace CAP_ChatInteractive.Commands.CommandHandlers
+namespace _CAP__Chat_Interactive.Command.CommandHelpers
 {
     public static class ItemConfigHelper
     {
