@@ -390,7 +390,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 float pricePerItem = (float)price / quantity;
                 int dropPodPrice = (int)(pricePerItem * dropPodCount);
 
-                pricingBreakdown = $"\n" + "RICS.BICH.Letter.Pricing.Locker".Translate(lockerCount.ToString(), currencySymbol) +
+                pricingBreakdown = "\n" + "RICS.BICH.Letter.Pricing.Locker".Translate(lockerCount.ToString(), currencySymbol) +
                                   "RICS.BICH.Letter.Pricing.DropPod".Translate(dropPodCount.ToString(), dropPodPrice.ToString("N0"), currencySymbol) +
                                   "\n" + "RICS.BICH.Letter.Pricing.Total".Translate(price.ToString("N0"), currencySymbol) + "\n";
             }
