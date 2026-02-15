@@ -146,6 +146,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var result = GenerateAndSpawnPawn(messageWrapper.Username, raceName, xenotypeName, genderName, age, raceSettings);
 
+                // In HandleBuyPawnCommandInternal, update the success block:
+
                 if (result.Success)
                 {
                     // Deduct coins and update karma
@@ -158,31 +160,47 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         assignmentManager.AssignPawnToViewer(messageWrapper, result.Pawn);
                     }
 
+                    // Get location info AFTER spawn
+                    string locationInfo = "";
+                    if (result.Pawn != null && result.Pawn.Spawned && result.Pawn.Map != null)
+                    {
+                        IntVec3 pos = result.Pawn.Position;
+                        string mapName = result.Pawn.Map.Parent.LabelCap ?? "Home Map";
+                        locationInfo = $"RICS.BPCH.Letter.Delivery".Translate(pos.x, pos.z, mapName);  // Note: y is usually 0
+                    }
+                    else
+                    {
+                        locationInfo = "RICS.BPCH.Letter.Delivery.Unknown".Translate();
+                    }
+
                     // Send notification
                     string xenotypeInfo = xenotypeName != "Baseliner" ? $" ({xenotypeName})" : "";
                     string ageInfo = ageString != "Random" ? $", Age: {age}" : "";
 
                     // Send gold letter for pawn purchases (always considered major)
                     string goldLetterTitle = "RICS.BPCH.Letter.Title".Translate(raceName);
-                    string goldLetterText = "RICS.BPCH.Letter.Text"
-                        .Translate(messageWrapper.Username, raceName, xenotypeInfo, ageInfo, finalPrice,
-                        currencySymbol, result.Pawn?.Name?.ToStringFull ?? "Unknown");
-                    //MessageHandler.SendGoldLetter(
-                    //    $"New Colonist - {messageWrapper.Username}",
-                    //    $"{messageWrapper.Username} has purchased a {raceName}{xenotypeInfo} of {ageInfo} years.
-                    //    \n\nCost: {finalPrice:N0}{currencySymbol}\nPawn: {result.Pawn?.Name?.ToStringFull ?? "Unknown"}"
-                    //    );
-                    MessageHandler.SendGoldLetter(goldLetterTitle, goldLetterText);
-
-
-                    // return $"Successfully purchased {raceName} pawn for {finalPrice:N0}{currencySymbol}! Welcome to the colony!";
-                    return "RICS.BPCH.PurchaseSuccess".Translate(
-                        raceName,           // {0}
-                        xenotypeInfo,       // {1}
-                        finalPrice,         // {2}
-                        currencySymbol,     // {3}
-                        messageWrapper.Username // {4}
+                    string goldLetterText = "RICS.BPCH.Letter.Text".Translate(
+                        messageWrapper.Username,
+                        raceName,
+                        xenotypeInfo,
+                        age.ToString(),
+                        finalPrice.ToString("N0"),
+                        currencySymbol,
+                        result.Pawn?.Name.ToStringFull ?? "Unnamed",
+                        locationInfo  // New {7} placeholder
                     );
+
+                    // Pass the pawn as look target so clicking the letter jumps to it
+                    MessageHandler.SendGoldLetter(goldLetterTitle, goldLetterText, new LookTargets(result.Pawn));
+
+                    // Return success message with more details
+                    return "RICS.BPCH.PurchaseSuccess".Translate(
+                        raceName,
+                        xenotypeInfo,
+                        finalPrice,
+                        currencySymbol,
+                        result.Pawn?.Name.ToStringFull ?? "your new pawn"
+                    ) + $" {locationInfo}";  // Optional: add location to chat response too
                 }
                 else
                 {

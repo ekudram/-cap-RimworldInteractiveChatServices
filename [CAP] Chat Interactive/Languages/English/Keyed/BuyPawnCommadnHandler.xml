@@ -69,11 +69,29 @@
   <RICS.BPCH.MyPawn.NoPawn>You don't have an active pawn in the colony. Use !pawn to purchase one!</RICS.BPCH.MyPawn.NoPawn>
 
   <!-- Letters -->
-  <RICS.BPCH.Letter.Title>New Colonist - {0}</RICS.BPCH.Letter.Title>
+  <RICS.BPCH.Letter.Title>Rimazon Pawn Delivery - {0}</RICS.BPCH.Letter.Title>
   <RICS.BPCH.Letter.Text>{0} has purchased a {1}{2} of {3} years.\n\nCost: {4:N0}{5}\nPawn: {6}</RICS.BPCH.Letter.Text>
 
   <!-- Debug -->
   <RICS.BPCH.Debug.RaceNotFound>Race not found: {0}</RICS.BPCH.Debug.RaceNotFound>
   <RICS.BPCH.Debug.NoPawnKindFound>No pawn kind found for race: {0}, using default Colonist</RICS.BPCH.Debug.NoPawnKindFound>
+
+  <!-- Invoice-style Body -->
+  <RICS.BPCH.Letter.Text>
+    RIMAZON PAWN INVOICE
+    ====================
+    Customer: {0}
+    Pawn: {1}{2}, Age: {3}
+    Delivery: {7}
+    ====================
+    Total: {4}{5}
+    ====================
+    Welcome to the colony, {6}!
+    Satisfaction guaranteed or your coins back!
+  </RICS.BPCH.Letter.Text>
+
+  <!-- New keys for delivery -->
+  <RICS.BPCH.Letter.Delivery>Spawned at ({0}, {1}) on {2}</RICS.BPCH.Letter.Delivery>
+  <RICS.BPCH.Letter.Delivery.Unknown>Location unknown (pawn not spawned properly)</RICS.BPCH.Letter.Delivery.Unknown>
   
 </LanguageData>
