@@ -373,53 +373,82 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         private static string CreateRimazonInvoice(string username, string itemName, int quantity, int price,
-    string currencySymbol, QualityCategory? quality, ThingDef material, DeliveryResult deliveryResult)
+            string currencySymbol, QualityCategory? quality, ThingDef material, DeliveryResult deliveryResult)
         {
-            // Get counts from delivery result
             int lockerCount = deliveryResult.LockerDeliveredItems.Sum(t => t.stackCount);
             int dropPodCount = deliveryResult.DropPodDeliveredItems.Sum(t => t.stackCount);
 
-            // Build the delivery details section
-            string deliveryDetails = BuildDeliveryDetails(lockerCount, dropPodCount, quality, material);
+            // ───────────────────────────────────────────────
+            // Build clean delivery line(s)
+            // ───────────────────────────────────────────────
+            string deliveryLine = "";
 
-            // Build the pricing breakdown for mixed delivery if needed
-            string pricingBreakdown = "";
             if (lockerCount > 0 && dropPodCount > 0)
             {
-                // Calculate price per item
-                float pricePerItem = (float)price / quantity;
-                int dropPodPrice = (int)(pricePerItem * dropPodCount);
-
-                pricingBreakdown = "\n" + "RICS.BICH.Letter.Pricing.Locker".Translate(lockerCount.ToString(), currencySymbol) +
-                                  "RICS.BICH.Letter.Pricing.DropPod".Translate(dropPodCount.ToString(), dropPodPrice.ToString("N0"), currencySymbol) +
-                                  "\n" + "RICS.BICH.Letter.Pricing.Total".Translate(price.ToString("N0"), currencySymbol) + "\n";
-            }
-            else
-            {
-                pricingBreakdown = "\n" + "RICS.BICH.Letter.Pricing.Total".Translate(price.ToString("N0"), currencySymbol) + "\n";
-            }
-
-            // Combine all parts into the full invoice
-            string invoice = "RICS.BICH.Letter.Body.Standard".Translate(
-                username,
-                itemName,
-                quantity.ToString(),
-                deliveryDetails + pricingBreakdown,  // This goes into the {3} placeholder
-                price.ToString("N0"),                 // This goes into {4}
-                currencySymbol                         // This goes into {5}
-            );
-
-            // Add delivery method notes if needed
-            if (lockerCount > 0 && dropPodCount > 0)
-            {
-                invoice += "\n" + "RICS.BICH.Letter.Mixed.Note".Translate();
+                deliveryLine = "RICS.BICH.Letter.Delivery.Mixed".Translate(lockerCount, dropPodCount);
             }
             else if (lockerCount > 0)
             {
-                invoice += "\n" + "RICS.BICH.Letter.Locker.Note".Translate();
+                deliveryLine = "RICS.BICH.Letter.Delivery.Locker".Translate(lockerCount);
+            }
+            else
+            {
+                deliveryLine = "RICS.BICH.Letter.Delivery.DropPod".Translate();
             }
 
-            return invoice;
+            // Optional quality & material as separate lines
+            string extraSpecs = "";
+            if (quality.HasValue)
+            {
+                extraSpecs += "\n" + "RICS.BICH.Letter.Quality".Translate(quality.Value.ToStringHuman());
+            }
+            if (material != null)
+            {
+                extraSpecs += "\n" + "RICS.BICH.Letter.Material".Translate(material.LabelCap);
+            }
+
+            // Only show pricing breakdown in mixed case (and put it after Total)
+            string pricingNote = "";
+            if (lockerCount > 0 && dropPodCount > 0)
+            {
+                float pricePer = (float)price / quantity;
+                int dropPodPrice = (int)(pricePer * dropPodCount);
+
+                pricingNote = "\n" +
+                    "RICS.BICH.Letter.Pricing.Locker".Translate(lockerCount, currencySymbol) +
+                    "RICS.BICH.Letter.Pricing.DropPod".Translate(dropPodCount, dropPodPrice.ToString("N0"), currencySymbol) +
+                    "\n" +
+                    "RICS.BICH.Letter.Pricing.Total".Translate(price.ToString("N0"), currencySymbol);
+            }
+
+            // ───────────────────────────────────────────────
+            // Final invoice assembly
+            // ───────────────────────────────────────────────
+            string body = "RICS.BICH.Letter.Body.Standard".Translate(
+                username,               // {0}
+                $"{itemName} x{quantity}", // {1}
+                deliveryLine + extraSpecs, // {2}  ← changed meaning: now only delivery + specs
+                price.ToString("N0"),   // {3}
+                currencySymbol          // {4}
+            );
+
+            // Append pricing note only when relevant (after the thank you line is fine)
+            if (!string.IsNullOrEmpty(pricingNote))
+            {
+                body += "\n" + pricingNote;
+            }
+
+            // Optional contextual note
+            if (lockerCount > 0 && dropPodCount == 0)
+            {
+                body += "\n" + "RICS.BICH.Letter.Locker.Note".Translate();
+            }
+            else if (lockerCount > 0 && dropPodCount > 0)
+            {
+                body += "\n" + "RICS.BICH.Letter.Mixed.Note".Translate();
+            }
+
+            return body;
         }
 
         private static string BuildDeliveryDetails(int lockerCount, int dropPodCount, QualityCategory? quality, ThingDef material)

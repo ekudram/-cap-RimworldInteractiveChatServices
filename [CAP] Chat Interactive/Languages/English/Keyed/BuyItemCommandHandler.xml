@@ -83,9 +83,9 @@
     RIMAZON INVOICE
     ====================
     Customer: {0}
-    Item: {1} x{2}
-    {3}====================
-    Total: {4}{5}
+    Item: {1}
+    {2}====================
+    Total: {3}{4}
     ====================
     Thank you for shopping with Rimazon!
     Satisfaction guaranteed or your coins back!
