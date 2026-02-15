@@ -1,0 +1,293 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- ===== SECTION: RETURN MESSAGES (Chat Responses) ===== -->
+  <!-- These are displayed to users in chat after command execution -->
+
+  <!-- Item not found in store -->
+  <RICS.BICH.Return.ItemNotFound>Item '{0}' not found in Rimazon.</RICS.BICH.Return.ItemNotFound>
+
+  <!-- Item disabled/purchased -->
+  <RICS.BICH.Return.ItemDisabled>Item '{0}' is not available for purchase.</RICS.BICH.Return.ItemDisabled>
+
+  <!-- Item not equippable (for !equip commands) -->
+  <RICS.BICH.Return.NotEquippable>{0} is not available to be equipped.</RICS.BICH.Return.NotEquippable>
+
+  <!-- Item not wearable (for !wear commands) -->
+  <RICS.BICH.Return.NotWearable>{0} is not available to be worn.</RICS.BICH.Return.NotWearable>
+
+  <!-- Wrong item type (user used wrong command) -->
+  <RICS.BICH.Return.WrongItemType>{0} is a {1}, not an {2} item. Use !buy instead.</RICS.BICH.Return.WrongItemType>
+
+  <!-- Research requirement not met -->
+  <RICS.BICH.Return.ResearchRequired>{0} requires research that hasn't been completed yet.</RICS.BICH.Return.ResearchRequired>
+
+  <!-- Quality not allowed -->
+  <RICS.BICH.Return.QualityNotAllowed>Quality '{0}' is not allowed for purchases.</RICS.BICH.Return.QualityNotAllowed>
+
+  <!-- ThingDef not found (error case) -->
+  <RICS.BICH.Return.DefNotFound>Error: Item definition not found.</RICS.BICH.Return.DefNotFound>
+
+  <!-- Banned race (animal) -->
+  <RICS.BICH.Return.BannedRace>Item '{0}' is a banned race and cannot be purchased.</RICS.BICH.Return.BannedRace>
+
+  <!-- Invalid material -->
+  <RICS.BICH.Return.InvalidMaterial>Material '{0}' is not valid for {1}.</RICS.BICH.Return.InvalidMaterial>
+
+  <!-- Cannot afford -->
+  <RICS.BICH.Return.CannotAfford>You need {0} to purchase {1}x {2}! You have {3}.</RICS.BICH.Return.CannotAfford>
+
+  <!-- No pawn assigned -->
+  <RICS.BICH.Return.NoPawn>You need to have a pawn in the colony. Use !buy pawn first.</RICS.BICH.Return.NoPawn>
+
+  <!-- Pawn is dead -->
+  <RICS.BICH.Return.PawnDead>Your pawn is dead. You cannot equip/wear items.</RICS.BICH.Return.PawnDead>
+
+  <!-- Generic error -->
+  <RICS.BICH.Return.GenericError>Error processing purchase. Please try again.</RICS.BICH.Return.GenericError>
+  <!-- Not Equip, wear or race banned -->
+  <RICS.BICH.Return.ItemNotEquippable>{0} is not available to be equipped.</RICS.BICH.Return.ItemNotEquippable>
+  <RICS.BICH.Return.ItemNotWearable>{0} is not available to be worn.</RICS.BICH.Return.ItemNotWearable>
+  <RICS.BICH.Return.RaceBanned>Item '{0}' is a banned race and cannot be purchased.</RICS.BICH.Return.RaceBanned>
+  
+  <!-- Success message (used in final return) -->
+  <RICS.BICH.Return.Success>Purchased {0}x {1} for {2} and {3}! Remaining: {4}.</RICS.BICH.Return.Success>
+
+  <!-- Success action types (for the {3} placeholder above) -->
+  <RICS.BICH.Return.Action.AddedToInventory>added to your pawn's inventory</RICS.BICH.Return.Action.AddedToInventory>
+  <RICS.BICH.Return.Action.Equipped>equipped to your pawn</RICS.BICH.Return.Action.Equipped>
+  <RICS.BICH.Return.Action.Worn>worn by your pawn</RICS.BICH.Return.Action.Worn>
+  <RICS.BICH.Return.Action.Delivered>delivered via Rimazon</RICS.BICH.Return.Action.Delivered>
+
+
+  <!-- ===== SECTION: INVOICE/LETTER FORMATS ===== -->
+  <!-- These appear in the in-game letter notifications -->
+
+  <!-- Invoice Label - Standard Delivery -->
+  <RICS.BICH.Letter.Label.Standard>🟡 Rimazon Delivery - {0}</RICS.BICH.Letter.Label.Standard>
+
+  <!-- Invoice Label - Direct Services -->
+  <RICS.BICH.Letter.Label.Direct>{0} Rimazon {1} - {2}</RICS.BICH.Letter.Label.Direct>
+
+  <!-- Invoice Label - Pet Delivery -->
+  <RICS.BICH.Letter.Label.Pet>🐾 Rimazon Pet Delivery - {0}</RICS.BICH.Letter.Label.Pet>
+
+  <!-- Emoji mappings for direct services -->
+  <RICS.BICH.Letter.Emoji.Equip>⚔️</RICS.BICH.Letter.Emoji.Equip>
+  <RICS.BICH.Letter.Emoji.Wear>👕</RICS.BICH.Letter.Emoji.Wear>
+  <RICS.BICH.Letter.Emoji.Backpack>🎒</RICS.BICH.Letter.Emoji.Backpack>
+  <RICS.BICH.Letter.Emoji.Default>📦</RICS.BICH.Letter.Emoji.Default>
+
+  <!-- Invoice Body - Standard Rimazon Invoice -->
+  <RICS.BICH.Letter.Body.Standard>
+    RIMAZON INVOICE
+    ====================
+    Customer: {0}
+    Item: {1} x{2}
+    {3}====================
+    Total: {4}{5}
+    ====================
+    Thank you for shopping with Rimazon!
+    Satisfaction guaranteed or your coins back!
+  </RICS.BICH.Letter.Body.Standard>
+
+  <!-- Delivery method lines for standard invoice (inserted at {3}) -->
+  <RICS.BICH.Letter.Delivery.Locker>
+    Delivery: Locker Delivery (x{0})
+  </RICS.BICH.Letter.Delivery.Locker>
+  <RICS.BICH.Letter.Delivery.DropPod>
+    Delivery: Standard Drop Pod
+  </RICS.BICH.Letter.Delivery.DropPod>
+  <RICS.BICH.Letter.Delivery.Mixed>
+    Delivery: Mixed Delivery
+    • Locker Delivery: x{0}
+    • Drop Pod Delivery: x{1}
+  </RICS.BICH.Letter.Delivery.Mixed>
+
+  <!-- Quality line (optional) -->
+  <RICS.BICH.Letter.Quality>
+    Quality: {0}
+  </RICS.BICH.Letter.Quality>
+
+  <!-- Material line (optional) -->
+  <RICS.BICH.Letter.Material>
+    Material: {0}
+  </RICS.BICH.Letter.Material>
+
+  <!-- Invoice Body - Locker Delivery Only -->
+  <RICS.BICH.Letter.Body.Locker>
+    === LOCKER DELIVERY INVOICE ===
+    Customer: {0}
+    Item: {1} x{2}
+    ====================
+    Delivery: Locker Delivery
+    Status: Delivered ✅
+    Total: 0{3}
+    ====================
+
+    {4}
+  </RICS.BICH.Letter.Body.Locker>
+
+  <!-- Pricing breakdown lines (inserted in the middle of invoice) -->
+  <RICS.BICH.Letter.Pricing.Locker>
+    Locker Delivery (x{0}): 0{1}
+  </RICS.BICH.Letter.Pricing.Locker>
+  <RICS.BICH.Letter.Pricing.DropPod>
+    Drop Pod Delivery (x{0}): {1}{2}
+  </RICS.BICH.Letter.Pricing.DropPod>
+  <RICS.BICH.Letter.Pricing.Total>
+    Total: {0}{1}
+  </RICS.BICH.Letter.Pricing.Total>
+
+  <!-- Invoice Body - Drop Pod Delivery Only -->
+  <RICS.BICH.Letter.Body.DropPod>
+    === DROP POD DELIVERY INVOICE ===
+    Customer: {0}
+    Item: {1} x{2}
+    ====================
+    {3}{4}Delivery: Standard Drop Pod
+    Status: Delivered ✅
+    Total: {5}{6}
+    ====================
+
+    {7}
+  </RICS.BICH.Letter.Body.DropPod>
+
+  <!-- Footer for split invoices -->
+  <RICS.BICH.Letter.Footer.Split>
+    Thank you for shopping with Rimazon!
+    Satisfaction guaranteed or your coins back!
+  </RICS.BICH.Letter.Footer.Split>
+
+  <!-- Invoice Body - Direct Service (Equip/Wear/Backpack) -->
+  <RICS.BICH.Letter.Body.Direct>
+    RIMAZON {0}
+    ====================
+    Customer: {1}
+    Item: {2} x{3}
+    Service: Direct {0}
+    ====================
+    Total: {4}{5}
+    ====================
+    Thank you for using Rimazon {0}!
+    {6}
+  </RICS.BICH.Letter.Body.Direct>
+
+  <!-- Service-specific messages for direct delivery -->
+  <RICS.BICH.Letter.Direct.EquipMessage>Weapon equipped and ready for action!</RICS.BICH.Letter.Direct.EquipMessage>
+  <RICS.BICH.Letter.Direct.WearMessage>Apparel worn and looking stylish!</RICS.BICH.Letter.Direct.WearMessage>
+  <RICS.BICH.Letter.Direct.BackpackMessage>Items delivered to your pawn's inventory.</RICS.BICH.Letter.Direct.BackpackMessage>
+
+  <!-- Invoice Body - Pet Delivery -->
+  <RICS.BICH.Letter.Body.Pet>
+    RIMAZON PET DELIVERY
+    ====================
+    Customer: {0}
+    Pet: {1} x{2}
+    Service: Live Animal Delivery
+    ====================
+    Total: {3}{4}
+    ====================
+    Thank you for using Rimazon Pets!
+    {5}
+    All animals are tame and ready for your colony!
+  </RICS.BICH.Letter.Body.Pet>
+
+  <!-- Pet delivery messages (singular/plural) -->
+  <RICS.BICH.Letter.Pet.Singular>
+    Your new companion has arrived safely!
+  </RICS.BICH.Letter.Pet.Singular>
+  <RICS.BICH.Letter.Pet.Plural>
+    Your new companions have arrived safely!
+  </RICS.BICH.Letter.Pet.Plural>
+
+  <!-- Extra note for mixed deliveries (appended at end) -->
+  <RICS.BICH.Letter.Mixed.Note>
+    Items delivered via both Locker and Drop Pod.
+  </RICS.BICH.Letter.Mixed.Note>
+
+  <!-- Locker note (appended at end) -->
+  <RICS.BICH.Letter.Locker.Note>
+    Items delivered to your Rimazon Locker.
+  </RICS.BICH.Letter.Locker.Note>
+
+
+  <!-- ===== SECTION: SPLIT INVOICE FORMATS ===== -->
+  <!-- These are for the split invoice when items are delivered via both methods -->
+
+  <!-- Headers -->
+  <RICS.BICH.Letter.Split.LockerHeader>=== LOCKER DELIVERY INVOICE ===</RICS.BICH.Letter.Split.LockerHeader>
+  <RICS.BICH.Letter.Split.DropPodHeader>=== DROP POD DELIVERY INVOICE ===</RICS.BICH.Letter.Split.DropPodHeader>
+
+  <!-- Common lines -->
+  <RICS.BICH.Letter.Split.CustomerLine>Customer: {0}</RICS.BICH.Letter.Split.CustomerLine>
+  <RICS.BICH.Letter.Split.ItemLine>Item: {0} x{1}</RICS.BICH.Letter.Split.ItemLine>
+  <RICS.BICH.Letter.Split.Separator>====================</RICS.BICH.Letter.Split.Separator>
+
+  <!-- Delivery method lines -->
+  <RICS.BICH.Letter.Split.DeliveryLocker>Delivery: Locker Delivery</RICS.BICH.Letter.Split.DeliveryLocker>
+  <RICS.BICH.Letter.Split.DeliveryDropPod>Delivery: Standard Drop Pod</RICS.BICH.Letter.Split.DeliveryDropPod>
+
+  <!-- Status -->
+  <RICS.BICH.Letter.Split.StatusDelivered>Status: Delivered ✅</RICS.BICH.Letter.Split.StatusDelivered>
+
+  <!-- Quality and material lines -->
+  <RICS.BICH.Letter.Split.QualityLine>Quality: {0}</RICS.BICH.Letter.Split.QualityLine>
+  <RICS.BICH.Letter.Split.MaterialLine>Material: {0}</RICS.BICH.Letter.Split.MaterialLine>
+
+  <!-- Total lines -->
+  <RICS.BICH.Letter.Split.TotalFree>Total: 0{0}</RICS.BICH.Letter.Split.TotalFree>
+  <RICS.BICH.Letter.Split.TotalLine>Total: {0}{1}</RICS.BICH.Letter.Split.TotalLine>
+
+  <!-- Footer -->
+  <RICS.BICH.Letter.Split.Footer>
+    Thank you for shopping with Rimazon!
+    Satisfaction guaranteed or your coins back!
+  </RICS.BICH.Letter.Split.Footer>
+
+  <!-- ===== SECTION: DIRECT INVOICE FORMATS ===== -->
+  <!-- These are for Equip/Wear/Backpack commands -->
+
+  <!-- Direct invoice body template -->
+  <RICS.BICH.Letter.Direct.Body>
+    RIMAZON {0}
+    ====================
+    Customer: {1}
+    Item: {2} x{3}
+    Service: Direct {0}
+    ====================
+    Total: {4}{5}
+    ====================
+    Thank you for using Rimazon {0}!
+    {6}
+  </RICS.BICH.Letter.Direct.Body>
+
+  <!-- ===== SECTION: PET INVOICE FORMATS ===== -->
+  <!-- These are for animal/pet deliveries -->
+
+  <!-- Pet invoice body template -->
+  <RICS.BICH.Letter.Body.Pet>
+    RIMAZON PET DELIVERY
+    ====================
+    Customer: {0}
+    Pet: {1} x{2}
+    Service: Live Animal Delivery
+    ====================
+    Total: {3}{4}
+    ====================
+    Thank you for using Rimazon Pets!
+    {5}
+    All animals are tame and ready for your colony!
+  </RICS.BICH.Letter.Body.Pet>
+
+  <!-- Pet delivery messages (you may already have these) -->
+  <RICS.BICH.Letter.Pet.Singular>Your new companion has arrived safely!</RICS.BICH.Letter.Pet.Singular>
+  <RICS.BICH.Letter.Pet.Plural>Your new companions have arrived safely!</RICS.BICH.Letter.Pet.Plural>
+
+  <!-- ===== SECTION: POSSESSIONS PLUS OWNERSHIP ===== -->
+  <!-- These are for the optional PossessionsPlus integration -->
+
+  <!-- Inheritance history entry -->
+  <RICS.BICH.Ownership.HistoryEntry>Purchased via Rimazon</RICS.BICH.Ownership.HistoryEntry>
+
+</LanguageData>

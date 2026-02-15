@@ -59,25 +59,29 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (storeItem == null)
                 {
                     Logger.Debug($"Item not found: {itemName}");
-                    return $"Item '{itemName}' not found in Rimazon.";
+                    // return $"Item '{itemName}' not found in Rimazon.";
+                    return "RICS.BICH.Return.ItemNotFound".Translate(itemName);
                 }
 
                 if (!storeItem.Enabled && !requireEquippable && !requireWearable)
                 {
                     Logger.Debug($"Item disabled: {itemName}");
-                    return $"Item '{itemName}' is not available for purchase.";
+                    // return $"Item '{itemName}' is not available for purchase.";
+                    return "RICS.BICH.Return.ItemDisabled".Translate(itemName);
                 }
 
                 if (requireEquippable && !storeItem.IsEquippable)
                 {
                     Logger.Debug($"Item not equippable: {itemName}");
-                    return $"{itemName} is not availible to be equiped.";
+                    // return $"{itemName} is not availible to be equiped.";
+                    return "RICS.BICH.Return.ItemNotEquippable".Translate(itemName);
                 }
 
                 if (requireWearable && !storeItem.IsWearable)
                 {
                     Logger.Debug($"Item not wearable: {itemName}");
-                    return $"{itemName} iis not availible to be worn.";
+                    // return $"{itemName} iis not availible to be worn.";
+                    return "RICS.BICH.Return.ItemNotWearable".Translate(itemName);
                 }
 
                 // Check item type requirements
@@ -85,7 +89,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     string itemType = StoreCommandHelper.GetItemTypeDescription(storeItem);
                     string expectedType = requireEquippable ? "equippable" : requireWearable ? "wearable" : "purchasable";
-                    return $"{itemName} is a {itemType}, not an {expectedType} item. Use !buy instead.";
+                    // return $"{itemName} is a {itemType}, not an {expectedType} item. Use !buy instead.";
+                    return "RICS.BICH.Return.WrongItemType".Translate(itemName, itemType, expectedType);
                 }
 
                 // Check research requirements
@@ -93,7 +98,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!StoreCommandHelper.HasRequiredResearch(storeItem))
                 {
                     Logger.Debug($"Research requirement failed for {itemName}");
-                    return $"{itemName} requires research that hasn't been completed yet.";
+                    // return $"{itemName} requires research that hasn't been completed yet.";
+                    return "RICS.BICH.Return.ResearchRequired".Translate(itemName);
                 }
                 Logger.Debug($"Research requirements met for {itemName}");
 
@@ -104,7 +110,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!ItemConfigHelper.IsQualityAllowed(quality))
                 {
                     Logger.Debug($"Quality {qualityStr} is not allowed for purchases");
-                    return $"Quality '{qualityStr}' is not allowed for purchases.";
+                    // return $"Quality '{qualityStr}' is not allowed for purchases.";
+                    return "RICS.BICH.Return.QualityNotAllowed".Translate(qualityStr);
                 }
                 Logger.Debug($"Quality {qualityStr} is allowed");
 
@@ -113,13 +120,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (thingDef == null)
                 {
                     Logger.Error($"ThingDef not found: {storeItem.DefName}");
-                    return $"Error: Item definition not found.";
+                    // return $"Error: Item definition not found.";
+                    return "RICS.BICH.Return.DefNotFound".Translate();
                 }
 
                 // Check for banned races  -- Needed?
                 if (StoreCommandHelper.IsRaceBanned(thingDef))
                 {
-                    return $"Item '{itemName}' is a banned race and cannot be purchased.";
+                    // return $"Item '{itemName}' is a banned race and cannot be purchased.";
+                    return "RICS.BICH.Return.RaceBanned".Translate(itemName);
                 }
 
                 // Parse material
@@ -129,7 +138,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     material = ItemConfigHelper.ParseMaterial(materialStr, thingDef);
                     if (materialStr != "random" && material == null)
                     {
-                        return $"Material '{materialStr}' is not valid for {itemName}.";
+                        // return $"Material '{materialStr}' is not valid for {itemName}.";
+                        return "RICS.BICH.Return.InvalidMaterial".Translate(materialStr, itemName);
                     }
                 }
 
@@ -167,12 +177,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
                     if (viewerPawn == null)
                     {
-                        return "You need to have a pawn in the colony. Use !buy pawn first.";
+                        // return "You need to have a pawn in the colony. Use !buy pawn first.";
+                        return "RICS.BICH.Return.NoPawn".Translate();
                     }
 
                     if (viewerPawn.Dead)
                     {
-                        return "Your pawn is dead. You cannot equip/wear items.";
+                        // return "Your pawn is dead. You cannot equip/wear items.";
+                        return "RICS.BICH.Return.PawnDead".Translate();
                     }
                 }
                 else
@@ -203,7 +215,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 // Spawn the item
                 var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
-                (List<Thing> spawnedItems, IntVec3 deliveryPos) spawnResult;
+                //(List<Thing> spawnedItems, IntVec3 deliveryPos) spawnResult;
                 DeliveryResult deliveryResult;
 
                 if (requireEquippable || requireWearable)
@@ -295,8 +307,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Debug($"Checking for special invoice case for item: {thingDef.thingClass} tClass: {tClass}");
                 if (thingDef.thingClass == typeof(Verse.Pawn) || tClass == "Verse.Pawn")
                 {
-                    string emoji = "🐾";
-                    invoiceLabel = $"{emoji} Rimazon Pet Delivery - {messageWrapper.Username}";
+                    invoiceLabel = "RICS.BICH.Letter.Label.Pet".Translate(messageWrapper.Username);
                     invoiceMessage = CreateRimazonPetInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol);
                 }
                 // Then check for backpack/equip/wear
@@ -304,15 +315,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     // Backpack, Equip, and Wear all involve direct delivery to pawn
                     string serviceType = requireEquippable ? "Equip" : requireWearable ? "Wear" : "Backpack";
-                    string emoji = requireEquippable ? "⚔️" : requireWearable ? "👕" : "🎒";
+                    string emoji = requireEquippable ? "RICS.BICH.Letter.Emoji.Equip".Translate() :
+                                   requireWearable ? "RICS.BICH.Letter.Emoji.Wear".Translate() :
+                                   "RICS.BICH.Letter.Emoji.Backpack".Translate();
 
-                    invoiceLabel = $"{emoji} Rimazon {serviceType} - {messageWrapper.Username}";
+                    invoiceLabel = "RICS.BICH.Letter.Label.Direct".Translate(emoji, serviceType, messageWrapper.Username);
                     invoiceMessage = CreateRimazonDirectInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol, serviceType);
                 }
                 else
                 {
                     // Regular delivery with tracking
-                    invoiceLabel = $"🟡 Rimazon Delivery - {messageWrapper.Username}";
+                    invoiceLabel = "RICS.BICH.Letter.Label.Standard".Translate(messageWrapper.Username);
 
                     // Check if we have mixed delivery
                     if (deliveryResult.LockerDeliveredItems.Count > 0 && deliveryResult.DropPodDeliveredItems.Count > 0)
@@ -340,211 +353,206 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // Return success message
-                string action = addToInventory ? "added to your pawn's inventory" :
-                              requireEquippable ? "equipped to your pawn" :
-                              requireWearable ? "worn by your pawn" : "delivered via Rimazon";
+                // string action = addToInventory ? "added to your pawn's inventory" :
+                //              requireEquippable ? "equipped to your pawn" :
+                //              requireWearable ? "worn by your pawn" : "delivered via Rimazon";
+                string action = requireEquippable ? "RICS.BICH.Return.Action.Equipped".Translate() :
+                                requireWearable ? "RICS.BICH.Return.Action.Worn".Translate() :
+                                addToInventory ? "RICS.BICH.Return.Action.AddedToInventory".Translate() :
+                                "RICS.BICH.Return.Action.Delivered".Translate();
 
-                return $"Purchased {quantity}x {itemName} for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} and {action}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                // return $"Purchased {quantity}x {itemName} for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} and {action}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return "RICS.BICH.Return.Success".Translate(quantity, itemName, StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol), action, StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in HandleBuyItem: {ex}");
-                return "Error processing purchase. Please try again.";
+                // return "Error processing purchase. Please try again.";
+                return "RICS.BICH.Return.GenericError".Translate();
             }
         }
 
         private static string CreateRimazonInvoice(string username, string itemName, int quantity, int price,
-            string currencySymbol, QualityCategory? quality, ThingDef material, DeliveryResult deliveryResult)
+    string currencySymbol, QualityCategory? quality, ThingDef material, DeliveryResult deliveryResult)
         {
             // Get counts from delivery result
             int lockerCount = deliveryResult.LockerDeliveredItems.Sum(t => t.stackCount);
             int dropPodCount = deliveryResult.DropPodDeliveredItems.Sum(t => t.stackCount);
 
-            string invoice = $"RIMAZON INVOICE\n";
-            invoice += $"====================\n";
-            invoice += $"Customer: {username}\n";
-            invoice += $"Item: {itemName} x{quantity}\n";
+            // Build the delivery details section
+            string deliveryDetails = BuildDeliveryDetails(lockerCount, dropPodCount, quality, material);
 
-            // Show delivery breakdown
-            if (lockerCount > 0 && dropPodCount > 0)
-            {
-                invoice += $"Delivery: Mixed Delivery\n";
-                invoice += $"  • Locker Delivery: x{lockerCount}\n";
-                invoice += $"  • Drop Pod Delivery: x{dropPodCount}\n";
-            }
-            else if (lockerCount > 0)
-            {
-                invoice += $"Delivery: Locker Delivery (x{lockerCount})\n";
-            }
-            else
-            {
-                invoice += $"Delivery: Standard Drop Pod\n";
-            }
-
-            // Add quality info if specified
-            if (quality.HasValue)
-            {
-                invoice += $"Quality: {quality.Value}\n";
-            }
-
-            // Add material info if specified
-            if (material != null)
-            {
-                invoice += $"Material: {material.LabelCap}\n";
-            }
-
-            invoice += $"====================\n";
-
-            // Show pricing breakdown for mixed delivery
+            // Build the pricing breakdown for mixed delivery if needed
+            string pricingBreakdown = "";
             if (lockerCount > 0 && dropPodCount > 0)
             {
                 // Calculate price per item
                 float pricePerItem = (float)price / quantity;
-                int lockerPrice = (int)(pricePerItem * dropPodCount); // Only charge for drop pod items
                 int dropPodPrice = (int)(pricePerItem * dropPodCount);
 
-                invoice += $"Locker Delivery (x{lockerCount}): 0{currencySymbol}\n";
-                invoice += $"Drop Pod Delivery (x{dropPodCount}): {dropPodPrice:N0}{currencySymbol}\n";
-                invoice += $"====================\n";
-                invoice += $"Total: {price:N0}{currencySymbol}\n";
+                pricingBreakdown = $"\n" + "RICS.BICH.Letter.Pricing.Locker".Translate(lockerCount.ToString(), currencySymbol) +
+                                  "RICS.BICH.Letter.Pricing.DropPod".Translate(dropPodCount.ToString(), dropPodPrice.ToString("N0"), currencySymbol) +
+                                  "\n" + "RICS.BICH.Letter.Pricing.Total".Translate(price.ToString("N0"), currencySymbol) + "\n";
             }
             else
             {
-                invoice += $"Total: {price:N0}{currencySymbol}\n";
+                pricingBreakdown = "\n" + "RICS.BICH.Letter.Pricing.Total".Translate(price.ToString("N0"), currencySymbol) + "\n";
             }
 
-            invoice += $"====================\n";
-            invoice += $"Thank you for shopping with Rimazon!\n";
+            // Combine all parts into the full invoice
+            string invoice = "RICS.BICH.Letter.Body.Standard".Translate(
+                username,
+                itemName,
+                quantity.ToString(),
+                deliveryDetails + pricingBreakdown,  // This goes into the {3} placeholder
+                price.ToString("N0"),                 // This goes into {4}
+                currencySymbol                         // This goes into {5}
+            );
 
+            // Add delivery method notes if needed
             if (lockerCount > 0 && dropPodCount > 0)
             {
-                invoice += $"Items delivered via both Locker and Drop Pod.\n";
+                invoice += "\n" + "RICS.BICH.Letter.Mixed.Note".Translate();
             }
             else if (lockerCount > 0)
             {
-                invoice += $"Items delivered to your Rimazon Locker.\n";
+                invoice += "\n" + "RICS.BICH.Letter.Locker.Note".Translate();
             }
-
-            invoice += $"Satisfaction guaranteed or your coins back!";
 
             return invoice;
         }
 
+        private static string BuildDeliveryDetails(int lockerCount, int dropPodCount, QualityCategory? quality, ThingDef material)
+        {
+            string deliveryInfo = "";
+
+            // Add delivery method
+            if (lockerCount > 0 && dropPodCount > 0)
+            {
+                deliveryInfo += "RICS.BICH.Letter.Delivery.Mixed".Translate(lockerCount.ToString(), dropPodCount.ToString());
+            }
+            else if (lockerCount > 0)
+            {
+                deliveryInfo += "RICS.BICH.Letter.Delivery.Locker".Translate(lockerCount.ToString());
+            }
+            else
+            {
+                deliveryInfo += "RICS.BICH.Letter.Delivery.DropPod".Translate();
+            }
+
+            // Add quality if specified
+            if (quality.HasValue)
+            {
+                deliveryInfo += "RICS.BICH.Letter.Quality".Translate(quality.Value.ToString());
+            }
+
+            // Add material if specified
+            if (material != null)
+            {
+                deliveryInfo += "RICS.BICH.Letter.Material".Translate(material.LabelCap);
+            }
+
+            return deliveryInfo;
+        }
+
         // Alternative: Split invoice method
         private static string CreateSplitInvoice(string username, string itemName, int quantity, int price,
-            string currencySymbol, QualityCategory? quality, ThingDef material, DeliveryResult deliveryResult)
+    string currencySymbol, QualityCategory? quality, ThingDef material, DeliveryResult deliveryResult)
         {
             int lockerCount = deliveryResult.LockerDeliveredItems.Sum(t => t.stackCount);
             int dropPodCount = deliveryResult.DropPodDeliveredItems.Sum(t => t.stackCount);
 
             StringBuilder invoice = new StringBuilder();
 
+            // Locker delivery section
             if (lockerCount > 0)
             {
-                invoice.AppendLine("=== LOCKER DELIVERY INVOICE ===");
-                invoice.AppendLine($"Customer: {username}");
-                invoice.AppendLine($"Item: {itemName} x{lockerCount}");
-                invoice.AppendLine("====================");
-                invoice.AppendLine($"Delivery: Locker Delivery");
-                invoice.AppendLine($"Status: Delivered ✅");
-                invoice.AppendLine($"Total: 0{currencySymbol}"); // Free
-                invoice.AppendLine("====================");
+                invoice.AppendLine("RICS.BICH.Letter.Split.LockerHeader".Translate());
+                invoice.AppendLine("RICS.BICH.Letter.Split.CustomerLine".Translate(username));
+                invoice.AppendLine("RICS.BICH.Letter.Split.ItemLine".Translate(itemName, lockerCount.ToString()));
+                invoice.AppendLine("RICS.BICH.Letter.Split.Separator".Translate());
+                invoice.AppendLine("RICS.BICH.Letter.Split.DeliveryLocker".Translate());
+                invoice.AppendLine("RICS.BICH.Letter.Split.StatusDelivered".Translate());
+                invoice.AppendLine("RICS.BICH.Letter.Split.TotalFree".Translate(currencySymbol));
+                invoice.AppendLine("RICS.BICH.Letter.Split.Separator".Translate());
                 invoice.AppendLine();
             }
 
+            // Drop pod delivery section
             if (dropPodCount > 0)
             {
-                invoice.AppendLine("=== DROP POD DELIVERY INVOICE ===");
-                invoice.AppendLine($"Customer: {username}");
-                invoice.AppendLine($"Item: {itemName} x{dropPodCount}");
-                invoice.AppendLine("====================");
+                invoice.AppendLine("RICS.BICH.Letter.Split.DropPodHeader".Translate());
+                invoice.AppendLine("RICS.BICH.Letter.Split.CustomerLine".Translate(username));
+                invoice.AppendLine("RICS.BICH.Letter.Split.ItemLine".Translate(itemName, dropPodCount.ToString()));
+                invoice.AppendLine("RICS.BICH.Letter.Split.Separator".Translate());
 
+                // Add quality if specified
                 if (quality.HasValue)
                 {
-                    invoice.AppendLine($"Quality: {quality.Value}");
+                    invoice.AppendLine("RICS.BICH.Letter.Split.QualityLine".Translate(quality.Value.ToString()));
                 }
 
+                // Add material if specified
                 if (material != null)
                 {
-                    invoice.AppendLine($"Material: {material.LabelCap}");
+                    invoice.AppendLine("RICS.BICH.Letter.Split.MaterialLine".Translate(material.LabelCap));
                 }
 
-                invoice.AppendLine($"Delivery: Standard Drop Pod");
-                invoice.AppendLine($"Status: Delivered ✅");
+                invoice.AppendLine("RICS.BICH.Letter.Split.DeliveryDropPod".Translate());
+                invoice.AppendLine("RICS.BICH.Letter.Split.StatusDelivered".Translate());
 
                 // Calculate price only for drop pod items
                 float pricePerItem = (float)price / quantity;
                 int dropPodPrice = (int)(pricePerItem * dropPodCount);
 
-                invoice.AppendLine($"Total: {dropPodPrice:N0}{currencySymbol}");
-                invoice.AppendLine("====================");
+                invoice.AppendLine("RICS.BICH.Letter.Split.TotalLine".Translate(dropPodPrice.ToString("N0"), currencySymbol));
+                invoice.AppendLine("RICS.BICH.Letter.Split.Separator".Translate());
             }
 
-            invoice.AppendLine("Thank you for shopping with Rimazon!");
-            invoice.AppendLine("Satisfaction guaranteed or your coins back!");
+            invoice.AppendLine("RICS.BICH.Letter.Split.Footer".Translate());
 
             return invoice.ToString();
         }
 
         private static string CreateRimazonDirectInvoice(string username, string itemName, int quantity, int price, string currencySymbol, string serviceType)
         {
-            string emoji = serviceType switch
-            {
-                "Equip" => "⚔️",
-                "Wear" => "👕",
-                "Backpack" => "🎒",
-                _ => "📦"
-            };
-
-            string invoice = $"RIMAZON {serviceType.ToUpper()}\n";
-            invoice += $"====================\n";
-            invoice += $"Customer: {username}\n";
-            invoice += $"Item: {itemName} x{quantity}\n";
-            invoice += $"Service: Direct {serviceType}\n";
-            invoice += $"====================\n";
-            invoice += $"Total: {price:N0}{currencySymbol}\n";
-            invoice += $"====================\n";
-            invoice += $"Thank you for using Rimazon {serviceType}!\n";
-
-            // Custom message based on service type
-            switch (serviceType)
-            {
-                case "Equip":
-                    invoice += $"Weapon equipped and ready for action!";
-                    break;
-                case "Wear":
-                    invoice += $"Apparel worn and looking stylish!";
-                    break;
-                case "Backpack":
-                    invoice += $"Items delivered to your pawn's inventory.";
-                    break;
-            }
+            string invoice = "RICS.BICH.Letter.Direct.Body".Translate(
+                serviceType.ToUpper(),
+                username,
+                itemName,
+                quantity.ToString(),
+                price.ToString("N0"),
+                currencySymbol,
+                GetDirectServiceMessage(serviceType)
+            );
 
             return invoice;
         }
 
+        private static string GetDirectServiceMessage(string serviceType)
+        {
+            return serviceType switch
+            {
+                "Equip" => "RICS.BICH.Letter.Direct.EquipMessage".Translate(),
+                "Wear" => "RICS.BICH.Letter.Direct.WearMessage".Translate(),
+                "Backpack" => "RICS.BICH.Letter.Direct.BackpackMessage".Translate(),
+                _ => ""
+            };
+        }
         private static string CreateRimazonPetInvoice(string username, string itemName, int quantity, int price, string currencySymbol)
         {
-            string invoice = $"RIMAZON PET DELIVERY\n";
-            invoice += $"====================\n";
-            invoice += $"Customer: {username}\n";
-            invoice += $"Pet: {itemName} x{quantity}\n";
-            invoice += $"Service: Live Animal Delivery\n";
-            invoice += $"====================\n";
-            invoice += $"Total: {price:N0}{currencySymbol}\n";
-            invoice += $"====================\n";
-            invoice += $"Thank you for using Rimazon Pets!\n";
+            string petMessage = quantity == 1
+                ? "RICS.BICH.Letter.Pet.Singular".Translate()
+                : "RICS.BICH.Letter.Pet.Plural".Translate();
 
-            if (quantity == 1)
-            {
-                invoice += $"Your new companion has arrived safely!\n";
-            }
-            else
-            {
-                invoice += $"Your new companions have arrived safely!\n";
-            }
-
-            invoice += $"All animals are tame and ready for your colony!";
+            string invoice = "RICS.BICH.Letter.Body.Pet".Translate(
+                username,
+                itemName,
+                quantity.ToString(),
+                price.ToString("N0"),
+                currencySymbol,
+                petMessage
+            );
 
             return invoice;
         }
@@ -628,7 +636,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                         if (addHistoryMethod != null)
                         {
-                            addHistoryMethod.Invoke(null, new object[] { item, ownerPawn, "Purchased via Rimazon" });
+                            // addHistoryMethod.Invoke(null, new object[] { item, ownerPawn, "Purchased via Rimazon" });
+                            addHistoryMethod.Invoke(null, new object[] { item, ownerPawn, "RICS.BICH.Ownership.HistoryEntry".Translate() });
                             Logger.Debug("Added inheritance history entry");
                         }
                     }
