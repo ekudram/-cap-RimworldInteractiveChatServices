@@ -268,7 +268,7 @@ namespace CAP_ChatInteractive.Store
             int updatedItems = 0;
             int removedItems = 0;
             int migratedItems = 0;
-            int removedInvalidItems = 0;
+            // int removedInvalidItems = 0;
 
             Logger.Message("=== Validating and updating store items... ===");
             Logger.Debug($"Current store items: {AllStoreItems.Count}");
@@ -384,7 +384,7 @@ namespace CAP_ChatInteractive.Store
 
                 Logger.Message(changes.ToString());
             }
-            SaveStoreToJson(); // Save changes
+            SaveStoreToWithCheck(); // Save changes
         }
 
         private static bool IsItemValidForStore(ThingDef thingDef)
@@ -408,65 +408,6 @@ namespace CAP_ChatInteractive.Store
             return true;
         }
 
-        private static bool HasMissingGraphics(ThingDef thingDef)
-        {
-            //// Check for missing graphic data
-            //if (thingDef.graphicData == null)
-            //{
-            //    Logger.Debug($"{thingDef.defName} has null graphicData");
-            //    return true;
-            //}
-
-            // Check for missing icon textures
-            //if (thingDef.uiIcon == null || thingDef.uiIcon == BaseContent.BadTex)
-            //{
-            //    //Logger.Debug($"{thingDef.defName} has missing/invalid uiIcon");
-            //    return true;
-            //}
-
-            // Check for missing graphic class (for complex items like vehicles)
-            // Some items might still be valid without graphicClass, but log it
-            if (thingDef.graphicData?.graphicClass == null)
-            {
-                // Logger.Debug($"{thingDef.defName} has no graphicClass specified");
-                // Don't return true here - some items might be valid without graphicClass
-            }
-
-            return false;
-        }
-
-        private static bool ShouldRemoveStoreItem(string defName,
-            ThingDef thingDef, IEnumerable<ThingDef> tradeableItems, out string reason)
-        {
-            reason = null;
-
-            if (thingDef == null)
-            {
-                // but is it in the dictionary?
-                reason = "Def no longer exists in database";
-                return true;
-            }
-
-            if (thingDef.race?.Humanlike == true || RaceUtils.IsRaceExcluded(thingDef))
-            {
-                reason = "Humanlike or excluded race";
-                return true;
-            }
-
-            //if (!IsItemValidForStore(thingDef))
-            //{
-            //    reason = "Failed item validation (missing graphics, etc.)";
-            //    return true;
-            //}
-
-            if (!tradeableItems.Any(t => t.defName == defName))
-            {
-                reason = "Not in valid tradeable items list";
-                return true;
-            }
-
-            return false;
-        }
         private static bool IsLikelyProblematicItem(ThingDef thingDef)
         {
             // Skip items that are clearly vehicles or complex structures
@@ -584,6 +525,15 @@ namespace CAP_ChatInteractive.Store
         {
             LongEventHandler.QueueLongEvent(() =>
             {
+                // Sync runtime changes to complete data before saving
+                lock (lockObject)
+                {
+                    foreach (var kvp in AllStoreItems)
+                    {
+                        // Update complete store with current runtime values
+                        _completeStoreData[kvp.Key] = kvp.Value;
+                    }
+                }
                 SaveStoreToJsonImmediate();
             }, null, false, null, showExtraUIInfo: false, forceHideUI: true);
         }
@@ -605,7 +555,7 @@ namespace CAP_ChatInteractive.Store
             }
         }
         // Background save method unused
-        public static void SaveStoreToJsonAsync()
+        public static void SaveStoreToWithCheck()
         {
             LongEventHandler.QueueLongEvent(() =>
             {

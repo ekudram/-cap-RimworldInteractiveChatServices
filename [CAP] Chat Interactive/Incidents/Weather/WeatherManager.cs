@@ -314,6 +314,12 @@ namespace CAP_ChatInteractive.Incidents.Weather
             {
                 lock (lockObject)
                 {
+                    // Sync runtime changes to complete data before saving
+                    foreach (var kvp in AllBuyableWeather)
+                    {
+                        _completeWeatherData[kvp.Key] = kvp.Value;
+                    }
+
                     try
                     {
                         string jsonContent = JsonFileManager.SerializeWeather(_completeWeatherData);

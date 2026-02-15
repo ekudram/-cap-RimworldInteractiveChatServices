@@ -546,8 +546,14 @@ namespace CAP_ChatInteractive.Traits
         {
             LongEventHandler.QueueLongEvent(() =>
             {
+                // Sync runtime changes to complete data before saving
                 lock (lockObject)
                 {
+                    foreach (var kvp in AllBuyableTraits)
+                    {
+                        _completeTraitData[kvp.Key] = kvp.Value;
+                    }
+
                     try
                     {
                         string jsonContent = JsonFileManager.SerializeTraits(_completeTraitData);

@@ -415,6 +415,12 @@ namespace CAP_ChatInteractive.Incidents
             {
                 lock (lockObject)
                 {
+                    // Sync runtime changes to complete data before saving
+                    foreach (var kvp in AllBuyableIncidents)
+                    {
+                        _completeIncidentData[kvp.Key] = kvp.Value;
+                    }
+
                     try
                     {
                         string jsonContent = JsonFileManager.SerializeIncidents(_completeIncidentData);
@@ -448,6 +454,12 @@ namespace CAP_ChatInteractive.Incidents
             {
                 lock (lockObject)
                 {
+                    // Sync runtime changes to complete data before saving
+                    foreach (var kvp in AllBuyableIncidents)
+                    {
+                        _completeIncidentData[kvp.Key] = kvp.Value;
+                    }
+
                     try
                     {
                         string jsonContent = JsonFileManager.SerializeIncidents(_completeIncidentData);
@@ -479,7 +491,6 @@ namespace CAP_ChatInteractive.Incidents
                 }
             },
             textKey: null,
-            // textKey: "RICS.SavingIncidentsSettings",    // Shows "Saving store settings..." in progress UI .. Flashes screen to fast for SSD users
             doAsynchronously: false,
             exceptionHandler: HandleSaveException,
             showExtraUIInfo: true,
