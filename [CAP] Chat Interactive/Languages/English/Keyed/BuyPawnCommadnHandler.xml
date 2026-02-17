@@ -70,7 +70,7 @@
 
   <!-- Letters -->
   <RICS.BPCH.Letter.Title>Rimazon Pawn Delivery - {0}</RICS.BPCH.Letter.Title>
-  <RICS.BPCH.Letter.Text>{0} has purchased a {1}{2} of {3} years.\n\nCost: {4:N0}{5}\nPawn: {6}</RICS.BPCH.Letter.Text>
+  
 
   <!-- Debug -->
   <RICS.BPCH.Debug.RaceNotFound>Race not found: {0}</RICS.BPCH.Debug.RaceNotFound>

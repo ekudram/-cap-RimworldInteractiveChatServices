@@ -189,7 +189,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         result.Pawn?.Name.ToStringFull ?? "Unnamed",
                         locationInfo  // New {7} placeholder
                     );
-
+                    Logger.Debug("RICS.BPCH.Letter.Text".Translate(
+                        messageWrapper.Username,
+                        raceName,
+                        xenotypeInfo,
+                        age.ToString(),
+                        finalPrice.ToString("N0"),
+                        currencySymbol,
+                        result.Pawn?.Name.ToStringFull ?? "Unnamed",
+                        locationInfo  // New {7} placeholder
+                    ));
                     // Pass the pawn as look target so clicking the letter jumps to it
                     MessageHandler.SendGoldLetter(goldLetterTitle, goldLetterText, new LookTargets(result.Pawn));
 
