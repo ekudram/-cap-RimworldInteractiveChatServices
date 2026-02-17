@@ -18,15 +18,14 @@
 using _CAP__Chat_Interactive.Command.CommandHelpers;
 using CAP_ChatInteractive.Helpers;
 using RimWorld;
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using UnityEngine;
 using Verse;
 
 namespace CAP_ChatInteractive.Commands.ViewerCommands
 {
+    // This class handles the !dye command for changing hair color or apparel color.
     internal static class DyeCommandHandler
     {
         private static Dictionary<string, Color> _rimColorCache;
@@ -77,7 +76,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             Verse.Pawn viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
             if (viewerPawn == null)
             {
-                return "You need to have a pawn in the colony to dye their clothing or hair. Use !buy pawn first.";
+                // return "You need to have a pawn in the colony to dye their clothing or hair. Use !buy pawn first.";
+                return "RICS.DyeCommand.NoPawn".Translate();
             }
 
             // Check for subcommand
@@ -99,7 +99,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
                     if (!color.HasValue)
                     {
-                        return $"'{colorInput}' is not a valid color. Try using RimWorld hair color names (like 'PitchBlack', 'DarkReddish', 'SandyBlonde'), common color names (like 'red', 'blue'), or hex codes like #FF0000.";
+                        // return $"'{colorInput}' is not a valid color. Try using RimWorld hair color names (like 'PitchBlack', 'DarkReddish', 'SandyBlonde'), common color names (like 'red', 'blue'), or hex codes like #FF0000.";
+                        return "RICS.DyeCommand.InvalidColor".Translate(colorInput);    
                     }
                 }
             }
@@ -109,7 +110,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             {
                 if (!ModsConfig.IdeologyActive)
                 {
-                    return "Please specify a color. The favorite color system requires the Ideology DLC.";
+                    // return "Please specify a color. The favorite color system requires the Ideology DLC.";
+                    return "RICS.DyeCommand.IdeologyRequired".Translate();
                 }
 
                 color = viewerPawn.story?.favoriteColor?.color ?? new Color(0.6f, 0.6f, 0.6f);
@@ -207,7 +209,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             if (pawn.story == null || pawn.story.hairDef == null)
             {
-                return "Your pawn doesn't have hair to dye.";
+                // return "Your pawn doesn't have hair to dye.";
+                return "RICS.DyeCommand.NoHair".Translate();
             }
 
             // Check if there's a styling station in the colony
@@ -239,7 +242,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             Logger.Debug($"[CAP] Hair color now: R:{pawn.story.HairColor.r} G:{pawn.story.HairColor.g} B:{pawn.story.HairColor.b}");
 
             string colorName = GetColorNameForResponse(color, colorInput);
-            return $"Successfully dyed hair to {colorName} at the styling station.";
+            // return $"Successfully dyed hair to {colorName} at the styling station.";
+            return "RICS.DyeCommand.HairSuccess".Translate(colorName);
         }
 
         private static string HandleApparelDye(Verse.Pawn pawn, Color color, string colorInput = null)
@@ -249,11 +253,13 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             if (dyedCount == 0)
             {
-                return "No dyeable clothing found on your pawn.";
+                // return "No dyeable clothing found on your pawn.";
+                return "RICS.DyeCommand.NoDyeableClothing".Translate();
             }
 
             string colorName = GetColorNameForResponse(color, colorInput);
-            return $"Successfully dyed {dyedCount} piece(s) of clothing to {colorName}.";
+            // return $"Successfully dyed {dyedCount} piece(s) of clothing to {colorName}.";
+            return "RICS.DyeCommand.ApparelSuccess".Translate(dyedCount, colorName);
         }
 
         private static int ApplyDyeToApparel(Verse.Pawn pawn, Color color)
