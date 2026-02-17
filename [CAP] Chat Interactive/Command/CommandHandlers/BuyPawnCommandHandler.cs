@@ -1025,15 +1025,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             });
 
             // string result = $"Available races ({availableRaces.Count} of {allRaces.Count()} total): {string.Join(", ", raceList.Take(8))}";
-            string result = "RICS.BPCH.RacesList".Translate(availableRaces.Count, allRaces.Count()) +
+            string result = "RICS.BPCH.RacesList".Translate(availableRaces.Count) +
                 ": " + string.Join(", ", raceList.Take(8));
             if (availableRaces.Count > 8)
                 // result += $" (and {availableRaces.Count - 8} more...)";
                 result += " " + "RICS.BPCH.RacesList.More".Translate(availableRaces.Count - 8);
-
-            // removed extra info
-            //if (availableRaces.Count < allRaces.Count())
-            //    result += $"\n{allRaces.Count() - availableRaces.Count} races are disabled in settings";
 
             return result;
         }
