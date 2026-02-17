@@ -45,7 +45,7 @@ namespace CAP_ChatInteractive.Commands.TestCommands
                 return $"Sorry {user.DisplayName}, this command is not available. 👀";
             }
 
-            return $"😸 Hello {user.DisplayName}! Thanks for testing the chat system! 🎉 This is your special easter egg command!";
+            return $"😸 Hello {user.DisplayName}! The MOD DEV is present!";
         }
     }
 }

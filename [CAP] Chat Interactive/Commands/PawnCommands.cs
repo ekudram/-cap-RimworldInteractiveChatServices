@@ -72,6 +72,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 string listType = args[1].ToLower();
                 switch (listType)
                 {
+                    case "race":
                     case "races":
                         return BuyPawnCommandHandler.ListAvailableRaces();
                     case "xenotypes":

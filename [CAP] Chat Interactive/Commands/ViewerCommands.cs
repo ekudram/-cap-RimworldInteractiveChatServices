@@ -118,7 +118,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            return "Full command list: https://tinyurl.com/RICSWiki (mobile friendly!)";
+            return "Full command list: https://tinyurl.com/RICSCommands (mobile friendly!)";
         }
     }
 
@@ -424,6 +424,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             return string.Join(" | ", resultParts);
         }
     }
+
     public class Colonists : ChatCommand
     {
         public override string Name => "colonists";

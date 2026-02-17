@@ -49,7 +49,7 @@
 
   <!-- List Commands - FIXED: Removed {2} placeholder -->
   <RICS.BPCH.NoRacesAvailable>No races available for purchase.</RICS.BPCH.NoRacesAvailable>
-  <RICS.BPCH.RacesList>Available races ({0} of {1} total)</RICS.BPCH.RacesList>
+  <RICS.BPCH.RacesList>Available races {0}</RICS.BPCH.RacesList>
   <RICS.BPCH.RacesList.More>(and {0} more...)</RICS.BPCH.RacesList.More>
   <RICS.BPCH.RacesList.New>[NEW]</RICS.BPCH.RacesList.New>
 
