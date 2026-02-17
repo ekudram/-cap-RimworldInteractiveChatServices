@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  
+  <!-- Return messages -->
+  <RICS.HPCH.Return.Notavailble>Healer Mech Serum is not available for healing services.</RICS.HPCH.Return.Notavailble>
+  <RICS.HPCH.Return.NoInjuries>No injuries found to heal.</RICS.HPCH.Return.NoInjuries>
+  <RICS.HPCH.Return.Error>Error processing heal command.  Send this stack trace to mod devolper!</RICS.HPCH.Return.Error>
+  <RICS.HPCH.Return.NoPawn>You don't have a pawn assigned. Use !buy pawn first.</RICS.HPCH.Return.NoPawn>
+  <RICS.HPCH.Return.TargetNoPawn>{0} doesn't have a pawn assigned.</RICS.HPCH.Return.TargetNoPawn>
+  <RICS.HPCH.Return.PawnDead>Your pawn is dead. Use !revivepawn first.</RICS.HPCH.Return.PawnDead>
+  <RICS.HPCH.Return.TargetPawnDead>{0}'s pawn is dead. Use !revivepawn first.</RICS.HPCH.Return.TargetPawnDead>
+  <RICS.HPCH.Return.TargetNoInjuries>{0}'s pawn doesn't have any injuries to heal.</RICS.HPCH.Return.TargetNoInjuries>
+  <RICS.HPCH.Return.NoInjuries>Your pawn doesn't have any injuries to heal.</RICS.HPCH.Return.NoInjuries>
+  <RICS.HPCH.Return.NoInjuredPawns>No injured pawns found to heal.</RICS.HPCH.Return.NoInjuredPawns>
+  <RICS.HPCH.Return.CantAfford>Need {0} to heal (you have {1})! 💚</RICS.HPCH.Return.CantAfford>
+  <RICS.HPCH.Return.HealPartialSuccess>💚 COMPLETE HEALING! Healed {2} injuries for {0}! {3} remain (low funds). Balance: {1}</RICS.HPCH.Return.HealPartialSuccess>
+  <RICS.HPCH.Return.HealSuccess>💚 HEALING! Healed {2} injuries for {0}! Remaining: {1}</RICS.HPCH.Return.HealSuccess>
+  <RICS.HPCH.Return.CantAffordMultiple>Need {0} to heal ×{2}! You have {1}</RICS.HPCH.Return.CantAffordMultiple>
+  <RICS.HPCH.Return.CantAffordMultipleTarget>Need {0} to heal {2}'s pawn ×{3}! You have {1}</RICS.HPCH.Return.CantAffordMultipleTarget>
+  <RICS.HPCH.Return.HealSuccessTarget>💚 HEALING! Healed {2} injuries on {3}'s pawn for {0}! Remaining: {1}</RICS.HPCH.Return.HealSuccessTarget>
+  <RICS.HPCH.Return.CantAffordMassHeal>Need {0} to heal {2} injuries across {3} pawns! You have {1}</RICS.HPCH.Return.CantAffordMassHeal>
+  <RICS.HPCH.Return.HealMassSuccess>💚 COMPLETE HEALING! Healed all {2} injuries across {3} pawns for {0}! Remaining: {1}</RICS.HPCH.Return.HealMassSuccess>
+  
+ 
+  <!-- Invoice Titles -->
+  <RICS.HPCH.Invoice.HealingTitle>RIMAZON HEALING SERVICE</RICS.HPCH.Invoice.HealingTitle>
+  <RICS.HPCH.Invoice.CompleteHealingTitle>RIMAZON COMPLETE HEALING SERVICE</RICS.HPCH.Invoice.CompleteHealingTitle>
+  <RICS.HPCH.Invoice.MassHealingTitle>RIMAZON MASS HEALING SERVICE</RICS.HPCH.Invoice.MassHealingTitle>
+
+  <!-- Common Labels -->
+  <RICS.HPCH.Invoice.Healer>Healer: {0}</RICS.HPCH.Invoice.Healer>
+  <RICS.HPCH.Invoice.Patient>Patient: {0}</RICS.HPCH.Invoice.Patient>
+  <RICS.HPCH.Invoice.ServiceInjuryHealing>Service: Injury Healing</RICS.HPCH.Invoice.ServiceInjuryHealing>
+  <RICS.HPCH.Invoice.ServiceCompleteHealing>Service: Complete Healing</RICS.HPCH.Invoice.ServiceCompleteHealing>
+  <RICS.HPCH.Invoice.ServiceMassHealing>Service: Mass Healing</RICS.HPCH.Invoice.ServiceMassHealing>
+  <RICS.HPCH.Invoice.PawnsTreated>Pawns Treated: {0}</RICS.HPCH.Invoice.PawnsTreated>
+  <RICS.HPCH.Invoice.InjuriesHealed>Injuries Healed: {0}</RICS.HPCH.Invoice.InjuriesHealed>
+  <RICS.HPCH.Invoice.Total>Total: {0}</RICS.HPCH.Invoice.Total>
+
+  <!-- Thank-you / Closing Messages -->
+  <RICS.HPCH.Invoice.ThankYouHealing>Thank you for using Rimazon Healing!</RICS.HPCH.Invoice.ThankYouHealing>
+  <RICS.HPCH.Invoice.ThankYouComplete>Thank you for using Rimazon Complete Healing!</RICS.HPCH.Invoice.ThankYouComplete>
+  <RICS.HPCH.Invoice.ThankYouMass>Thank you for using Rimazon Mass Healing!</RICS.HPCH.Invoice.ThankYouMass>
+
+  <RICS.HPCH.Invoice.PawnFeelingBetter>Your pawn is feeling better! 💚</RICS.HPCH.Invoice.PawnFeelingBetter>
+  <RICS.HPCH.Invoice.KindSoulHealed>A kind soul has healed {0}'s pawn! 💚</RICS.HPCH.Invoice.KindSoulHealed>
+  <RICS.HPCH.Invoice.ColonyThanks>The colony thanks you for your generosity! You have healed {0} injuries across {1} pawns! 💚</RICS.HPCH.Invoice.ColonyThanks>
+
+  <RICS.HPCH.Invoice.Separator>====================</RICS.HPCH.Invoice.Separator>
+</LanguageData>

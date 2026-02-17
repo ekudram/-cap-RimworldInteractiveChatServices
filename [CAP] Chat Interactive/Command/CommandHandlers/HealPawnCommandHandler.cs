@@ -45,13 +45,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var healerSerum = StoreInventory.GetStoreItem("MechSerumHealer");
                 if (healerSerum == null)
                 {
-                    return "Healer Mech Serum is not available for healing services.";
+                    // return "Healer Mech Serum is not available for healing services.";
+                    return "RICS.HPCH.Return.Notavailble".Translate();
                 }
 
                 // Check if the item is usable (IsUsable = true) OR if it's enabled (Enabled = true)
                 if (!healerSerum.IsUsable && !healerSerum.Enabled)
                 {
-                    return "Healer Mech Serum is not available for healing services.";
+                    // return "Healer Mech Serum is not available for healing services.";
+                    return "RICS.HPCH.Return.Notavailble".Translate();
                 }
 
                 int pricePerHeal = healerSerum.BasePrice;
@@ -95,7 +97,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error in HandleHealPawn: {ex}");
-                return "Error processing heal command. Please try again.";
+                // return "Error processing heal command. Please try again.";  <- Better phrasing
+                return "RICS.HPCH.Return.Error".Translate();
             }
         }
 
@@ -105,17 +108,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (viewerPawn == null)
             {
-                return "You don't have a pawn assigned. Use !buy pawn first.";
+                // return "You don't have a pawn assigned. Use !buy pawn first.";
+                return "RICS.HPCH.Return.NoPawn".Translate();
             }
 
             if (viewerPawn.Dead)
             {
-                return "Your pawn is dead. Use !revivepawn first.";
+                // return "Your pawn is dead. Use !revivepawn first.";
+                return "RICS.HPCH.Return.PawnDead".Translate();
             }
 
             if (!HasInjuriesToHeal(viewerPawn))
             {
-                return "Your pawn doesn't have any injuries to heal.";
+                // return "Your pawn doesn't have any injuries to heal.";
+                return "RICS.HPCH.Return.NoInjuries".Translate();
             }
 
             // Count all healable injuries
@@ -125,7 +131,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (injuriesToHeal == 0)
             {
-                return $"You need {StoreCommandHelper.FormatCurrencyMessage(pricePerHeal, currencySymbol)} to heal any injuries! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                // return $"You need {StoreCommandHelper.FormatCurrencyMessage(pricePerHeal, currencySymbol)} to heal any injuries! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return "RICS.HPCH.Return.CantAfford".Translate(StoreCommandHelper.FormatCurrencyMessage(pricePerHeal, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
             }
 
             int totalCost = injuriesToHeal * pricePerHeal;
@@ -157,11 +165,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (injuriesHealed < totalInjuries)
             {
-                return $"💚 COMPLETE HEALING! Healed {injuriesHealed} injuries on your pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! {totalInjuries - injuriesHealed} injuries remain (insufficient funds). Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                // return $"💚 COMPLETE HEALING! Healed {injuriesHealed} injuries on your pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! {totalInjuries - injuriesHealed} injuries remain (insufficient funds). Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return "RICS.HPCH.Return.HealPartialSuccess".Translate(StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol), injuriesHealed, totalInjuries - injuriesHealed);
             }
             else
             {
-                return $"💚 COMPLETE HEALING! Healed all {injuriesHealed} injuries on your pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                // return $"💚 COMPLETE HEALING! Healed all {injuriesHealed} injuries on your pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return "RICS.HPCH.Return.HealMassSuccess".Translate(StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol), injuriesHealed, 1);
             }
         }
 
@@ -171,17 +183,21 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (viewerPawn == null)
             {
-                return "You don't have a pawn assigned. Use !buy pawn first.";
+                // return "You don't have a pawn assigned. Use !buy pawn first.";
+                return "RICS.HPCH.Return.NoPawn".Translate();
             }
 
             if (viewerPawn.Dead)
             {
-                return "Your pawn is dead. Use !revivepawn first.";
+                // return "Your pawn is dead. Use !revivepawn first.";
+                return "RICS.HPCH.Return.PawnDead".Translate();
+
             }
 
             if (!HasInjuriesToHeal(viewerPawn))
             {
-                return "Your pawn doesn't have any injuries to heal.";
+                // return "Your pawn doesn't have any injuries to heal.";  ?? Nicer message?
+                return "RICS.HPCH.Return.NoInjuries".Translate();
             }
 
             int totalCost = pricePerHeal * quantity;
@@ -189,7 +205,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Check if user can afford
             if (!StoreCommandHelper.CanUserAfford(messageWrapper, totalCost))
             {
-                return $"You need {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)} to heal your pawn {quantity} time(s)! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                // return $"You need {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)} to heal your pawn {quantity} time(s)! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return "RICS.HPCH.Return.CantAffordMultiple".Translate(StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol), quantity);
             }
 
             // Deduct coins and heal
@@ -216,7 +234,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
 
             Logger.Debug($"Heal self successful: {messageWrapper.Username} healed {injuriesHealed} injuries for {totalCost}{currencySymbol}");
-            return $"💚 HEALING! Healed {injuriesHealed} injuries on your pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            // return $"💚 HEALING! Healed {injuriesHealed} injuries on your pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            return "RICS.HPCH.Return.HealSuccess".Translate(StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol), injuriesHealed);
         }
 
         private static string HealSpecificUser(ChatMessageWrapper messageWrapper, Viewer viewer, string targetUsername, int pricePerHeal, string currencySymbol, int quantity)
@@ -226,7 +246,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Check if user can afford
             if (!StoreCommandHelper.CanUserAfford(messageWrapper, totalCost))
             {
-                return $"You need {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)} to heal {targetUsername}'s pawn {quantity} time(s)! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                // return $"You need {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)} to heal {targetUsername}'s pawn {quantity} time(s)! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return "RICS.HPCH.Return.CantAffordMultipleTarget".Translate(StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol), targetUsername, quantity);
             }
 
             // FIXED: Use the assignment manager directly to find the pawn by username
@@ -235,17 +257,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (targetPawn == null)
             {
-                return $"{targetUsername} doesn't have a pawn assigned.";
+                // return $"{targetUsername} doesn't have a pawn assigned.";
+                return "RICS.HPCH.Return.TargetNoPawn".Translate(targetUsername);
             }
 
             if (targetPawn.Dead)
             {
-                return $"{targetUsername}'s pawn is dead. Use !revivepawn first.";
+                // return $"{targetUsername}'s pawn is dead. Use !revivepawn first.";
+                return "RICS.HPCH.Return.TargetPawnDead".Translate(targetUsername);
             }
 
             if (!HasInjuriesToHeal(targetPawn))
             {
-                return $"{targetUsername}'s pawn doesn't have any injuries to heal.";
+                // return $"{targetUsername}'s pawn doesn't have any injuries to heal.";
+                return "RICS.HPCH.Return.TargetNoInjuries".Translate(targetUsername);
             }
 
             // Deduct coins and heal
@@ -272,7 +297,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
 
             Logger.Debug($"Heal specific user successful: {messageWrapper.Username} healed {targetUsername}'s pawn ({injuriesHealed} injuries) for {totalCost}{currencySymbol}");
-            return $"💚 HEALING! Healed {injuriesHealed} injuries on {targetUsername}'s pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            // return $"💚 HEALING! Healed {injuriesHealed} injuries on {targetUsername}'s pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            return "RICS.HPCH.Return.HealSuccessTarget".Translate(StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol), injuriesHealed, targetUsername);
         }
 
         private static string HealAllPawns(ChatMessageWrapper messageWrapper, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
@@ -298,7 +325,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (injuredPawns.Count == 0)
             {
-                return "No injured pawns found to heal.";
+                // return "No injured pawns found to heal.";
+                return "RICS.HPCH.Return.NoInjuredPawns".Translate();
             }
 
             // Calculate cost: price per heal × total injuries across all pawns
@@ -308,7 +336,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Check if user can afford all heals
             if (!StoreCommandHelper.CanUserAfford(messageWrapper, totalCost))
             {
-                return $"You need {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)} to heal all {totalInjuries} injuries across {injuredPawns.Count} pawns! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                // return $"You need {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)} to heal all {totalInjuries} injuries across {injuredPawns.Count} pawns! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return "RICS.HPCH.Return.CantAffordMassHeal".Translate(StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol), totalInjuries, injuredPawns.Count);
             }
 
             // Heal all injuries on all pawns
@@ -342,7 +372,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
 
             Logger.Debug($"Heal all successful: {messageWrapper.Username} healed {totalInjuriesHealed} injuries across {injuredPawns.Count} pawns for {totalCost}{currencySymbol}");
-            return $"💚 COMPLETE HEALING! Healed all {totalInjuriesHealed} injuries across {injuredPawns.Count} pawns for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            // return $"💚 COMPLETE HEALING! Healed all {totalInjuriesHealed} injuries across {injuredPawns.Count} pawns for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            return "RICS.HPCH.Return.HealMassSuccess".Translate(StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol), totalInjuriesHealed, injuredPawns.Count);
         }
 
         private static int CountHealableInjuries(Verse.Pawn pawn)
@@ -407,69 +439,109 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static string CreateHealingInvoice(string healerUsername, string targetUsername, int injuriesHealed, int price, string currencySymbol)
         {
-            string invoice = $"RIMAZON HEALING SERVICE\n";
-            invoice += $"====================\n";
-            invoice += $"Patient: {targetUsername}\n";
-            invoice += $"Service: Injury Healing\n";
-            invoice += $"Injuries Healed: {injuriesHealed}\n";
-            invoice += $"====================\n";
-            invoice += $"Total: {price}{currencySymbol}\n";
-            invoice += $"====================\n";
-            invoice += $"Thank you for using Rimazon Healing!\n";
-            invoice += $"Your pawn is feeling better! 💚";
+            //string invoice = $"RIMAZON HEALING SERVICE\n";
+            //invoice += $"====================\n";
+            //invoice += $"Patient: {targetUsername}\n";
+            //invoice += $"Service: Injury Healing\n";
+            //invoice += $"Injuries Healed: {injuriesHealed}\n";
+            //invoice += $"====================\n";
+            //invoice += $"Total: {price}{currencySymbol}\n";
+            //invoice += $"====================\n";
+            //invoice += $"Thank you for using Rimazon Healing!\n";
+            //invoice += $"Your pawn is feeling better! 💚";
 
-            return invoice;
+            return "RICS.HPCH.Invoice.HealingTitle".Translate() + "\n" +
+        "====================".Translate() + "\n" +   // or make it a key too if you want to localize separators
+        "RICS.HPCH.Invoice.Patient".Translate(targetUsername) + "\n" +
+        "RICS.HPCH.Invoice.ServiceInjuryHealing".Translate() + "\n" +
+        "RICS.HPCH.Invoice.InjuriesHealed".Translate(injuriesHealed) + "\n" +
+        "====================".Translate() + "\n" +
+        "RICS.HPCH.Invoice.Total".Translate(StoreCommandHelper.FormatCurrencyMessage(price, currencySymbol)) + "\n" +
+        "====================".Translate() + "\n" +
+        "RICS.HPCH.Invoice.ThankYouHealing".Translate() + "\n" +
+        "RICS.HPCH.Invoice.PawnFeelingBetter".Translate(); ;
         }
 
         private static string CreateCompleteHealingInvoice(string username, int injuriesHealed, int totalPrice, string currencySymbol)
         {
-            string invoice = $"RIMAZON COMPLETE HEALING SERVICE\n";
-            invoice += $"====================\n";
-            invoice += $"Patient: {username}\n";
-            invoice += $"Service: Complete Healing\n";
-            invoice += $"Injuries Healed: {injuriesHealed}\n";
-            invoice += $"====================\n";
-            invoice += $"Total: {totalPrice}{currencySymbol}\n";
-            invoice += $"====================\n";
-            invoice += $"Thank you for using Rimazon Complete Healing!\n";
-            invoice += $"Your pawn is now completely healed! 💚";
+            //string invoice = $"RIMAZON COMPLETE HEALING SERVICE\n";
+            //invoice += $"====================\n";
+            //invoice += $"Patient: {username}\n";
+            //invoice += $"Service: Complete Healing\n";
+            //invoice += $"Injuries Healed: {injuriesHealed}\n";
+            //invoice += $"====================\n";
+            //invoice += $"Total: {totalPrice}{currencySymbol}\n";
+            //invoice += $"====================\n";
+            //invoice += $"Thank you for using Rimazon Complete Healing!\n";
+            //invoice += $"Your pawn is now completely healed! 💚";
 
-            return invoice;
+
+
+            return "RICS.HPCH.Invoice.CompleteHealingTitle".Translate() + "\n" +
+        "====================".Translate() + "\n" +
+        "RICS.HPCH.Invoice.Patient".Translate(username) + "\n" +
+        "RICS.HPCH.Invoice.ServiceCompleteHealing".Translate() + "\n" +
+        "RICS.HPCH.Invoice.InjuriesHealed".Translate(injuriesHealed) + "\n" +
+        "====================".Translate() + "\n" +
+        "RICS.HPCH.Invoice.Total".Translate(StoreCommandHelper.FormatCurrencyMessage(totalPrice, currencySymbol)) + "\n" +
+        "====================".Translate() + "\n" +
+        "RICS.HPCH.Invoice.ThankYouComplete".Translate() + "\n" +
+        "RICS.HPCH.Invoice.PawnFeelingBetter".Translate(); ;
         }
 
         private static string CreateMultiUserHealingInvoice(string healerUsername, string targetUsername, int injuriesHealed, int price, string currencySymbol)
         {
-            string invoice = $"RIMAZON HEALING SERVICE\n";
-            invoice += $"====================\n";
-            invoice += $"Healer: {healerUsername}\n";
-            invoice += $"Patient: {targetUsername}\n";
-            invoice += $"Service: Injury Healing\n";
-            invoice += $"Injuries Healed: {injuriesHealed}\n";
-            invoice += $"====================\n";
-            invoice += $"Total: {price}{currencySymbol}\n";
-            invoice += $"====================\n";
-            invoice += $"Thank you for using Rimazon Healing!\n";
-            invoice += $"A kind soul has healed {targetUsername}'s pawn! 💚";
+            //string invoice = $"RIMAZON HEALING SERVICE\n";
+            //invoice += $"====================\n";
+            //invoice += $"Healer: {healerUsername}\n";
+            //invoice += $"Patient: {targetUsername}\n";
+            //invoice += $"Service: Injury Healing\n";
+            //invoice += $"Injuries Healed: {injuriesHealed}\n";
+            //invoice += $"====================\n";
+            //invoice += $"Total: {price}{currencySymbol}\n";
+            //invoice += $"====================\n";
+            //invoice += $"Thank you for using Rimazon Healing!\n";
+            //invoice += $"A kind soul has healed {targetUsername}'s pawn! 💚";
 
-            return invoice;
+            return "RICS.HPCH.Invoice.HealingTitle".Translate() + "\n" +
+        "====================".Translate() + "\n" +
+        "RICS.HPCH.Invoice.Healer".Translate(healerUsername) + "\n" +
+        "RICS.HPCH.Invoice.Patient".Translate(targetUsername) + "\n" +
+        "RICS.HPCH.Invoice.ServiceInjuryHealing".Translate() + "\n" +
+        "RICS.HPCH.Invoice.InjuriesHealed".Translate(injuriesHealed) + "\n" +
+        "====================".Translate() + "\n" +
+        "RICS.HPCH.Invoice.Total".Translate(StoreCommandHelper.FormatCurrencyMessage(price, currencySymbol)) + "\n" +
+        "====================".Translate() + "\n" +
+        "RICS.HPCH.Invoice.ThankYouHealing".Translate() + "\n" +
+        "RICS.HPCH.Invoice.KindSoulHealed".Translate(targetUsername); ;
         }
 
         private static string CreateMassHealingInvoice(string healerUsername, int pawnsHealed, int totalInjuriesHealed, int totalPrice, string currencySymbol)
         {
-            string invoice = $"RIMAZON MASS HEALING SERVICE\n";
-            invoice += $"====================\n";
-            invoice += $"Healer: {healerUsername}\n";
-            invoice += $"Service: Mass Healing\n";
-            invoice += $"Pawns Treated: {pawnsHealed}\n";
-            invoice += $"Injuries Healed: {totalInjuriesHealed}\n";
-            invoice += $"====================\n";
-            invoice += $"Total: {totalPrice}{currencySymbol}\n";
-            invoice += $"====================\n";
-            invoice += $"Thank you for using Rimazon Mass Healing!\n";
-            invoice += $"You have healed {totalInjuriesHealed} injuries across {pawnsHealed} pawns!\n";
-            invoice += $"The colony thanks you for your generosity! 💚";
+            //string invoice = $"RIMAZON MASS HEALING SERVICE\n";
+            //invoice += $"====================\n";
+            //invoice += $"Healer: {healerUsername}\n";
+            //invoice += $"Service: Mass Healing\n";
+            //invoice += $"Pawns Treated: {pawnsHealed}\n";
+            //invoice += $"Injuries Healed: {totalInjuriesHealed}\n";
+            //invoice += $"====================\n";
+            //invoice += $"Total: {totalPrice}{currencySymbol}\n";
+            //invoice += $"====================\n";
+            //invoice += $"Thank you for using Rimazon Mass Healing!\n";
+            //invoice += $"You have healed {totalInjuriesHealed} injuries across {pawnsHealed} pawns!\n";
+            //invoice += $"The colony thanks you for your generosity! 💚";
 
-            return invoice;
+            return "RICS.HPCH.Invoice.MassHealingTitle".Translate() + "\n" +
+        "====================".Translate() + "\n" +
+        "RICS.HPCH.Invoice.Healer".Translate(healerUsername) + "\n" +
+        "RICS.HPCH.Invoice.ServiceMassHealing".Translate() + "\n" +
+        "RICS.HPCH.Invoice.PawnsTreated".Translate(pawnsHealed) + "\n" +
+        "RICS.HPCH.Invoice.InjuriesHealed".Translate(totalInjuriesHealed) + "\n" +
+        "====================".Translate() + "\n" +
+        "RICS.HPCH.Invoice.Total".Translate(StoreCommandHelper.FormatCurrencyMessage(totalPrice, currencySymbol)) + "\n" +
+        "====================".Translate() + "\n" +
+        "RICS.HPCH.Invoice.ThankYouMass".Translate() + "\n" +
+        "RICS.HPCH.Invoice.ColonyThanks".Translate(totalInjuriesHealed, pawnsHealed); ;
         }
     }
 }
