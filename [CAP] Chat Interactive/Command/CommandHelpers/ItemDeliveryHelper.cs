@@ -182,15 +182,41 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 return IntVec3.Invalid;
             }
 
-            // 1. Orbital trade beacon (good for drop pods/trade behavior)
-            Building tradeBeacon = map.listerBuildings.AllBuildingsColonistOfDef(ThingDefOf.OrbitalTradeBeacon).FirstOrDefault();
-            if (tradeBeacon != null)
+            // ───────────────────────────────────────────────
+            // 1. Highest priority: explicitly named "drop spot" thing (case-insensitive)
+            // ───────────────────────────────────────────────
+            var allThings = map.listerThings.AllThings;
+            var dropSpotThing = allThings
+                .Where(t => t.Spawned && !t.Destroyed && t.Map == map)
+                .FirstOrDefault(t =>
+                {
+                    string label = t.Label?.ToLowerInvariant();
+                    return !string.IsNullOrWhiteSpace(label) && label.Contains("drop spot");
+                });
+
+            if (dropSpotThing != null)
             {
-                Logger.Debug($"Using Orbital Trade Beacon position: {tradeBeacon.Position}");
-                return tradeBeacon.Position;
+                Logger.Debug($"Using explicit 'drop spot' item '{dropSpotThing.Label}' at {dropSpotThing.Position}");
+                return dropSpotThing.Position;
             }
 
-            // 2. Highest priority: Ship landing beacon (tells shuttles exactly where to land)
+            // ───────────────────────────────────────────────
+            // 2. Orbital trade beacon — but only if outdoors (no roof)
+            // ───────────────────────────────────────────────
+            var tradeBeacons = map.listerBuildings.AllBuildingsColonistOfDef(ThingDefOf.OrbitalTradeBeacon)
+                .Where(b => b.Spawned && !b.Destroyed && !map.roofGrid.Roofed(b.Position))
+                .ToList();
+
+            if (tradeBeacons.Any())
+            {
+                var beacon = tradeBeacons.First(); // or .OrderBy(b => some criteria).First()
+                Logger.Debug($"Using roof-free Orbital Trade Beacon at {beacon.Position}");
+                return beacon.Position;
+            }
+
+            // ───────────────────────────────────────────────
+            // 3. Ship landing beacon (usually placed outside anyway)
+            // ───────────────────────────────────────────────
             Building shipBeacon = map.listerBuildings.AllBuildingsColonistOfDef(ThingDefOf.ShipLandingBeacon).FirstOrDefault();
             if (shipBeacon != null)
             {
@@ -198,55 +224,61 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 return shipBeacon.Position;
             }
 
-            // 3. Caravan hitching spot (good general gathering point)
+            // ───────────────────────────────────────────────
+            // 4. Caravan hitching / packing spot
+            // ───────────────────────────────────────────────
             ThingDef hitchingDef = ThingDefOf.CaravanPackingSpot
-                                ?? DefDatabase<ThingDef>.GetNamedSilentFail("CaravanPackingSpot");
+                ?? DefDatabase<ThingDef>.GetNamedSilentFail("CaravanPackingSpot");
 
             if (hitchingDef != null)
             {
                 Building hitchingSpot = map.listerBuildings.AllBuildingsColonistOfDef(hitchingDef).FirstOrDefault();
                 if (hitchingSpot != null)
                 {
-                    Logger.Debug($"Using Caravan Hitching Spot position: {hitchingSpot.Position}");
+                    Logger.Debug($"Using Caravan Hitching/Packing Spot at: {hitchingSpot.Position}");
                     return hitchingSpot.Position;
                 }
             }
             else
             {
-                Logger.Warning("Caravan Hitching Spot def not found");
+                Logger.Warning("Caravan Hitching/Packing Spot def not found");
             }
 
-            // 4. Fallback: near average colonist position (mimics vanilla pod drop behavior)
+            // ───────────────────────────────────────────────
+            // 5. Fallback: near average free colonist position
+            // ───────────────────────────────────────────────
             var freeColonists = map.mapPawns.FreeColonistsSpawned;
-            if (freeColonists.Count == 0)
+            if (freeColonists.Count > 0)
             {
-                Logger.Debug("No free colonists → falling back to map center");
-                return map.Center;
+                IntVec3 average = IntVec3.Zero;
+                foreach (var colonist in freeColonists)
+                    average += colonist.Position;
+
+                average /= freeColonists.Count;
+
+                if (CellFinder.TryFindRandomCellNear(average, map, 20,
+                    c => c.Standable(map) && !c.Fogged(map),
+                    out IntVec3 spot))
+                {
+                    Logger.Debug($"Using central colonist area fallback: {spot}");
+                    return spot;
+                }
             }
 
-            IntVec3 average = IntVec3.Zero;
-            foreach (var colonist in freeColonists)
-                average += colonist.Position;
-
-            average /= freeColonists.Count;
-
-            if (CellFinder.TryFindRandomCellNear(average, map, 20,
-                c => c.Standable(map) && !c.Fogged(map),
-                out IntVec3 spot))
-            {
-                Logger.Debug($"Using central colonist area fallback: {spot}");
-                return spot;
-            }
-
+            // ───────────────────────────────────────────────
+            // 6. Underground map → try surface if possible
+            // ───────────────────────────────────────────────
             if (IsUndergroundMap(map) && Find.Maps.Any(m => !IsUndergroundMap(m) && m.IsPlayerHome))
             {
                 Map surface = Find.Maps.First(m => !IsUndergroundMap(m) && m.IsPlayerHome);
-                Logger.Debug("Forcing surface map fallback for drop position");
-                return GetCustomDropSpot(surface); // Recursive but safe (surface won't be underground)
+                Logger.Debug("Underground map detected → falling back to surface map drop spot");
+                return GetCustomDropSpot(surface); // recursive, but surface won't redirect again
             }
 
-            // Last resort
-            Logger.Warning("No good fallback spot found → using map center");
+            // ───────────────────────────────────────────────
+            // 7. Absolute last resort: map center
+            // ───────────────────────────────────────────────
+            Logger.Warning("No good drop spot found → using map center");
             return map.Center;
         }
 
