@@ -243,62 +243,72 @@ namespace CAP_ChatInteractive.Incidents
 
         private string DetermineKarmaType(IncidentDef incidentDef)
         {
-            // First check for specific defNames that we know are good or bad
-            string[] badDefNames = {
-        "NoxiousHaze", "CropBlight", "LavaEmergence", "LavaFlow", "ShortCircuit"
+            if (incidentDef == null) return "Neutral";
+
+            string defNameLower = incidentDef.defName.ToLowerInvariant();
+
+            // ────────────────────────────────────────────────
+            // NEW: Doom-tier — colony-threatening apocalypse events
+            // These should feel "oh no, chat is about to end us" expensive
+            string[] doomTriggers = {
+        "toxicfallout", "volcanicwinter", "defoliatorshippart", "psychicemanatorshippart",
+        "animalinsanitymass", "infestation", "manhunterpack", // mass manhunter can be doom if big
+        "psychicdrone" // especially when high level, but we catch it via letter/category below too
     };
 
-            string[] goodDefNames = {
-        "PsychicSoothe"
-    };
+            if (doomTriggers.Any(trigger => defNameLower.Contains(trigger)))
+            {
+                return "Doom";
+            }
 
-            if (badDefNames.Contains(incidentDef.defName))
-                return "Bad";
-
-            if (goodDefNames.Contains(incidentDef.defName))
-                return "Good";
-
-            // Then check letter def for karma hints
+            // Also catch via letter/category for cases where defName doesn't match exactly
             if (incidentDef.letterDef != null)
             {
-                string letterDefName = incidentDef.letterDef.defName.ToLower();
-
-                if (letterDefName.Contains("positive") || letterDefName.Contains("good"))
-                    return "Good";
-                else if (letterDefName.Contains("negative") || letterDefName.Contains("bad") ||
-                         letterDefName.Contains("threat"))
-                    return "Bad";
+                string letterName = incidentDef.letterDef.defName.ToLowerInvariant();
+                if (letterName.Contains("negative") || letterName.Contains("threat"))
+                {
+                    if (incidentDef.category?.defName?.ToLowerInvariant().Contains("threatbig") == true &&
+                        (defNameLower.Contains("fallout") || defNameLower.Contains("winter") ||
+                         defNameLower.Contains("insanity") || defNameLower.Contains("defoliator") ||
+                         defNameLower.Contains("emi") || BaseChance <= 0.4f)) // rarer = more doom-like
+                    {
+                        return "Doom";
+                    }
+                }
             }
 
-            // Check category for threat indicators
+            // ────────────────────────────────────────────────
+            // Original logic below (slightly cleaned up)
+            string[] badDefNames = { "NoxiousHaze", "CropBlight", "LavaEmergence", "LavaFlow", "ShortCircuit" };
+            string[] goodDefNames = { "PsychicSoothe" };
+
+            if (badDefNames.Contains(incidentDef.defName)) return "Bad";
+            if (goodDefNames.Contains(incidentDef.defName)) return "Good";
+
+            if (incidentDef.letterDef != null)
+            {
+                string letter = incidentDef.letterDef.defName.ToLowerInvariant();
+                if (letter.Contains("positive") || letter.Contains("good")) return "Good";
+                if (letter.Contains("negative") || letter.Contains("bad") || letter.Contains("threat"))
+                    return "Bad";  // regular bad, not doom
+            }
+
             if (incidentDef.category != null)
             {
-                string categoryName = incidentDef.category.defName.ToLower();
-                if (categoryName.Contains("threatbig") || categoryName.Contains("threatsmall") ||
-                    categoryName.Contains("threat"))
-                {
+                string cat = incidentDef.category.defName.ToLowerInvariant();
+                if (cat.Contains("threatbig") || cat.Contains("threatsmall") || cat.Contains("threat"))
                     return "Bad";
-                }
-
-                if (categoryName.Contains("positive") || categoryName.Contains("good") ||
-                    categoryName.Contains("benefit"))
-                {
+                if (cat.Contains("positive") || cat.Contains("good") || cat.Contains("benefit"))
                     return "Good";
-                }
-
-                if (categoryName.Contains("neutral") || categoryName.Contains("normal"))
-                {
+                if (cat.Contains("neutral") || cat.Contains("normal"))
                     return "Neutral";
-                }
             }
 
-            // Fallback to type-based determination
-            if (IsRaidIncident || IsDiseaseIncident)
-                return "Bad";
-            else if (IsQuestIncident)
-                return "Good";
-            else
-                return "Neutral";
+            // Type-based fallback
+            if (IsRaidIncident || IsDiseaseIncident) return "Bad";
+            if (IsQuestIncident) return "Good";
+
+            return "Neutral";
         }
 
         public string GetUnavailableReason()
@@ -372,45 +382,96 @@ namespace CAP_ChatInteractive.Incidents
 
         private void SetDefaultPricing(IncidentDef incidentDef)
         {
-            int basePrice = 300; // Slightly higher than minimal since other income sources exist
+            if (incidentDef == null)
+            {
+                BaseCost = 400;
+                return;
+            }
+
+            float basePrice = 380f;          // lowered starting point for accessibility
             float impactFactor = 1.0f;
 
-            // Determine karma type first
-            KarmaType = DetermineKarmaType(incidentDef);
+            // 1. Karma weighting – VERY negative events now heavily up-priced
+            string karma = KarmaType?.ToLowerInvariant() ?? "neutral";
+            switch (karma)
+            {
+                case "Doom":
+                    impactFactor *= 3.2f;     // Doom still premium, but ~3× neutral
+                    EventCap = 1;
+                    break;
+                case "Bad":
+                    impactFactor *= 1.9f;     // Bad is noticeable but not extreme
+                    break;
+                case "Good":
+                    impactFactor *= 0.85f;    // Encourage buying positives often
+                    break;
+                default: // Neutral
+                    impactFactor *= 1.0f;
+                    break;
+            }
 
-            // Tier-based pricing for different viewer engagement levels
+            // 2. Type multipliers (RimWorld classification you already compute)
             if (IsRaidIncident)
             {
-                impactFactor *= 2.5f; // Premium tier - channel points/daily reward targets
+                impactFactor *= 1.4f;
                 EventCap = 1;
-            }
-            else if (IsWeatherIncident)
-            {
-                impactFactor *= 1.3f; // Mid tier - regular watching + occasional bonuses
             }
             else if (IsDiseaseIncident)
             {
-                impactFactor *= 1.7f; // High tier - requires some saving/daily rewards
+                impactFactor *= 1.5f;
+                EventCap = 1;
+            }
+            else if (IsWeatherIncident ||
+                     incidentDef.defName.ToLowerInvariant().Contains("wave") ||
+                     incidentDef.defName.ToLowerInvariant().Contains("snap") ||
+                     incidentDef.defName.ToLowerInvariant().Contains("storm") ||
+                     incidentDef.defName.ToLowerInvariant().Contains("fallout") ||
+                     incidentDef.defName.ToLowerInvariant().Contains("eclipse") ||
+                     incidentDef.defName.ToLowerInvariant().Contains("flare"))
+            {
+            if (karma == "doom")
+                impactFactor *= 1.25f;
+            if (karma == "bad")
+                impactFactor *= 1.15f;
+            else
+                impactFactor *= 1.0f;
             }
             else if (IsQuestIncident)
             {
-                impactFactor *= 1.2f; // Low-mid tier - accessible with moderate engagement
+                impactFactor *= 0.9f;
             }
 
-            // Threat points scaling (reduced impact since other income exists)
+            // Threat-point scaling – very gentle (many big threats won't explode in price)
             if (PointsScaleable && MaxThreatPoints > 0)
             {
-                impactFactor *= (MaxThreatPoints / 2500f);
+                float ts = Math.Clamp(MaxThreatPoints / 2500f, 1f, 2.8f);
+                impactFactor *= ts;
             }
 
-            // Rarity adjustment
-            if (BaseChance > 0)
+            // Rarity / on-demand adjustment – minimal
+            if (BaseChance > 0f)
             {
-                impactFactor *= (1.0f / BaseChance) * 0.08f;
+                impactFactor *= Math.Clamp(1.8f / BaseChance, 0.9f, 1.8f);
+            }
+            else
+            {
+                impactFactor *= 1.25f;   // slight premium for buyable events
             }
 
-            BaseCost = (int)(basePrice * impactFactor);
-            BaseCost = Math.Max(150, Math.Min(7500, BaseCost)); // Wider range for economy flexibility
+            // Final very-negative boost – small
+            string defLower = incidentDef.defName.ToLowerInvariant();
+            string[] veryNegative = {
+        "toxicfallout", "volcanicwinter", "defoliatorshippart", "psychicemanatorshippart",
+        "animalinsanitymass", "wastepackinfestation"
+    };
+            if (veryNegative.Any(d => defLower.Contains(d)))
+            {
+                impactFactor *= 1.25f;
+            }
+
+            // Hard clamp – this is the key for your targets
+            BaseCost = (int)Math.Round(basePrice * impactFactor);
+            BaseCost = Math.Max(180, Math.Min(1800, BaseCost));  // ← 1800 cap = ~3h normal, 180 min = ~18 min
         }
 
         private string CleanIncidentName(string originalName)

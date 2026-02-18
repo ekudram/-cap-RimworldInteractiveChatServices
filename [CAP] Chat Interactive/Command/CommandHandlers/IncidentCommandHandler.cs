@@ -43,9 +43,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
                 {
-                    MessageHandler.SendFailureLetter("Incident Failed",
-                        $"Could not find viewer data for {messageWrapper.Username}");
-                    return "Error: Could not find your viewer data.";
+                    // This should never happen since GetViewer adds them if they don't exist, but just in case
+                    // return "Error: Could not find your viewer data.";  
+                    return "RICS.ICH.RETURN.ErrorFindingViewerData".Translate(); // Use translation key for consistency
                 }
 
                 // Find the incident by command input
@@ -53,14 +53,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (buyableIncident == null)
                 {
                     var availableTypes = GetAvailableIncidents().Take(5).Select(i => i.Key);
-                    return $"Unknown incident type: {incidentType}. Try !event list";
+                    // return $"Unknown incident type: {incidentType}. Try !event list";
+                    return "RICS.ICH.RETURN.UnknownIncidentType".Translate(incidentType, string.Join(", ", availableTypes));
                 }
 
                 // Check if incident is enabled
                 if (!buyableIncident.Enabled)
                 {
                     // MessageHandler.SendFailureLetter("Incident Failed", $"{messageWrapper.Username} tried disabled incident: {buyableIncident.Label}");
-                    return $"{buyableIncident.Label} is currently disabled.";
+                    // return $"{buyableIncident.Label} is currently disabled.";
+                    //MessageHandler.SendFailureLetter("RICS.ICH.RETURN.IncidentFailed".Translate(), 
+                    //    "RICS.ICH.RETURN.TryingDisabledIncident".Translate(messageWrapper.Username, buyableIncident.Label));
+                    return "RICS.ICH.RETURN.IncidentDisabled".Translate(buyableIncident.Label);
                 }
 
                 // DEBUG: Log incident details
@@ -117,7 +121,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         if (!cooldownManager.CanUseGlobalEvents(settings))
                         {
                             int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
-                            return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
+                            // return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
+                            return "RICS.ICH.RETURN.GlobalEventLimitReached".Translate(totalEvents, settings.EventsperCooldown);    
                         }
 
                         string eventType = GetKarmaTypeForIncident(buyableIncident.KarmaType);
@@ -126,7 +131,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             return GetCooldownMessage(eventType, settings, cooldownManager);
                         }
 
-                        return $"❌ Command cooldown active for {buyableIncident.Label}";
+                        // return $"❌ Command cooldown active for {buyableIncident.Label}";
+                        return "RICS.ICH.RETURN.CommandCooldownActive".Translate(buyableIncident.Label);
                     }
                 }
 
@@ -165,6 +171,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                 viewer.TakeKarma(karmaAmount);
                                 Logger.Debug($"Deducted {karmaAmount} karma for {cost} coin Bad event purchase");
                                 break;
+                            case "doom":
+                                viewer.TakeKarma(karmaAmount);
+                                Logger.Debug($"Deducted {karmaAmount} karma for {cost} coin Bad event purchase");
+                                break;
                             case "neutral":
                             default:
                                 // Neutral events don't change karma
@@ -194,6 +204,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         {
                             Logger.Debug($"Current usage for {eventType}: {record.CurrentPeriodUses}");
                         }
+                    }
+
+                    if (buyableIncident.KarmaType?.ToLower() == "doom")
+                    {
+                        Messages.Message("💀 DOOM EVENT PURCHASED: " + buyableIncident.Label + "!", MessageTypeDefOf.ThreatBig);
                     }
 
                     return resultMessage;
@@ -258,6 +273,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 "good" => "good",
                 "bad" => "bad",
+                "doom" => "doom",
                 _ => "neutral"
             };
         }
@@ -268,6 +284,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 "good" => settings.MaxGoodEvents,
                 "bad" => settings.MaxBadEvents,
+                "doom" => settings.MaxBadEvents,
                 "neutral" => settings.MaxNeutralEvents,
                 _ => 10
             };

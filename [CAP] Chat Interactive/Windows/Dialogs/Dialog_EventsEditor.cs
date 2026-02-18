@@ -259,6 +259,19 @@ namespace CAP_ChatInteractive
                 ShowCooldownMenu();
             }
 
+            x += buttonWidth + spacing;
+
+            // New: Reset to New Defaults button
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth + 20f, 30f), "Reset ALL!"))
+            {
+                Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                    "Reset ALL events to the latest default pricing, karma types (including Doom detection)!\n\n" +
+                    "This will OVERWRITE custom prices and karma types, but keeps Enabled/Disabled state unless auto-disabled.\n\n" +
+                    "Recommended after updating the mod or pricing logic.",
+                    () => ResetToNewDefaults()
+                ));
+            }
+
             Widgets.EndGroup();
         }
 
@@ -862,14 +875,17 @@ namespace CAP_ChatInteractive
 
             // Karma dropdown
             Rect dropdownRect = new Rect(65f, 0f, 100f, 25f);
-            if (Widgets.ButtonText(dropdownRect, TranslateKarmaType(incident.KarmaType)))
+            string currentLabel = TranslateKarmaType(incident.KarmaType);
+
+            if (Widgets.ButtonText(dropdownRect, currentLabel))
             {
                 List<FloatMenuOption> options = new List<FloatMenuOption>
-                {
-                    new FloatMenuOption("RICS.Good".Translate(), () => UpdateKarmaType(incident, "Good")),
-                    new FloatMenuOption("RICS.Bad".Translate(), () => UpdateKarmaType(incident, "Bad")),
-                    new FloatMenuOption("RICS.Neutral".Translate(), () => UpdateKarmaType(incident, "Neutral"))
-                };
+        {
+            new FloatMenuOption("RICS.Good".Translate(), () => UpdateKarmaType(incident, "Good")),
+            new FloatMenuOption("RICS.Bad".Translate(), () => UpdateKarmaType(incident, "Bad")),
+            new FloatMenuOption("RICS.Neutral".Translate(), () => UpdateKarmaType(incident, "Neutral")),
+            new FloatMenuOption("RICS.Doom".Translate(), () => UpdateKarmaType(incident, "Doom"))  // ← new
+        };
 
                 Find.WindowStack.Add(new FloatMenu(options));
             }
@@ -885,10 +901,11 @@ namespace CAP_ChatInteractive
 
         private Color GetKarmaTypeColor(string karmaType)
         {
-            return karmaType?.ToLower() switch
+            return karmaType?.ToLowerInvariant() switch
             {
                 "good" => Color.green,
                 "bad" => Color.red,
+                "doom" => new Color(0.85f, 0.15f, 0.85f), // vivid purple-pink = "colony-ending doom"
                 _ => Color.yellow
             };
         }
@@ -1221,10 +1238,24 @@ namespace CAP_ChatInteractive
                     break;
                 case EventSortMethod.Karma:
                     filteredEvents = sortAscending ?
-                        filteredEvents.OrderBy(incident => incident?.KarmaType ?? "").ThenBy(incident => incident?.Label ?? "").ToList() :
-                        filteredEvents.OrderByDescending(incident => incident?.KarmaType ?? "").ThenBy(incident => incident?.Label ?? "").ToList();
+                        filteredEvents.OrderBy(incident => GetKarmaSortOrder(incident?.KarmaType))
+                                     .ThenBy(incident => incident?.Label ?? "").ToList() :
+                        filteredEvents.OrderByDescending(incident => GetKarmaSortOrder(incident?.KarmaType))
+                                      .ThenBy(incident => incident?.Label ?? "").ToList();
                     break;
             }
+        }
+
+        private int GetKarmaSortOrder(string karmaType)
+        {
+            return karmaType?.ToLowerInvariant() switch
+            {
+                "doom" => 4,   // highest severity
+                "bad" => 3,
+                "neutral" => 2,
+                "good" => 1,
+                _ => 2
+            };
         }
         private void SaveOriginalSettings()
         {
@@ -1256,12 +1287,68 @@ namespace CAP_ChatInteractive
 
         private string TranslateKarmaType(string karmaType)
         {
-            return karmaType?.ToLower() switch
+            return karmaType?.ToLowerInvariant() switch
             {
                 "good" => "RICS.Good".Translate(),
                 "bad" => "RICS.Bad".Translate(),
-                _ => "RICS.Neutral".Translate() // default to Neutral for null or any other value
+                "doom" => "RICS.Doom".Translate(),        // ← new
+                _ => "RICS.Neutral".Translate()
             };
+        }
+
+        private void ResetToNewDefaults()
+        {
+            int updatedCount = 0;
+            int doomCount = 0;
+
+            foreach (var incident in IncidentsManager.AllBuyableIncidents.Values)
+            {
+                if (incident == null) continue;
+
+                var incidentDef = DefDatabase<IncidentDef>.GetNamedSilentFail(incident.DefName);
+                if (incidentDef == null) continue;
+
+                // Create a fresh instance to get all the latest calculated values
+                var fresh = new BuyableIncident(incidentDef);
+
+                // Preserve user-set Enabled / DisabledReason (don't overwrite manual disables)
+                bool wasEnabled = incident.Enabled;
+                string oldDisabledReason = incident.DisabledReason;
+
+                // Apply fresh values
+                incident.BaseCost = fresh.BaseCost;
+                incident.KarmaType = fresh.KarmaType;
+                incident.EventCap = fresh.EventCap;
+                incident.CooldownDays = CalculateDefaultCooldown(incident); // or fresh.CooldownDays if you add it later
+                incident.ShouldBeInStore = fresh.ShouldBeInStore;
+                incident.IsAvailableForCommands = fresh.IsAvailableForCommands;
+
+                // Restore preserved fields
+                incident.Enabled = wasEnabled;
+                incident.DisabledReason = oldDisabledReason;
+
+                // Track changes for feedback
+                updatedCount++;
+                if (incident.KarmaType == "Doom")
+                {
+                    doomCount++;
+                }
+            }
+
+            // Force save
+            IncidentsManager.SaveIncidentsToJson();
+
+            // Refresh UI
+            FilterEvents();
+            BuildModSourceCounts();
+            BuildCategoryCounts();
+
+            // Feedback message
+            string msg = $"Reset {updatedCount} events to latest defaults.\n" +
+                         $"{doomCount} events detected as Doom-tier.\n" +
+                         "Pricing, karma types, and cooldowns refreshed.";
+
+            Messages.Message(msg, MessageTypeDefOf.TaskCompletion);
         }
     }
 

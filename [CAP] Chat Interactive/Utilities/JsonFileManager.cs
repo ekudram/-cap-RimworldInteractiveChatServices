@@ -26,6 +26,8 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
 using UnityEngine;
 using Verse;
 
@@ -226,7 +228,9 @@ namespace CAP_ChatInteractive
             {
                 Formatting = Formatting.Indented,
                 NullValueHandling = NullValueHandling.Include,
-                DefaultValueHandling = DefaultValueHandling.Include
+                DefaultValueHandling = DefaultValueHandling.Include,
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                TypeNameHandling = TypeNameHandling.None   // ← add this line
             };
 
             return JsonConvert.SerializeObject(traits, settings);
@@ -249,51 +253,64 @@ namespace CAP_ChatInteractive
                     DefaultValueHandling = DefaultValueHandling.Include,
                     ReferenceLoopHandling = ReferenceLoopHandling.Ignore
                 };
-
                 return JsonConvert.SerializeObject(incidents, settings);
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error serializing incidents: {ex.Message}");
-                // Fallback: manual serialization
+                // Fallback: manual serialization (implement a safe basic version)
                 return SerializeIncidentsManual(incidents);
             }
         }
 
         private static string SerializeIncidentsManual(Dictionary<string, BuyableIncident> incidents)
         {
-            var rootObject = new JObject();
-
-            foreach (var kvp in incidents)
+            try
             {
-                var incident = kvp.Value;
-                var incidentObject = new JObject();
+                var sb = new StringBuilder();
+                sb.AppendLine("{");
+                bool first = true;
+                foreach (var kvp in incidents.OrderBy(k => k.Key))
+                {
+                    if (!first) sb.AppendLine(",");
+                    first = false;
 
-                // Only serialize simple properties that won't cause issues
-                incidentObject["DefName"] = incident.DefName;
-                incidentObject["Label"] = incident.Label;
-                incidentObject["Description"] = incident.Description;
-                incidentObject["WorkerClassName"] = incident.WorkerClassName;
-                incidentObject["CategoryName"] = incident.CategoryName;
-                incidentObject["BaseCost"] = incident.BaseCost;
-                incidentObject["KarmaType"] = incident.KarmaType;
-                incidentObject["EventCap"] = incident.EventCap;
-                incidentObject["Enabled"] = incident.Enabled;
-                incidentObject["ModSource"] = incident.ModSource;
-                incidentObject["Version"] = incident.Version;
-                incidentObject["IsWeatherIncident"] = incident.IsWeatherIncident;
-                incidentObject["IsRaidIncident"] = incident.IsRaidIncident;
-                incidentObject["IsDiseaseIncident"] = incident.IsDiseaseIncident;
-                incidentObject["IsQuestIncident"] = incident.IsQuestIncident;
-                incidentObject["BaseChance"] = incident.BaseChance;
-                incidentObject["PointsScaleable"] = incident.PointsScaleable;
-                incidentObject["MinThreatPoints"] = incident.MinThreatPoints;
-                incidentObject["MaxThreatPoints"] = incident.MaxThreatPoints;
+                    sb.AppendLine($"  \"{kvp.Key}\": {{");
+                    var inc = kvp.Value;
 
-                rootObject[kvp.Key] = incidentObject;
+                    // Manually write core fields — expand as needed, but keep simple
+                    sb.AppendLine($"    \"DefName\": \"{EscapeJson(inc.DefName)}\",");
+                    sb.AppendLine($"    \"Label\": \"{EscapeJson(inc.Label)}\",");
+                    sb.AppendLine($"    \"Description\": \"{EscapeJson(inc.Description)}\",");
+                    sb.AppendLine($"    \"BaseCost\": {inc.BaseCost},");
+                    sb.AppendLine($"    \"KarmaType\": \"{EscapeJson(inc.KarmaType)}\",");
+                    sb.AppendLine($"    \"EventCap\": {inc.EventCap},");
+                    sb.AppendLine($"    \"Enabled\": {inc.Enabled.ToString().ToLower()},");
+                    sb.AppendLine($"    \"DisabledReason\": \"{EscapeJson(inc.DisabledReason)}\",");
+                    sb.AppendLine($"    \"ShouldBeInStore\": {inc.ShouldBeInStore.ToString().ToLower()},");
+                    // ... add other important fields you care about preserving
+                    // Skip complex/runtime-only fields like WorkerClassName if they cause loops
+
+                    sb.AppendLine("  }");
+                }
+                sb.AppendLine("}");
+                return sb.ToString();
             }
+            catch (Exception ex)
+            {
+                Logger.Error($"Manual serialization fallback failed: {ex.Message}");
+                return "{}"; // emergency empty object — better than crash
+            }
+        }
 
-            return rootObject.ToString(Formatting.Indented);
+        private static string EscapeJson(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return "";
+            return value.Replace("\\", "\\\\")
+                        .Replace("\"", "\\\"")
+                        .Replace("\n", "\\n")
+                        .Replace("\r", "\\r")
+                        .Replace("\t", "\\t");
         }
 
         public static Dictionary<string, BuyableIncident> DeserializeIncidents(string jsonContent)

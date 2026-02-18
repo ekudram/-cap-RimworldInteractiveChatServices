@@ -73,6 +73,7 @@
   <RICS.Good>Good</RICS.Good>
   <RICS.Bad>Bad</RICS.Bad>
   <RICS.Neutral>Neutral</RICS.Neutral>
+  <RICS.Doom>Doom</RICS.Doom>
   
   <!-- Confirmation dialogs -->
   <RICS.ResetCooldownsFilteredConfirm>Reset cooldowns for filtered events to default?\n\nFilter: {0}</RICS.ResetCooldownsFilteredConfirm>
