@@ -262,15 +262,14 @@ namespace CAP_ChatInteractive
             x += buttonWidth + spacing;
 
             // New: Reset to New Defaults button
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth + 20f, 30f), "Reset ALL!"))
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth + 20f, 30f), "RICS.ResetNewDefaults".Translate()))
             {
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    "Reset ALL events to the latest default pricing, karma types (including Doom detection)!\n\n" +
-                    "This will OVERWRITE custom prices and karma types, but keeps Enabled/Disabled state unless auto-disabled.\n\n" +
-                    "Recommended after updating the mod or pricing logic.",
+                    "RICS.ResetNewDefaultsConfirm".Translate(),
                     () => ResetToNewDefaults()
                 ));
             }
+            TooltipHandler.TipRegion(new Rect(x, 0f, buttonWidth + 20f, 30f), "RICS.ResetNewDefaultsDesc".Translate());
 
             Widgets.EndGroup();
         }
