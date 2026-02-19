@@ -120,6 +120,9 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
 
         public bool CanUseEvent(string eventType, CAPGlobalChatSettings settings)
         {
+            // Defensive programming: ensure eventType is valid and consistent
+            eventType = eventType.ToLower();  
+
             // 0 = infinite
             Logger.Debug($"CanUseEvent eventType: {eventType}");
             Logger.Debug($"Max good events: {settings.MaxGoodEvents}");
@@ -140,10 +143,11 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
                 "good" => settings.MaxGoodEvents,
                 "bad" => settings.MaxBadEvents,
                 "neutral" => settings.MaxNeutralEvents,
-                "doom" => 1, // Special case
+                "doom" => settings.MaxBadEvents, // Special case
                 _ => 10
             };
-
+            string message = $"Current {eventType} events in cooldown: {record.CurrentPeriodUses}/{maxUses}";
+            Messages.Message(message, MessageTypeDefOf.CautionInput);
             return record.CurrentPeriodUses < maxUses;
         }
 
