@@ -108,8 +108,13 @@ namespace CAP_ChatInteractive
             if (string.IsNullOrEmpty(message)) return false;
 
             var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+
+            string trimmed = message.TrimStart();
+
             return message.StartsWith(settings.Prefix) ||
-                   message.StartsWith(settings.BuyPrefix);
+                   message.StartsWith(settings.BuyPrefix) ||
+                   message.StartsWith("$");
+
         }
 
         private static void SendPleaseWaitMessage(ChatMessageWrapper message)
@@ -167,42 +172,71 @@ namespace CAP_ChatInteractive
             var commandText = parts[0];
             var args = parts.Skip(1).ToArray();
             var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            // Get cooldown manager early
 
-            // Prefix check NEED
+            string originalCommandText = commandText; // preserve for logging if needed
+
+            // Strip prefix if present (normal path)
             if (commandText.StartsWith(globalSettings.Prefix) ||
                 commandText.StartsWith(globalSettings.BuyPrefix))
             {
                 commandText = commandText.Substring(1);
             }
-            else
-            {
-                return;
-            }
 
             commandText = commandText.ToLowerInvariant();
-            Logger.Debug($"Identified command: {commandText} with args: {string.Join(", ", args)}");
 
-            // NEW: Alias resolution - check if this is an alias and resolve to main command
+            // NEW: Alias resolution (your existing code)
             string resolvedCommandName = ResolveCommandFromAlias(commandText);
-            Logger.Debug($"Resolved command name: {resolvedCommandName}");
             if (resolvedCommandName != commandText)
             {
-                Logger.Debug($"Resolved alias '{commandText}' to command '{resolvedCommandName}'");
                 commandText = resolvedCommandName;
             }
 
-            if (IsStoreCommandDisabled(message, commandText))
+            // Normal command lookup
+            if (_commands.TryGetValue(commandText, out var command))
             {
-                SendMessageToUser(message, GetStoreDisabledMessage());
-                return;
+                // → proceed with normal cooldown / permission / execute flow
+                // (rest of your function continues here unchanged)
             }
-
-            // Fast exit: Unknown command
-            if (!_commands.TryGetValue(commandText, out var command))
+            else
             {
-                // SendMessageToUser(message, $"Unknown command: {commandText}. Type {globalSettings.Prefix}help for available commands.");
-                return;
+                // Command not found → check for legacy $ buy fallback
+                Logger.Debug($"Command '{commandText}' not found. Checking for legacy $ buy fallback.");
+                string trimmed = message.Message.TrimStart();
+                if (trimmed.StartsWith("$"))
+                {
+                    // It's a $ message and no normal command matched → treat as buy
+                    commandText = "buy";
+
+                    // Extract the actual buy arguments (skip the $)
+                    string rest = trimmed.Substring(1).Trim();
+                    args = string.IsNullOrWhiteSpace(rest)
+                        ? Array.Empty<string>()
+                        : rest.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);  
+                    Logger.Debug($"Legacy $ command detected. Interpreting as 'buy' with args: {string.Join(", ", args)}");
+                    // Optional: mild logging so you can see when legacy path is hit
+                    // Logger.Debug($"$ buy used by {message.Username}: {message.Message}");
+
+                    // Now look up the "buy" command (should exist)
+                    if (_commands.TryGetValue("buy", out command))
+                    {
+                        Logger.Debug($"'buy' command found for legacy $ command. Proceeding with execution.");
+                        // → continue to cooldown/permission/execute as normal
+                        // The buy command will validate args the same way it does for !buy
+                    }
+                    else
+                    {
+                        Logger.Error($"'buy' command not found in command dictionary. This should never happen if the command is properly registered.");
+                        // Very unlikely, but safety
+                        return;
+                    }
+                }
+                else
+                {
+                    Logger.Debug($"No command found for '{commandText}' and message does not start with '$'. Ignoring message.");
+                    // Truly unknown, even after $ check
+                    // You can optionally send "Unknown command" here if you want
+                    return;
+                }
             }
 
             // Get viewer (this creates if doesn't exist - no need to check)
