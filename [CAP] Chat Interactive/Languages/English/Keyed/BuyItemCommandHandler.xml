@@ -4,48 +4,20 @@
   <!-- ===== SECTION: RETURN MESSAGES (Chat Responses) ===== -->
   <!-- These are displayed to users in chat after command execution -->
 
-  <!-- Item not found in store -->
   <RICS.BICH.Return.ItemNotFound>Item '{0}' not found in Rimazon.</RICS.BICH.Return.ItemNotFound>
-
-  <!-- Item disabled/purchased -->
   <RICS.BICH.Return.ItemDisabled>Item '{0}' is not available for purchase.</RICS.BICH.Return.ItemDisabled>
-
-  <!-- Item not equippable (for !equip commands) -->
   <RICS.BICH.Return.NotEquippable>{0} is not available to be equipped.</RICS.BICH.Return.NotEquippable>
-
-  <!-- Item not wearable (for !wear commands) -->
   <RICS.BICH.Return.NotWearable>{0} is not available to be worn.</RICS.BICH.Return.NotWearable>
-
-  <!-- Wrong item type (user used wrong command) -->
   <RICS.BICH.Return.WrongItemType>{0} is a {1}, not an {2} item. Use !buy instead.</RICS.BICH.Return.WrongItemType>
-
-  <!-- Research requirement not met -->
   <RICS.BICH.Return.ResearchRequired>{0} requires research that hasn't been completed yet.</RICS.BICH.Return.ResearchRequired>
-
-  <!-- Quality not allowed -->
   <RICS.BICH.Return.QualityNotAllowed>Quality '{0}' is not allowed for purchases.</RICS.BICH.Return.QualityNotAllowed>
-
-  <!-- ThingDef not found (error case) -->
   <RICS.BICH.Return.DefNotFound>Error: Item definition not found.</RICS.BICH.Return.DefNotFound>
-
-  <!-- Banned race (animal) -->
   <RICS.BICH.Return.BannedRace>Item '{0}' is a banned race and cannot be purchased.</RICS.BICH.Return.BannedRace>
-
-  <!-- Invalid material -->
   <RICS.BICH.Return.InvalidMaterial>Material '{0}' is not valid for {1}.</RICS.BICH.Return.InvalidMaterial>
-
-  <!-- Cannot afford -->
   <RICS.BICH.Return.CannotAfford>You need {0} to purchase {1}x {2}! You have {3}.</RICS.BICH.Return.CannotAfford>
-
-  <!-- No pawn assigned -->
   <RICS.BICH.Return.NoPawn>You need to have a pawn in the colony. Use !buy pawn first.</RICS.BICH.Return.NoPawn>
-
-  <!-- Pawn is dead -->
   <RICS.BICH.Return.PawnDead>Your pawn is dead. You cannot equip/wear items.</RICS.BICH.Return.PawnDead>
-
-  <!-- Generic error -->
   <RICS.BICH.Return.GenericError>Error processing purchase. Please try again.</RICS.BICH.Return.GenericError>
-  <!-- Not Equip, wear or race banned -->
   <RICS.BICH.Return.ItemNotEquippable>{0} is not available to be equipped.</RICS.BICH.Return.ItemNotEquippable>
   <RICS.BICH.Return.ItemNotWearable>{0} is not available to be worn.</RICS.BICH.Return.ItemNotWearable>
   <RICS.BICH.Return.RaceBanned>Item '{0}' is a banned race and cannot be purchased.</RICS.BICH.Return.RaceBanned>
@@ -63,13 +35,8 @@
   <!-- ===== SECTION: INVOICE/LETTER FORMATS ===== -->
   <!-- These appear in the in-game letter notifications -->
 
-  <!-- Invoice Label - Standard Delivery -->
   <RICS.BICH.Letter.Label.Standard>🟡 Rimazon Delivery - {0}</RICS.BICH.Letter.Label.Standard>
-
-  <!-- Invoice Label - Direct Services -->
   <RICS.BICH.Letter.Label.Direct>{0} Rimazon {1} - {2}</RICS.BICH.Letter.Label.Direct>
-
-  <!-- Invoice Label - Pet Delivery -->
   <RICS.BICH.Letter.Label.Pet>🐾 Rimazon Pet Delivery - {0}</RICS.BICH.Letter.Label.Pet>
 
   <!-- Emoji mappings for direct services -->
