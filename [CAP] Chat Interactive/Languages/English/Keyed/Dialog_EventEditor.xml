@@ -89,7 +89,7 @@
   <RICS.FloatingMenu.AllMods>All Mods</RICS.FloatingMenu.AllMods>
 
   <!-- Events Editor - Reset button -->
-  <RICS.ResetNewDefaults>Reset New Defaults</RICS.ResetNewDefaults>
+  <RICS.ResetNewDefaults>Reset ALL!</RICS.ResetNewDefaults>
   <RICS.ResetNewDefaultsConfirm>
     Reset ALL events to the latest default pricing, karma types (including Doom detection)?\n\n
     This will OVERWRITE any custom prices and karma types, but will keep your Enabled/Disabled choices (unless they were auto-disabled by the mod).\n\n
