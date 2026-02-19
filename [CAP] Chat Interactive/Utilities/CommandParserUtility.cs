@@ -38,86 +38,98 @@ namespace CAP_ChatInteractive.Utilities
     {
         private static HashSet<string> _materialKeywords = null;
 
+        private static List<ThingDef> _stuffDefs = null;
+
         public static ParsedCommand ParseCommandArguments(string[] args, bool allowQuality = true, bool allowMaterial = true, bool allowSide = false, bool allowQuantity = true)
         {
             var result = new ParsedCommand();
 
             if (args.Length == 0)
             {
-                result.Error = "Usage: ! [buy use equip wear surgery] [item] [quality] [material] [side] [quantity]";
+                result.Error = "Usage: ![buy, use, equip, wear, surgery] [item] [quality] [material] [side] [quantity]";
                 return result;
             }
 
-            // Step 1: Clean and normalize arguments
             var cleanedArgs = CleanArguments(args);
-
-            // Step 2: Parse from END to START (reverse order) but with multi-word material support
             var remainingArgs = new List<string>(cleanedArgs);
 
-            // Parse quantity FIRST (last argument if it's a number)
+            // Quantity from end only (per your spec: always integer with spaces on both sides)
             if (allowQuantity && remainingArgs.Count > 0 && int.TryParse(remainingArgs[remainingArgs.Count - 1], out int quantity))
             {
                 result.Quantity = quantity;
                 remainingArgs.RemoveAt(remainingArgs.Count - 1);
             }
 
-            // Parse side (if allowed and available)
-            if (allowSide && remainingArgs.Count > 0 && IsSideKeyword(remainingArgs[remainingArgs.Count - 1]))
+            // Flexible trailing qualifier peeling (any order, multi-word material, partial support)
+            string parsedMaterial = null;
+            string parsedQuality = "random";
+            string parsedSide = null;
+            bool changed;
+            do
             {
-                result.Side = remainingArgs[remainingArgs.Count - 1];
-                remainingArgs.RemoveAt(remainingArgs.Count - 1);
-            }
+                changed = false;
 
-            // NEW: Check for multi-word materials before single-word materials
-            string foundMaterial = null;
-            if (allowMaterial && remainingArgs.Count > 0)
-            {
-                // Try 3-word material first, then 2-word, then 1-word
-                for (int wordCount = 3; wordCount >= 1; wordCount--)
+                // Side
+                if (allowSide && parsedSide == null && remainingArgs.Count > 0 && IsSideKeyword(remainingArgs[remainingArgs.Count - 1]))
                 {
-                    if (remainingArgs.Count >= wordCount)
-                    {
-                        var materialWords = remainingArgs.Skip(remainingArgs.Count - wordCount).Take(wordCount).ToArray();
-                        string potentialMaterial = string.Join(" ", materialWords);
+                    parsedSide = remainingArgs[remainingArgs.Count - 1];
+                    remainingArgs.RemoveAt(remainingArgs.Count - 1);
+                    changed = true;
+                }
 
-                        if (IsMaterialKeyword(potentialMaterial))
+                // Material (multi-word from end, partial support)
+                if (allowMaterial && parsedMaterial == null && remainingArgs.Count > 0)
+                {
+                    for (int wordCount = 1; wordCount <= 3; wordCount++)  // CHANGED: 1 -> 2 -> 3 instead of 3->2->1
+                    {
+                        if (remainingArgs.Count >= wordCount)
                         {
-                            foundMaterial = potentialMaterial;
-                            // Remove the material words from remaining args
-                            remainingArgs.RemoveRange(remainingArgs.Count - wordCount, wordCount);
-                            break;
+                            var materialWords = remainingArgs.Skip(remainingArgs.Count - wordCount).Take(wordCount).ToArray();
+                            string potential = string.Join(" ", materialWords);
+                            string matched = TryFindMaterial(potential);
+                            if (matched != null)
+                            {
+                                parsedMaterial = matched;
+                                remainingArgs.RemoveRange(remainingArgs.Count - wordCount, wordCount);
+                                changed = true;
+                                break;
+                            }
                         }
                     }
                 }
-            }
 
-            // Parse quality (if allowed and available)
-            if (allowQuality && remainingArgs.Count > 0 && IsQualityKeyword(remainingArgs[remainingArgs.Count - 1]))
-            {
-                result.Quality = remainingArgs[remainingArgs.Count - 1];
-                remainingArgs.RemoveAt(remainingArgs.Count - 1);
-            }
+                // Quality
+                if (allowQuality && parsedQuality == "random" && remainingArgs.Count > 0 && IsQualityKeyword(remainingArgs[remainingArgs.Count - 1]))
+                {
+                    parsedQuality = remainingArgs[remainingArgs.Count - 1];  // preserve user casing like original
+                    remainingArgs.RemoveAt(remainingArgs.Count - 1);
+                    changed = true;
+                }
+            } while (changed && remainingArgs.Count > 0);
 
-            // Set the material we found (if any)
-            result.Material = foundMaterial ?? "random";
+            // Final assignment + special case (material-as-item)
+            result.Quality = parsedQuality;
+            result.Side = parsedSide;
 
-            // CRITICAL FIX: If no item name remains but we found a material, use the material as the item name
-            if (remainingArgs.Count == 0 && foundMaterial != null)
+            if (remainingArgs.Count == 0)
             {
-                result.ItemName = foundMaterial;
-                result.Material = "random"; // Reset material since it was actually the item
-            }
-            else if (remainingArgs.Count > 0)
-            {
-                result.ItemName = string.Join(" ", remainingArgs).Trim();
+                if (parsedMaterial != null)
+                {
+                    result.ItemName = parsedMaterial;
+                    result.Material = "random";
+                }
+                else
+                {
+                    result.Error = "No item name specified.";
+                    return result;
+                }
             }
             else
             {
-                result.Error = "No item name specified.";
-                return result;
+                result.ItemName = string.Join(" ", remainingArgs).Trim();
+                result.Material = parsedMaterial ?? "random";
             }
 
-            // Validate item name isn't empty after cleanup
             if (string.IsNullOrWhiteSpace(result.ItemName))
             {
                 result.Error = "Invalid item name after parsing arguments.";
@@ -125,9 +137,9 @@ namespace CAP_ChatInteractive.Utilities
             }
 
             Logger.Debug($"Parsed - Item: '{result.ItemName}', Quality: '{result.Quality}', Material: '{result.Material}', Side: '{result.Side}', Quantity: {result.Quantity}");
-
             return result;
         }
+
         private static string[] CleanArguments(string[] args)
         {
             var cleaned = new List<string>();
@@ -137,10 +149,10 @@ namespace CAP_ChatInteractive.Utilities
                 // Remove/replace problematic characters with spaces
                 string cleanArg = arg.Replace("[", " ")
                                    .Replace("]", " ")
-                                 //  .Replace("(", " ")
-                                 //  .Replace(")", " ")
+                                   //  .Replace("(", " ")
+                                   //  .Replace(")", " ")
                                    .Replace(",", " ")
-                                 //  .Replace(".", " ")
+                                   //  .Replace(".", " ")
                                    .Replace(";", " ")
                                    .Trim();
 
@@ -222,6 +234,88 @@ namespace CAP_ChatInteractive.Utilities
             "slate blocks", "steel blocks", "plasteel blocks", "wood logs"
         };
             }
+        }
+
+        // --- GROK's Helpers ---
+
+        private static void InitializeStuffDefs()
+        {
+            if (_stuffDefs != null) return;
+            _stuffDefs = DefDatabase<ThingDef>.AllDefs
+                .Where(def => def.IsStuff)
+                .OrderBy(def => def.label ?? def.defName)
+                .ToList();
+            Logger.Debug($"Initialized {_stuffDefs.Count} stuff definitions for material parsing.");
+        }
+
+        private static bool IsExactMaterialMatch(ThingDef stuff, string lowerPot)
+        {
+            if (string.IsNullOrEmpty(stuff.label)) return false;
+            string lowerLabel = stuff.label.ToLowerInvariant();
+            string lowerDef = stuff.defName.ToLowerInvariant();
+            string lowerDefSpaces = stuff.defName.Replace("_", " ").ToLowerInvariant();
+            string lowerLabelNoSpace = lowerLabel.Replace(" ", "");
+            return lowerLabel == lowerPot ||
+                   lowerDef == lowerPot ||
+                   lowerDefSpaces == lowerPot ||
+                   lowerLabelNoSpace == lowerPot;
+        }
+
+        private static int GetPartialMatchScore(ThingDef stuff, string lowerPot)
+        {
+            if (string.IsNullOrEmpty(stuff.label)) return 0;
+            string lowerLabel = stuff.label.ToLowerInvariant();
+            string lowerDefSpaces = stuff.defName.Replace("_", " ").ToLowerInvariant();
+
+            // Require the material to be a trailing substring (common user pattern: item ... material)
+            // This avoids consuming the whole phrase when item contains material word
+            bool isTrailing =
+                lowerPot.EndsWith(lowerLabel) ||
+                lowerPot.EndsWith(lowerDefSpaces) ||
+                lowerPot.EndsWith(lowerLabel.Replace(" ", "")); // rare
+
+            if (!isTrailing) return 0;
+
+            // Bonus: closer length = better
+            int lenDiff = Math.Abs(lowerLabel.Length - lowerPot.Length);
+            return 100 - lenDiff * 2; // penalize length diff more
+        }
+
+        public static string TryFindMaterial(string potential)
+        {
+            if (string.IsNullOrWhiteSpace(potential)) return null;
+            InitializeStuffDefs();
+            string lowerPot = potential.ToLowerInvariant().Trim();
+
+            // Exact first (preserves 100% old behavior)
+            foreach (var stuff in _stuffDefs)
+            {
+                if (IsExactMaterialMatch(stuff, lowerPot))
+                {
+                    return stuff.label ?? stuff.defName.Replace("_", " ");
+                }
+            }
+
+            // Partial with tie-breaker (what-if-multiple resolved)
+            ThingDef bestMatch = null;
+            int bestScore = 0;
+            foreach (var stuff in _stuffDefs)
+            {
+                int score = GetPartialMatchScore(stuff, lowerPot);
+                if (score > bestScore ||
+                    (score == bestScore && bestMatch != null &&
+                     (stuff.label?.Length ?? 999) < (bestMatch.label?.Length ?? 999)))
+                {
+                    bestScore = score;
+                    bestMatch = stuff;
+                }
+            }
+            if (bestScore > 0 && bestMatch != null)
+            {
+                Logger.Debug($"Partial material match: '{potential}' → '{bestMatch.label}'");
+                return bestMatch.label ?? bestMatch.defName.Replace("_", " ");
+            }
+            return null;
         }
     }
 }
