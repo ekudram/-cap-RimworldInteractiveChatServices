@@ -93,7 +93,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return "Your pawn is already alive!";
             }
 
-            if (UseItemCommandHandler.IsPawnCompletelyDestroyed(viewerPawn))
+            if (UseItemCommandHandler.CannotResurrectPawn(viewerPawn))
             {
                 return "Your pawn's body has been completely destroyed and cannot be revived.";
             }
@@ -157,7 +157,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return $"{targetUsername}'s pawn is already alive!";
             }
 
-            if (UseItemCommandHandler.IsPawnCompletelyDestroyed(targetPawn))
+            if (UseItemCommandHandler.CannotResurrectPawn(targetPawn))
             {
                 return $"{targetUsername}'s pawn body has been completely destroyed and cannot be revived.";
             }
@@ -200,7 +200,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             foreach (var username in allAssignedUsernames)
             {
                 var pawn = assignmentManager.GetAssignedPawn(username);
-                if (pawn != null && pawn.Dead && !UseItemCommandHandler.IsPawnCompletelyDestroyed(pawn))
+                if (pawn != null && pawn.Dead && !UseItemCommandHandler.CannotResurrectPawn(pawn))
                 {
                     deadPawns.Add((username, pawn));
                 }
@@ -225,7 +225,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             foreach (var (username, pawn) in deadPawns)
             {
                 // Double-check pawn is still dead and not destroyed
-                if (pawn.Dead && !UseItemCommandHandler.IsPawnCompletelyDestroyed(pawn))
+                if (pawn.Dead && !UseItemCommandHandler.CannotResurrectPawn(pawn))
                 {
                     UseItemCommandHandler.ResurrectPawn(pawn);
                     revivedCount++;

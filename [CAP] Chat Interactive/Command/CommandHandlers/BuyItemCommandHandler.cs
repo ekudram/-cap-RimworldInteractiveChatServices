@@ -379,24 +379,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             int dropPodCount = deliveryResult.DropPodDeliveredItems.Sum(t => t.stackCount);
 
             // ───────────────────────────────────────────────
-            // Build clean delivery line(s)
+            // Delivery description WITHOUT the "Delivery: " prefix
+            // (prevents duplication with the template's "Delivery: {3}")
             // ───────────────────────────────────────────────
-            string deliveryLine = "";
-
+            string deliveryDesc;
             if (lockerCount > 0 && dropPodCount > 0)
             {
-                deliveryLine = "RICS.BICH.Letter.Delivery.Mixed".Translate(lockerCount, dropPodCount);             }
+                // fallback path (split invoice is normally used, but kept for safety)
+                deliveryDesc = $"Mixed Delivery\n• Locker Delivery: x{lockerCount}\n• Drop Pod Delivery: x{dropPodCount}";
+            }
             else if (lockerCount > 0)
             {
-                deliveryLine = "RICS.BICH.Letter.Delivery.Locker".Translate(lockerCount);
+                deliveryDesc = $"Locker Delivery (x{lockerCount})";
             }
             else
             {
-                deliveryLine = "RICS.BICH.Letter.Delivery.DropPod".Translate();
+                deliveryDesc = "Standard Drop Pod";
             }
 
-            // Optional quality & material as separate lines
-             string extraSpecs = "";
+            // Quality & material lines (optional)
+            string extraSpecs = "";
             if (quality.HasValue)
             {
                 extraSpecs += "\n" + "RICS.BICH.Letter.Quality".Translate(quality.Value.ToString());
@@ -406,7 +408,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 extraSpecs += "\n" + "RICS.BICH.Letter.Material".Translate(material.LabelCap);
             }
 
-            // Only show pricing breakdown in mixed case (and put it after Total)
+            string deliverySection = deliveryDesc + extraSpecs;
+
+            // Pricing breakdown only for mixed (rarely reached here)
             string pricingNote = "";
             if (lockerCount > 0 && dropPodCount > 0)
             {
@@ -421,31 +425,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // ───────────────────────────────────────────────
-            // Final invoice assembly
+            // Exact 6 arguments matching the .xml template:
+            // {0}=customer, {1}=itemName, {2}=quantity, {3}=deliverySection, {4}=price, {5}=currency
             // ───────────────────────────────────────────────
             string body = "RICS.BICH.Letter.Body.Standard".Translate(
-                username,               // {0}
-                $"{itemName} x{quantity}", // {1}
-                deliveryLine + extraSpecs, // {2}  ← changed meaning: now only delivery + specs
-                price.ToString("N0"),   // {3}
-                currencySymbol          // {4}
+                username,                    // {0}
+                itemName,                    // {1}
+                quantity.ToString(),         // {2}  → produces correct "Item: Cowboy hat x2"
+                deliverySection,             // {3}  → "Standard Drop Pod\nQuality: Masterwork\n..."
+                price.ToString("N0"),        // {4}
+                currencySymbol               // {5}
             );
 
-            // Append pricing note only when relevant (after the thank you line is fine)
             if (!string.IsNullOrEmpty(pricingNote))
-            {
-                body += "\n" + pricingNote;
-            }
+                body += pricingNote;
 
-            // Optional contextual note
+            // Contextual notes
             if (lockerCount > 0 && dropPodCount == 0)
-            {
                 body += "\n" + "RICS.BICH.Letter.Locker.Note".Translate();
-            }
             else if (lockerCount > 0 && dropPodCount > 0)
-            {
                 body += "\n" + "RICS.BICH.Letter.Mixed.Note".Translate();
-            }
 
             return body;
         }
