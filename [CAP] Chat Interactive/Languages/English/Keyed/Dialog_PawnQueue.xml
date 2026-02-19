@@ -4,7 +4,7 @@
 
   <!-- Headers -->
   <RICS.Header.PawnQueueManagement>Queue Management - {0} waiting</RICS.Header.PawnQueueManagement>
-  <RICS.Header.AvailablePawns></RICS.Header.AvailablePawns>
+  <RICS.Header.AvailablePawns>Availble Pawns</RICS.Header.AvailablePawns>
   
   <!-- Labels -->
   

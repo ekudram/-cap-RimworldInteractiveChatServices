@@ -259,13 +259,13 @@ namespace CAP_ChatInteractive
             float totalHeight = lineHeight * 2;
             float startY = rect.y + (50f - totalHeight) / 2f; // Center in the 50px info area
 
-            // Line 1: Name • Age • Gender
-            //string nameAgeGender = $"{pawn.Name?.ToStringShort ?? "Unnamed"} • {pawn.ageTracker.AgeBiologicalYears} • {GetGenderSymbol(pawn)}";
-            string nameAgeGender = "RICS.Pawn.NameAgeGender".Translate(
-                pawn.Name?.ToStringShort ?? "RICS.Pawn.Unnamed".Translate(),
-                pawn.ageTracker.AgeBiologicalYears,
-                GetGenderSymbol(pawn)
-            );
+            // Line 1: Name • Age • Gender (NO tranlation for this line to preserve formatting with symbols)
+            string nameAgeGender = $"{pawn.Name?.ToStringShort ?? "Unnamed"} • {pawn.ageTracker.AgeBiologicalYears} • {GetGenderSymbol(pawn)}";
+            //string nameAgeGender = "RICS.Pawn.NameAgeGender".Translate(
+            //    pawn.Name?.ToStringShort ?? "RICS.Pawn.Unnamed".Translate(),
+            //    pawn.ageTracker.AgeBiologicalYears,
+            //    GetGenderSymbol(pawn)
+            //);
 
             Rect line1Rect = new Rect(rect.x, startY, rect.width, lineHeight);
             Widgets.Label(line1Rect, nameAgeGender);
