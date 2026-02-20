@@ -422,7 +422,8 @@ Dialog Pawn Queue translation keys complete
 Dialog Pawn Race Settings translation keys complete
 Window For Quality and Research translation keys complete"
                 },
-            {"1.19a",@"
+            {"1.19a",
+                @"
 ===============================================================================
                             RICS 1.19a - Update/Hotfix
 ===============================================================================
@@ -490,11 +491,77 @@ NOTES:
 ===============================================================================
 Please sync your GitHub repository to Main/Master branch
 for all changes to work properly.
-"
+" },
+            { "1.20",
+                @"==========================================================================
+RICS 1.20 - Update
+Released: February 20, 2026
+MAJOR FEATURE / BALANCE CHANGE:
 
+-Complete Event Pricing Overhaul (flattened curve for better chat interaction)New targets:
+-Regular events: buyable in ~45 minutes of normal watching
+-Doom-tier events (Toxic Fallout, Volcanic Winter, Mass Animal Insanity, major ship parts, etc.): buyable in ~2 hours of normal watching
+-Price changes:
+Good & Neutral events: most under 700 coins
+Regular bad events: ~650–900 coins
+True Doom events: capped at 1800 coins maximum (previously 15k+)
+How to apply:
+Open Events Editor (gear icon)
+Click ""Reset New Defaults"" (with confirmation)
+Prices update instantly with improved Doom detection
+Optional: Debug action ""Delete JSON & Rebuild Incidents"" for clean reset
+Modded events remain auto-disabled by default
+
+OTHER UPDATES:
+Updated:
+
+-!help command now links directly to Commands Wiki
+-!pawn list races no longer shows excluded races
+-Drop pod landing priority list reworked:
+-Explicitly named ""drop spot"" (case-insensitive)
+-Orbital trade beacon (outdoors / no roof only)
+-Ship landing beacon
+-Caravan hitching/packing spot
+-Near average free colonist position
+-Underground maps try surface first
+-Absolute fallback: map center
+
+
+Fixed:
+
+-Improved Item Store Parser
+-Minor Rimazon Invoice fix
+-Resurrection no longer targets off-map, buried, or dessicated pawns
+-Apparel (especially packs) not registering as wearable — fixed in core logic
+-(JSON reset recommended; see below for debug quick-fix)
+
+Added:
+
+-$ can now be used as alias for !buy
+-Example: $ cowboy hat Muffalo wool masterwork 2
+
+Translations:
+
+-Completed Dye Command Handler translation file
+-Completed Heal Pawn Command Handler translation file
+-Added new keys to Dialog_EventEditor.xml
+
+==========================================================================
+Store wearable fix procedure (if apparel packs won't !wear):
+To see if you have this issue open the Store Editor and search for packs.
+If the wearable column is blank for packs,
+you have the issue and need to reset the wearable status for packs.
+
+Enable dev mode
+Debug actions → CAP → ""Store: Reset Packs Only"" (wearable fix)
+
+If that doesn't work,
+Then → CAP → ""Delete JSON & Rebuild Store"" (full reset)
+Warning: resets all custom store settings to defaults
+
+=========================================================================="
             }
-            
-            // Add more versions here as they're released
+                        // Add more versions here as they're released
         };
 
         public static void CheckForVersionUpdate()
