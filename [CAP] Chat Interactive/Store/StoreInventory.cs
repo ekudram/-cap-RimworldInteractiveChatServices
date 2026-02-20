@@ -578,6 +578,19 @@ namespace CAP_ChatInteractive.Store
             return GetEnabledItems().Where(item => item.Category == category);
         }
 
+        /// <summary>
+        /// Debug helper - exactly mirrors Incidents rebuild pattern
+        /// </summary>
+        public static void DebugResetForRebuild()
+        {
+            lock (lockObject)
+            {
+                isInitialized = false;
+                AllStoreItems.Clear();
+                _completeStoreData.Clear();
+            }
+        }
+
     }
     public static class ThingDefExtensions
     {

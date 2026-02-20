@@ -63,7 +63,7 @@ namespace CAP_ChatInteractive.Store
             // IsRanged = thingDef.IsRangedWeapon;
             IsUsable = IsItemUsable(thingDef);
             IsEquippable = !IsUsable && thingDef.IsWeapon;
-            IsWearable = !IsUsable && !IsEquippable && thingDef.IsApparel;
+            IsWearable = !IsUsable && !IsEquippable && IsItemWearable(thingDef);
             // IsStuffAllowed = thingDef.IsStuff;
 
             // FIX: Set default quantity limit to 1 stack instead of 0
@@ -77,28 +77,23 @@ namespace CAP_ChatInteractive.Store
             if (thingDef == null) return false;
 
             // Explicitly exclude things that are clearly NOT consumable/usable
-            //if (thingDef.IsApparel)
-            //{
-            //    // Normal apparel (clothing, armor, etc.) is NOT usable in the consumable sense
-            //    // BUT allow implants that are technically apparel
-            //    return false;
-            //}
+            if (thingDef.IsWeapon) return false;
+            if (thingDef.IsBuildingArtificial) return false;
 
-            if (thingDef.IsWeapon) return false;           // weapons are equippable, not consumable
-            if (thingDef.IsBuildingArtificial) return false; // buildings are not usable items
+            // NEW: Apparel is NEVER usable (wear instead). This fixes all DLC/modded belt packs consistently.
+            // (Rare modded "apparel implants" with CompUsableImplant would still be caught by name/comp below if truly needed, but none exist in vanilla/DLC.)
+            if (thingDef.IsApparel) return false;
 
             // Core usable categories
             if (thingDef.IsIngestible) return true;
             if (thingDef.IsMedicine) return true;
             if (thingDef.IsDrug || thingDef.IsPleasureDrug) return true;
 
-            // Check for CompUsableImplant (very reliable for Biotech / modded implants)
+            // Check for CompUsableImplant / CompUsable
             if (thingDef.HasComp<CompUsableImplant>()) return true;
-            // Check for CompUsable (more general, but still a strong indicator of usability)
-            if (thingDef.HasComp<CompUsable>()) return true; 
+            if (thingDef.HasComp<CompUsable>()) return true;
 
-
-            // Name-based fallbacks (only as last resort)
+            // Name-based fallbacks (only as last resort — all are non-apparel)
             string defName = thingDef.defName?.ToLowerInvariant() ?? "";
             if (defName.Contains("neurotrainer") ||
                 defName.Contains("psytrainer") ||
@@ -108,9 +103,32 @@ namespace CAP_ChatInteractive.Store
                 return true;
             }
 
-            // Optional: catch remaining "Pack" items that are actually usable
-            // (but only if they are NOT apparel — already guarded above)
+            // Catch remaining non-apparel "Pack" items that are actually usable
             if (defName.Contains("pack") && !thingDef.IsApparel)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public static bool IsItemWearable(ThingDef thingDef)
+        {
+            if (thingDef == null) return false;
+
+            // All normal apparel = wearable
+            if (thingDef.IsApparel) return true;
+
+            // Special handling for DLC/modded utility packs that sometimes slip (Biotech/Anomaly/Odyssey etc.)
+            // These are the exact ones you listed as "not being caught at all"
+            string defNameLower = thingDef.defName?.ToLowerInvariant() ?? "";
+            Logger.Debug($"Checking if '{thingDef.defName}' is wearable based on name for DLC/modded utility packs.");
+            if (defNameLower.Contains("bandwidth") ||
+                defNameLower.Contains("control") ||
+                defNameLower.Contains("tox") ||
+                defNameLower.Contains("disruptor") ||
+                defNameLower.Contains("firefoam") ||
+                defNameLower.Contains("hunter"))
             {
                 return true;
             }
