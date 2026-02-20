@@ -57,7 +57,7 @@ public class ChatMessageWrapper
     {
         Username = original.Username;
         DisplayName = original.DisplayName;
-        Message = newMessage;
+        Message = newMessage?.Trim() ?? "";
         Platform = original.Platform;
         PlatformUserId = original.PlatformUserId;
         ChannelId = original.ChannelId;
