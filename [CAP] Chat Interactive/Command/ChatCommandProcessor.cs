@@ -119,7 +119,8 @@ namespace CAP_ChatInteractive
 
         private static void SendPleaseWaitMessage(ChatMessageWrapper message)
         {
-            SendMessageToUser(message, "Please wait until the game has fully started before using commands.");
+            // SendMessageToUser(message, "Please wait until the game has fully started before using commands.");
+            return;
         }
 
         private static void ProcessLootboxWelcome(ChatMessageWrapper message)
