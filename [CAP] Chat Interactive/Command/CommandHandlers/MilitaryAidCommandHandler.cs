@@ -39,9 +39,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
                 {
-                    MessageHandler.SendFailureLetter("Military Aid Failed",
-                        $"Could not find viewer data for {messageWrapper.Username}");
-                    return "Error: Could not find your viewer data.";
+                    // return "Error: Could not find your viewer data.";
+                    return "RICS.MACH.ViewerDataNotFound".Translate();
                 }
 
                 // NEW: Check global cooldowns using the unified system
@@ -62,9 +61,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         {
                             int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
                             Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
-                            MessageHandler.SendFailureLetter("Military Aid Blocked",
-                                $"{messageWrapper.Username} tried to call military aid but global limit reached\n\n{totalEvents}/{settings.EventsperCooldown} events used");
-                            return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
+                            // return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
+                            return "RICS.MACH.GlobalEventLimitReached".Translate(totalEvents, settings.EventsperCooldown);
                         }
 
                         // Check good event limit specifically
@@ -72,14 +70,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         {
                             var goodRecord = cooldownManager.data.EventUsage.GetValueOrDefault("good");
                             int goodUsed = goodRecord?.CurrentPeriodUses ?? 0;
-                            string cooldownMessage = $"❌ GOOD event limit reached! ({goodUsed}/{settings.MaxGoodEvents} used this period)";
+                            // string cooldownMessage = $"❌ GOOD event limit reached! ({goodUsed}/{settings.MaxGoodEvents} used this period)";
+                            string cooldownMessage = "RICS.MACH.GoodEventLimitReached".Translate(goodUsed, settings.MaxGoodEvents);
                             Logger.Debug($"Good event limit reached: {goodUsed}/{settings.MaxGoodEvents}");
-                            MessageHandler.SendFailureLetter("Military Aid Blocked",
-                                $"{messageWrapper.Username} tried to call military aid but good event limit reached\n\n{goodUsed}/{settings.MaxGoodEvents} good events used");
                             return cooldownMessage;
                         }
 
-                        return $"❌ Military aid command is on cooldown.";
+                        // return $"❌ Military aid command is on cooldown.";
+                        return "RICS.MACH.CommandOnCooldown".Translate();
                     }
 
                     Logger.Debug($"Military aid cooldown check passed");
@@ -87,16 +85,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (viewer.Coins < wager)
                 {
-                    MessageHandler.SendFailureLetter("Military Aid Failed",
-                        $"{messageWrapper.Username} doesn't have enough {currencySymbol} for military aid\n\nNeeded: {wager}{currencySymbol}, Has: {viewer.Coins}{currencySymbol}");
-                    return $"You need {wager}{currencySymbol} to call for military aid! You have {viewer.Coins}{currencySymbol}.";
+                    // return $"You need {wager}{currencySymbol} to call for military aid! You have {viewer.Coins}{currencySymbol}.";
+                    return "RICS.MACH.InsufficientFunds".Translate(wager, currencySymbol, viewer.Coins, currencySymbol);
                 }
 
                 if (!IsGameReadyForMilitaryAid())
                 {
-                    MessageHandler.SendFailureLetter("Military Aid Failed",
-                        $"{messageWrapper.Username} tried to call for military aid but the game isn't ready");
-                    return "Game not ready for military aid (no colony, in menu, etc.)";
+                    // return "Game not ready for military aid (no colony, in menu, etc.)";
+                    return "RICS.MACH.GameNotReady".Translate();
                 }
 
                 var result = TriggerMilitaryAid(messageWrapper.Username, wager);
@@ -121,27 +117,35 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
 
                     // Build detailed letter using the result data
-                    string factionInfo = result.AidingFaction != null ?
-                        $"\n\nAiding Faction: {result.AidingFaction.Name}" +
-                        $"\nGoodwill: {result.AidingFaction.PlayerGoodwill}"
+                    string letterTitle = "RICS.MACH.LetterTitleMilitaryAidCalled".Translate(messageWrapper.Username);
+
+                    string factionInfo = result.AidingFaction != null
+                        ? "RICS.MACH.LetterPartAidingFaction".Translate(
+                            result.AidingFaction.Name,
+                            result.AidingFaction.PlayerGoodwill)
                         : "";
 
-                    string reinforcementInfo = result.HasReinforcementCount ?
-                        $"\nReinforcements: {result.ReinforcementCount} troops" :
-                        "\nReinforcements: Arriving soon";
+                    string reinforcementInfo = result.HasReinforcementCount
+                        ? "RICS.MACH.LetterPartReinforcementsCount".Translate(result.ReinforcementCount)
+                        : "RICS.MACH.LetterPartReinforcementsSoon".Translate();
 
-                    MessageHandler.SendGreenLetter(
-                        $"Military Aid Called by {messageWrapper.Username}",
-                        $"{messageWrapper.Username} has called for military reinforcements!\n\nCost: {wager}{currencySymbol}\n{result.Message}{factionInfo}{reinforcementInfo}"
+                    string letterText = "RICS.MACH.LetterTextMilitaryAidCalled".Translate(
+                        messageWrapper.Username,
+                        wager,
+                        currencySymbol,
+                        result.Message,
+                        factionInfo,
+                        reinforcementInfo
                     );
+
+                    MessageHandler.SendGreenLetter(letterTitle, letterText);
 
                     return result.Message;
                 }
                 else
                 {
-                    MessageHandler.SendFailureLetter("Military Aid Failed",
-                        $"{messageWrapper.Username} failed to call for military aid\n\n{result.Message}");
-                    return $"{result.Message} No {currencySymbol} were deducted.";
+                    // return $"{result.Message} No {currencySymbol} were deducted.";
+                    return "RICS.MACH.MilitaryAidFailed".Translate(result.Message, currencySymbol);
                 }
             }
             catch (Exception ex)
@@ -149,7 +153,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Error($"Error handling military aid command: {ex}");
                 MessageHandler.SendFailureLetter("Military Aid Error",
                     $"Error calling military aid: {ex.Message}");
-                return "Error calling military aid. Please try again.";
+                // return "Error calling military aid. [errorMessage].";
+                string errorMessage = ex.Message;
+                return "RICS.MACH.MilitaryAidError".Translate(errorMessage);    
             }
         }
 
@@ -159,7 +165,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (!playerMaps.Any())
             {
-                return new MilitaryAidResult(false, "No player home maps found.");
+                // return new MilitaryAidResult(false, "No player home maps found.");
+                return new MilitaryAidResult(false, "RICS.MACH.NoPlayerHomeMaps".Translate());
             }
 
             foreach (var map in playerMaps)
@@ -168,7 +175,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     var parms = StorytellerUtility.DefaultParmsNow(IncidentCategoryDefOf.Misc, map);
                     parms.forced = true;
-
+                    
                     var incident = new IncidentWorker_CallForAid();
                     incident.def = IncidentDefOf.RaidFriendly;
 
@@ -178,12 +185,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         if (executed && parms.faction != null)
                         {
                             // Logger.Debug($"Military aid triggered successfully for {username} on map {map}");
-
-                            // For now, don't try to count - just indicate success
-                            // The actual count might not be immediately available
+                            string returnMessage = "RICS.MACH.SendingAid".Translate(parms.faction.Name);
                             return new MilitaryAidResult(
                                 true,
-                                $"{parms.faction.Name} are sending reinforcements to help!",
+                                returnMessage,
                                 parms.faction
                             // Don't include count for now
                             );
@@ -195,8 +200,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     Logger.Error($"Error triggering military aid on map {map}: {ex}");
                 }
             }
-
-            return new MilitaryAidResult(false, "No friendly factions are available to send aid right now.");
+            // return new MilitaryAidResult(false, "No friendly factions are available to send aid right now.");
+            return new MilitaryAidResult(false, "RICS.MACH.NoFriendlyFactions".Translate());
         }
 
         private static bool IsGameReadyForMilitaryAid()

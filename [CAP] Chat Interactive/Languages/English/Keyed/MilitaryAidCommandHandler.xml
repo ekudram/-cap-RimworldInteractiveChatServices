@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- MilitaryAidCommandHandler.cs -->
+
+  <!-- Viewer / general errors -->
+  <RICS.MACH.ViewerDataNotFound>Could not find your viewer data.</RICS.MACH.ViewerDataNotFound>
+  <RICS.MACH.InsufficientFunds>You need {0}{1} to call for military aid! You have {2}{1}.</RICS.MACH.InsufficientFunds>
+  <RICS.MACH.GameNotReady>Game not ready for military aid (no colony, in menu, etc.).</RICS.MACH.GameNotReady>
+  <RICS.MACH.CommandOnCooldown>Military aid command is on cooldown.</RICS.MACH.CommandOnCooldown>
+  <RICS.MACH.GlobalEventLimitReached>❌ Global event limit reached! ({0}/{1} used this period)</RICS.MACH.GlobalEventLimitReached>
+  <RICS.MACH.GoodEventLimitReached>❌ GOOD event limit reached! ({0}/{1} used this period)</RICS.MACH.GoodEventLimitReached>
+
+  <!-- Failure cases -->
+  <RICS.MACH.NoPlayerHomeMaps>No player home maps found.</RICS.MACH.NoPlayerHomeMaps>
+  <RICS.MACH.NoFriendlyFactions>No friendly factions are available to send aid right now.</RICS.MACH.NoFriendlyFactions>
+  <RICS.MACH.MilitaryAidFailed>{0} No {1} were deducted.</RICS.MACH.MilitaryAidFailed>
+  <RICS.MACH.MilitaryAidError>Error calling military aid: {0}</RICS.MACH.MilitaryAidError>
+
+  <!-- Success / execution -->
+  <RICS.MACH.SendingAid>Sending military aid from {0}...</RICS.MACH.SendingAid>
+
+  <!-- Letter (green positive letter) - title & text -->
+  <!-- These are formatted directly in code, so we break them into parts -->
+  <RICS.MACH.LetterTitleMilitaryAidCalled>Military Aid Called by {0}</RICS.MACH.LetterTitleMilitaryAidCalled>
+  <RICS.MACH.LetterTextMilitaryAidCalled>
+    {0} has called for military reinforcements!
+
+    Cost: {1}{2}
+    {3}{4}{5}
+  </RICS.MACH.LetterTextMilitaryAidCalled>
+
+  <!-- Letter parts (inserted into the text above) -->
+  <RICS.MACH.LetterPartAidingFaction>\n\nAiding Faction: {0}\nGoodwill: {1}</RICS.MACH.LetterPartAidingFaction>
+  <RICS.MACH.LetterPartReinforcementsCount>\nReinforcements: {0} troops</RICS.MACH.LetterPartReinforcementsCount>
+  <RICS.MACH.LetterPartReinforcementsSoon>\nReinforcements: Arriving soon</RICS.MACH.LetterPartReinforcementsSoon>
+
+</LanguageData>
