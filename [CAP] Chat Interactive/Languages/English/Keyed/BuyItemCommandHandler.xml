@@ -146,29 +146,6 @@
   <RICS.BICH.Letter.Direct.WearMessage>Apparel worn and looking stylish!</RICS.BICH.Letter.Direct.WearMessage>
   <RICS.BICH.Letter.Direct.BackpackMessage>Items delivered to your pawn's inventory.</RICS.BICH.Letter.Direct.BackpackMessage>
 
-  <!-- Invoice Body - Pet Delivery -->
-  <RICS.BICH.Letter.Body.Pet>
-    RIMAZON PET DELIVERY
-    ====================
-    Customer: {0}
-    Pet: {1} x{2}
-    Service: Live Animal Delivery
-    ====================
-    Total: {3}{4}
-    ====================
-    Thank you for using Rimazon Pets!
-    {5}
-    All animals are tame and ready for your colony!
-  </RICS.BICH.Letter.Body.Pet>
-
-  <!-- Pet delivery messages (singular/plural) -->
-  <RICS.BICH.Letter.Pet.Singular>
-    Your new companion has arrived safely!
-  </RICS.BICH.Letter.Pet.Singular>
-  <RICS.BICH.Letter.Pet.Plural>
-    Your new companions have arrived safely!
-  </RICS.BICH.Letter.Pet.Plural>
-
   <!-- Extra note for mixed deliveries (appended at end) -->
   <RICS.BICH.Letter.Mixed.Note>
     Items delivered via both Locker and Drop Pod.
