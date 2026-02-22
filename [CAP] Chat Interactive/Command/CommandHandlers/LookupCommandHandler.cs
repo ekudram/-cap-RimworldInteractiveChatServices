@@ -16,10 +16,12 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Handles the !lookup command to search across items, events, and weather
+using _CAP__Chat_Interactive.Utilities;
 using CAP_ChatInteractive.Incidents;
 using CAP_ChatInteractive.Incidents.Weather;
 using CAP_ChatInteractive.Store;
 using CAP_ChatInteractive.Traits;
+using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -52,13 +54,21 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "trait":
                         results.AddRange(SearchTraits(searchTerm, 8));
                         break;
+                    case "race":
+                        results.AddRange(SearchRaces(searchTerm, 8));
+                        break;
+                    case "xenotype":
+                        results.AddRange(SearchXenotypes(searchTerm, 8));
+                        break;
                     case "all":
                     default:
-                        // Search all categories with limits
+                        // Search all categories with limits (now includes new types)
                         results.AddRange(SearchItems(searchTerm, 3));
                         results.AddRange(SearchEvents(searchTerm, 2));
                         results.AddRange(SearchWeather(searchTerm, 2));
                         results.AddRange(SearchTraits(searchTerm, 1));
+                        results.AddRange(SearchRaces(searchTerm, 1));
+                        results.AddRange(SearchXenotypes(searchTerm, 1));
                         break;
                 }
 
@@ -162,6 +172,74 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     Cost = trait.AddPrice,
                     DefName = trait.DefName
                 });
+        }
+
+        private static IEnumerable<LookupResult> SearchRaces(string searchTerm, int maxResults)
+        {
+            try
+            {
+                var normalizedSearchTerm = searchTerm.ToLower();
+
+                // Reuses exactly the same enabled-race source as BuyPawnCommandHandler.ListAvailableRaces
+                var enabledRaces = RaceUtils.GetEnabledRaces();
+
+                return enabledRaces
+                    .Where(race =>
+                    {
+                        if (race == null) return false;
+                        string label = TextUtilities.CleanAndNormalize(race.LabelCap.RawText);
+                        string defName = race.defName?.ToLower() ?? "";
+                        return label.Contains(normalizedSearchTerm) ||
+                               defName.Contains(normalizedSearchTerm);
+                    })
+                    .Take(maxResults)
+                    .Select(race =>
+                    {
+                        var settings = RaceSettingsManager.GetRaceSettings(race.defName); // never null (per BuyPawn)
+                        return new LookupResult
+                        {
+                            Name = race.LabelCap.RawText, // original display name (matches BuyPawn list style)
+                            Type = "Race",
+                            Cost = settings.BasePrice,
+                            DefName = race.defName
+                        };
+                    });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in SearchRaces: {ex}");
+                return Enumerable.Empty<LookupResult>();
+            }
+        }
+
+        private static IEnumerable<LookupResult> SearchXenotypes(string searchTerm, int maxResults)
+        {
+            try
+            {
+                if (!ModsConfig.BiotechActive)
+                    return Enumerable.Empty<LookupResult>();
+
+                var normalizedSearchTerm = searchTerm.ToLower();
+
+                // Pure RimWorld DefDatabase (reuses pattern from BuyPawnCommandHandler.ListAvailableXenotypes fallback + GetKnownXenotypes)
+                return DefDatabase<XenotypeDef>.AllDefs
+                    .Where(x => !string.IsNullOrEmpty(x.defName) &&
+                                (TextUtilities.CleanAndNormalize(x.label).Contains(normalizedSearchTerm) ||
+                                 x.defName.ToLower().Contains(normalizedSearchTerm)))
+                    .Take(maxResults)
+                    .Select(x => new LookupResult
+                    {
+                        Name = x.LabelCap.RawText,
+                        Type = "Xenotype",
+                        Cost = 0, // extra price is race-specific (see GetXenotypePrice in BuyPawn); shown as 0 for lookup
+                        DefName = x.defName
+                    });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in SearchXenotypes: {ex}");
+                return Enumerable.Empty<LookupResult>();
+            }
         }
 
         private static string GetItemDisplayName(StoreItem storeItem)
