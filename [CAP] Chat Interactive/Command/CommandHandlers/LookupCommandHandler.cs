@@ -243,11 +243,29 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var normalizedSearchTerm = searchTerm.ToLower();
 
                 // Get all xenotypes that match the search (same as before)
-                var matchingXenos = DefDatabase<XenotypeDef>.AllDefs
+                var matchingXenos = new List<XenotypeDef>();
+
+                // First: exact label match (highest priority, supports spaces/multi-word)
+                var exactLabelMatch = DefDatabase<XenotypeDef>.AllDefs
+                    .FirstOrDefault(x => x.label.Equals(searchTerm, StringComparison.OrdinalIgnoreCase));
+
+                if (exactLabelMatch != null)
+                {
+                    matchingXenos.Add(exactLabelMatch);
+                }
+
+                // Then: partial matches on label or defName (fallback)
+                var partialMatches = DefDatabase<XenotypeDef>.AllDefs
                     .Where(x => !string.IsNullOrEmpty(x.defName) &&
                                 (TextUtilities.CleanAndNormalize(x.label).Contains(normalizedSearchTerm) ||
-                                 x.defName.ToLower().Contains(normalizedSearchTerm)))
+                                 x.defName.ToLower().Contains(normalizedSearchTerm)) &&
+                                x != exactLabelMatch)  // avoid duplicate if exact label already added
                     .ToList();
+
+                matchingXenos.AddRange(partialMatches);
+
+                // Remove duplicates just in case (rare)
+                matchingXenos = matchingXenos.Distinct().ToList();
 
                 if (!matchingXenos.Any())
                     return Enumerable.Empty<LookupResult>();
@@ -266,24 +284,25 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             var settings = RaceSettingsManager.GetRaceSettings(race.defName);
                             if (settings == null) return false;
 
-                            // Case 1: Explicitly enabled for this xenotype
-                            if (settings.EnabledXenotypes?.ContainsKey(xeno.defName) == true &&
-                                settings.EnabledXenotypes[xeno.defName])
+                            string xenoKey = xeno.defName;
+
+                            // Case 1: Explicit entry → respect the exact boolean (true or false)
+                            if (settings.EnabledXenotypes?.ContainsKey(xenoKey) == true)
                             {
-                                return true;
+                                return settings.EnabledXenotypes[xenoKey];
                             }
 
-                            // Case 2: Custom xenotypes allowed AND this isn't Baseliner (Baseliner usually always allowed)
+                            // Case 2: Not explicitly listed → treat as true custom xenotype
                             if (settings.AllowCustomXenotypes && xeno != XenotypeDefOf.Baseliner)
                             {
                                 return true;
                             }
 
-                            // Baseliner fallback (almost always allowed unless explicitly disabled)
+                            // Case 3: Baseliner special fallback
                             if (xeno == XenotypeDefOf.Baseliner)
                             {
                                 return !settings.EnabledXenotypes?.ContainsKey("Baseliner") == true ||
-                                       settings.EnabledXenotypes?["Baseliner"] != false;
+                                        settings.EnabledXenotypes?["Baseliner"] != false;
                             }
 
                             return false;
@@ -400,6 +419,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Get the display name from the ThingDef
             var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
             return thingDef?.label ?? storeItem.DefName;
+        }
+
+        private static XenotypeDef ResolveXenotype(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return null;
+
+            input = input.Trim();
+
+            // Fast path: exact defName match (case-insensitive)
+            var byDefName = DefDatabase<XenotypeDef>.GetNamedSilentFail(input);
+            if (byDefName != null) return byDefName;
+
+            // Label match (supports multi-word like "vampire nyaron")
+            return DefDatabase<XenotypeDef>.AllDefs
+                .FirstOrDefault(x => x.label.Equals(input, StringComparison.OrdinalIgnoreCase));
         }
     }
 

@@ -107,19 +107,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Validate xenotype if applicable - FIXED: Added null check for raceSettings
                 if (!string.IsNullOrEmpty(xenotypeName) && xenotypeName != "Baseliner" && ModsConfig.BiotechActive && raceSettings != null)
                 {
-                    // Check if xenotype is enabled (using your new EnabledXenotypes dictionary)
+                    string xenoDefName = GetXenotypeDefName(xenotypeName);
+
+                    // Check if xenotype is disabled in settings
                     if (raceSettings.EnabledXenotypes != null &&
-                        raceSettings.EnabledXenotypes.ContainsKey(xenotypeName) &&
-                        !raceSettings.EnabledXenotypes[xenotypeName])
+                        raceSettings.EnabledXenotypes.ContainsKey(xenoDefName) &&
+                        !raceSettings.EnabledXenotypes[xenoDefName])
                     {
-                        // return $"Xenotype '{xenotypeName}' is disabled for {raceName}.";
-                        return "RICS.BPCH.XenotypeDisabled".Translate(xenotypeName, raceName);
+                        return "RICS.BPCH.XenotypeDisabled".Translate(xenotypeName, raceName); // show user-friendly input
                     }
 
-                    // Or if you want to check if it's allowed at all
-                    if (!raceSettings.AllowCustomXenotypes && xenotypeName != "Baseliner")
+                    // Custom xenotypes check (now works with labels)
+                    if (!raceSettings.AllowCustomXenotypes && xenoDefName != "Baseliner")
                     {
-                        // return $"Custom xenotypes are not allowed for {raceName}.";
                         return "RICS.BPCH.CustomXenotypesDisabled".Translate(raceName);
                     }
                 }
@@ -497,100 +497,75 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return true;
         }
 
-        private static bool IsXenotypeAllowed(RaceSettings raceSettings, string xenotypeName)
+        private static bool IsXenotypeAllowed(RaceSettings raceSettings, string xenotypeInput)
         {
-            Logger.Debug($"Checking xenotype '{xenotypeName}' for race settings:");
-            Logger.Debug($"  EnabledXenotypes count: {raceSettings.EnabledXenotypes?.Count ?? 0}");
-            Logger.Debug($"  AllowCustomXenotypes: {raceSettings.AllowCustomXenotypes}");
+            string xenoDefName = GetXenotypeDefName(xenotypeInput);
+
+            Logger.Debug($"Checking xenotype input '{xenotypeInput}' → resolved '{xenoDefName}'");
 
             if (raceSettings.EnabledXenotypes != null)
             {
                 foreach (var kvp in raceSettings.EnabledXenotypes)
-                {
                     Logger.Debug($"    {kvp.Key} = {kvp.Value}");
-                }
 
-                // Check exact match first
-                if (raceSettings.EnabledXenotypes.ContainsKey(xenotypeName))
+                if (raceSettings.EnabledXenotypes.ContainsKey(xenoDefName))
                 {
-                    bool result = raceSettings.EnabledXenotypes[xenotypeName];
+                    bool result = raceSettings.EnabledXenotypes[xenoDefName];
                     Logger.Debug($"  Exact match found: {result}");
-                    return result;
-                }
-
-                // Check case insensitive match
-                var caseInsensitiveMatch = raceSettings.EnabledXenotypes.Keys
-                    .FirstOrDefault(k => k.Equals(xenotypeName, StringComparison.OrdinalIgnoreCase));
-
-                if (caseInsensitiveMatch != null)
-                {
-                    bool result = raceSettings.EnabledXenotypes[caseInsensitiveMatch];
-                    Logger.Debug($"  Case-insensitive match '{caseInsensitiveMatch}': {result}");
                     return result;
                 }
             }
 
             Logger.Debug($"  No match found, using default logic");
 
-            // Rest of the existing logic...
-            // Ensure dictionaries are initialized
             if (raceSettings.EnabledXenotypes == null)
                 raceSettings.EnabledXenotypes = new Dictionary<string, bool>();
             if (raceSettings.XenotypePrices == null)
                 raceSettings.XenotypePrices = new Dictionary<string, float>();
 
-            // If we have specific xenotype settings, only allow enabled ones
             if (raceSettings.EnabledXenotypes.Count > 0)
             {
-                // If xenotype isn't in the enabled list, check if it's a custom xenotype
-                if (!raceSettings.EnabledXenotypes.ContainsKey(xenotypeName))
+                if (!raceSettings.EnabledXenotypes.ContainsKey(xenoDefName))
                 {
-                    // If it's a custom xenotype, check if custom xenotypes are allowed
-                    if (IsCustomXenotype(xenotypeName))
+                    if (IsCustomXenotype(xenotypeInput))  // pass original for custom check
                         return raceSettings.AllowCustomXenotypes;
-
-                    // If it's a base game xenotype but not in the list, it's not allowed
                     return false;
                 }
-
-                // Xenotype is in the list and enabled
-                return raceSettings.EnabledXenotypes[xenotypeName];
+                return raceSettings.EnabledXenotypes[xenoDefName];
             }
 
-            // No specific xenotype restrictions - check if custom xenotypes are allowed
-            if (IsCustomXenotype(xenotypeName) && !raceSettings.AllowCustomXenotypes)
+            if (IsCustomXenotype(xenotypeInput) && !raceSettings.AllowCustomXenotypes)
                 return false;
 
             return true;
         }
 
-        private static bool IsCustomXenotype(string xenotypeName)
+        // Update IsCustomXenotype (tiny change – now works with labels)
+        private static bool IsCustomXenotype(string input)
         {
-            // Check if this is a custom xenotype (not in the base game DefDatabase)
+            string defName = GetXenotypeDefName(input);
             return DefDatabase<XenotypeDef>.AllDefs.FirstOrDefault(x =>
-                x.defName.Equals(xenotypeName, StringComparison.OrdinalIgnoreCase)) == null;
+                x.defName.Equals(defName, StringComparison.OrdinalIgnoreCase)) == null;
         }
 
-        private static float GetXenotypePrice(RaceSettings raceSettings, string xenotypeName)
+        // Replace entire GetXenotypePrice
+        private static float GetXenotypePrice(RaceSettings raceSettings, string xenotypeInput)
         {
-            if (xenotypeName == "Baseliner" || string.IsNullOrEmpty(xenotypeName))
-                return 0f; // Baseliner adds no extra cost
+            if (string.IsNullOrEmpty(xenotypeInput) || xenotypeInput.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
+                return 0f;
 
-            // Ensure dictionary is initialized
+            string defName = GetXenotypeDefName(xenotypeInput);
+
             if (raceSettings.XenotypePrices == null)
             {
                 raceSettings.XenotypePrices = new Dictionary<string, float>();
-                return 0f; // No price defined yet
+                return 0f;
             }
 
-            // Try to get the price from settings
-            if (raceSettings.XenotypePrices.TryGetValue(xenotypeName, out float price))
-            {
+            if (raceSettings.XenotypePrices.TryGetValue(defName, out float price))
                 return price;
-            }
 
-            // If not found in settings, return 0 and log a warning
-            Logger.Warning($"No price found for xenotype '{xenotypeName}', using 0 as default");
+            Logger.Warning($"No price found for xenotype '{xenotypeInput}' (resolved '{defName}'), using 0");
             return 0f;
         }
 
@@ -622,29 +597,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             // Fallback to random age if parsing fails
             return Rand.Range(raceSettings.MinAge, raceSettings.MaxAge + 1);
-        }
-
-        private static Pawn FindPawnByThingId(string thingId)
-        {
-            if (string.IsNullOrEmpty(thingId))
-                return null;
-
-            // Search all maps for the pawn
-            foreach (var map in Find.Maps)
-            {
-                foreach (var pawn in map.mapPawns.AllPawns)
-                {
-                    if (pawn.ThingID == thingId)
-                        return pawn;
-                }
-            }
-
-            // Also check world pawns (in caravan, etc.)
-            var worldPawn = Find.WorldPawns.AllPawnsAlive.FirstOrDefault(p => p.ThingID == thingId);
-            if (worldPawn != null)
-                return worldPawn;
-
-            return null;
         }
 
         private static Gender? ParseGender(string genderName)
@@ -940,6 +892,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (leftover.Length > 0)
             {
+                xenotypeName = string.Join(" ", leftover);  // keep exact user input for letters/display
+            }
+
+            if (leftover.Length > 0)
+            {
                 var knownXenos = GetKnownXenotypes();
 
                 // Prefer exact match on first leftover word
@@ -980,6 +937,24 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             return xenotypes;
+        }
+
+        private static string GetXenotypeDefName(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input) || input.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
+                return "Baseliner";
+
+            // 1. Exact defName match (NyaronSanguophage)
+            var def = DefDatabase<XenotypeDef>.AllDefs.FirstOrDefault(x =>
+                x.defName.Equals(input, StringComparison.OrdinalIgnoreCase));
+            if (def != null) return def.defName;
+
+            // 2. Label match (supports "vampire nyaron", "Vampire Nyaron", etc.)
+            def = DefDatabase<XenotypeDef>.AllDefs.FirstOrDefault(x =>
+                x.label.Equals(input, StringComparison.OrdinalIgnoreCase));
+            if (def != null) return def.defName;
+
+            return input; // unknown/custom xenotype – pass through
         }
 
         // Helper method to find the best race match from remaining arguments

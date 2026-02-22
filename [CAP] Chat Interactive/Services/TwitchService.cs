@@ -512,6 +512,11 @@ namespace CAP_ChatInteractive
             }
         }
 
+        public void SendWhisperAsync()
+        {
+            throw new NotImplementedException("SendWhisperAsync is not implemented.");
+        }
+
 
 
         private void SendSingleMessage(string message)
