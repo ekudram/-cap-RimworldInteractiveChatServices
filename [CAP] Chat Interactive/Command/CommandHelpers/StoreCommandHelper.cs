@@ -111,15 +111,30 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return viewer.Coins >= price;
         }
         /// <summary>
-        /// Checks if the specified StoreItem has any research prerequisites that are not yet completed. This includes:
-        /// ThingDef direct research prereqs, recipe maker prereqs, and any recipes that produce the item. If any required research is unfinished, returns false to prevent purchase. If no research gates are found or all are completed, returns true.
-        /// Workbenches and production benches are also checked for their research prereqs, as these often gate the ability to produce certain items even if the item itself doesn't have direct research requirements. This method is designed to be comprehensive and mod-compatible, accounting for various ways that mods might implement research gating on items.
-        /// All RecipeDefs are scanned as a last resort to catch any hidden research gates, but if no recipes are found that produce the item, it assumes there are no research requirements to avoid false negatives from modded items that don't use standard gating methods.
+        /// Checks if the specified StoreItem has any research prerequisites that are not yet completed.
+        /// Returns true if the item can be crafted right now (i.e. at least one valid unlocked path exists).
+        /// 
+        /// NEW LOGIC (fixes tribalwear / electricity gate):
+        /// - Direct ThingDef / recipeMaker checks unchanged (early exit for buildings).
+        /// - For recipes: we now require ONLY ONE valid path.
+        ///   1. Recipe prereqs (single + list) must ALL be finished.
+        ///   2. Among recipeUsers benches, AT LEAST ONE must have ALL prereqs finished (or no prereqs).
+        ///   - Stops at the FIRST valid bench (as requested) and FIRST valid recipe.
+        /// - If any producing recipe exists but NO valid path → block (research still required).
+        /// - No producing recipes at all → allow (raw resources, etc.).
+        /// 
+        /// Verified RimWorld built-in behavior:
+        /// - CraftingSpot (defName "CraftingSpot") has no researchPrerequisites and is available from start.
+        /// - Tribalwear recipe(s) list CraftingSpot as a recipeUser → craftable with 0 research.
+        /// - Electric benches (e.g. ElectricTailorBench) have Electricity in researchPrerequisites.
+        /// - Vanilla only blocks an item if EVERY possible recipe + bench path is gated.
+        ///   (Confirmed via wiki: crafting spot produces tribalwear with no gate; other benches do not block it.)
         /// </summary>
-        /// <param name="storeItem"></param>
-        /// <returns></returns>
         public static bool HasRequiredResearch(StoreItem storeItem)
         {
+            Logger.Debug($"=== RESEARCH GATE CHECK ===");
+            Logger.Debug($"Checking research requirements for '{storeItem.DefName}'");
+
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             if (settings == null || !settings.RequireResearch)
             {
@@ -146,10 +161,10 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     }
                 }
                 Logger.Debug($"All ThingDef prereqs met for '{storeItem.DefName}'");
-                return true;  // Early exit!
+                return true;
             }
 
-            // 2. Craftables: recipeMaker prereq (auto-generated recipes on weapons/apparel/etc.)
+            // 2. Craftables: recipeMaker prereq
             if (thingDef.recipeMaker != null && thingDef.recipeMaker.researchPrerequisite != null)
             {
                 if (!thingDef.recipeMaker.researchPrerequisite.IsFinished)
@@ -158,67 +173,104 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     return false;
                 }
                 Logger.Debug($"RecipeMaker prereq met for '{storeItem.DefName}'");
-                return true;  // Early exit!
+                return true;
             }
 
-            // 3. Fallback: Scan ALL recipes/benches (manual recipes only)
-            Logger.Debug($"No direct gates for '{storeItem.DefName}' → scanning recipes/benches");
+            // 3. Fallback: scan recipes for at least one valid crafting path
+            Logger.Debug($"No direct gates for '{storeItem.DefName}' → scanning recipes (stop at first valid path)");
             bool foundAnyProducingRecipe = false;
+            bool hasValidPath = false;
 
             foreach (var recipe in DefDatabase<RecipeDef>.AllDefsListForReading)
             {
                 bool producesThis = recipe.ProducedThingDef == thingDef ||
                                    (recipe.products != null && recipe.products.Any(p => p.thingDef == thingDef));
-
                 if (!producesThis) continue;
 
                 foundAnyProducingRecipe = true;
 
-                // Recipe single/multi prereqs
+                // Recipe prereqs must be met
+                bool recipePrereqsMet = true;
+
                 if (recipe.researchPrerequisite != null && !recipe.researchPrerequisite.IsFinished)
-                {
-                    Logger.Debug($"Recipe '{recipe.defName}' prereq '{recipe.researchPrerequisite.defName}' unfinished for '{storeItem.DefName}'");
-                    return false;
-                }
-                if (recipe.researchPrerequisites != null)
+                    recipePrereqsMet = false;
+
+                if (recipePrereqsMet && recipe.researchPrerequisites != null)
                 {
                     foreach (var prereq in recipe.researchPrerequisites)
                     {
-                        if (prereq != null)
+                        if (prereq != null && !prereq.IsFinished)
                         {
-                            if (prereq != null && !prereq.IsFinished)
-                            {
-                                Logger.Debug($"Recipe '{recipe.defName}' multi-prereq '{prereq.defName}' unfinished");
-                                return false;
-                            }
+                            recipePrereqsMet = false;
+                            break;
                         }
                     }
                 }
 
-                // Bench prereqs via recipeUsers
-                if (recipe.recipeUsers != null)
+                if (!recipePrereqsMet)
+                {
+                    Logger.Debug($"Recipe '{recipe.defName}' prereqs not met → skipping path");
+                    continue;
+                }
+
+                // Bench check: need AT LEAST ONE valid bench (stop at first)
+                bool hasValidBench = false;
+                if (recipe.recipeUsers == null || recipe.recipeUsers.Count == 0)
+                {
+                    hasValidBench = true; // rare case, no bench required
+                    Logger.Debug($"Recipe '{recipe.defName}' has no recipeUsers → valid");
+                }
+                else
                 {
                     foreach (var userDef in recipe.recipeUsers)
                     {
-                        if (userDef?.researchPrerequisites == null || userDef.researchPrerequisites.Count == 0) continue;
+                        if (userDef == null) continue;
 
-                        foreach (var benchPrereq in userDef.researchPrerequisites)
+                        bool benchPrereqsMet = true;
+                        if (userDef.researchPrerequisites != null)
                         {
-                            if (benchPrereq != null && !benchPrereq.IsFinished)
+                            foreach (var benchPrereq in userDef.researchPrerequisites)
                             {
-                                Logger.Debug($"Bench '{userDef.defName}' prereq '{benchPrereq.defName}' unfinished (via recipe '{recipe.defName}')");
-                                return false;
+                                if (benchPrereq != null && !benchPrereq.IsFinished)
+                                {
+                                    benchPrereqsMet = false;
+                                    break;
+                                }
                             }
                         }
+
+                        if (benchPrereqsMet)
+                        {
+                            hasValidBench = true;
+                            Logger.Debug($"Valid bench found: '{userDef.defName}' (CraftingSpot or equivalent) for recipe '{recipe.defName}'");
+                            break; // stop at first allowed bench
+                        }
                     }
+                }
+
+                if (hasValidBench)
+                {
+                    hasValidPath = true;
+                    Logger.Debug($"Valid crafting path confirmed for '{storeItem.DefName}'");
+                    break; // stop at first valid recipe
                 }
             }
 
             if (foundAnyProducingRecipe)
-                Logger.Debug($"Found producing recipes for '{storeItem.DefName}', all prereqs met");
-            else
-                Logger.Debug($"No producing recipes for '{storeItem.DefName}' → allowing purchase");
+            {
+                if (hasValidPath)
+                {
+                    Logger.Debug($"At least one valid path met → allowing purchase");
+                    return true;
+                }
+                else
+                {
+                    Logger.Debug($"All paths gated (e.g. electricity required) → blocking purchase");
+                    return false;
+                }
+            }
 
+            Logger.Debug($"No producing recipes → allowing purchase (raw item etc.)");
             return true;
         }
 
