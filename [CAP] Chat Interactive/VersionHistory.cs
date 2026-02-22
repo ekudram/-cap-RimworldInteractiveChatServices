@@ -492,9 +492,9 @@ NOTES:
 Please sync your GitHub repository to Main/Master branch
 for all changes to work properly.
 " },
-            { "1.20",
+            { "1.20a",
                 @"==========================================================================
-RICS 1.20 - Update
+RICS 1.20a - Update
 Released: February 20, 2026
 MAJOR FEATURE / BALANCE CHANGE:
 
@@ -534,6 +534,22 @@ Fixed:
 -Resurrection no longer targets off-map, buried, or dessicated pawns
 -Apparel (especially packs) not registering as wearable — fixed in core logic
 -(JSON reset recommended; see below for debug quick-fix)
+-Race Parser now checks Race before Xenotype to prevent errors with not finding races
+/// NEW LOGIC RESEARCH CHECKS FOR RECIPES/CRAFTING (for buy/!buy commands):
+/// - Direct ThingDef / recipeMaker checks unchanged (early exit for buildings).
+/// - For recipes: we now require ONLY ONE valid path.
+///   1. Recipe prereqs (single + list) must ALL be finished.
+///   2. Among recipeUsers benches, AT LEAST ONE must have ALL prereqs finished (or no prereqs).
+///   - Stops at the FIRST valid bench (as requested) and FIRST valid recipe.
+/// - If any producing recipe exists but NO valid path → block (research still required).
+/// - No producing recipes at all → allow (raw resources, etc.).
+/// 
+/// Verified RimWorld built-in behavior:
+/// - CraftingSpot (defName ""CraftingSpot"") has no researchPrerequisites and is available from start.
+/// - Tribalwear recipe(s) list CraftingSpot as a recipeUser → craftable with 0 research.
+/// - Electric benches (e.g. ElectricTailorBench) have Electricity in researchPrerequisites.
+/// - Vanilla only blocks an item if EVERY possible recipe + bench path is gated.
+///   (Confirmed via wiki: crafting spot produces tribalwear with no gate; other benches do not block it.)
 
 Added:
 
