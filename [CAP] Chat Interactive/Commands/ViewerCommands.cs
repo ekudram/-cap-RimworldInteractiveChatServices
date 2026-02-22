@@ -16,6 +16,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Commands that viewers can use to interact with the game
+using _CAP__Chat_Interactive.Utilities;
 using CAP_ChatInteractive;
 using CAP_ChatInteractive.Commands.CommandHandlers;
 using CAP_ChatInteractive.Utilities;
@@ -141,27 +142,100 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             if (args.Length == 0)
             {
-                return "Usage: !lookup [item|event|weather|trait] <name> - Search specific categories. Example: !lookup item rifle, !lookup event raid, !lookup weather rain, !lookup trait kind";
+                return "Usage: !lookup [item|event|weather|trait|race|xenotype] [name] - Search specific categories.\n" +
+                       "Examples: !lookup item rifle, !lookup race (lists all races), !lookup event raid";
             }
 
-            // Parse the category if specified
             string searchType = args[0].ToLower();
-            string searchTerm;
+            string searchTerm = null;
 
-            if (searchType == "item" || searchType == "event" || searchType == "weather" || searchType == "trait")
+            bool isFullListRequest = args.Length == 1;
+
+            if (searchType == "item" || searchType == "event" || searchType == "weather" ||
+                searchType == "trait" || searchType == "race" || searchType == "xenotype")
             {
+                if (isFullListRequest)
+                {
+                    // Special case: !lookup <category> with no term → show all enabled for that category
+                    // For now, implement only for "race" as requested
+                    if (searchType == "race")
+                    {
+                        return GetAllRacesList();
+                    }
+                    else
+                    {
+                        // For other categories: tell user they need a search term (or expand later)
+                        return $"Usage: !lookup {searchType} <name> - Search for {searchType}s.\n" +
+                               $"Example: !lookup {searchType} {GetExampleForType(searchType)}\n" +
+                               "(Use just !lookup {searchType} to list all — currently only supported for race)";
+                    }
+                }
+
+                // Normal search with term
                 if (args.Length < 2)
                 {
-                    return $"Usage: !lookup {searchType} <name> - Search for {searchType}s. Example: !lookup {searchType} {GetExampleForType(searchType)}";
+                    return $"Usage: !lookup {searchType} <name> - Search for {searchType}s.\n" +
+                           $"Example: !lookup {searchType} {GetExampleForType(searchType)}";
                 }
+
                 searchTerm = string.Join(" ", args.Skip(1)).ToLower();
                 return LookupCommandHandler.HandleLookupCommand(user, searchTerm, searchType);
             }
             else
             {
-                // No category specified - search all
+                // No valid category → treat whole input as search term for "all"
                 searchTerm = string.Join(" ", args).ToLower();
                 return LookupCommandHandler.HandleLookupCommand(user, searchTerm, "all");
+            }
+        }
+
+        private static string GetAllRacesList()
+        {
+            try
+            {
+                var enabledRaces = RaceUtils.GetEnabledRaces()
+                    .Where(r => r != null)
+                    .OrderBy(r => r.LabelCap.RawText)
+                    .ToList();
+
+                if (!enabledRaces.Any())
+                {
+                    return "RICS.LCH.NoRacesEnabled".Translate();  // add this key: "No races are currently enabled."
+                }
+
+                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var currency = settings.CurrencyName?.Trim() ?? "¢";
+
+                var lines = new List<string>();
+
+                foreach (var race in enabledRaces)
+                {
+                    var raceSettings = RaceSettingsManager.GetRaceSettings(race.defName);
+                    if (raceSettings == null) continue;
+
+                    string name = race.LabelCap.RawText;
+                    int cost = raceSettings.BasePrice;
+
+                    lines.Add($"{TextUtilities.StripTags(name)}: {cost} {currency}");
+                }
+
+                if (!lines.Any())
+                {
+                    return "RICS.LCH.NoRacesEnabled".Translate();
+                }
+
+                // Join with | like lookup results, or use \n for readability if many
+                // Using | to stay consistent with normal lookup output
+                string resultList = string.Join(" | ", lines);
+
+                string header = "RICS.LCH.AllRaces".Translate();   // "All available races"
+
+                return $"🔍 {header}: {resultList}";
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error listing all races: {ex}");
+                return "RICS.LCH.ErrorListingRaces".Translate(ex.Message.Length > 80 ? ex.Message.Substring(0, 80) + "..." : ex.Message);
             }
         }
 
@@ -173,6 +247,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 "event" => "raid",
                 "weather" => "rain",
                 "trait" => "kind",
+                "race" => "human",
+                "xenotype" => "baseliner",  
                 _ => "search_term"
             };
         }

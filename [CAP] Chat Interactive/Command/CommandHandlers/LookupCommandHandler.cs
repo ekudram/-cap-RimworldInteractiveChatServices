@@ -82,7 +82,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // var response = $"🔍 {searchType.ToUpper()} results for '{searchTerm}': ";
-                var response = $"🔍 {"RICS.LCH.ResultsFor".Translate(searchType.CapitalizeFirst(), searchTerm)}: ";
+                // In HandleLookupCommand – replace the response-building block
+                string displayCategory = searchType == "all"
+                    ? "RICS.LCH.All".Translate()
+                    : $"RICS.LCH.{searchType.CapitalizeFirst()}".Translate();
+
+                var response = $"🔍 {"RICS.LCH.ResultsFor".Translate(displayCategory, searchTerm)}: ";
                 response += string.Join(" | ", results.Select(r =>
                     $"{TextUtilities.StripTags(r.Name)} ({r.Type.Translate()}): {r.Cost} {currencySymbol}"));
 
@@ -116,7 +121,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     Name = item.CustomName ?? GetItemDisplayName(item) ?? item.DefName,
                     // Type = "Item",
-                    Type = "RICS.LCH.Item".Translate(),
+                    Type = "RICS.LCH.Item",
                     Cost = item.BasePrice,
                     DefName = item.DefName
                 });
@@ -135,7 +140,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     Name = incident.Label,
                     // Type = "Event",
-                    Type = "RICS.LCH.Event".Translate(),
+                    Type = "RICS.LCH.Event",
                     Cost = incident.BaseCost,
                     DefName = incident.DefName
                 });
@@ -154,7 +159,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     Name = w.Label,
                     // Type = "Weather",
-                    Type = "RICS.LCH.Weather".Translate(),
+                    Type = "RICS.LCH.Weather",
                     Cost = w.BaseCost,
                     DefName = w.DefName
                 });
@@ -179,7 +184,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     Name = trait.Name, // Keep original name with colors for display
                     // Type = "Trait",
-                    Type = "RICS.LCH.Trait".Translate(),
+                    Type = "RICS.LCH.Trait",
                     Cost = trait.AddPrice,
                     DefName = trait.DefName
                 });
@@ -211,7 +216,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         {
                             Name = race.LabelCap.RawText, // original display name (matches BuyPawn list style)
                             // Type = "Race",
-                            Type = "RICS.LCH.Race".Translate(),
+                            Type = "RICS.LCH.Race",
                             Cost = settings.BasePrice,
                             DefName = race.defName
                         };

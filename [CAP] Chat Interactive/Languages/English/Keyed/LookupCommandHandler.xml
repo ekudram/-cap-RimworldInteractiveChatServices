@@ -20,4 +20,9 @@
   <RICS.LCH.NoneCustomOnly>None / custom only</RICS.LCH.NoneCustomOnly>
   <RICS.LCH.More> +{0} more</RICS.LCH.More>
 
+  <!-- For full race list mode -->
+  <RICS.LCH.AllRaces>All available races</RICS.LCH.AllRaces>
+  <RICS.LCH.NoRacesEnabled>No races are currently enabled.</RICS.LCH.NoRacesEnabled>
+  <RICS.LCH.ErrorListingRaces>Error listing races: {0}</RICS.LCH.ErrorListingRaces>
+
 </LanguageData>
