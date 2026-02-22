@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- Incident Command Handler (RICS.ICH.RETURN.*) -->
+  <RICS.ICH.RETURN.ErrorFindingViewerData>Could not find your viewer data.</RICS.ICH.RETURN.ErrorFindingViewerData>
+
+  <RICS.ICH.RETURN.UnknownIncidentType>Unknown incident type: {0}. Available types (examples): {1}</RICS.ICH.RETURN.UnknownIncidentType>
+
+  <RICS.ICH.RETURN.IncidentDisabled>{0} is currently disabled.</RICS.ICH.RETURN.IncidentDisabled>
+
+  <RICS.ICH.RETURN.GlobalEventLimitReached>❌ Global event limit reached! ({0}/{1} used this period)</RICS.ICH.RETURN.GlobalEventLimitReached>
+
+  <RICS.ICH.RETURN.CommandCooldownActive>❌ Command cooldown active for {0}</RICS.ICH.RETURN.CommandCooldownActive>
+
+  <RICS.ICH.RETURN.IncidentCooldownOneDay>❌ {0} is on cooldown for 1 more day</RICS.ICH.RETURN.IncidentCooldownOneDay>
+
+  <RICS.ICH.RETURN.IncidentCooldownMultipleDays>❌ {0} is on cooldown for {1} more days</RICS.ICH.RETURN.IncidentCooldownMultipleDays>
+
+  <RICS.ICH.RETURN.IncidentCooldownReset>❌ {0} is on cooldown (resets every {1} days)</RICS.ICH.RETURN.IncidentCooldownReset>
+
+  <RICS.ICH.RETURN.EventTypeLimitReached>❌ {0} event limit reached! ({1}/{2} used this period)</RICS.ICH.RETURN.EventTypeLimitReached>
+
+  <RICS.ICH.RETURN.DoomEventPurchased>💀 DOOM EVENT PURCHASED: {0}!</RICS.ICH.RETURN.DoomEventPurchased>
+
+  <RICS.ICH.RETURN.IncidentTriggerFailed>{0} No {1} were deducted.</RICS.ICH.RETURN.IncidentTriggerFailed>
+
+  <RICS.ICH.RETURN.ErrorTriggeringIncident>Error triggering incident. Please try again.</RICS.ICH.RETURN.ErrorTriggeringIncident>
+
+</LanguageData>

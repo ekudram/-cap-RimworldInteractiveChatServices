@@ -208,20 +208,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                     if (buyableIncident.KarmaType?.ToLower() == "doom")
                     {
-                        Messages.Message("💀 DOOM EVENT PURCHASED: " + buyableIncident.Label + "!", MessageTypeDefOf.ThreatBig);
+                        // Messages.Message("💀 DOOM EVENT PURCHASED: " + buyableIncident.Label + "!", MessageTypeDefOf.ThreatBig);
+                        Messages.Message("RICS.ICH.RETURN.DoomEventPurchased".Translate(buyableIncident.Label), MessageTypeDefOf.ThreatBig);
                     }
 
                     return resultMessage;
                 }
                 else
                 {
-                    return $"{resultMessage} No {currencySymbol} were deducted.";
+                    // return $"{resultMessage} No {currencySymbol} were deducted.";
+                    return "RICS.ICH.RETURN.IncidentTriggerFailed".Translate(resultMessage, currencySymbol);
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error handling incident command: {ex}");
-                return "Error triggering incident. Please try again.";
+                // return "Error triggering incident. Please try again.";
+                return "RICS.ICH.RETURN.ErrorTriggeringIncident".Translate();
             }
         }
 
@@ -252,13 +255,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (daysRemaining > 0)
             {
                 if (daysRemaining == 1)
-                    return $"❌ {incidentLabel} is on cooldown for {daysRemaining} more day";
+                    // return $"❌ {incidentLabel} is on cooldown for {daysRemaining} more day";
+                    return "RICS.ICH.RETURN.IncidentCooldownOneDay".Translate(incidentLabel);   
                 else
-                    return $"❌ {incidentLabel} is on cooldown for {daysRemaining} more days";
+                    // return $"❌ {incidentLabel} is on cooldown for {daysRemaining} more days";
+                    return "RICS.ICH.RETURN.IncidentCooldownMultipleDays".Translate(incidentLabel, daysRemaining);
             }
             else
             {
-                return $"❌ {incidentLabel} is on cooldown (resets every {globalCooldownDays} days)";
+                // return $"❌ {incidentLabel} is on cooldown (resets every {globalCooldownDays} days)";
+                return "RICS.ICH.RETURN.IncidentCooldownReset".Translate(incidentLabel, globalCooldownDays);
             }
         }
 
@@ -292,7 +298,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var record = cooldownManager.data.EventUsage.GetValueOrDefault(eventType);
             int currentUses = record?.CurrentPeriodUses ?? 0;
 
-            return $"❌ {eventType.ToUpper()} event limit reached! ({currentUses}/{maxEvents} used this period)";
+            // return $"❌ {eventType.ToUpper()} event limit reached! ({currentUses}/{maxEvents} used this period)";
+            return "RICS.ICH.RETURN.EventTypeLimitReached".Translate(eventType.ToUpper(), currentUses, maxEvents);  
         }
 
         private static BuyableIncident FindBuyableIncident(string input)
