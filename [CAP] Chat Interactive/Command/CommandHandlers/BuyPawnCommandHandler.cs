@@ -848,7 +848,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         // Smart parameter parsing with multi-word race support
         private static void ParsePawnParameters(string[] args, out string raceName, out string xenotypeName, out string genderName, out string ageString)
         {
-            // Initialize defaults
+            // Defaults
             raceName = "";
             xenotypeName = "Baseliner";
             genderName = "Random";
@@ -856,79 +856,107 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (args.Length == 0) return;
 
-            // Track which arguments have been used
             var usedArgs = new bool[args.Length];
 
-            // STEP 1: Identify AGE (numbers)
+            // STEP 1: Extract AGE (highest certainty - numeric)
             for (int i = 0; i < args.Length; i++)
             {
                 if (usedArgs[i]) continue;
-
                 if (int.TryParse(args[i], out int age) && age > 0 && age <= 150)
                 {
                     ageString = args[i];
                     usedArgs[i] = true;
-                    break; // Only one age parameter expected
+                    break;
                 }
             }
 
-            // STEP 2: Identify GENDER (limited values)
+            // STEP 2: Extract GENDER (limited set, safe)
             for (int i = 0; i < args.Length; i++)
             {
                 if (usedArgs[i]) continue;
-
-                string argLower = args[i].ToLower();
-                if (argLower == "male" || argLower == "female" ||
-                    argLower == "m" || argLower == "f")
+                string argLower = args[i].ToLowerInvariant();
+                if (argLower is "male" or "m" or "female" or "f")
                 {
-                    genderName = args[i]; // Keep original case
+                    genderName = args[i]; // preserve case
                     usedArgs[i] = true;
-                    break; // Only one gender parameter expected
+                    break;
                 }
             }
 
-            // STEP 3: Identify XENOTYPE (check against known xenotypes)
-            var knownXenotypes = GetKnownXenotypes();
-            for (int i = 0; i < args.Length; i++)
-            {
-                if (usedArgs[i]) continue;
-
-                string arg = args[i];
-
-                // Check if this argument matches a known xenotype
-                if (knownXenotypes.Contains(arg, StringComparer.OrdinalIgnoreCase))
-                {
-                    xenotypeName = arg;
-                    usedArgs[i] = true;
-                    break; // Only one xenotype parameter expected (except Baseliner)
-                }
-            }
-
-            // STEP 4: RACE is what's left (can be multi-word)
-            // Collect all unused arguments as potential race name parts
-            var raceParts = new List<string>();
+            // STEP 3: Collect ALL remaining args as potential race + xenotype parts
+            var remaining = new List<(int index, string value)>();
             for (int i = 0; i < args.Length; i++)
             {
                 if (!usedArgs[i])
+                    remaining.Add((i, args[i]));
+            }
+
+            if (remaining.Count == 0) return;
+
+            // STEP 4: Try to find the BEST race match using as many words as possible
+            // (this is the key change: race gets first dibs on the full remaining string)
+            string bestRace = "";
+            int bestLength = 0;
+            int bestStart = -1;
+
+            for (int len = Math.Min(4, remaining.Count); len >= 1; len--) // allow slightly longer multi-word races
+            {
+                for (int start = 0; start <= remaining.Count - len; start++)
                 {
-                    raceParts.Add(args[i]);
+                    var candidateParts = remaining.Skip(start).Take(len).Select(x => x.value).ToArray();
+                    string candidate = string.Join(" ", candidateParts);
+
+                    // Use your existing FindBestRaceMatch logic, but here we check if it returns non-empty
+                    string matchedRace = FindBestRaceMatch(candidateParts);
+                    if (!string.IsNullOrEmpty(matchedRace) && len > bestLength)
+                    {
+                        bestRace = matchedRace;
+                        bestLength = len;
+                        bestStart = start;
+                    }
                 }
             }
 
-            if (raceParts.Count == 0)
+            if (!string.IsNullOrEmpty(bestRace))
             {
-                // No race specified - this will be caught by validation
-                return;
+                raceName = bestRace;
+
+                // Mark the words used for the best race match
+                for (int k = bestStart; k < bestStart + bestLength; k++)
+                {
+                    usedArgs[remaining[k].index] = true;
+                }
+            }
+            else
+            {
+                // Fallback: whole remaining string as race (your old behavior)
+                raceName = string.Join(" ", remaining.Select(x => x.value));
+                // All remaining marked used
+                foreach (var r in remaining) usedArgs[r.index] = true;
             }
 
-            // Now try to find the best matching race from the remaining parts
-            raceName = FindBestRaceMatch(raceParts.ToArray());
+            // STEP 5: Whatever is left after race is taken → check for xenotype
+            var leftover = remaining.Where(r => !usedArgs[r.index]).Select(r => r.value).ToArray();
 
-            // If no exact match found, join all parts as the race name
-            if (string.IsNullOrEmpty(raceName))
+            if (leftover.Length > 0)
             {
-                raceName = string.Join(" ", raceParts);
+                var knownXenos = GetKnownXenotypes();
+
+                // Prefer exact match on first leftover word
+                string candidateXeno = leftover[0];
+                if (knownXenos.Contains(candidateXeno, StringComparer.OrdinalIgnoreCase))
+                {
+                    xenotypeName = candidateXeno;
+                    usedArgs[remaining.First(r => r.value == candidateXeno).index] = true;
+                }
+                else
+                {
+                    // Optional: fuzzy/xenotype label match if needed, but keep simple for now
+                    // Could add .label check on XenotypeDef if desired
+                }
             }
+
+            // If still leftover args after all this → log warning or ignore (bad command)
         }
 
         // Helper method to get all known xenotypes for validation
