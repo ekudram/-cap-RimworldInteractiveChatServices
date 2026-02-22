@@ -103,7 +103,7 @@
     <requiresMod>true</requiresMod>
     <commandDescription>Looks up a trait. !trait [trait] </commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -116,7 +116,7 @@
     <requiresMod>true</requiresMod>
     <commandDescription>Adds a trait to your pawn.</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -129,7 +129,7 @@
     <requiresMod>true</requiresMod>
     <commandDescription>Removes a trait. !removetrait [trait] </commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -142,7 +142,7 @@
     <requiresMod>true</requiresMod>
     <commandDescription>!replacetrait [remove trait] [add trait2]</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -155,7 +155,7 @@
     <requiresMod>true</requiresMod>
     <commandDescription>Usage: !settraits [trait_name] [trait_name]. Add and replace traits in bulk.</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -168,7 +168,7 @@
     <requiresMod>true</requiresMod>
     <commandDescription>Returns a list of the factions in current game.</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -181,7 +181,7 @@
     <requiresMod>true</requiresMod>
     <commandDescription>Returns a list of the factions in current game.</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -194,7 +194,7 @@
 		<requiresMod>true</requiresMod>
 		<commandDescription>Search for things in storage.</commandDescription>
 		<permissionLevel>everyone</permissionLevel>
-		<cooldownSeconds>5</cooldownSeconds>
+		<cooldownSeconds>0</cooldownSeconds>
 		<useCommandCooldown>true</useCommandCooldown>
 	</CAP_ChatInteractive.ChatCommandDef>
   
@@ -210,7 +210,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Check your coin balance</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -223,7 +223,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Explain what karma is</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -236,7 +236,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Explain what karma is</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -251,7 +251,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Purchase items or pawns from the store</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -264,7 +264,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Purchase a Pawn and join the Colony</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -277,7 +277,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Use an item immediately</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -290,7 +290,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Equip an item to your pawn</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -303,7 +303,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Wear apparel on your pawn</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -316,7 +316,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Add item to your pawn's inventory</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -329,7 +329,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Purchases the implants specified and queues it for surgery on your pawn.</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>false</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
   
@@ -344,7 +344,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Usage: !event &lt;event_name&gt; or !lookup event &lt;name&gt;</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>false</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -357,7 +357,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Usage: !weather &lt;type&gt;. Types: rain, snow, fog, thunderstorm, clear, etc.</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>false</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -370,7 +370,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Call for military reinforcements from friendly factions</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>false</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -383,7 +383,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Call a hostile raid on the colony</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>false</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -396,7 +396,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Show information about available raid types</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -443,7 +443,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Commands</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>List all available commands</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -456,7 +456,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Search store items, game events, weather, or traits with prices. Use: !lookup [type] &lt;name&gt;. Types: item, event, weather, trait</commandDescription>
     <permissionLevel>everyone</permissionLevel>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -468,7 +468,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Research</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>List Research</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 	
@@ -480,7 +480,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Study</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>List anomaly studies</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -492,7 +492,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.ModInfo</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Shows karma and coin earning rates</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -504,7 +504,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.ModSettings</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Shows karma and coin earning rates</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -516,7 +516,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Wealth</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Shows Wealth of Colony.</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
   
@@ -531,7 +531,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.MyPawn</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Show information about your pawn</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -556,7 +556,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.RevivePawn</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Revives a pawn selected all or viewers</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -568,7 +568,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.HealPawn</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Heals pawn injuries - self, specific user, or all pawns with optional quantity</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -580,7 +580,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Dye</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Dyes your clothing.</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -592,7 +592,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.SetFavoriteColor</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Sets your pawn's favorite color.</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -604,7 +604,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.passion</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Place a wager to have chance to increase a passion.</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -618,7 +618,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Join the pawn queue</commandDescription>
     <useCommandCooldown>true</useCommandCooldown>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -630,7 +630,7 @@
     <requiresMod>false</requiresMod>
     <commandDescription>Leave the pawn queue</commandDescription>
     <useCommandCooldown>true</useCommandCooldown>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -641,7 +641,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.QueueStatus</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Check your position in the pawn queue</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -653,7 +653,7 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.AcceptPawn</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Accept a pawn offer</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -666,7 +666,7 @@
     <commandClass>CAP_ChatInteractive.Commands.InteractionCommands.Chitchat</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Have your pawn chat with another colonist (Cost: 10 coins)</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -678,7 +678,7 @@
     <commandClass>CAP_ChatInteractive.Commands.InteractionCommands.DeepTalk</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Have your pawn have a deep conversation (Cost: 15 coins)</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -690,7 +690,7 @@
     <commandClass>CAP_ChatInteractive.Commands.InteractionCommands.Insult</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Insult another colonist (Cost: 5 coins, requires 5 karma)</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -702,7 +702,7 @@
     <commandClass>CAP_ChatInteractive.Commands.InteractionCommands.Flirt</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Flirt with another colonist (Cost: 20 coins)</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -714,7 +714,7 @@
     <commandClass>CAP_ChatInteractive.Commands.InteractionCommands.Reassure</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Reassure another colonist (Requires Ideology DLC, Cost: 12 coins)</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -726,7 +726,7 @@
     <commandClass>CAP_ChatInteractive.Commands.InteractionCommands.Nuzzle</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Nuzzle with another colonist (Cost: 8 coins)</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -738,7 +738,7 @@
     <commandClass>CAP_ChatInteractive.Commands.InteractionCommands.AnimalChat</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Chat with an animal (Cost: 10 coins)</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -750,7 +750,7 @@
     <commandClass>CAP_ChatInteractive.Commands.InteractionCommands.MarriageProposal</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Propose marriage to another colonist (Cost: 50 coins, requires 10 karma)</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -762,7 +762,7 @@
     <commandClass>CAP_ChatInteractive.Commands.InteractionCommands.BuildRapport</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Build rapport with another colonist (Cost: 25 coins)</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -774,7 +774,7 @@
     <commandClass>CAP_ChatInteractive.Commands.InteractionCommands.ConvertIdeo</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Attempt to convert another colonist to your ideology (Requires Ideology DLC, Cost: 30 coins, requires 15 karma)</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
@@ -787,7 +787,7 @@
     <commandClass>CAP_ChatInteractive.Commands.TestCommands.Hello</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>A simple test command</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
   
@@ -801,7 +801,7 @@
     <commandClass>CAP_ChatInteractive.Commands.TestCommands.CaptoLamia</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>CaptoLamia's test command</commandDescription>
-    <cooldownSeconds>5</cooldownSeconds>
+    <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 </Defs>
