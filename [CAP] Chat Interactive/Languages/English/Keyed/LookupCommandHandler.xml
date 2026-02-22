@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- LookupCommandHandler.cs -->
+  <RICS.LCH.NoResults>No {0}s found matching '{1}'. Try a broader search term.</RICS.LCH.NoResults>
+  <RICS.LCH.NoResultsAll>No results found matching '{0}'. Try a broader search term.</RICS.LCH.NoResultsAll>
+  <RICS.LCH.ResultsFor>{0} results for '{1}'</RICS.LCH.ResultsFor>
+  <RICS.LCH.Error>Error searching: {0}</RICS.LCH.Error>
+
+  <!-- Category types (now translatable) -->
+  <RICS.LCH.Item>Item</RICS.LCH.Item>
+  <RICS.LCH.Event>Event</RICS.LCH.Event>
+  <RICS.LCH.Weather>Weather</RICS.LCH.Weather>
+  <RICS.LCH.Trait>Trait</RICS.LCH.Trait>
+  <RICS.LCH.Race>Race</RICS.LCH.Race>
+  <RICS.LCH.Xenotype>Xenotype</RICS.LCH.Xenotype>
+
+  <!-- Xenotype compatibility strings (the complex ones you mentioned) -->
+  <RICS.LCH.Compatible>compatible: {0}</RICS.LCH.Compatible>
+  <RICS.LCH.NoneCustomOnly>None / custom only</RICS.LCH.NoneCustomOnly>
+  <RICS.LCH.More> +{0} more</RICS.LCH.More>
+
+</LanguageData>

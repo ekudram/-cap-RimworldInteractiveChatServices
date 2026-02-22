@@ -74,19 +74,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (!results.Any())
                 {
-                    return $"No {searchType}s found matching '{searchTerm}'. Try a broader search term.";
+                    if (searchType == "all")
+                    {
+                        return "RICS.LCH.NoResultsAll".Translate(searchTerm);
+                    }
+                    return "RICS.LCH.NoResults".Translate(searchType, searchTerm);
                 }
 
-                var response = $"🔍 {searchType.ToUpper()} results for '{searchTerm}': ";
+                // var response = $"🔍 {searchType.ToUpper()} results for '{searchTerm}': ";
+                var response = $"🔍 {"RICS.LCH.ResultsFor".Translate(searchType.CapitalizeFirst(), searchTerm)}: ";
                 response += string.Join(" | ", results.Select(r =>
-                    $"{TextUtilities.StripTags(r.Name)} ({r.Type}): {r.Cost} {currencySymbol}"));
+                    $"{TextUtilities.StripTags(r.Name)} ({r.Type.Translate()}): {r.Cost} {currencySymbol}"));
 
                 return response;
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in HandleLookupCommand: {ex}");
-                return "Error searching. Please try again.";
+                // return "Error searching. Please try again.";
+                string exMessage = ex.Message.Length > 100 ? ex.Message.Substring(0, 100) + "..." : ex.Message;
+                return "RICS.LCH.Error".Translate(exMessage); // for localization
             }
         }
 
@@ -108,7 +115,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 .Select(item => new LookupResult
                 {
                     Name = item.CustomName ?? GetItemDisplayName(item) ?? item.DefName,
-                    Type = "Item",
+                    // Type = "Item",
+                    Type = "RICS.LCH.Item".Translate(),
                     Cost = item.BasePrice,
                     DefName = item.DefName
                 });
@@ -126,7 +134,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 .Select(incident => new LookupResult
                 {
                     Name = incident.Label,
-                    Type = "Event",
+                    // Type = "Event",
+                    Type = "RICS.LCH.Event".Translate(),
                     Cost = incident.BaseCost,
                     DefName = incident.DefName
                 });
@@ -144,7 +153,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 .Select(w => new LookupResult
                 {
                     Name = w.Label,
-                    Type = "Weather",
+                    // Type = "Weather",
+                    Type = "RICS.LCH.Weather".Translate(),
                     Cost = w.BaseCost,
                     DefName = w.DefName
                 });
@@ -168,7 +178,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 .Select(trait => new LookupResult
                 {
                     Name = trait.Name, // Keep original name with colors for display
-                    Type = "Trait",
+                    // Type = "Trait",
+                    Type = "RICS.LCH.Trait".Translate(),
                     Cost = trait.AddPrice,
                     DefName = trait.DefName
                 });
@@ -199,7 +210,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         return new LookupResult
                         {
                             Name = race.LabelCap.RawText, // original display name (matches BuyPawn list style)
-                            Type = "Race",
+                            // Type = "Race",
+                            Type = "RICS.LCH.Race".Translate(),
                             Cost = settings.BasePrice,
                             DefName = race.defName
                         };
@@ -221,19 +233,83 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var normalizedSearchTerm = searchTerm.ToLower();
 
-                // Pure RimWorld DefDatabase (reuses pattern from BuyPawnCommandHandler.ListAvailableXenotypes fallback + GetKnownXenotypes)
-                return DefDatabase<XenotypeDef>.AllDefs
+                // Get all xenotypes that match the search (same as before)
+                var matchingXenos = DefDatabase<XenotypeDef>.AllDefs
                     .Where(x => !string.IsNullOrEmpty(x.defName) &&
                                 (TextUtilities.CleanAndNormalize(x.label).Contains(normalizedSearchTerm) ||
                                  x.defName.ToLower().Contains(normalizedSearchTerm)))
-                    .Take(maxResults)
-                    .Select(x => new LookupResult
+                    .ToList();
+
+                if (!matchingXenos.Any())
+                    return Enumerable.Empty<LookupResult>();
+
+                var results = new List<LookupResult>();
+
+                // Reuse the same enabled races source as BuyPawn / ListAvailableRaces
+                var enabledRaces = RaceUtils.GetEnabledRaces();
+
+                foreach (var xeno in matchingXenos.Take(maxResults))
+                {
+                    // Find races that allow this xenotype (or allow custom xenotypes)
+                    var compatibleRaces = enabledRaces
+                        .Where(race =>
+                        {
+                            var settings = RaceSettingsManager.GetRaceSettings(race.defName);
+                            if (settings == null) return false;
+
+                            // Case 1: Explicitly enabled for this xenotype
+                            if (settings.EnabledXenotypes?.ContainsKey(xeno.defName) == true &&
+                                settings.EnabledXenotypes[xeno.defName])
+                            {
+                                return true;
+                            }
+
+                            // Case 2: Custom xenotypes allowed AND this isn't Baseliner (Baseliner usually always allowed)
+                            if (settings.AllowCustomXenotypes && xeno != XenotypeDefOf.Baseliner)
+                            {
+                                return true;
+                            }
+
+                            // Baseliner fallback (almost always allowed unless explicitly disabled)
+                            if (xeno == XenotypeDefOf.Baseliner)
+                            {
+                                return !settings.EnabledXenotypes?.ContainsKey("Baseliner") == true ||
+                                       settings.EnabledXenotypes?["Baseliner"] != false;
+                            }
+
+                            return false;
+                        })
+                        .Select(r => r.LabelCap.RawText)
+                        .OrderBy(name => name)
+                        .ToList();
+
+                    string compatInfo;
+                    if (compatibleRaces.Any())
                     {
-                        Name = x.LabelCap.RawText,
-                        Type = "Xenotype",
-                        Cost = 0, // extra price is race-specific (see GetXenotypePrice in BuyPawn); shown as 0 for lookup
-                        DefName = x.defName
+                        string listPart = string.Join(", ", compatibleRaces.Take(5));
+                        if (compatibleRaces.Count > 5)
+                        {
+                            listPart += "RICS.LCH.More".Translate(compatibleRaces.Count - 5);
+                        }
+                        compatInfo = "RICS.LCH.Compatible".Translate(listPart);
+                    }
+                    else
+                    {
+                        compatInfo = "RICS.LCH.NoneCustomOnly".Translate();
+                    }
+
+                    string displayName = $"{xeno.LabelCap.RawText} ({compatInfo})";
+
+                    results.Add(new LookupResult
+                    {
+                        Name = displayName,
+                        Type = "RICS.LCH.Xenotype",
+                        Cost = 0,
+                        DefName = xeno.defName
                     });
+                }
+
+                return results;
             }
             catch (Exception ex)
             {
