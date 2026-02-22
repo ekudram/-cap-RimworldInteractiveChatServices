@@ -206,21 +206,25 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         string label = TextUtilities.CleanAndNormalize(race.LabelCap.RawText);
                         string defName = race.defName?.ToLower() ?? "";
                         return label.Contains(normalizedSearchTerm) ||
-                               defName.Contains(normalizedSearchTerm);
+                                defName.Contains(normalizedSearchTerm);
                     })
                     .Take(maxResults)
                     .Select(race =>
                     {
-                        var settings = RaceSettingsManager.GetRaceSettings(race.defName); // never null (per BuyPawn)
+                        var settings = RaceSettingsManager.GetRaceSettings(race.defName);
+                        if (settings == null) return null; // skip if null (rare)
+
+                        string extra = GetXenotypesForRace(race.defName);
+
                         return new LookupResult
                         {
-                            Name = race.LabelCap.RawText, // original display name (matches BuyPawn list style)
-                            // Type = "Race",
+                            Name = race.LabelCap.RawText + extra,
                             Type = "RICS.LCH.Race",
                             Cost = settings.BasePrice,
                             DefName = race.defName
                         };
-                    });
+                    })
+                    .Where(result => result != null);  // remove any nulls
             }
             catch (Exception ex)
             {
@@ -320,6 +324,74 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 Logger.Error($"Error in SearchXenotypes: {ex}");
                 return Enumerable.Empty<LookupResult>();
+            }
+        }
+
+        private static string GetXenotypesForRace(string raceDefName)
+        {
+            if (!ModsConfig.BiotechActive) return string.Empty;
+
+            try
+            {
+                var race = DefDatabase<ThingDef>.GetNamedSilentFail(raceDefName);
+                if (race == null || !race.race?.Humanlike == true) return string.Empty;
+
+                var settings = RaceSettingsManager.GetRaceSettings(raceDefName);
+                if (settings == null) return string.Empty;
+
+                // Use EXACT same allowed pool as the settings GUI (HAR reflection + Biotech logic)
+                var allowedDefNames = Dialog_PawnRaceSettings.GetAllowedXenotypes(race);
+
+                var enabledXenoNames = new List<string>();
+
+                foreach (var defName in allowedDefNames)
+                {
+                    if (settings.EnabledXenotypes.TryGetValue(defName, out bool isEnabled) && isEnabled)
+                    {
+                        var xenoDef = DefDatabase<XenotypeDef>.GetNamedSilentFail(defName);
+                        string display = xenoDef?.LabelCap.RawText ?? defName;
+                        enabledXenoNames.Add(display);
+                    }
+                }
+
+                string xenoList;
+                if (!enabledXenoNames.Any())
+                {
+                    if (settings.AllowCustomXenotypes)
+                    {
+                        xenoList = "RICS.LCH.CustomOnly".Translate();
+                    }
+                    else
+                    {
+                        return string.Empty;
+                    }
+                }
+                else
+                {
+                    enabledXenoNames.Sort();
+
+                    if (enabledXenoNames.Count <= 3)
+                    {
+                        xenoList = string.Join(", ", enabledXenoNames);
+                    }
+                    else
+                    {
+                        xenoList = string.Join(", ", enabledXenoNames.Take(3)) +
+                                   "RICS.LCH.More".Translate(enabledXenoNames.Count - 3);
+                    }
+
+                    if (settings.AllowCustomXenotypes)
+                    {
+                        xenoList += "RICS.LCH.PlusCustom".Translate();
+                    }
+                }
+
+                return " (" + "RICS.LCH.XenotypesForRace".Translate(xenoList) + ")";
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error getting xenotypes for race {raceDefName}: {ex}");
+                return string.Empty; // silent – never break lookup
             }
         }
 

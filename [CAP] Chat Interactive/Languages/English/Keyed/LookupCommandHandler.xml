@@ -25,4 +25,9 @@
   <RICS.LCH.NoRacesEnabled>No races are currently enabled.</RICS.LCH.NoRacesEnabled>
   <RICS.LCH.ErrorListingRaces>Error listing races: {0}</RICS.LCH.ErrorListingRaces>
 
+  <!-- For race-specific xenotype list -->
+  <RICS.LCH.XenotypesForRace>xenotypes: {0}</RICS.LCH.XenotypesForRace>
+  <RICS.LCH.CustomOnly>custom only</RICS.LCH.CustomOnly>
+  <RICS.LCH.PlusCustom> + custom</RICS.LCH.PlusCustom>
+
 </LanguageData>

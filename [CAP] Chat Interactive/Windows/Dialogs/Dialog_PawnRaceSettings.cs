@@ -16,6 +16,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // A dialog window for configuring pawn races and xenotypes 
 using _CAP__Chat_Interactive.Utilities;
+using CAP_ChatInteractive;
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -721,7 +722,7 @@ namespace CAP_ChatInteractive
             return height + 30f; // Extra padding
         }
 
-        private List<string> GetAllowedXenotypes(ThingDef raceDef)
+        public static List<string> GetAllowedXenotypes(ThingDef raceDef)
         {
             if (!ModsConfig.BiotechActive)
                 return new List<string>();
@@ -848,7 +849,7 @@ namespace CAP_ChatInteractive
         }
 
         // Helper method (add this new private method in the class)
-        private string GetDefName(object defObj)
+        private static string GetDefName(object defObj)
         {
             if (defObj == null) return null;
             var defNameField = defObj.GetType().GetField("defName", BindingFlags.Public | BindingFlags.Instance);
