@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- LootBoxCommandHandler messages -->
+  <RICS.LBCH.NotAvailable>Lootbox system is not available.</RICS.LBCH.NotAvailable>
+  <RICS.LBCH.Count>You currently have {0} lootbox{1}.</RICS.LBCH.Count>
+  <RICS.LBCH.SettingsNotAvailable>Lootbox settings not available.</RICS.LBCH.SettingsNotAvailable>
+  <RICS.LBCH.Opened>You open a lootbox and discover: {0} {1}!</RICS.LBCH.Opened>
+  <RICS.LBCH.NoLootboxes>You do not have any lootboxes.</RICS.LBCH.NoLootboxes>
+  <RICS.LBCH.OpenedAll>You open all your lootboxes and discover: {0} {1}!</RICS.LBCH.OpenedAll>
+
+</LanguageData>

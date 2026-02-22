@@ -26,7 +26,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             var lootboxComponent = Current.Game?.GetComponent<LootBoxComponent>();
             if (lootboxComponent == null)
-                return "Lootbox system is not available.";
+                // return "Lootbox system is not available.";
+                return "RICS.LBCH.NotAvailable".Translate();
 
             // Process viewer message to check for daily lootboxes
             lootboxComponent.ProcessViewerMessage(messageWrapper.Username);
@@ -43,14 +44,16 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             int count = lootboxComponent.HowManyLootboxesDoesViewerHave(messageWrapper.Username);
             string plural = count != 1 ? "es" : "";
-            return $" you currently have {count} lootbox{plural}.";
+            // return $" you currently have {count} lootbox{plural}.";
+            return "RICS.LBCH.Count".Translate(count, plural);
         }
 
         private static string HandleOpenLootboxCommand(ChatMessageWrapper messageWrapper, LootBoxComponent lootboxComponent)
         {
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             if (settings == null)
-                return "Lootbox settings not available.";
+                // return "Lootbox settings not available.";
+                return "RICS.LBCH.SettingsNotAvailable".Translate();
 
             if (settings.LootBoxForceOpenAllAtOnce)
             {
@@ -73,11 +76,13 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
-                return $" you open a lootbox and discover: {coins} {currencySymbol}!";
+                // return $" you open a lootbox and discover: {coins} {currencySymbol}!";
+                return "RICS.LBCH.Opened".Translate(coins, currencySymbol);
             }
             else
             {
-                return $" you do not have any lootboxes.";
+                // return $" you do not have any lootboxes.";
+                return "RICS.LBCH.NoLootboxes".Translate();
             }
         }
 
@@ -85,7 +90,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             int lootboxCount = lootboxComponent.HowManyLootboxesDoesViewerHave(messageWrapper.Username);
             if (lootboxCount <= 0)
-                return $" you do not have any lootboxes.";
+                // return $" you do not have any lootboxes.";
+                return "RICS.LBCH.NoLootboxes".Translate();
 
             int totalCoins = 0;
             for (int i = 0; i < lootboxCount; i++)
@@ -99,7 +105,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
-            return $"@ you open all your lootboxes and discover: {totalCoins} {currencySymbol}!";
+            // return $"@ you open all your lootboxes and discover: {totalCoins} {currencySymbol}!";
+            return "RICS.LBCH.OpenedAll".Translate(totalCoins, currencySymbol);
         }
     }
 }
