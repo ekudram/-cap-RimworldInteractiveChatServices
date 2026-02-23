@@ -18,6 +18,7 @@
 // Handles the !mypawn command and its subcommands to provide detailed information about the viewer's assigned pawn.
 
 
+using HarmonyLib;
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -38,7 +39,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
                 {
-                    return "Could not find your viewer data.";
+                    // return "Could not find your viewer data.";
+                    return "RICS.MPCH.NoViewerData".Translate();
                 }
 
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
@@ -49,7 +51,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     Pawn existingPawn = assignmentManager.GetAssignedPawn(messageWrapper);
                     if (existingPawn == null)
                     {
-                        return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
+                        // return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
+                        return "RICS.MPCH.NoPawnAssigned".Translate();
                     }
                 }
 
@@ -84,13 +87,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "work":
                         return HandleWorkInfo(pawn, args);
                     default:
-                        return $"Unknown subcommand: {subCommand}. !mypawn [type]: body, health, implants, gear, kills, needs, relations, skills, stats, story, traits, work";
+                        // return $"Unknown subcommand: {subCommand}. !mypawn [type]: body, health, implants, gear, kills, needs, relations, skills, stats, story, traits, work";
+                        return "RICS.MPCH.UnknownSubcommand".Translate(subCommand);
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in MyPawn command handler: {ex}");
-                return "An error occurred while processing your pawn information.";
+                // return "An error occurred while processing your pawn information.";
+                return "RICS.MPCH.ErrorProcessingPawn".Translate();
             }
         }
 
@@ -99,22 +104,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             if (pawn.health?.hediffSet?.hediffs == null)
             {
-                return $"{pawn.Name} has no health records.";
+                // return $"{pawn.Name} has no health records.";
+                return "RICS.MPCH.NoHealthRecords".Translate(pawn.LabelShortCap);
             }
 
             //Logger.Debug("=== HandleInplantsInfo START ===");
             //Logger.Debug($"Pawn: {pawn.Name}, Total hediffs: {pawn.health.hediffSet.hediffs.Count}");
 
             var report = new StringBuilder();
-            report.AppendLine("🔧 Implants:");
-
+            // report.AppendLine("🔧 Implants:");
+            report.AppendLine("RICS.MPCH.ImplantsHeader".Translate());
             // Get all visible implants (added parts)
             var allHediffs = pawn.health.hediffSet.hediffs.ToList();
-            //Logger.Debug("All hediffs:");
-            //foreach (var h in allHediffs)
-            //{
-            //    Logger.Debug($"  - {h.def.defName}, Visible: {h.Visible}, Part: {h.Part?.def?.label}");
-            //}
 
             var implants = allHediffs
                 .Where(h =>
@@ -130,7 +131,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (implants.Count == 0)
             {
-                report.AppendLine("No implants or bionic replacements found.");
+                // report.AppendLine("No implants or bionic replacements found.");
+                report.AppendLine("RICS.MPCH.NoImplants".Translate());
                 //Logger.Debug("=== HandleInplantsInfo END (no implants) ===");
                 return report.ToString();
             }
@@ -159,8 +161,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // Add summary
-            report.AppendLine($"📊 {implants.Count} implant(s)");
-
+            // report.AppendLine($"📊 {implants.Count} implant(s)");
+            report.AppendLine("RICS.MPCH.ImplantsSummary".Translate(implants.Count));
             // Logger.Debug("=== HandleInplantsInfo END ===");
             return report.ToString();
         }
@@ -266,8 +268,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string HandlehealthInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
-            report.AppendLine("❤️ Health:");
-
+            // report.AppendLine("❤️ Health:");
+            report.AppendLine("RICS.MPCH.HealthHeader".Translate());
             try
             {
                 // Core health capacities - only the most important ones
@@ -306,16 +308,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (painDef != null)
                     maxPain = pawn.GetStatValue(painDef);
 
-                report.AppendLine($"• Pain: {painEmoji} {painStatus} ({pain.ToStringPercent()}/{maxPain.ToStringPercent()})");
-
+               //report.AppendLine($"• Pain: {painEmoji} {painStatus} ({pain.ToStringPercent()}/{maxPain.ToStringPercent()})");
+                report.AppendLine("RICS.MPCH.Pain".Translate(painEmoji, painStatus, pain.ToStringPercent(),maxPain.ToStringPercent()));
+                
                 // Add health
                 string hp = pawn.health.summaryHealth.SummaryHealthPercent.ToStringPercent();
-                report.AppendLine($"• Health: {hp}");
+                // report.AppendLine($"• Health: {hp}");
+                report.AppendLine("RICS.MPCH.OverallHealth".Translate(hp));
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in health info: {ex}");
-                return "Error retrieving health information.";
+                // return "Error retrieving health information.";
+                return "RICS.MPCH.HealthError".Translate();
             }
 
             return report.ToString();
@@ -373,38 +378,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             };
         }
 
-        private static bool IsChildOf(BodyPartRecord part, BodyPartRecord potentialParent)
-        {
-            if (part == null || potentialParent == null) return false;
-            if (part == potentialParent) return false;
-
-            BodyPartRecord childNode = part;
-            BodyPartRecord parentNode = part.parent;
-
-            while (parentNode != null)
-            {
-                if (parentNode == potentialParent)
-                {
-                    // === EXCEPTION FOR TORSO ===
-                    if (potentialParent.def.defName.Equals("Torso", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (childNode.depth != BodyPartDepth.Inside)
-                        {
-                            return false;
-                        }
-                    }
-                    // ===========================
-
-                    return true;
-                }
-
-                childNode = parentNode;
-                parentNode = parentNode.parent;
-            }
-
-            return false;
-        }
-
         // === Body ===
         private static string HandleBodyInfo(Pawn pawn, string[] args)
         {
@@ -420,7 +393,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (pawn.health?.hediffSet?.hediffs == null || pawn.health.hediffSet.hediffs.Count == 0)
             {
-                return $"{bodyTypeInfo}{pawn.Name} has no health conditions. 🟢";
+                // return $"{bodyTypeInfo}{pawn.Name} has no health conditions. 🟢";
+                return "RICS.MPCH.BodyNoConditions".Translate(pawn.LabelShortCap);
             }
 
             var report = new StringBuilder();
@@ -447,7 +421,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (targetPart == null)
                 {
-                    return $"❌ Body part '{bodyPartFilter}' not found. Try: torso, head, arm, leg, etc.";
+                    // return $"❌ Body part '{bodyPartFilter}' not found. Try: torso, head, arm, leg, etc.";
+                    return "RICS.MPCH.BodyPartNotFound".Translate(bodyPartFilter);
                 }
 
                 // Filter to only show this part and its children
@@ -486,11 +461,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Add summary at the front
             if (targetPart != null)
             {
-                report.AppendLine($"🏥 Health Report - {targetPart.LabelCap} ({uniqueConditionCount} conditions):");
+                // report.AppendLine($"🏥 Health Report - {targetPart.LabelCap} ({uniqueConditionCount} conditions):");
+                report.AppendLine("RICS.MPCH.BodyReportSpecific".Translate(targetPart.LabelCap, uniqueConditionCount));
             }
             else
             {
-                report.AppendLine($"🏥 Health Report ({uniqueConditionCount} conditions):");
+                // report.AppendLine($"🏥 Health Report ({uniqueConditionCount} conditions):");
+                report.AppendLine("RICS.MPCH.BodyReportFull".Translate(uniqueConditionCount));
             }
 
             // Add temperature comfort range (only in full report)
@@ -498,24 +475,29 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 float minComfy = pawn.GetStatValue(StatDefOf.ComfyTemperatureMin);
                 float maxComfy = pawn.GetStatValue(StatDefOf.ComfyTemperatureMax);
-                report.AppendLine($"🌡️ Comfort Range: {minComfy.ToStringTemperature()} ~ {maxComfy.ToStringTemperature()}");
+                // report.AppendLine($"🌡️ Comfort Range: {minComfy.ToStringTemperature()} ~ {maxComfy.ToStringTemperature()}");
+                report.AppendLine("RICS.MPCH.ComfortRange".Translate(minComfy.ToStringTemperature(), maxComfy.ToStringTemperature()));
             }
 
             if (healthConditions.Count == 0)
             {
-                if (targetPart != null)
-                {
-                    report.AppendLine($"No visible issues on {targetPart.LabelCap}. ✅");
-                }
-                else
-                {
-                    report.AppendLine("No visible health issues. ✅");
-                }
-                return report.ToString();
+                return targetPart != null
+                    ? "RICS.MPCH.NoIssuesOnPart".Translate(targetPart.LabelCap)
+                    : "RICS.MPCH.NoHealthIssues".Translate();
+                //if (targetPart != null)
+                //{
+                //    report.AppendLine($"No visible issues on {targetPart.LabelCap}. ✅");
+                //}
+                //else
+                //{
+                //    report.AppendLine("No visible health issues. ✅");
+                //}
+                //return report.ToString();
             }
 
             // Group conditions by body part for display
-            report.AppendLine("Health Conditions:");
+            // report.AppendLine("Health Conditions:");
+            report.AppendLine("RICS.MPCH.HealthConditionsHeader".Translate());
 
             // Sort body parts by height (head to toe)
             var sortedPartGroups = healthConditions
@@ -587,19 +569,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     partsShown++;
                 }
             }
-
             // Add overflow message if we didn't show everything (only for full body report)
+
+
             if (targetPart == null)
             {
                 int hiddenParts = Math.Max(0, healthConditions.Count - partsShown);
                 if (hiddenParts > 0)
                 {
-                    report.AppendLine($"... and {hiddenParts} more body parts with conditions");
+                    // report.AppendLine($"... and {hiddenParts} more body parts with conditions");
+                    report.AppendLine("RICS.MPCH.HiddenParts".Translate(hiddenParts));
                 }
 
                 if (totalHediffCount > uniqueConditionCount)
                 {
-                    report.AppendLine($"({totalHediffCount} individual injuries across all body)");
+                    // report.AppendLine($"({totalHediffCount} individual injuries across all body)");
+                    report.AppendLine("RICS.MPCH.TotalInjuries".Translate(totalHediffCount));
                 }
             }
 
@@ -607,8 +592,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 // Add health severity summary
                 string severity = GetOverallHealthSeverity(pawn);
-                report.AppendLine($"📊 Overall Status: {severity}");
-
+                // report.AppendLine($"📊 Overall Status: {severity}");
+                report.AppendLine("RICS.MPCH.OverallStatus".Translate(severity));
                 // Add immediate danger warnings
                 // Check for bleeding
                 float bleedRate = pawn.health.hediffSet.BleedRateTotal;
@@ -617,15 +602,49 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     int bleedoutTime = HealthUtility.TicksUntilDeathDueToBloodLoss(pawn);
                     if (bleedoutTime < GenDate.TicksPerDay)
                     {
-                        report.AppendLine($"Bleedout in {bleedoutTime.ToStringTicksToPeriod()}!");
+                        // report.AppendLine($"Bleedout in {bleedoutTime.ToStringTicksToPeriod()}!");
+                        report.AppendLine("RICS.MPCH.BleedoutIn".Translate(bleedoutTime.ToStringTicksToPeriod()));
                     }
                 }
                 if (pawn.health.hediffSet.HasTendableHediff() || pawn.health.hediffSet.HasTendableNonInjuryNonMissingPartHediff())
                 {
-                    report.AppendLine("⚠️ Needs medical attention!");
+                    // report.AppendLine("⚠️ Needs medical attention!");
+                    report.AppendLine("RICS.MPCH.NeedsMedical".Translate());
                 }
             }
             return report.ToString();
+        }
+
+        private static bool IsChildOf(BodyPartRecord part, BodyPartRecord potentialParent)
+        {
+            if (part == null || potentialParent == null) return false;
+            if (part == potentialParent) return false;
+
+            BodyPartRecord childNode = part;
+            BodyPartRecord parentNode = part.parent;
+
+            while (parentNode != null)
+            {
+                if (parentNode == potentialParent)
+                {
+                    // === EXCEPTION FOR TORSO ===
+                    if (potentialParent.def.defName.Equals("Torso", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (childNode.depth != BodyPartDepth.Inside)
+                        {
+                            return false;
+                        }
+                    }
+                    // ===========================
+
+                    return true;
+                }
+
+                childNode = parentNode;
+                parentNode = parentNode.parent;
+            }
+
+            return false;
         }
 
         private static string GetBodyTypeDisplayName(Pawn pawn, bool includeModdedFlag = true)
@@ -637,14 +656,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             // Vanilla body types
             Dictionary<string, string> vanillaMap = new Dictionary<string, string>
-    {
-        { "Female", "Female" },
-        { "Male", "Male" },
-        { "Thin", "Thin" },
-        { "Hulk", "Hulk" },
-        { "Fat", "Fat" },
-        { "Standard", "Standard" }
-    };
+            {
+                { "Female", "Female" },
+                { "Male", "Male" },
+                { "Thin", "Thin" },
+                { "Hulk", "Hulk" },
+                { "Fat", "Fat" },
+                { "Standard", "Standard" }
+            };
 
             // Check vanilla first
             if (vanillaMap.ContainsKey(defName))
@@ -741,7 +760,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return "Unknown";
         }
 
-        // Updated to prioritize critical conditions
         private static bool IsCriticalCondition(Hediff hediff)
         {
             if (hediff == null) return false;
@@ -1282,25 +1300,29 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string HandleGearInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
-            report.AppendLine($"🎒 Gear Report: ");// for {pawn.Name}:
-
+            // report.AppendLine($"🎒 Gear Report: ");// for {pawn.Name}:
+            report.AppendLine("RICS.MPCH.GearHeader".Translate());
             // Weapons - check for Simple Sidearms first
             var weapons = GetWeaponsList(pawn);
             if (weapons.Count > 0)
             {
-                report.Append("⚔️ Weapons: ");
+                // report.Append("⚔️ Weapons: ");
+                report.AppendLine("RICS.MPCH.WeaponsHeader".Translate());
                 report.AppendLine(string.Join(", ", weapons));
             }
             else
             {
-                report.AppendLine("⚔️ Weapons: None");
+                // SPam reduction waiting on feedback. Going to see if viewers notice.
+                // report.AppendLine("⚔️ Weapons: None");
+                // report.AppendLine("RICS.MPCH.WeaponsNone".Translate());
             }
 
             // Apparel - list everything worn
             var apparel = pawn.apparel?.WornApparel;
             if (apparel != null && apparel.Count > 0)
             {
-                report.AppendLine("👕 Apparel:");
+                // report.AppendLine("👕 Apparel:");
+                report.AppendLine("RICS.MPCH.ApparelHeader".Translate());
                 foreach (var item in apparel)
                 {
                     // Get base name without quality
@@ -1318,7 +1340,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             else
             {
-                report.AppendLine("👕 Apparel: None");
+                // SPam reduction waiting on feedback. Going to see if viewers notice.
+                // report.AppendLine("👕 Apparel: None");
+                // report.AppendLine("RICS.MPCH.ApparelNone".Translate()); 
             }
 
             // Inventory items - show all notable items
@@ -1333,7 +1357,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (notableItems.Any())
                 {
-                    report.AppendLine("🎒 Inventory:");
+                    // report.AppendLine("🎒 Inventory:");
+                    report.AppendLine("RICS.MPCH.InventoryHeader".Translate());
                     foreach (var item in notableItems)
                     {
                         string stackInfo = item.stackCount > 1 ? $" x{item.stackCount}" : "";
@@ -1413,7 +1438,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             catch (Exception ex)
             {
-                Logger.Warning($"Reflection failed for SimpleSidearms: {ex.Message}");
+                // Logger.Warning($"Reflection failed for SimpleSidearms: {ex.Message}");
+                // No warning. Just silently fail and return empty list, since this is an optional integration.
             }
 
             return new List<Thing>();
@@ -1427,7 +1453,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 float bluntArmor = CalculateArmorRating(pawn, StatDefOf.ArmorRating_Blunt);
                 float heatArmor = CalculateArmorRating(pawn, StatDefOf.ArmorRating_Heat);
 
-                Logger.Debug($"Calculated armor: Sharp={sharpArmor:P0}, Blunt={bluntArmor:P0}, Heat={heatArmor:P0}");
+                // Logger.Debug($"Calculated armor: Sharp={sharpArmor:P0}, Blunt={bluntArmor:P0}, Heat={heatArmor:P0}");
 
                 var armorStats = new List<string>();
 
@@ -1442,15 +1468,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (armorStats.Count > 0)
                 {
-                    return $"🛡️ Armor: {string.Join(" ", armorStats)}\n";
+                    //return $"🛡️ Armor: {string.Join(" ", armorStats)}\n";
+                    return "RICS.MPCH.ArmorHeader".Translate() + $" {string.Join(" ", armorStats)}\n";
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error calculating armor: {ex}");
             }
-
-            return "🛡️ Armor: None\n";
+            // This should not happen since CalculateArmorRating should return 0 if no apparel, but just in case, we return None instead of an empty line.
+            // return "🛡️ Armor: None\n";
+            return "RICS.MPCH.ArmorNone".Translate() + "\n";
         }
 
         private static float CalculateArmorRating(Pawn pawn, StatDef stat)
@@ -1489,7 +1517,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string HandleKillInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
-            report.AppendLine($"💀 Kill Report:"); //  for {pawn.Name}:
+            // report.AppendLine($"💀 Kill Report:"); //  for {pawn.Name}:
+            report.AppendLine("RICS.MPCH.KillHeader".Translate());
 
             // Get kill counts from pawn records - cast float to int
             int humanlikeKills = (int)pawn.records.GetValue(RecordDefOf.KillsHumanlikes);
@@ -1498,15 +1527,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             int totalKills = humanlikeKills + animalKills + mechanoidKills;
 
             // Total kills
-            report.AppendLine($"Total Kills: {totalKills}");
+            // report.AppendLine($"Total Kills: {totalKills}");
+            report.AppendLine("RICS.MPCH.TotalKills".Translate(totalKills));
 
             // Breakdown by type
             if (humanlikeKills > 0)
-                report.AppendLine($"• Humans: {humanlikeKills}");
+                // report.AppendLine($"• Humans: {humanlikeKills}");
+                report.AppendLine("RICS.MPCH.KillsHumans".Translate(humanlikeKills));
             if (animalKills > 0)
-                report.AppendLine($"• Animals: {animalKills}");
+                // report.AppendLine($"• Animals: {animalKills}");
+                report.AppendLine("RICS.MPCH.KillsAnimals".Translate(animalKills));
             if (mechanoidKills > 0)
-                report.AppendLine($"• Mechanoids: {mechanoidKills}");
+                // report.AppendLine($"• Mechanoids: {mechanoidKills}");
+                report.AppendLine("RICS.MPCH.KillsMechanoids".Translate(mechanoidKills));
 
             // Check for other kill records that might exist
             var killRecords = DefDatabase<RecordDef>.AllDefs
@@ -1534,22 +1567,28 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 int damageDealt = (int)pawn.records.GetValue(RecordDefOf.DamageDealt);
                 if (damageDealt > 0)
                 {
-                    report.AppendLine($"Damage Dealt: {damageDealt}");
+                    // report.AppendLine($"Damage Dealt: {damageDealt}");
+                    report.AppendLine("RICS.MPCH.DamageDealt".Translate(damageDealt));
                 }
 
                 // Add some flavor text based on kill count
                 if (totalKills >= 100)
-                    report.AppendLine("🏆 Legendary Slayer!");
+                    // report.AppendLine("🏆 Legendary Slayer!");
+                    report.AppendLine("RICS.MPCH.LegendarySlayer".Translate());
                 else if (totalKills >= 50)
-                    report.AppendLine("⚔️ Veteran Warrior");
+                    // report.AppendLine("⚔️ Veteran Warrior");
+                    report.AppendLine("RICS.MPCH.VeteranWarrior".Translate());
                 else if (totalKills >= 10)
-                    report.AppendLine("🔪 Experienced Fighter");
+                    // report.AppendLine("🔪 Experienced Fighter");
+                    report.AppendLine("RICS.MPCH.ExperiencedFighter".Translate());
                 else if (totalKills > 0)
-                    report.AppendLine("🎯 Getting Started");
+                    // report.AppendLine("🎯 Getting Started");
+                    report.AppendLine("RICS.MPCH.GettingStarted".Translate());
             }
             else
             {
-                report.AppendLine("No kills recorded yet. Go get 'em!");
+                // report.AppendLine("No kills recorded yet. Go get 'em!");
+                report.AppendLine("RICS.MPCH.NoKills".Translate());
             }
 
             return report.ToString();
@@ -1558,12 +1597,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string HandleNeedsInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
-            report.AppendLine($"😊 Needs Report: "); //for {pawn.Name}:
+            // report.AppendLine($"😊 Needs Report: "); //for {pawn.Name}:
+            report.AppendLine("RICS.MPCH.NeedsHeader".Translate());
 
             var needs = pawn.needs?.AllNeeds;
             if (needs == null || needs.Count == 0)
             {
-                return $"{pawn.Name} has no needs tracked.";
+                // return $"{pawn.Name} has no needs tracked.";
+                return "RICS.MPCH.NoNeeds".Translate(pawn.LabelShortCap);
             }
 
             foreach (var need in needs.Where(n => n != null && n.def != null))
@@ -1581,7 +1622,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (moodNeed != null)
             {
                 string moodStatus = GetMoodStatus(moodNeed.CurLevel);
-                report.AppendLine($"📊 Overall Mood: {moodStatus}");
+                // report.AppendLine($"📊 Overall Mood: {moodStatus}");
+                report.AppendLine("RICS.MPCH.OverallMood".Translate(moodStatus));
             }
 
             return report.ToString();
@@ -1660,13 +1702,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string HandleRelationsInfo(Pawn pawn, Viewer viewer, string[] args)
         {
             var report = new StringBuilder();
-            report.AppendLine($"💕 Relations Report:"); // for {pawn.Name}:
+            // report.AppendLine($"💕 Relations Report:"); // for {pawn.Name}:
+            report.AppendLine("RICS.MPCH.RelationsHeader".Translate());
 
             // Get the assignment manager
             var assignmentManager = Current.Game?.GetComponent<GameComponent_PawnAssignmentManager>();
             if (assignmentManager == null)
             {
-                return "Relations system not available.";
+                // return "Relations system not available.";
+                return "RICS.MPCH.RelationsUnavailable".Translate();
             }
 
             // Handle specific viewer relation request
@@ -1676,7 +1720,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var targetPawn = assignmentManager.GetAssignedPawn(targetViewer);
                 if (targetPawn == null)
                 {
-                    return $"Viewer '{targetViewer}' doesn't have an active pawn.";
+                    // return $"Viewer '{targetViewer}' doesn't have an active pawn.";
+                    return "RICS.MPCH.ViewerNoPawn".Translate(targetViewer);
                 }
 
                 return GetSpecificRelationInfo(pawn, targetPawn, targetViewer, assignmentManager);
@@ -1692,7 +1737,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             string pawnViewer = GetViewerNameFromPawn(pawn);
             string targetPawnViewer = GetViewerNameFromPawn(targetPawn);
 
-            report.AppendLine($"🤝 Relations between {pawnViewer} and {targetPawnViewer}:");
+            // report.AppendLine($"🤝 Relations between {pawnViewer} and {targetPawnViewer}:");
+            report.AppendLine("RICS.MPCH.SpecificRelationHeader".Translate(pawnViewer, targetPawnViewer));
 
             // Get direct relation
             var directRelation = pawn.relations.DirectRelationExists(PawnRelationDefOf.Spouse, targetPawn) ? "Spouse 💍" :
@@ -1705,18 +1751,21 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                 pawn.relations.DirectRelationExists(PawnRelationDefOf.Sibling, targetPawn) ? "Sibling 👫" :
                                 "No direct relation";
 
-            report.AppendLine($"• Relationship: {directRelation}");
+            // report.AppendLine($"• Relationship: {directRelation}");
+            report.AppendLine("RICS.MPCH.SpecificRelationType".Translate(directRelation));
 
             // Opinion
             int opinion = pawn.relations.OpinionOf(targetPawn);
             string opinionEmoji = opinion >= 50 ? "😍" : opinion >= 25 ? "😊" : opinion >= 0 ? "🙂" : opinion >= -25 ? "😐" : opinion >= -50 ? "😠" : "😡";
-            report.AppendLine($"• Opinion: {opinion} {opinionEmoji}");
+            // report.AppendLine($"• Opinion: {opinion} {opinionEmoji}");
+            report.AppendLine("RICS.MPCH.Opinion".Translate(opinion, opinionEmoji));
 
             // Romance-related info - basic
             if (pawn.relations.DirectRelationExists(PawnRelationDefOf.Lover, targetPawn) ||
                 pawn.relations.DirectRelationExists(PawnRelationDefOf.Spouse, targetPawn))
             {
-                report.AppendLine($"• Relationship: Active 💑");
+                // report.AppendLine($"• Relationship: Active 💑");
+                report.AppendLine("RICS.MPCH.ActiveRelationship".Translate());
             }
 
             return report.ToString();
@@ -1737,7 +1786,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (family.Count > 0)
             {
-                report.AppendLine("👨‍👩‍👧‍👦 Family:");
+                // report.AppendLine("👨‍👩‍👧‍👦 Family:");
+                report.AppendLine("RICS.MPCH.FamilyHeader".Translate());
                 foreach (var relative in family)
                 {
                     string relation = GetFamilyRelation(pawn, relative);
@@ -1757,7 +1807,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (viewerFriends.Count > 0)
             {
-                report.AppendLine("🎮 Viewer Friends:");
+                // report.AppendLine("🎮 Viewer Friends:");
+                report.AppendLine("RICS.MPCH.ViewerFriendsHeader".Translate());
                 foreach (var friend in viewerFriends)
                 {
                     int opinion = pawn.relations.OpinionOf(friend);
@@ -1777,7 +1828,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (viewerRivals.Count > 0)
             {
-                report.AppendLine("⚔️ Viewer Rivals:");
+                // report.AppendLine("⚔️ Viewer Rivals:");
+                report.AppendLine("RICS.MPCH.ViewerRivalsHeader".Translate());
                 foreach (var rival in viewerRivals)
                 {
                     int opinion = pawn.relations.OpinionOf(rival);
@@ -1792,11 +1844,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             int totalRivals = assignmentManager.GetAllViewerPawns()
                 .Count(p => p != pawn && pawn.relations.OpinionOf(p) < -10 && !family.Contains(p));
 
-            report.AppendLine($"📊 Social Summary: {family.Count} family, {totalFriends} viewer friends, {totalRivals} viewer rivals");
+            // report.AppendLine($"📊 Social Summary: {family.Count} family, {totalFriends} viewer friends, {totalRivals} viewer rivals");
+            report.AppendLine("RICS.MPCH.SocialSummary".Translate(family.Count, totalFriends, totalRivals));    
 
             if (family.Count == 0 && viewerFriends.Count == 0 && viewerRivals.Count == 0)
             {
-                report.AppendLine("No significant relationships found.");
+                // report.AppendLine("No significant relationships found.");
+                report.AppendLine("RICS.MPCH.NoRelations".Translate());
             }
 
             return report.ToString();
@@ -1851,12 +1905,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string HandleSkillsInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
-            report.AppendLine($"🎯 Skills Report: "); // for {pawn.Name}:
+            // report.AppendLine($"🎯 Skills Report: "); // for {pawn.Name}:
+            report.AppendLine("RICS.MPCH.SkillsHeader".Translate());    
 
             var skills = pawn.skills?.skills;
             if (skills == null || skills.Count == 0)
             {
-                return $"{pawn.Name} has no skills tracked.";
+                // return $"{pawn.Name} has no skills tracked.";
+                string pawnName = GetDisplayNameForRelations(pawn);
+                return "RICS.MPCH.NoSkillsTracked".Translate(pawnName);
             }
 
             // Group skills by their display order (matching RimWorld's UI)
@@ -1889,7 +1946,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var topSkills = skills.OrderByDescending(s => s.Level).Take(3);
             if (topSkills.Any(s => s.Level >= 10))
             {
-                report.Append("🏆 Top Skills: ");
+                // report.Append("🏆 Top Skills: ");
+                report.Append("RICS.MPCH.TopSkillsHeader".Translate()); 
                 var topSkillNames = topSkills.Select(s => $"{StripTags(s.def.LabelCap)} ({s.Level})");
                 report.AppendLine(string.Join(", ", topSkillNames));
             }
@@ -1949,7 +2007,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string GetStatsOverview(Pawn pawn)
         {
             var report = new StringBuilder();
-            report.AppendLine($"📊 Stats Overview:");  // for { pawn.Name}:
+            // report.AppendLine($"📊 Stats Overview:");  // for { pawn.Name}:
+            report.AppendLine("RICS.MPCH.StatsOverview".Translate()); 
 
             // Show a few key stats as examples
             var keyStats = new[]
@@ -1975,8 +2034,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             report.AppendLine();
-            report.AppendLine("💡 Usage: !mypawn stats <stat1> <stat2> ...");
-            report.AppendLine("Examples: !mypawn stats movespeed shootingaccuracy meleedps");
+            // report.AppendLine("💡 Usage: !mypawn stats <stat1> <stat2> ...");
+            report.AppendLine("RICS.MPCH.StatsUsage".Translate());
+            // report.AppendLine("Examples: !mypawn stats movespeed shootingaccuracy meleedps");
+            report.AppendLine("RICS.MPCH.StatsExample".Translate());
             // reduced for brevity
             //report.AppendLine("Available: movespeed, shootingaccuracy, meleehitchance, meleedps, workspeed, medicaltend, socialimpact, tradeprice, etc.");
 
@@ -1986,7 +2047,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string GetSpecificStats(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
-            report.AppendLine($"📊 Stats: "); // for {pawn.Name}:
+            // report.AppendLine($"📊 Stats: "); // for {pawn.Name}:
+            report.AppendLine("RICS.MPCH.StatsHeader".Translate());
 
             var foundStats = new List<string>();
             var notFoundStats = new List<string>();
@@ -2024,8 +2086,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (notFoundStats.Count > 0)
             {
                 report.AppendLine();
-                report.AppendLine($"❌ Unknown stats: {string.Join(", ", notFoundStats)}");
-                report.AppendLine("Use !mypawn stats to see available stats.");
+                // report.AppendLine($"❌ Unknown stats: {string.Join(", ", notFoundStats)}");
+                report.AppendLine("RICS.MPCH.UnknownStats".Translate(string.Join(", ", notFoundStats)));    
+                // report.AppendLine("Use !mypawn stats to see available stats.");
+                report.AppendLine("RICS.MPCH.UseStatsCommand".Translate());
             }
 
             return report.ToString();
@@ -2060,8 +2124,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string HandleBackstoriesInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
-            report.Append($"Age:🧬{pawn.ageTracker.AgeBiologicalYears}/⏳{pawn.ageTracker.AgeChronologicalYears} | ");
-            report.AppendLine($"👤 Backstories:");  // for {pawn.Name}:
+            // report.Append($"Age:🧬{pawn.ageTracker.AgeBiologicalYears}/⏳{pawn.ageTracker.AgeChronologicalYears} | ");
+            report.Append("RICS.MPCH.BackstoriesAge".Translate(pawn.ageTracker.AgeBiologicalYears, pawn.ageTracker.AgeChronologicalYears));
+            // report.AppendLine($"👤 Backstories:");  // for {pawn.Name}:
+            report.AppendLine("RICS.MPCH.BackstoriesHeader".Translate());
 
             // Childhood backstory - truncated to fit in one message
             if (pawn.story?.Childhood != null)
@@ -2069,12 +2135,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var childhoodDesc = StripTags(pawn.story.Childhood.FullDescriptionFor(pawn));
                 // var truncatedChildhood = TruncateDescription(childhoodDesc, 183); // Limit to 188 chars
 
-                report.AppendLine($"🎒 Childhood: {StripTags(pawn.story.Childhood.title)}");
+                // report.AppendLine($"🎒 Childhood: {StripTags(pawn.story.Childhood.title)}");
+                report.AppendLine("RICS.MPCH.Childhood".Translate(StripTags(pawn.story.Childhood.title)));
                 // report.AppendLine($"   {truncatedChildhood}");
             }
             else
             {
-                report.AppendLine("🎒 Childhood: No childhood backstory");
+                // report.AppendLine("🎒 Childhood: No childhood backstory");
+                report.AppendLine("RICS.MPCH.ChildhoodNone".Translate());
             }
 
             report.AppendLine(); // Spacing
@@ -2085,16 +2153,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var adulthoodDesc = StripTags(pawn.story.Adulthood.FullDescriptionFor(pawn));
                 // var truncatedAdulthood = TruncateDescription(adulthoodDesc, 183); // Limit to 183 chars
 
-                report.AppendLine($"🧑 Adulthood: {StripTags(pawn.story.Adulthood.title)}");
+                // report.AppendLine($"🧑 Adulthood: {StripTags(pawn.story.Adulthood.title)}");
+                report.AppendLine("RICS.MPCH.Adulthood".Translate(StripTags(pawn.story.Adulthood.title)));
                 // report.AppendLine($"   {truncatedAdulthood}");
             }
             else if (pawn.ageTracker.AgeBiologicalYears >= 18)
             {
-                report.AppendLine("🧑 Adulthood: No adulthood backstory");
+                // report.AppendLine("🧑 Adulthood: No adulthood backstory");
+                report.AppendLine("RICS.MPCH.AdulthoodNone".Translate());
             }
             else
             {
-                report.AppendLine("🧑 Adulthood: Too young for adulthood backstory");
+                // report.AppendLine("🧑 Adulthood: Too young for adulthood backstory");
+                report.AppendLine("RICS.MPCH.AdulthoodTooYoung".Translate());
             }
 
             return report.ToString();
@@ -2103,11 +2174,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string HandleTraitsInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
-            report.AppendLine($"🎭 Traits:"); // for { pawn.Name}
+            // report.AppendLine($"🎭 Traits:"); // for { pawn.Name}
+            report.AppendLine("RICS.MPCH.TraitsHeader".Translate());
 
             if (pawn.story?.traits == null || pawn.story.traits.allTraits.Count == 0)
             {
-                return $"{pawn.Name} has no traits.";
+                // return $"{pawn.Name} has no traits.";
+                string pawnName = GetDisplayNameForRelations(pawn); 
+                report.AppendLine("RICS.MPCH.NoTraits".Translate(pawnName));
             }
 
             foreach (var trait in pawn.story.traits.allTraits)
@@ -2136,7 +2210,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Check if pawn can work
             if (pawn.workSettings == null || !pawn.workSettings.EverWork)
             {
-                return $"{pawn.Name} is not capable of work.";
+                // return $"{pawn.Name} is not capable of work.";
+                string pawnName = GetDisplayNameForRelations(pawn);
+                return "RICS.MPCH.NotCapableOfWork".Translate(pawnName);
             }
 
             // Ensure work settings are initialized using RimWorld's proper method
@@ -2158,7 +2234,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string GetTopWorkPriorities(Pawn pawn)
         {
             var report = new StringBuilder();
-            report.AppendLine("💼 Top Work Priorities:");
+            // report.AppendLine("💼 Top Work Priorities:");
+            report.AppendLine("RICS.MPCH.TopWorkPriorities".Translate());
 
             // Get work types with priority 1 (highest)
             var topPriorityWork = WorkTypeDefsUtility.WorkTypeDefsInPriorityOrder
@@ -2168,7 +2245,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (topPriorityWork.Count > 0)
             {
-                report.AppendLine("🔥 Highest (1):");
+                // report.AppendLine("🔥 Highest (1):");
+                report.AppendLine("RICS.MPCH.HighestPriority".Translate());
                 foreach (var workType in topPriorityWork)
                 {
                     string label = StripTags(workType.pawnLabel);
@@ -2177,11 +2255,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             else
             {
-                report.AppendLine("No work set to highest priority");
+                // report.AppendLine("No work set to highest priority");
+                report.AppendLine("RICS.MPCH.NoHighestPriority".Translate());
             }
 
             report.AppendLine();
-            report.AppendLine("💡 Usage: !mypawn work <worktype> [1-4]");
+            // report.AppendLine("💡 Usage: !mypawn work <worktype> [1-4]");
+            report.AppendLine("RICS.MPCH.WorkUsage".Translate());
             // report.AppendLine("Examples: !mypawn work doctor | !mypawn work firefight 1 | !mypawn work growing 2 cleaning 1");
 
             return report.ToString();
@@ -2200,14 +2280,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var workType = FindWorkType(workTypeName);
                 if (workType == null)
                 {
-                    results.Add($"❌ Unknown work: {workTypeName}");
+                    // results.Add($"❌ Unknown work: {workTypeName}");
+                    results.Add("RICS.MPCH.UnknownWork".Translate(workTypeName));
                     continue;
                 }
 
                 // Check if work type is disabled for this pawn
                 if (pawn.WorkTypeIsDisabled(workType))
                 {
-                    results.Add($"❌ {workType.label} disabled");
+                    // results.Add($"❌ {workType.label} disabled");
+                    results.Add("RICS.MPCH.WorkDisabled".Translate(workType.label));
                     continue;
                 }
 
@@ -2218,7 +2300,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     pawn.workSettings.SetPriority(workType, newPriority);
 
                     string priorityName = GetPriorityName(newPriority);
-                    results.Add($"✅ {workType.label}: {oldPriority}→{newPriority} ({priorityName})");
+                    // results.Add($"✅ {workType.label}: {oldPriority}→{newPriority} ({priorityName})");
+                    results.Add("RICS.MPCH.WorkPriorityChanged".Translate(workType.label, oldPriority, newPriority, priorityName));
                     i++; // Skip the priority arg since we used it
                 }
                 else
@@ -2226,7 +2309,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     // Just show current priority
                     int currentPriority = pawn.workSettings.GetPriority(workType);
                     string priorityName = GetPriorityName(currentPriority);
-                    results.Add($"📋 {workType.label}: {currentPriority} ({priorityName})");
+                    // results.Add($"📋 {workType.label}: {currentPriority} ({priorityName})");
+                    results.Add("RICS.MPCH.WorkPriorityCurrent".Translate(workType.label, currentPriority, priorityName));
                 }
             }
 

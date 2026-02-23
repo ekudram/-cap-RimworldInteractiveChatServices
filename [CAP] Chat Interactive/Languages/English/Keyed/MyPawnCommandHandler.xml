@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- MyPawnCommandHandler.cs - General -->
+  <RICS.MPCH.NoViewerData>Could not find your viewer data.</RICS.MPCH.NoViewerData>
+  <RICS.MPCH.NoPawnAssigned>You don't have an active pawn in the colony. Use !pawn to purchase one!</RICS.MPCH.NoPawnAssigned>
+  <RICS.MPCH.ErrorProcessingPawn>An error occurred while processing your pawn information.</RICS.MPCH.ErrorProcessingPawn>
+  <RICS.MPCH.UnknownSubcommand>Unknown subcommand: {0}. Available: body, health, implants, gear, kills, needs, relations, skills, stats, story, traits, work</RICS.MPCH.UnknownSubcommand>
+
+  <!-- Implants -->
+  <RICS.MPCH.NoHealthRecords>{0} has no health records.</RICS.MPCH.NoHealthRecords>
+  <RICS.MPCH.ImplantsHeader>🔧 Implants:</RICS.MPCH.ImplantsHeader>
+  <RICS.MPCH.NoImplants>No implants or bionic replacements found.</RICS.MPCH.NoImplants>
+  <RICS.MPCH.ImplantsSummary>📊 {0} implant(s)</RICS.MPCH.ImplantsSummary>
+
+  <!-- Health -->
+  <RICS.MPCH.HealthHeader>❤️ Health:</RICS.MPCH.HealthHeader>
+  <RICS.MPCH.Pain>• Pain: {0} {1} ({2}/{3})</RICS.MPCH.Pain>
+  <RICS.MPCH.OverallHealth>• Health: {0}</RICS.MPCH.OverallHealth>
+  <RICS.MPCH.HealthError>Error retrieving health information.</RICS.MPCH.HealthError>
+
+  <!-- Body -->
+  <RICS.MPCH.BodyNoConditions>{0} has no health conditions. 🟢</RICS.MPCH.BodyNoConditions>
+  <RICS.MPCH.BodyPartNotFound>❌ Body part '{0}' not found. Try: torso, head, arm, leg, etc.</RICS.MPCH.BodyPartNotFound>
+  <RICS.MPCH.BodyReportSpecific>🏥 Health Report - {0} ({1} conditions):</RICS.MPCH.BodyReportSpecific>
+  <RICS.MPCH.BodyReportFull>🏥 Health Report ({0} conditions):</RICS.MPCH.BodyReportFull>
+  <RICS.MPCH.ComfortRange>🌡️ Comfort Range: {0} ~ {1}</RICS.MPCH.ComfortRange>
+  <RICS.MPCH.NoIssuesOnPart>No visible issues on {0}. ✅</RICS.MPCH.NoIssuesOnPart>
+  <RICS.MPCH.NoHealthIssues>No visible health issues. ✅</RICS.MPCH.NoHealthIssues>
+  <RICS.MPCH.HealthConditionsHeader>Health Conditions:</RICS.MPCH.HealthConditionsHeader>
+  <RICS.MPCH.HiddenParts>... and {0} more body parts with conditions</RICS.MPCH.HiddenParts>
+  <RICS.MPCH.TotalInjuries>({0} individual injuries across all body)</RICS.MPCH.TotalInjuries>
+  <RICS.MPCH.OverallStatus>📊 Overall Status: {0}</RICS.MPCH.OverallStatus>
+  <RICS.MPCH.BleedoutIn>Bleedout in {0}!</RICS.MPCH.BleedoutIn>
+  <RICS.MPCH.NeedsMedical>⚠️ Needs medical attention!</RICS.MPCH.NeedsMedical>
+
+  <!-- Gear -->
+  <RICS.MPCH.GearHeader>🎒 Gear Report:</RICS.MPCH.GearHeader>
+  <RICS.MPCH.WeaponsHeader>⚔️ Weapons: </RICS.MPCH.WeaponsHeader>
+  <RICS.MPCH.ApparelHeader>👕 Apparel:</RICS.MPCH.ApparelHeader>
+  <RICS.MPCH.InventoryHeader>🎒 Inventory:</RICS.MPCH.InventoryHeader>
+  <RICS.MPCH.ArmorHeader>🛡️ Armor: </RICS.MPCH.ArmorHeader>
+  <RICS.MPCH.ArmorNone>🛡️ Armor: None</RICS.MPCH.ArmorNone>
+
+  <!-- Kills -->
+  <RICS.MPCH.KillHeader>💀 Kill Report:</RICS.MPCH.KillHeader>
+  <RICS.MPCH.TotalKills>Total Kills: {0}</RICS.MPCH.TotalKills>
+  <RICS.MPCH.KillsHumans>• Humans: {0}</RICS.MPCH.KillsHumans>
+  <RICS.MPCH.KillsAnimals>• Animals: {0}</RICS.MPCH.KillsAnimals>
+  <RICS.MPCH.KillsMechanoids>• Mechanoids: {0}</RICS.MPCH.KillsMechanoids>
+  <RICS.MPCH.DamageDealt>Damage Dealt: {0}</RICS.MPCH.DamageDealt>
+  <RICS.MPCH.LegendarySlayer>🏆 Legendary Slayer!</RICS.MPCH.LegendarySlayer>
+  <RICS.MPCH.VeteranWarrior>⚔️ Veteran Warrior</RICS.MPCH.VeteranWarrior>
+  <RICS.MPCH.ExperiencedFighter>🔪 Experienced Fighter</RICS.MPCH.ExperiencedFighter>
+  <RICS.MPCH.GettingStarted>🎯 Getting Started</RICS.MPCH.GettingStarted>
+  <RICS.MPCH.NoKills>No kills recorded yet. Go get 'em!</RICS.MPCH.NoKills>
+
+  <!-- Needs -->
+  <RICS.MPCH.NeedsHeader>😊 Needs Report:</RICS.MPCH.NeedsHeader>
+  <RICS.MPCH.NoNeeds>{0} has no needs tracked.</RICS.MPCH.NoNeeds>
+  <RICS.MPCH.OverallMood>📊 Overall Mood: {0}</RICS.MPCH.OverallMood>
+
+  <!-- Relations -->
+  <RICS.MPCH.RelationsHeader>💕 Relations Report:</RICS.MPCH.RelationsHeader>
+  <RICS.MPCH.RelationsUnavailable>Relations system not available.</RICS.MPCH.RelationsUnavailable>
+  <RICS.MPCH.ViewerNoPawn>Viewer '{0}' doesn't have an active pawn.</RICS.MPCH.ViewerNoPawn>
+  <RICS.MPCH.SpecificRelationHeader>🤝 Relations between {0} and {1}:</RICS.MPCH.SpecificRelationHeader>
+  <RICS.MPCH.SpecificRelationType>• Relationship: {0}</RICS.MPCH.SpecificRelationType>
+  <RICS.MPCH.Opinion>• Opinion: {0} {1}</RICS.MPCH.Opinion>
+  <RICS.MPCH.ActiveRelationship>• Relationship: Active 💑</RICS.MPCH.ActiveRelationship>
+  <RICS.MPCH.FamilyHeader>👨‍👩‍👧‍👦 Family:</RICS.MPCH.FamilyHeader>
+  <RICS.MPCH.ViewerFriendsHeader>🎮 Viewer Friends:</RICS.MPCH.ViewerFriendsHeader>
+  <RICS.MPCH.ViewerRivalsHeader>⚔️ Viewer Rivals:</RICS.MPCH.ViewerRivalsHeader>
+  <RICS.MPCH.SocialSummary>📊 Social Summary: {0} family, {1} viewer friends, {2} viewer rivals</RICS.MPCH.SocialSummary>
+  <RICS.MPCH.NoRelations>No significant relationships found.</RICS.MPCH.NoRelations>
+
+  <!-- Skills -->
+  <RICS.MPCH.SkillsHeader>🎯 Skills Report:</RICS.MPCH.SkillsHeader>
+  <RICS.MPCH.NoSkillsTracked>{0} has no skills tracked.</RICS.MPCH.NoSkillsTracked>
+  <RICS.MPCH.TopSkillsHeader>🏆 Top Skills: </RICS.MPCH.TopSkillsHeader>
+
+  <!-- Stats -->
+  <RICS.MPCH.StatsOverview>📊 Stats Overview:</RICS.MPCH.StatsOverview>
+  <RICS.MPCH.StatsUsage>💡 Usage: !mypawn stats &lt;stat1&gt; &lt;stat2&gt; ...</RICS.MPCH.StatsUsage>
+  <RICS.MPCH.StatsExample>Examples: !mypawn stats movespeed shootingaccuracy meleedps</RICS.MPCH.StatsExample>
+  <RICS.MPCH.StatsHeader>📊 Stats:</RICS.MPCH.StatsHeader>
+  <RICS.MPCH.UnknownStats>❌ Unknown stats: {0}</RICS.MPCH.UnknownStats>
+  <RICS.MPCH.UseStatsCommand>Use !mypawn stats to see available stats.</RICS.MPCH.UseStatsCommand>
+
+  <!-- Backstories -->
+  <RICS.MPCH.BackstoriesAge>Age:🧬{0}/⏳{1} | </RICS.MPCH.BackstoriesAge>
+  <RICS.MPCH.BackstoriesHeader>👤 Backstories:</RICS.MPCH.BackstoriesHeader>
+  <RICS.MPCH.Childhood>🎒 Childhood: {0}</RICS.MPCH.Childhood>
+  <RICS.MPCH.ChildhoodNone>🎒 Childhood: No childhood backstory</RICS.MPCH.ChildhoodNone>
+  <RICS.MPCH.Adulthood>🧑 Adulthood: {0}</RICS.MPCH.Adulthood>
+  <RICS.MPCH.AdulthoodNone>🧑 Adulthood: No adulthood backstory</RICS.MPCH.AdulthoodNone>
+  <RICS.MPCH.AdulthoodTooYoung>🧑 Adulthood: Too young for adulthood backstory</RICS.MPCH.AdulthoodTooYoung>
+
+  <!-- Traits -->
+  <RICS.MPCH.TraitsHeader>🎭 Traits:</RICS.MPCH.TraitsHeader>
+  <RICS.MPCH.NoTraits>{0} has no traits.</RICS.MPCH.NoTraits>
+
+  <!-- Work -->
+  <RICS.MPCH.NotCapableOfWork>{0} is not capable of work.</RICS.MPCH.NotCapableOfWork>
+  <RICS.MPCH.TopWorkPriorities>💼 Top Work Priorities:</RICS.MPCH.TopWorkPriorities>
+  <RICS.MPCH.HighestPriority>🔥 Highest (1):</RICS.MPCH.HighestPriority>
+  <RICS.MPCH.NoHighestPriority>No work set to highest priority</RICS.MPCH.NoHighestPriority>
+  <RICS.MPCH.WorkUsage>💡 Usage: !mypawn work &lt;worktype&gt; [1-4]</RICS.MPCH.WorkUsage>
+  <RICS.MPCH.UnknownWork>❌ Unknown work: {0}</RICS.MPCH.UnknownWork>
+  <RICS.MPCH.WorkDisabled>❌ {0} disabled</RICS.MPCH.WorkDisabled>
+  <RICS.MPCH.WorkPriorityChanged>✅ {0}: {1}→{2} ({3})</RICS.MPCH.WorkPriorityChanged>
+  <RICS.MPCH.WorkPriorityCurrent>📋 {0}: {1} ({2})</RICS.MPCH.WorkPriorityCurrent>
+
+</LanguageData>
