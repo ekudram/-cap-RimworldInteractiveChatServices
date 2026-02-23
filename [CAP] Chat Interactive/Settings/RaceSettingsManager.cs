@@ -176,6 +176,8 @@ namespace _CAP__Chat_Interactive.Utilities
         {
             string displayName = !string.IsNullOrEmpty(race.label) ? race.label.CapitalizeFirst() : race.defName;
 
+
+
             var settings = new RaceSettings
             {
                 DisplayName = race.label ?? race.defName,

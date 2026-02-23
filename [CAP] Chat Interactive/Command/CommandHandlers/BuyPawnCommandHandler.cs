@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Verse;
+using static UnityEngine.UI.Image;
 
 namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
@@ -75,11 +76,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                 }
 
-                // Initialize raceSettings to null
-                RaceSettings raceSettings = null;
-
                 // Validate the pawn request FIRST to get raceSettings
-                if (!IsValidPawnRequest(raceName, xenotypeName, out raceSettings))
+                if (!IsValidPawnRequest(raceName, xenotypeName, out RaceSettings raceSettings))
                 {
                     // Provide specific error messages
                     if (raceSettings == null)
@@ -104,30 +102,49 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.BPCH.AgeOutOfRange".Translate(raceName, raceSettings.MinAge, raceSettings.MaxAge);
                 }
 
-                // Validate xenotype if applicable - FIXED: Added null check for raceSettings
-                if (!string.IsNullOrEmpty(xenotypeName) && xenotypeName != "Baseliner" && ModsConfig.BiotechActive && raceSettings != null)
+                // === XENOTYPE RESOLUTION & VALIDATION ===
+                string cleanedXenotype = CleanXenotypeInput(xenotypeName);
+                string finalXenotypeName = cleanedXenotype;  // start with cleaned user input
+
+                // Auto-pick logic if no xenotype given or Baseliner is disabled for this race
+                if (string.IsNullOrEmpty(cleanedXenotype) ||
+                    cleanedXenotype.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
                 {
-                    string xenoDefName = GetXenotypeDefName(xenotypeName);
-
-                    // Check if xenotype is disabled in settings
-                    if (raceSettings.EnabledXenotypes != null &&
-                        raceSettings.EnabledXenotypes.ContainsKey(xenoDefName) &&
-                        !raceSettings.EnabledXenotypes[xenoDefName])
+                    if (!raceSettings.EnabledXenotypes.TryGetValue("Baseliner", out bool baselinerEnabled) || !baselinerEnabled)
                     {
-                        return "RICS.BPCH.XenotypeDisabled".Translate(xenotypeName, raceName); // show user-friendly input
+                        finalXenotypeName = PickRandomEnabledXenotype(raceSettings);
+                        Logger.Debug($"Baseliner disabled for {raceName} → auto-picked '{finalXenotypeName}' from RaceSettings");
                     }
-
-                    // Custom xenotypes check (now works with labels)
-                    if (!raceSettings.AllowCustomXenotypes && xenoDefName != "Baseliner")
+                    else
                     {
-                        return "RICS.BPCH.CustomXenotypesDisabled".Translate(raceName);
+                        finalXenotypeName = "Baseliner";
                     }
                 }
+                else
+                {
+                    finalXenotypeName = GetXenotypeDefName(cleanedXenotype, raceSettings);
+                }
 
-                // Calculate final price with xenotype price (not multiplier)
-                int basePrice = raceSettings.BasePrice;
-                float xenotypePrice = GetXenotypePrice(raceSettings, xenotypeName);
-                int finalPrice = (int)(basePrice + xenotypePrice);
+                // Now validate the final resolved xenotype
+                bool isEnabled = raceSettings.EnabledXenotypes.TryGetValue(finalXenotypeName, out bool enabled)
+                    ? enabled
+                    : raceSettings.AllowCustomXenotypes;
+
+                if (!isEnabled)
+                {
+                    return "RICS.BPCH.XenotypeDisabled".Translate(xenotypeName, raceName);  // show original user input in error
+                }
+
+                if (!raceSettings.AllowCustomXenotypes && finalXenotypeName != "Baseliner")
+                {
+                    return "RICS.BPCH.CustomXenotypesDisabled".Translate(raceName);
+                }
+
+                // Price from RaceSettings (no manual adding)
+                int finalPrice = raceSettings.BasePrice;
+                // if Xenotype get that price instead from Race Settings.
+                if (raceSettings.XenotypePrices.TryGetValue(finalXenotypeName, out float price))
+                    finalPrice = (int)price;
 
                 // Check if viewer can afford
                 if (viewer.Coins < finalPrice)
@@ -140,13 +157,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (!IsGameReadyForPawnPurchase())
                 {
-                    // return "Game not ready for pawn purchase (no colony, in menu, etc.)";
                     return "RICS.BPCH.GameNotReady".Translate();
                 }
 
-                var result = GenerateAndSpawnPawn(messageWrapper.Username, raceName, xenotypeName, genderName, age, raceSettings);
-
-                // In HandleBuyPawnCommandInternal, update the success block:
+                var result = GenerateAndSpawnPawn(messageWrapper.Username, raceName, finalXenotypeName, genderName, age, raceSettings);
 
                 if (result.Success)
                 {
@@ -174,7 +188,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
 
                     // Send notification
-                    string xenotypeInfo = xenotypeName != "Baseliner" ? $" ({xenotypeName})" : "";
+                    string xenotypeInfo = finalXenotypeName != "Baseliner" ? $" ({finalXenotypeName})" : "";
                     string ageInfo = ageString != "Random" ? $", Age: {age}" : "";
 
                     // Send gold letter for pawn purchases (always considered major)
@@ -227,6 +241,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
+                Logger.Debug($"GenerateAndSpawnPawn:   xenotypeName: {xenotypeName}");
                 var playerMaps = Current.Game.Maps.Where(map => map.IsPlayerHome).ToList();
                 if (!playerMaps.Any())
                 {
@@ -244,18 +259,42 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return new BuyPawnResult(false, "RICS.BPCH.PawnKindNotFound".Translate(raceName));
                 }
 
-                // Get xenotype def if specified and Biotech is active
+                // === XENOTYPE RESOLUTION (RaceSettings is truth) ===
                 XenotypeDef xenotypeDef = null;
-                if (ModsConfig.BiotechActive && xenotypeName != "Baseliner")
-                {
-                    xenotypeDef = DefDatabase<XenotypeDef>.AllDefs.FirstOrDefault(
-                        x => x.defName.Equals(xenotypeName, StringComparison.OrdinalIgnoreCase) ||
-                             x.label.Equals(xenotypeName, StringComparison.OrdinalIgnoreCase));
+                string resolvedXenotype = xenotypeName;
 
+                // Auto-pick if nothing specified or Baseliner is disabled for this race
+                if (string.IsNullOrEmpty(xenotypeName) || xenotypeName.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!raceSettings.EnabledXenotypes.TryGetValue("Baseliner", out bool baselinerEnabled) || !baselinerEnabled)
+                    {
+                        resolvedXenotype = PickRandomEnabledXenotype(raceSettings); // new helper below
+                        Logger.Debug($"Baseliner disabled → auto-picked '{resolvedXenotype}' from RaceSettings");
+                    }
+                    else
+                    {
+                        resolvedXenotype = "Baseliner";
+                    }
+                }
+                else
+                {
+                    resolvedXenotype = GetXenotypeDefName(xenotypeName, raceSettings);
+                }
+
+                // Try real XenotypeDef only for forcing (HAR handles the rest)
+                if (ModsConfig.BiotechActive && resolvedXenotype != "Baseliner")
+                {
+                    xenotypeDef = DefDatabase<XenotypeDef>.GetNamedSilentFail(resolvedXenotype);
                     if (xenotypeDef == null)
                     {
-                        Logger.Warning($"Custom xenotype '{xenotypeName}' detected. Custom xenotype support may vary.");
+                        xenotypeDef = DefDatabase<XenotypeDef>.AllDefs
+                            .FirstOrDefault(x => x.label.Equals(resolvedXenotype, StringComparison.OrdinalIgnoreCase));
                     }
+
+                    if (xenotypeDef != null)
+                        Logger.Debug($"[BuyPawn] Forcing real XenotypeDef: {xenotypeDef.defName}");
+                    else
+                        Logger.Debug($"[BuyPawn] No real XenotypeDef for '{resolvedXenotype}' → null (HAR will handle)");
                 }
 
                 var raceDef = RaceUtils.FindRaceByName(raceName);
@@ -280,6 +319,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                 }
 
+                Logger.Debug($"GenerateAndSpawnPawn: XenotypeDef = {(xenotypeDef != null ? xenotypeDef.defName + " (" + xenotypeDef.LabelCap + ")" : "null → Baseliner fallback")}");
+
                 // Prepare generation request with specific age and xenotype
                 var request = new PawnGenerationRequest(
                     kind: pawnKindDef,
@@ -301,15 +342,28 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     forceRedressWorldPawnIfFormerColonist: false,
                     worldPawnFactionDoesntMatter: false,
                     biocodeWeaponChance: 0f,
-                    fixedBiologicalAge: age, // Use the validated age
+                    fixedBiologicalAge: age,
                     fixedChronologicalAge: null,
-                    fixedGender: ParseGender(genderName),
+                    fixedGender: ParseGender(genderName),          // ← add null check if needed
                     fixedLastName: null,
-                    forcedXenotype: xenotypeDef // Set the forced xenotype here
+                    forcedXenotype: xenotypeDef   // null = HAR race defaults win
+                    //forcedXenotype: xenotypeDef ?? XenotypeDefOf.Baseliner  // ← explicit fallback prevents null if needed put back
                 );
+
+                Logger.Debug($"ForcedXenotype in request: {(request.ForcedXenotype?.defName ?? "null (defaults to Baseliner)")}");
 
                 // Generate pawn
                 Pawn pawn = PawnGenerator.GeneratePawn(request);
+
+                if (pawn != null)
+                {
+                    var actualXeno = pawn.genes?.Xenotype?.defName ?? "no genes component";
+                    Logger.Debug($"Pawn generated successfully - Xenotype: {actualXeno}");
+                }
+                else
+                {
+                    Logger.Error("PawnGenerator returned null pawn!");
+                }
 
                 // Set custom name
                 if (pawn.Name is NameTriple nameTriple)
@@ -499,7 +553,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static bool IsXenotypeAllowed(RaceSettings raceSettings, string xenotypeInput)
         {
-            string xenoDefName = GetXenotypeDefName(xenotypeInput);
+            string xenoDefName = GetXenotypeDefName(xenotypeInput, raceSettings);
 
             Logger.Debug($"Checking xenotype input '{xenotypeInput}' → resolved '{xenoDefName}'");
 
@@ -527,46 +581,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 if (!raceSettings.EnabledXenotypes.ContainsKey(xenoDefName))
                 {
-                    if (IsCustomXenotype(xenotypeInput))  // pass original for custom check
+                    if (IsCustomXenotype(xenotypeInput, raceSettings))  // pass original for custom check
                         return raceSettings.AllowCustomXenotypes;
                     return false;
                 }
                 return raceSettings.EnabledXenotypes[xenoDefName];
             }
 
-            if (IsCustomXenotype(xenotypeInput) && !raceSettings.AllowCustomXenotypes)
+            if (IsCustomXenotype(xenotypeInput, raceSettings) && !raceSettings.AllowCustomXenotypes)
                 return false;
 
             return true;
         }
 
         // Update IsCustomXenotype (tiny change – now works with labels)
-        private static bool IsCustomXenotype(string input)
+        private static bool IsCustomXenotype(string input, RaceSettings raceSettings)
         {
-            string defName = GetXenotypeDefName(input);
+            
+            string defName = GetXenotypeDefName(input, raceSettings);
             return DefDatabase<XenotypeDef>.AllDefs.FirstOrDefault(x =>
                 x.defName.Equals(defName, StringComparison.OrdinalIgnoreCase)) == null;
-        }
-
-        // Replace entire GetXenotypePrice
-        private static float GetXenotypePrice(RaceSettings raceSettings, string xenotypeInput)
-        {
-            if (string.IsNullOrEmpty(xenotypeInput) || xenotypeInput.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
-                return 0f;
-
-            string defName = GetXenotypeDefName(xenotypeInput);
-
-            if (raceSettings.XenotypePrices == null)
-            {
-                raceSettings.XenotypePrices = new Dictionary<string, float>();
-                return 0f;
-            }
-
-            if (raceSettings.XenotypePrices.TryGetValue(defName, out float price))
-                return price;
-
-            Logger.Warning($"No price found for xenotype '{xenotypeInput}' (resolved '{defName}'), using 0");
-            return 0f;
         }
 
         private static bool IsGameReadyForPawnPurchase()
@@ -742,7 +776,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
 
-        // New method to handle the command with argument parsing
         public static string HandleBuyPawnCommand(ChatMessageWrapper messageWrapper, string[] args)
         {
             try
@@ -797,7 +830,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        // Smart parameter parsing with multi-word race support
         private static void ParsePawnParameters(string[] args, out string raceName, out string xenotypeName, out string genderName, out string ageString)
         {
             // Defaults
@@ -835,167 +867,130 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            // STEP 3: Collect ALL remaining args as potential race + xenotype parts
+            // STEP 3: Collect ALL remaining args (in original order)
             var remaining = new List<(int index, string value)>();
             for (int i = 0; i < args.Length; i++)
             {
                 if (!usedArgs[i])
                     remaining.Add((i, args[i]));
             }
-
             if (remaining.Count == 0) return;
 
-            // STEP 4: Try to find the BEST race match using as many words as possible
-            // (this is the key change: race gets first dibs on the full remaining string)
+            // STEP 4: Longest PREFIX match for race (greedy from start of remaining)
+            // This is the fix - previous version marked the entire attempted len even when only a sub-match was found
             string bestRace = "";
             int bestLength = 0;
-            int bestStart = -1;
-
-            for (int len = Math.Min(4, remaining.Count); len >= 1; len--) // allow slightly longer multi-word races
+            for (int len = Math.Min(4, remaining.Count); len >= 1; len--)
             {
-                for (int start = 0; start <= remaining.Count - len; start++)
+                var candidateParts = remaining.Take(len).Select(x => x.value).ToArray();
+                string matchedRace = FindBestRaceMatch(candidateParts);
+                if (!string.IsNullOrEmpty(matchedRace) && len > bestLength)
                 {
-                    var candidateParts = remaining.Skip(start).Take(len).Select(x => x.value).ToArray();
-                    string candidate = string.Join(" ", candidateParts);
-
-                    // Use your existing FindBestRaceMatch logic, but here we check if it returns non-empty
-                    string matchedRace = FindBestRaceMatch(candidateParts);
-                    if (!string.IsNullOrEmpty(matchedRace) && len > bestLength)
-                    {
-                        bestRace = matchedRace;
-                        bestLength = len;
-                        bestStart = start;
-                    }
+                    bestRace = matchedRace;
+                    bestLength = len;
+                    break; // longest first
                 }
             }
 
             if (!string.IsNullOrEmpty(bestRace))
             {
                 raceName = bestRace;
-
-                // Mark the words used for the best race match
-                for (int k = bestStart; k < bestStart + bestLength; k++)
+                // Mark ONLY the words actually used for the race
+                for (int k = 0; k < bestLength; k++)
                 {
                     usedArgs[remaining[k].index] = true;
                 }
             }
             else
             {
-                // Fallback: whole remaining string as race (your old behavior)
+                // Fallback: whole remaining string as race (original behavior for unrecognized input)
                 raceName = string.Join(" ", remaining.Select(x => x.value));
-                // All remaining marked used
                 foreach (var r in remaining) usedArgs[r.index] = true;
             }
 
-            // STEP 5: Whatever is left after race is taken → check for xenotype
+            // STEP 5: Leftover becomes xenotype (exact user casing preserved for display/letters)
             var leftover = remaining.Where(r => !usedArgs[r.index]).Select(r => r.value).ToArray();
-
             if (leftover.Length > 0)
             {
-                xenotypeName = string.Join(" ", leftover);  // keep exact user input for letters/display
+                string rawXeno = string.Join(" ", leftover);
+                xenotypeName = CleanXenotypeInput(rawXeno);  // ← clean here
             }
-
-            if (leftover.Length > 0)
-            {
-                var knownXenos = GetKnownXenotypes();
-
-                // Prefer exact match on first leftover word
-                string candidateXeno = leftover[0];
-                if (knownXenos.Contains(candidateXeno, StringComparer.OrdinalIgnoreCase))
-                {
-                    xenotypeName = candidateXeno;
-                    usedArgs[remaining.First(r => r.value == candidateXeno).index] = true;
-                }
-                else
-                {
-                    // Optional: fuzzy/xenotype label match if needed, but keep simple for now
-                    // Could add .label check on XenotypeDef if desired
-                }
-            }
-
-            // If still leftover args after all this → log warning or ignore (bad command)
         }
 
-        // Helper method to get all known xenotypes for validation
-        private static HashSet<string> GetKnownXenotypes()
-        {
-            var xenotypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        "Baseliner" // Always include Baseliner
-    };
-
-            if (ModsConfig.BiotechActive)
-            {
-                // Add all xenotypes from the game
-                foreach (var xenotypeDef in DefDatabase<XenotypeDef>.AllDefs)
-                {
-                    if (!string.IsNullOrEmpty(xenotypeDef.defName))
-                    {
-                        xenotypes.Add(xenotypeDef.defName);
-                    }
-                }
-            }
-
-            return xenotypes;
-        }
-
-        private static string GetXenotypeDefName(string input)
+        private static string GetXenotypeDefName(string input, RaceSettings raceSettings)
         {
             if (string.IsNullOrWhiteSpace(input) || input.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
                 return "Baseliner";
 
-            // 1. Exact defName match (NyaronSanguophage)
-            var def = DefDatabase<XenotypeDef>.AllDefs.FirstOrDefault(x =>
-                x.defName.Equals(input, StringComparison.OrdinalIgnoreCase));
-            if (def != null) return def.defName;
+            string clean = input.Trim();
 
-            // 2. Label match (supports "vampire nyaron", "Vampire Nyaron", etc.)
-            def = DefDatabase<XenotypeDef>.AllDefs.FirstOrDefault(x =>
-                x.label.Equals(input, StringComparison.OrdinalIgnoreCase));
-            if (def != null) return def.defName;
+            if (raceSettings?.EnabledXenotypes == null)
+                return clean; // fallback
 
-            return input; // unknown/custom xenotype – pass through
+            // 1. Exact match (ignore case)
+            var exact = raceSettings.EnabledXenotypes.Keys
+                .FirstOrDefault(k => k.Equals(clean, StringComparison.OrdinalIgnoreCase));
+            if (exact != null)
+            {
+                Logger.Debug($"RaceSettings exact match: '{clean}' → '{exact}'");
+                return exact;
+            }
+
+            // 2. Fuzzy/typo match (partial)
+            var fuzzy = raceSettings.EnabledXenotypes.Keys
+                .Where(k => k.ToLowerInvariant().Contains(clean.ToLowerInvariant()) ||
+                            clean.ToLowerInvariant().Contains(k.ToLowerInvariant()))
+                .OrderBy(k => Math.Abs(k.Length - clean.Length))
+                .FirstOrDefault();
+
+            if (fuzzy != null)
+            {
+                Logger.Debug($"RaceSettings fuzzy match: '{clean}' → '{fuzzy}'");
+                return fuzzy;
+            }
+
+            Logger.Debug($"No match in RaceSettings for '{clean}', passing through");
+            return clean;
         }
 
-        // Helper method to find the best race match from remaining arguments
+        private static string CleanXenotypeInput(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return input;
+
+            // Remove common zero-width / control chars that Twitch sometimes injects
+            // Zero-width joiner (U+200D), zero-width space (U+200B), hangul filler (U+3164), etc.
+            var cleaned = new string(input.Where(c =>
+                !char.IsControl(c) &&
+                c != '\u200B' &&      // Zero-width space
+                c != '\u200C' &&      // Zero-width non-joiner
+                c != '\u200D' &&      // Zero-width joiner
+                c != '\uFEFF' &&      // Byte order mark
+                c != '\u3164'         // Hangul filler (invisible space)
+            ).ToArray());
+
+            // Also trim any suspicious trailing/leading whitespace
+            cleaned = cleaned.Trim();
+
+            Logger.Debug($"Cleaned xenotype input: '{input}' → '{cleaned}'");
+
+            return cleaned;
+        }
+
         private static string FindBestRaceMatch(string[] potentialRaceArgs)
         {
-            if (potentialRaceArgs.Length == 0) return string.Empty;
+            if (potentialRaceArgs == null || potentialRaceArgs.Length == 0) return string.Empty;
 
-            // Get all known race names (defName and label)
+            string candidateRace = string.Join(" ", potentialRaceArgs);
+
+            // Centralized lookup (consistent with IsValidPawnRequest / HandleBuyPawnCommand)
             var knownRaces = RaceUtils.GetAllHumanlikeRaces()
                 .SelectMany(r => new[] { r.defName, r.label })
                 .Where(name => !string.IsNullOrEmpty(name))
-                .Distinct()
                 .ToList();
 
-            // Try from longest combination to shortest
-            for (int wordCount = Math.Min(3, potentialRaceArgs.Length); wordCount >= 1; wordCount--)
-            {
-                for (int startIndex = 0; startIndex <= potentialRaceArgs.Length - wordCount; startIndex++)
-                {
-                    // Create a candidate race name from consecutive words
-                    var candidateParts = potentialRaceArgs
-                        .Skip(startIndex)
-                        .Take(wordCount)
-                        .ToArray();
-
-                    string candidateRace = string.Join(" ", candidateParts);
-
-                    // Check for exact match
-                    var exactMatch = knownRaces.FirstOrDefault(r =>
-                        r.Equals(candidateRace, StringComparison.OrdinalIgnoreCase));
-
-                    if (exactMatch != null)
-                    {
-                        // Mark these parts as used (optional - for debugging)
-                        return exactMatch;
-                    }
-                }
-            }
-
-            // No match found - return the first word as fallback
-            return potentialRaceArgs[0];
+            // Return known casing (e.g. "Human" not "human")
+            return knownRaces.FirstOrDefault(r =>
+                r.Equals(candidateRace, StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
         }
         // List methods
         public static string ListAvailableRaces()
@@ -1114,6 +1109,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // return "Error retrieving xenotype list. You can still use custom xenotype names.";
                 return "RICS.BPCH.XenotypeListError".Translate();
             }
+        }
+
+        private static string PickRandomEnabledXenotype(RaceSettings settings)
+        {
+            var enabled = settings.EnabledXenotypes
+                .Where(kv => kv.Value && kv.Key != "Baseliner")
+                .Select(kv => kv.Key)
+                .ToList();
+
+            return enabled.Any()
+                ? enabled.RandomElement()
+                : "Baseliner"; // safety fallback
         }
 
         private static List<string> GetAllowedXenotypesForRace(ThingDef raceDef)
