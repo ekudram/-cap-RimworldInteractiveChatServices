@@ -14,6 +14,7 @@
   <RICS.LCH.Trait>Trait</RICS.LCH.Trait>
   <RICS.LCH.Race>Race</RICS.LCH.Race>
   <RICS.LCH.Xenotype>Xenotype</RICS.LCH.Xenotype>
+  <RICS.LCH.All>All</RICS.LCH.All>
 
   <!-- Xenotype compatibility strings (the complex ones you mentioned) -->
   <RICS.LCH.Compatible>compatible: {0}</RICS.LCH.Compatible>

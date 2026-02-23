@@ -64,6 +64,7 @@
   <RICS.Storage.EachValue>Each Value</RICS.Storage.EachValue>
   <RICS.Storage.TotalValue>Total Value</RICS.Storage.TotalValue>
   <RICS.Locker.StorageSettingsUnavailable>Storage settings not available.</RICS.Locker.StorageSettingsUnavailable>
+  <RICS_LockerEmpty>Locker is Empty</RICS_LockerEmpty>
 
   <!-- Dialog_EventSetCustomCooldown Window -->
   <RICS.Label.SetCustomCooldown>Set Custom Cooldown</RICS.Label.SetCustomCooldown>
