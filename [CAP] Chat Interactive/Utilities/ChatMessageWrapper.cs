@@ -16,6 +16,8 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // A unified wrapper for chat messages from different platforms (Twitch, YouTube)
 using System;
+using System.Linq;
+using Verse;
 public class ChatMessageWrapper
 {
     public string Username { get; }
@@ -33,14 +35,14 @@ public class ChatMessageWrapper
 
     // Updated constructor with new parameter
     public ChatMessageWrapper(string username, string message, string platform,
-                            string platformUserId = null, string channelId = null,
-                            object platformMessage = null, bool isWhisper = false,
-                            string customRewardId = null, int bits = 0,
-                            bool shouldIgnoreForCommands = false)  // NEW parameter
+                                string platformUserId = null, string channelId = null,
+                                object platformMessage = null, bool isWhisper = false,
+                                string customRewardId = null, int bits = 0,
+                                bool shouldIgnoreForCommands = false)  // NEW parameter
     {
         Username = username?.ToLowerInvariant() ?? "";
         DisplayName = username ?? "";
-        Message = message?.Trim() ?? "";
+        Message = CleanInput(message) ?? "";  // strips garbage + trims – now every command/arg is clean
         Platform = platform;
         PlatformUserId = platformUserId;
         ChannelId = channelId;
@@ -57,7 +59,7 @@ public class ChatMessageWrapper
     {
         Username = original.Username;
         DisplayName = original.DisplayName;
-        Message = newMessage?.Trim() ?? "";
+        Message = CleanInput(newMessage) ?? "";
         Platform = original.Platform;
         PlatformUserId = original.PlatformUserId;
         ChannelId = original.ChannelId;
@@ -77,5 +79,17 @@ public class ChatMessageWrapper
     public string GetUniqueId()
     {
         return $"{Platform}:{PlatformUserId ?? Username}";
+    }
+
+    private static string CleanInput(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+
+        // Remove invisible/chat-platform garbage (zero-width spaces, joiners, CGJ, direction marks, etc.)
+        // while keeping ALL spaces, letters, numbers, punctuation – exactly what commands need
+        return new string(input.Where(c => !char.IsControl(c) &&
+                                           c != '\u200B' && c != '\u200C' && c != '\u200D' &&
+                                           c != '\uFEFF' && c != '\u3164' && c != '\u034F' &&
+                                           c != '\u200E' && c != '\u200F' && c != '\u2060').ToArray()).Trim();
     }
 }

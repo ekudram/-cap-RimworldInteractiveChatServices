@@ -167,7 +167,7 @@ namespace CAP_ChatInteractive
                 return;
             }
 
-            var parts = message.Message.Split(' ');
+            var parts = message.Message.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0) return;
 
             var commandText = parts[0];
