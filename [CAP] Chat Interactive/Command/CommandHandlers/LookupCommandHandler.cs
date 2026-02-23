@@ -240,9 +240,73 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!ModsConfig.BiotechActive)
                     return Enumerable.Empty<LookupResult>();
 
-                var normalizedSearchTerm = searchTerm.ToLower();
+                if (string.IsNullOrWhiteSpace(searchTerm))
+                    return Enumerable.Empty<LookupResult>();
 
-                // Get all xenotypes that match the search (same as before)
+                var normalizedSearchTerm = searchTerm.ToLower().Trim();
+
+                // === NEW: Race-first mode ===
+                // If the search term matches a race (e.g. "human", "kurin"), show that race's ENABLED xenotypes
+                // This is the source of truth (RaceSettingsManager dictionary) – exactly what you asked for
+                var enabledRaces = RaceUtils.GetEnabledRaces();
+                var matchingRace = enabledRaces.FirstOrDefault(race =>
+                {
+                    if (race == null) return false;
+                    string label = TextUtilities.CleanAndNormalize(race.LabelCap.RawText);
+                    string defName = race.defName?.ToLower() ?? "";
+                    return label.Contains(normalizedSearchTerm) ||
+                           defName.Contains(normalizedSearchTerm);
+                });
+
+                if (matchingRace != null)
+                {
+                    var settings = RaceSettingsManager.GetRaceSettings(matchingRace.defName);
+                    if (settings == null || !settings.Enabled || !settings.ModActive)
+                        return Enumerable.Empty<LookupResult>();
+
+                    // Reuse exact same allowed pool as GetXenotypesForRace + Dialog GUI (HAR + Biotech)
+                    var allowedDefNames = Dialog_PawnRaceSettings.GetAllowedXenotypes(matchingRace);
+
+                    var enabledXenotypes = allowedDefNames
+                        .Where(defName => settings.EnabledXenotypes.TryGetValue(defName, out bool isEnabled) && isEnabled)
+                        .Select(defName => DefDatabase<XenotypeDef>.GetNamedSilentFail(defName))
+                        .Where(x => x != null)
+                        .OrderBy(x => x.label)   // readable alphabetical order
+                        .ToList();
+
+                    // Human fallback: always show at least Baseliner if nothing enabled (consistent UX)
+                    if (!enabledXenotypes.Any() && matchingRace == ThingDefOf.Human)
+                    {
+                        var baseliner = XenotypeDefOf.Baseliner;
+                        if (baseliner != null)
+                            enabledXenotypes.Add(baseliner);
+                    }
+
+                    var raceSettings = RaceSettingsManager.GetRaceSettings(matchingRace.defName);
+
+                    return enabledXenotypes
+                        .Take(maxResults)
+                        .Select(x =>
+                        {
+                            float price = 0f;
+                            if (raceSettings != null &&
+                                raceSettings.XenotypePrices.TryGetValue(x.defName, out float p))
+                            {
+                                price = p;
+                            }
+
+                            return new LookupResult
+                            {
+                                Name = x.LabelCap.RawText,
+                                Type = "RICS.LCH.Xenotype",
+                                Cost = (int)Math.Round(price),
+                                DefName = x.defName
+                            };
+                        });
+                }
+
+                // === Original specific xenotype search (unchanged) ===
+                // Falls through only if no race matched (e.g. "hussar", "sanguophage")
                 var matchingXenos = new List<XenotypeDef>();
 
                 // First: exact label match (highest priority, supports spaces/multi-word)
@@ -259,12 +323,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     .Where(x => !string.IsNullOrEmpty(x.defName) &&
                                 (TextUtilities.CleanAndNormalize(x.label).Contains(normalizedSearchTerm) ||
                                  x.defName.ToLower().Contains(normalizedSearchTerm)) &&
-                                x != exactLabelMatch)  // avoid duplicate if exact label already added
+                                x != exactLabelMatch)
                     .ToList();
 
                 matchingXenos.AddRange(partialMatches);
 
-                // Remove duplicates just in case (rare)
                 matchingXenos = matchingXenos.Distinct().ToList();
 
                 if (!matchingXenos.Any())
@@ -272,13 +335,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var results = new List<LookupResult>();
 
-                // Reuse the same enabled races source as BuyPawn / ListAvailableRaces
-                var enabledRaces = RaceUtils.GetEnabledRaces();
+                var enabledRacesForCompat = RaceUtils.GetEnabledRaces();  // reuse for compatible races
 
                 foreach (var xeno in matchingXenos.Take(maxResults))
                 {
-                    // Find races that allow this xenotype (or allow custom xenotypes)
-                    var compatibleRaces = enabledRaces
+                    var compatibleRaces = enabledRacesForCompat
                         .Where(race =>
                         {
                             var settings = RaceSettingsManager.GetRaceSettings(race.defName);
@@ -286,24 +347,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                             string xenoKey = xeno.defName;
 
-                            // Case 1: Explicit entry → respect the exact boolean (true or false)
                             if (settings.EnabledXenotypes?.ContainsKey(xenoKey) == true)
-                            {
                                 return settings.EnabledXenotypes[xenoKey];
-                            }
 
-                            // Case 2: Not explicitly listed → treat as true custom xenotype
                             if (settings.AllowCustomXenotypes && xeno != XenotypeDefOf.Baseliner)
-                            {
                                 return true;
-                            }
 
-                            // Case 3: Baseliner special fallback
                             if (xeno == XenotypeDefOf.Baseliner)
-                            {
                                 return !settings.EnabledXenotypes?.ContainsKey("Baseliner") == true ||
-                                        settings.EnabledXenotypes?["Baseliner"] != false;
-                            }
+                                       settings.EnabledXenotypes?["Baseliner"] != false;
 
                             return false;
                         })
@@ -311,28 +363,52 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         .OrderBy(name => name)
                         .ToList();
 
-                    string compatInfo;
+                    string compatInfo = compatibleRaces.Any()
+                        ? "RICS.LCH.Compatible".Translate(
+                            string.Join(", ", compatibleRaces.Take(5)) +
+                            (compatibleRaces.Count > 5 ? "RICS.LCH.More".Translate(compatibleRaces.Count - 5) : ""))
+                        : "RICS.LCH.NoneCustomOnly".Translate();
+
+                    string displayName = $"{xeno.LabelCap.RawText} ({compatInfo})";
+
+                    // Default to 0 if no price found (fallback)
+                    float price = 0f;
+
+                    // Try to get price from the first compatible race's settings (most relevant)
+                    // Or fall back to a "global-ish" price if no compatible races
                     if (compatibleRaces.Any())
                     {
-                        string listPart = string.Join(", ", compatibleRaces.Take(5));
-                        if (compatibleRaces.Count > 5)
+                        // Pick the first compatible race (ordered alphabetically → deterministic)
+                        string firstRaceName = compatibleRaces.First();
+                        var firstRaceDef = enabledRacesForCompat
+                            .FirstOrDefault(r => r.LabelCap.RawText == firstRaceName);
+
+                        if (firstRaceDef != null)
                         {
-                            listPart += "RICS.LCH.More".Translate(compatibleRaces.Count - 5);
+                            var raceSettings = RaceSettingsManager.GetRaceSettings(firstRaceDef.defName);
+                            if (raceSettings != null &&
+                                raceSettings.XenotypePrices.TryGetValue(xeno.defName, out float racePrice))
+                            {
+                                price = racePrice;
+                            }
                         }
-                        compatInfo = "RICS.LCH.Compatible".Translate(listPart);
                     }
                     else
                     {
-                        compatInfo = "RICS.LCH.NoneCustomOnly".Translate();
+                        // No compatible races → try human as fallback base price (common default)
+                        var humanSettings = RaceSettingsManager.GetRaceSettings(ThingDefOf.Human.defName);
+                        if (humanSettings != null &&
+                            humanSettings.XenotypePrices.TryGetValue(xeno.defName, out float humanPrice))
+                        {
+                            price = humanPrice;
+                        }
                     }
-
-                    string displayName = $"{xeno.LabelCap.RawText} ({compatInfo})";
 
                     results.Add(new LookupResult
                     {
                         Name = displayName,
                         Type = "RICS.LCH.Xenotype",
-                        Cost = 0,
+                        Cost = (int)Math.Round(price),  // assuming integer display like other items
                         DefName = xeno.defName
                     });
                 }

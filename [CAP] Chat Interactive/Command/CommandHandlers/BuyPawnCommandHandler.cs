@@ -103,12 +103,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // === XENOTYPE RESOLUTION & VALIDATION ===
-                string cleanedXenotype = CleanXenotypeInput(xenotypeName);
-                string finalXenotypeName = cleanedXenotype;  // start with cleaned user input
+                
+                string finalXenotypeName = xenotypeName;  // start with cleaned user input
 
                 // Auto-pick logic if no xenotype given or Baseliner is disabled for this race
-                if (string.IsNullOrEmpty(cleanedXenotype) ||
-                    cleanedXenotype.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
+                if (string.IsNullOrEmpty(xenotypeName) ||
+                    xenotypeName.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
                 {
                     if (!raceSettings.EnabledXenotypes.TryGetValue("Baseliner", out bool baselinerEnabled) || !baselinerEnabled)
                     {
@@ -122,7 +122,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 else
                 {
-                    finalXenotypeName = GetXenotypeDefName(cleanedXenotype, raceSettings);
+                    finalXenotypeName = GetXenotypeDefName(xenotypeName, raceSettings);
                 }
 
                 // Now validate the final resolved xenotype
@@ -912,8 +912,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var leftover = remaining.Where(r => !usedArgs[r.index]).Select(r => r.value).ToArray();
             if (leftover.Length > 0)
             {
-                string rawXeno = string.Join(" ", leftover);
-                xenotypeName = CleanXenotypeInput(rawXeno);  // ← clean here
+                xenotypeName = string.Join(" ", leftover);
             }
         }
 
@@ -953,28 +952,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return clean;
         }
 
-        private static string CleanXenotypeInput(string input)
-        {
-            if (string.IsNullOrEmpty(input)) return input;
-
-            // Remove common zero-width / control chars that Twitch sometimes injects
-            // Zero-width joiner (U+200D), zero-width space (U+200B), hangul filler (U+3164), etc.
-            var cleaned = new string(input.Where(c =>
-                !char.IsControl(c) &&
-                c != '\u200B' &&      // Zero-width space
-                c != '\u200C' &&      // Zero-width non-joiner
-                c != '\u200D' &&      // Zero-width joiner
-                c != '\uFEFF' &&      // Byte order mark
-                c != '\u3164'         // Hangul filler (invisible space)
-            ).ToArray());
-
-            // Also trim any suspicious trailing/leading whitespace
-            cleaned = cleaned.Trim();
-
-            Logger.Debug($"Cleaned xenotype input: '{input}' → '{cleaned}'");
-
-            return cleaned;
-        }
 
         private static string FindBestRaceMatch(string[] potentialRaceArgs)
         {
@@ -1036,77 +1013,78 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             if (!ModsConfig.BiotechActive)
             {
-                // return "Biotech DLC not active - only baseliners available.";
-                return "RICS.BPCH.BiotechNotActive".Translate();
+                return "RICS.BPCH.BiotechNotActive".Translate(); // "Biotech DLC not active - only baseliners available."
             }
 
             try
             {
-                // If a race is specified, show xenotypes available for that race
+                // Normalize: if no race given, default to human (most common / expected behavior)
+                ThingDef raceDef = null;
                 if (!string.IsNullOrEmpty(raceName))
                 {
-                    var raceDef = RaceUtils.FindRaceByName(raceName);
-                    if (raceDef != null)
-                    {
-                        var raceSettings = JsonFileManager.GetRaceSettings(raceDef.defName);
-                        var allowedXenotypes = GetAllowedXenotypesForRace(raceDef);
-
-                        if (allowedXenotypes.Any())
-                        {
-                            var enabledXenotypes = allowedXenotypes
-                                .Where(x => !raceSettings.EnabledXenotypes.ContainsKey(x) || raceSettings.EnabledXenotypes[x])
-                                .OrderBy(x => x)
-                                .Take(12)
-                                .ToList();
-
-                            //return $"Xenotypes available for {raceDef.LabelCap}: {string.Join(", ", enabledXenotypes)}" +
-                            //       (allowedXenotypes.Count > 12 ? $" (... {allowedXenotypes.Count - 12} more)" : "");
-
-                            var resultRace = "RICS.BPCH.XenotypesForRace".Translate(
-                                raceDef.LabelCap,
-                                string.Join(", ", enabledXenotypes)
-                            );
-
-                            if (allowedXenotypes.Count > 12)
-                            {
-                                resultRace += " " + "RICS.BPCH.XenotypesForRace.More".Translate(allowedXenotypes.Count - 12);
-                            }
-
-                            return resultRace;
-                        }
-                    }
+                    raceDef = RaceUtils.FindRaceByName(raceName);
+                }
+                if (raceDef == null)
+                {
+                    raceDef = ThingDefOf.Human; // fallback to human when no/invalid race specified
                 }
 
-                // General xenotype list (fallback)
-                var allXenotypes = DefDatabase<XenotypeDef>.AllDefs
-                    .Where(x => x != XenotypeDefOf.Baseliner &&
-                               !string.IsNullOrEmpty(x.defName) &&
-                               x.inheritable) // Only inheritable xenotypes (most player-facing ones)
-                    .Select(x => x.defName)
-                    .OrderBy(x => x)
-                    .Take(15)
+                var raceSettings = RaceSettingsManager.GetRaceSettings(raceDef.defName);
+                if (raceSettings == null || !raceSettings.Enabled || !raceSettings.ModActive)
+                {
+                    return "RICS.BPCH.NoXenotypesForRace".Translate(raceDef.LabelCap); // "No xenotypes available for [race]"
+                }
+
+                // Get the enabled xenotypes from the internal settings dictionary (source of truth)
+                var enabledXenotypes = raceSettings.EnabledXenotypes
+                    .Where(kv => kv.Value)                          // only true/enabled
+                    .Select(kv => kv.Key)
+                    .Where(defName => DefDatabase<XenotypeDef>.GetNamedSilentFail(defName) != null) // still exists
+                    .OrderBy(name => name)                          // alphabetical for readability
                     .ToList();
 
-                if (!allXenotypes.Any())
+                // Add Baseliner as fallback if nothing enabled (very common case)
+                if (!enabledXenotypes.Any() && raceDef == ThingDefOf.Human)
                 {
-                    // return "No xenotypes found (except Baseliner).";
-                    return "RICS.BPCH.NoXenotypesFound".Translate();
+                    enabledXenotypes.Add("Baseliner");
                 }
 
-                // return $"Common xenotypes: {string.Join(", ", allXenotypes)}" + (allXenotypes.Count >= 15 ? " (and many more - try !pawn <race> to see race-specific xenotypes)" : "");
-                var result = "RICS.BPCH.CommonXenotypes".Translate(string.Join(", ", allXenotypes));
-
-                if (allXenotypes.Count >= 15)
+                if (!enabledXenotypes.Any())
                 {
-                    result += " " + "RICS.BPCH.CommonXenotypes.More".Translate();
+                    return "RICS.BPCH.NoXenotypesFound".Translate(); // "No xenotypes found (except possibly Baseliner)."
+                }
+
+                // Build response
+                string displayList = string.Join(", ", enabledXenotypes.Take(12));
+                string result;
+
+                if (string.IsNullOrEmpty(raceName))
+                {
+                    // General call (!listxenotypes) → show as common/default (human-focused)
+                    result = "RICS.BPCH.CommonXenotypes".Translate(displayList);
+                }
+                else
+                {
+                    // Race-specific call (!listxenotypes human)
+                    result = "RICS.BPCH.XenotypesForRace".Translate(raceDef.LabelCap, displayList);
+                }
+
+                if (enabledXenotypes.Count > 12)
+                {
+                    result += " " + "RICS.BPCH.XenotypesForRace.More".Translate(enabledXenotypes.Count - 12);
+                }
+
+                // Optional hint if race was unspecified
+                if (string.IsNullOrEmpty(raceName))
+                {
+                    result += " " + "RICS.BPCH.TrySpecificRace".Translate(); // e.g. "Try !listxenotypes <race> for specific lists"
                 }
 
                 return result;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error listing xenotypes: {ex}");
-                // return "Error retrieving xenotype list. You can still use custom xenotype names.";
+                Logger.Error($"Error in ListAvailableXenotypes: {ex.Message}");
                 return "RICS.BPCH.XenotypeListError".Translate();
             }
         }

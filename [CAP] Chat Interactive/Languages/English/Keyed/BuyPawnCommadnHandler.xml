@@ -52,6 +52,9 @@
   <RICS.BPCH.RacesList>Available races {0}</RICS.BPCH.RacesList>
   <RICS.BPCH.RacesList.More>(and {0} more...)</RICS.BPCH.RacesList.More>
   <RICS.BPCH.RacesList.New>[NEW]</RICS.BPCH.RacesList.New>
+  <RICS.BPCH.NoXenotypesForRace>No xenotypes currently enabled for {0}.</RICS.BPCH.NoXenotypesForRace>
+  <RICS.BPCH.TrySpecificRace>(use !listxenotypes {race} to see race-specific options)</RICS.BPCH.TrySpecificRace>
+  <RICS.BPCH.CommonXenotypes>Common / default xenotypes: {0}</RICS.BPCH.CommonXenotypes>
 
   <!-- Xenotypes - FIXED: Key name consistency -->
   <RICS.BPCH.BiotechNotActive>Biotech DLC not active - only baseliners available.</RICS.BPCH.BiotechNotActive>
