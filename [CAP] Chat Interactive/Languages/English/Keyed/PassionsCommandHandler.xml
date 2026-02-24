@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- Command Handler Messages -->
+  <RICS.PASSION.ViewerNotFound>❌ Viewer not found.</RICS.PASSION.ViewerNotFound>
+  <RICS.PASSION.NoAssignedPawn>❌ You need an assigned pawn to use !passion. Use !join to get in the queue.</RICS.PASSION.NoAssignedPawn>
+  <RICS.PASSION.PawnDead>❌ Your pawn is dead! Wait for resurrection or get a new pawn.</RICS.PASSION.PawnDead>
+  <RICS.PASSION.Usage>💡 Usage: !passion &lt;skill&gt; &lt;coins&gt; OR !passion &lt;coins&gt; OR !passion list</RICS.PASSION.Usage>
+  <RICS.PASSION.UsageTargeted>💡 Usage: !passion &lt;skill&gt; &lt;coins&gt; - Wager coins to upgrade a specific skill's passion</RICS.PASSION.UsageTargeted>
+  <RICS.PASSION.UsageRandom>💡 Usage: !passion &lt;coins&gt; - Wager coins to upgrade a random skill's passion</RICS.PASSION.UsageRandom>
+  <RICS.PASSION.NoSkill>❌ Your pawn doesn't have the {0} skill.</RICS.PASSION.NoSkill>
+  <RICS.PASSION.AlreadyMajorTargeted>❌ Your pawn already has major passion in {0}.</RICS.PASSION.AlreadyMajorTargeted>
+  <RICS.PASSION.NotEnoughCoins>❌ You only have {0} coins. You need {1} coins to wager.</RICS.PASSION.NotEnoughCoins>
+  <RICS.PASSION.MinWager>❌ Minimum wager is {0} coins.</RICS.PASSION.MinWager>
+  <RICS.PASSION.MaxWager>❌ Maximum wager is {0} coins.</RICS.PASSION.MaxWager>
+  <RICS.PASSION.ListNoPassions>📝 {0} has no passions yet.</RICS.PASSION.ListNoPassions>
+  <RICS.PASSION.ListPassions>📝 {0}'s passions: {1}</RICS.PASSION.ListPassions>
+  <RICS.PASSION.ListError>❌ Error listing passions for {0}</RICS.PASSION.ListError>
+  <RICS.PASSION.GeneralError>❌ An error occurred while processing your passion wager.</RICS.PASSION.GeneralError>
+
+  <!-- Passion System Messages -->
+  <RICS.PASSION.NoSkillsForPassion>❌ Your pawn has no skills that can gain passions!</RICS.PASSION.NoSkillsForPassion>
+  <RICS.PASSION.TargetedAlreadyMajorSuccess>✅ SUCCESS! Your pawn already has major passion in {0}. Coins refunded!</RICS.PASSION.TargetedAlreadyMajorSuccess>
+  <RICS.PASSION.TargetedUpgradeToMajor>✅ SUCCESS! {0}'s {1} passion upgraded to major!</RICS.PASSION.TargetedUpgradeToMajor>
+  <RICS.PASSION.TargetedGainMinor>✅ SUCCESS! {0} gained minor passion for {1}!</RICS.PASSION.TargetedGainMinor>
+  <RICS.PASSION.TargetedCritFailLose>💥 CRITICAL FAILURE! {0} lost {1} passion for {2}!</RICS.PASSION.TargetedCritFailLose>
+  <RICS.PASSION.TargetedCritFailGainUseless>💥 CRITICAL FAILURE! {0} gained useless minor passion for {1}!</RICS.PASSION.TargetedCritFailGainUseless>
+  <RICS.PASSION.TargetedCritFailLaugh>💥 CRITICAL FAILURE! The passion gods laughed at your {0} coin wager!</RICS.PASSION.TargetedCritFailLaugh>
+  <RICS.PASSION.TargetedCritFailBackfire>💥 CRITICAL FAILURE! Your {0} coin wager backfired spectacularly!</RICS.PASSION.TargetedCritFailBackfire>
+  <RICS.PASSION.TargetedCritFailRandomLose>💥 CRITICAL FAILURE! {0} lost {1} passion for {2} instead!</RICS.PASSION.TargetedCritFailRandomLose>
+  <RICS.PASSION.TargetedCritFailRandomBackfire>💥 CRITICAL FAILURE! Your {0} coin wager backfired!</RICS.PASSION.TargetedCritFailRandomBackfire>
+  <RICS.PASSION.TargetedCritSuccessAlreadyMajor>🎉 CRITICAL SUCCESS! Your pawn already has major passion in {0}. Coins refunded!</RICS.PASSION.TargetedCritSuccessAlreadyMajor>
+  <RICS.PASSION.TargetedCritSuccessUpgrade>🎉 CRITICAL SUCCESS! {0}'s {1} passion upgraded to {2}!</RICS.PASSION.TargetedCritSuccessUpgrade>
+  <RICS.PASSION.GeneralFailure>💔 You wagered {0} coins but failed to improve any passions. Better luck next time!</RICS.PASSION.GeneralFailure>
+  <RICS.PASSION.CritSuccessAlreadyMajor>🎉 CRITICAL SUCCESS! Your pawn already has 🔥🔥 passion in {0}. Coins refunded!</RICS.PASSION.CritSuccessAlreadyMajor>
+  <RICS.PASSION.CritSuccessUpgrade>🎉 CRITICAL SUCCESS! {0}'s {1} passion upgraded to {2}!</RICS.PASSION.CritSuccessUpgrade>
+  <RICS.PASSION.CritSuccessGainNew>🎉 CRITICAL SUCCESS! {0} gained 🔥 passion for {1}!</RICS.PASSION.CritSuccessGainNew>
+  <RICS.PASSION.CritFailLose>💥 CRITICAL FAILURE! {0} lost {1} passion for {2}!</RICS.PASSION.CritFailLose>
+  <RICS.PASSION.CritFailGainUseless>💥 CRITICAL FAILURE! {0} gained 🔥 passion for useless skill {1}!</RICS.PASSION.CritFailGainUseless>
+  <RICS.PASSION.CritFailLaugh>💥 CRITICAL FAILURE! The passion gods laughed at your wager of {0} coins! 😂</RICS.PASSION.CritFailLaugh>
+  <RICS.PASSION.SuccessUpgrade>✅ SUCCESS! {0}'s {1} passion upgraded to 🔥🔥!</RICS.PASSION.SuccessUpgrade>
+  <RICS.PASSION.SuccessAllMajor>✅ SUCCESS! Your pawn already has 🔥🔥 passions in all skills. Coins refunded!</RICS.PASSION.SuccessAllMajor>
+  <RICS.PASSION.SuccessGainFirst>✅ SUCCESS! {0} gained 🔥 passion for {1}!</RICS.PASSION.SuccessGainFirst>
+
+</LanguageData>

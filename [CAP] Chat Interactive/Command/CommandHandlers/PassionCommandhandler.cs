@@ -27,85 +27,71 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 {
     internal class PassionCommandhandler
     {
-        // In PassionCommandhandler.cs - Replace HandlePassionCommand method
         internal static string HandlePassionCommand(ChatMessageWrapper messageWrapper, string[] args)
         {
             try
             {
-                // Get the viewer
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
-                    return "❌ Viewer not found.";
+                    return "RICS.PASSION.ViewerNotFound".Translate();
 
-                // Check if viewer has a pawn assigned
                 Verse.Pawn pawn = PawnItemHelper.GetViewerPawn(messageWrapper);
 
                 if (pawn == null)
-                    return "❌ You need an assigned pawn to use !passion. Use !join to get in the queue.";
+                    return "RICS.PASSION.NoAssignedPawn".Translate();
 
                 if (pawn.Dead)
-                    return "❌ Your pawn is dead! Wait for resurrection or get a new pawn.";
+                    return "RICS.PASSION.PawnDead".Translate();
 
-                // Handle "list" subcommand
                 if (args.Length > 0 && args[0].ToLower() == "list")
                 {
                     return ListPawnPassions(pawn);
                 }
 
-                // Parse arguments for skill targeting
                 if (args.Length < 1)
-                    return "💡 Usage: !passion <skill> <coins> OR !passion <coins> OR !passion list";
+                    return "RICS.PASSION.Usage".Translate();
 
                 SkillDef targetSkill = null;
                 int wager;
 
-                // Check if first arg is a skill name
                 if (args.Length >= 2 && TryParseSkill(args[0], out targetSkill))
                 {
-                    // Format: !passion <skill> <wager>
                     if (!int.TryParse(args[1], out wager) || wager <= 0)
-                        return "💡 Usage: !passion <skill> <coins> - Wager coins to upgrade a specific skill's passion";
+                        return "RICS.PASSION.UsageTargeted".Translate();
                 }
                 else
                 {
-                    // Format: !passion <wager> (random skill)
                     if (!int.TryParse(args[0], out wager) || wager <= 0)
-                        return "💡 Usage: !passion <coins> - Wager coins to upgrade a random skill's passion";
+                        return "RICS.PASSION.UsageRandom".Translate();
                 }
 
-                // Validate target skill if specified
                 if (targetSkill != null)
                 {
                     var pawnSkill = pawn.skills.GetSkill(targetSkill);
                     if (pawnSkill == null)
-                        return $"❌ Your pawn doesn't have the {targetSkill.LabelCap} skill.";
+                        return "RICS.PASSION.NoSkill".Translate(targetSkill.LabelCap);
 
                     if (pawnSkill.passion == RimWorld.Passion.Major)
-                        return $"❌ Your pawn already has major passion in {targetSkill.LabelCap}.";
+                        return "RICS.PASSION.AlreadyMajorTargeted".Translate(targetSkill.LabelCap);
                 }
 
-                // Check if viewer has enough coins
                 if (viewer.Coins < wager)
-                    return $"❌ You only have {viewer.Coins} coins. You need {wager} coins to wager.";
+                    return "RICS.PASSION.NotEnoughCoins".Translate(viewer.Coins, wager);
 
-                // Validate wager limits
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 if (wager < settings.MinPassionWager)
-                    return $"❌ Minimum wager is {settings.MinPassionWager} coins.";
+                    return "RICS.PASSION.MinWager".Translate(settings.MinPassionWager);
 
                 if (wager > settings.MaxPassionWager)
-                    return $"❌ Maximum wager is {settings.MaxPassionWager} coins.";
+                    return "RICS.PASSION.MaxWager".Translate(settings.MaxPassionWager);
 
-                // Execute passion gamble
                 var result = PassionSystem.GambleForPassion(pawn, wager, viewer, targetSkill);
 
-                // Deduct coins if not already handled in the result
                 if (!result.alreadyCharged)
                 {
                     viewer.TakeCoins(wager);
                 }
 
-                // Save viewer data
                 Viewers.SaveViewers();
 
                 return result.message;
@@ -113,7 +99,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             catch (Exception ex)
             {
                 Logger.Error($"Error in passion command: {ex.Message}");
-                return "❌ An error occurred while processing your passion wager.";
+                return "RICS.PASSION.GeneralError".Translate();
             }
         }
 
@@ -133,28 +119,26 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 }
 
                 if (!passionSkills.Any())
-                    return $"📝 {pawn.Name} has no passions yet.";
+                    return "RICS.PASSION.ListNoPassions".Translate(pawn.Name.ToString());
 
-                // Just sort the string list instead of the SkillRecords
                 passionSkills.Sort();
 
-                return $"📝 {pawn.Name}'s passions: {string.Join(", ", passionSkills)}";
+                return "RICS.PASSION.ListPassions".Translate(pawn.Name.ToString(), string.Join(", ", passionSkills));
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error listing passions: {ex.Message}");
-                return $"❌ Error listing passions for {pawn.Name}";
+                return "RICS.PASSION.ListError".Translate(pawn.Name.ToString());
             }
         }
 
-        // Add this method to match your mypawn command style
         private static string GetPassionEmoji(RimWorld.Passion passion)
         {
             return passion switch
             {
-                RimWorld.Passion.Major => " 🔥🔥", // Burning passion
-                RimWorld.Passion.Minor => " 🔥",   // Minor passion  
-                _ => ""                  // No passion
+                RimWorld.Passion.Major => " 🔥🔥",
+                RimWorld.Passion.Minor => " 🔥",
+                _ => ""
             };
         }
 
