@@ -85,7 +85,7 @@ namespace CAP_ChatInteractive
     public class CAPGlobalChatSettings : IExposable
     {
         // Existing properties...
-        public string modVersion = "1.20c";  // Current mod version WE DONT SAVE THIS! Used in history control
+        public string modVersion = "1.20d";  // Current mod version WE DONT SAVE THIS! Used in history control
         public string modVersionSaved = "";
         public string priceListUrl = "https://github.com/ekudram/RICS-Pricelist";
         public bool EnableDebugLogging = false;
@@ -188,6 +188,18 @@ namespace CAP_ChatInteractive
         public int MaxPassionWager = 1000;
         public float BasePassionSuccessChance = 15.0f; // 15% base chance
         public float MaxPassionSuccessChance = 60.0f; // 60% max chance
+        // Additional customizable passion gambling parameters (defaults = old hardcoded behavior)
+        public float PassionWagerBonusPer100 = 1.0f;      // % bonus per 100 coins wagered
+        public float MaxPassionWagerBonus = 30.0f;        // cap on wager bonus
+        public float CriticalSuccessRatio = 0.2f;         // crit success = baseSuccess * this
+        public float MaxCriticalSuccessChance = 5.0f;
+        public float CriticalFailBaseChance = 10.0f;
+        public float CriticalFailReductionFactor = 0.1f;  // subtract (baseSuccess * this) from base crit-fail
+        public float MinCriticalFailChance = 2.0f;
+        public float CritSuccessUpgradeVsNewChance = 0.5f;   // upgrade existing vs gain new on crit success
+        public float CritFailLoseVsWrongChance = 0.6f;       // lose passion vs gain useless on crit failure
+        public float TargetedCritFailAffectTargetChance = 0.7f; // targeted crit-fail: hit chosen skill vs random
+
 
         // Channel Points settings
         public bool ChannelPointsEnabled = true;
@@ -277,6 +289,17 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref MaxPassionWager, "maxPassionWager", 1000);
             Scribe_Values.Look(ref BasePassionSuccessChance, "basePassionSuccessChance", 15.0f);
             Scribe_Values.Look(ref MaxPassionSuccessChance, "maxPassionSuccessChance", 60.0f);
+
+            Scribe_Values.Look(ref PassionWagerBonusPer100, "passionWagerBonusPer100", 1.0f);
+            Scribe_Values.Look(ref MaxPassionWagerBonus, "maxPassionWagerBonus", 30.0f);
+            Scribe_Values.Look(ref CriticalSuccessRatio, "criticalSuccessRatio", 0.2f);
+            Scribe_Values.Look(ref MaxCriticalSuccessChance, "maxCriticalSuccessChance", 5.0f);
+            Scribe_Values.Look(ref CriticalFailBaseChance, "criticalFailBaseChance", 10.0f);
+            Scribe_Values.Look(ref CriticalFailReductionFactor, "criticalFailReductionFactor", 0.1f);
+            Scribe_Values.Look(ref MinCriticalFailChance, "minCriticalFailChance", 2.0f);
+            Scribe_Values.Look(ref CritSuccessUpgradeVsNewChance, "critSuccessUpgradeVsNewChance", 0.5f);
+            Scribe_Values.Look(ref CritFailLoseVsWrongChance, "critFailLoseVsWrongChance", 0.6f);
+            Scribe_Values.Look(ref TargetedCritFailAffectTargetChance, "targetedCritFailAffectTargetChance", 0.7f);
 
             // Surgery Command
             Scribe_Values.Look(ref SurgeryGenderSwapCost, "surgeryGenderSwapCost", 1000);

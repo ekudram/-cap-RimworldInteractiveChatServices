@@ -33,16 +33,21 @@ namespace CAP_ChatInteractive
             public bool alreadyCharged;
         }
 
-        public static PassionResult GambleForPassion(Pawn pawn, int wager, Viewer viewer, SkillDef targetSkill = null)
+        public static PassionResult                                                                                                                                           GambleForPassion(Pawn pawn, int wager, Viewer viewer, SkillDef targetSkill = null)
         {
             var result = new PassionResult();
             var rand = new Random();
             double roll = rand.NextDouble() * 100.0;
 
-            // Calculate success chance based on wager
+            // Calculate success chance based on wager - using fully configurable settings
+            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
             double baseSuccessChance = CalculateSuccessChance(wager);
-            double criticalSuccessChance = Math.Min(baseSuccessChance * 0.2, 5.0); // 20% of success chance, max 5%
-            double criticalFailChance = Math.Max(10.0 - (baseSuccessChance * 0.1), 2.0); // Higher wager = lower crit fail chance
+            double criticalSuccessChance = Math.Min(baseSuccessChance * settings.CriticalSuccessRatio, settings.MaxCriticalSuccessChance);
+            double criticalFailChance = Math.Max(settings.CriticalFailBaseChance - (baseSuccessChance * settings.CriticalFailReductionFactor), settings.MinCriticalFailChance);
+
+            // Robust edge-case handling (prevents negative/over-100% probs from bad config)
+            criticalSuccessChance = Math.Clamp(criticalSuccessChance, 0.0, 100.0);
+            criticalFailChance = Math.Clamp(criticalFailChance, 0.0, 100.0);
 
             // Get current passions
             var currentPassions = GetPawnPassions(pawn);
@@ -165,8 +170,9 @@ namespace CAP_ChatInteractive
             var result = new PassionResult();
             var rand = new Random();
 
-            // 70% chance to affect the targeted skill, 30% chance to affect a random skill
-            if (rand.NextDouble() < 0.7)
+            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            // Configurable chance (default 70%) to affect targeted skill vs random other on targeted crit failure
+            if (rand.NextDouble() < settings.TargetedCritFailAffectTargetChance)
             {
                 // Affect the targeted skill
                 if (targetSkillRecord.passion != Passion.None)
@@ -261,10 +267,10 @@ namespace CAP_ChatInteractive
 
         private static double CalculateSuccessChance(int wager)
         {
-            // Base chance scales with wager, but with diminishing returns
+            // Base chance scales with wager, but with diminishing returns - now fully configurable
             var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
             double baseChance = settings.BasePassionSuccessChance;
-            double wagerBonus = Math.Min(wager / 100.0, 30.0); // Max 30% bonus from wager
+            double wagerBonus = Math.Min((wager / 100.0) * settings.PassionWagerBonusPer100, settings.MaxPassionWagerBonus);
 
             return Math.Min(baseChance + wagerBonus, settings.MaxPassionSuccessChance);
         }
@@ -276,9 +282,9 @@ namespace CAP_ChatInteractive
         {
             var result = new PassionResult();
             var rand = new Random();
-
-            // 50% chance to upgrade existing passion, 50% chance to gain new one
-            if (currentPassions.Count > 0 && rand.NextDouble() < 0.5)
+            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            // Configurable chance (default 50%) to upgrade existing vs gain new on crit success
+            if (currentPassions.Count > 0 && rand.NextDouble() < settings.CritSuccessUpgradeVsNewChance)
             {
                 // Upgrade existing passion
                 var skillToUpgrade = currentPassions[rand.Next(currentPassions.Count)];
@@ -320,8 +326,9 @@ namespace CAP_ChatInteractive
             var result = new PassionResult();
             var rand = new Random();
 
-            // 60% chance to lose passion, 40% chance to gain wrong passion
-            if (currentPassions.Count > 0 && rand.NextDouble() < 0.6)
+            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            // Configurable chance (default 60%) to lose passion vs gain useless on crit failure
+            if (currentPassions.Count > 0 && rand.NextDouble() < settings.CritFailLoseVsWrongChance)
             {
                 // Lose random passion
                 var skillToLose = currentPassions[rand.Next(currentPassions.Count)];

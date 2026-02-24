@@ -736,80 +736,223 @@ namespace CAP_ChatInteractive
                     Widgets.Label(passionHeaderRect, "CAP.CommandManager.PassionSettings".Translate().Colorize(ColorLibrary.SubHeader));
                     y += sectionHeight;
 
-                    // Min wager
-                    Rect minWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(minWagerRect, "CAP.CommandManager.PassionMinWager".Translate());
-                    Rect minWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                    // ── Wager Settings ───────────────────────────────────────────────────────
+                    Rect wagerSubHeader = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
+                    Widgets.Label(wagerSubHeader, "CAP.CommandManager.PassionWagerSettings".Translate());
+                    y += sectionHeight;
 
+                    // Min wager
+                    Rect minWagerLabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(minWagerLabelRect, "CAP.CommandManager.PassionMinWager".Translate());
+                    TooltipHandler.TipRegion(minWagerLabelRect, "CAP.CommandManager.PassionMinWagerTip".Translate());
+                    Rect minWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
                     string minWagerKey = "passion_minwager";
                     if (!numericBuffers.ContainsKey(minWagerKey))
-                    {
                         numericBuffers[minWagerKey] = settingsGlobalChat.MinPassionWager.ToString();
-                    }
                     string minWagerBuffer = numericBuffers[minWagerKey];
                     Widgets.TextFieldNumeric(minWagerInputRect, ref settingsGlobalChat.MinPassionWager, ref minWagerBuffer, 1, 10000);
                     numericBuffers[minWagerKey] = minWagerBuffer;
-
                     y += sectionHeight;
 
                     // Max wager
-                    Rect maxWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(maxWagerRect, "CAP.CommandManager.PassionMaxWager".Translate());
+                    Rect maxWagerLabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(maxWagerLabelRect, "CAP.CommandManager.PassionMaxWager".Translate());
+                    TooltipHandler.TipRegion(maxWagerLabelRect, "CAP.CommandManager.PassionMaxWagerTip".Translate());
                     Rect maxWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-
                     string maxWagerKey = "passion_maxwager";
                     if (!numericBuffers.ContainsKey(maxWagerKey))
-                    {
                         numericBuffers[maxWagerKey] = settingsGlobalChat.MaxPassionWager.ToString();
-                    }
                     string maxWagerBuffer = numericBuffers[maxWagerKey];
                     Widgets.TextFieldNumeric(maxWagerInputRect, ref settingsGlobalChat.MaxPassionWager, ref maxWagerBuffer,
                         settingsGlobalChat.MinPassionWager, 100000);
                     numericBuffers[maxWagerKey] = maxWagerBuffer;
+                    y += sectionHeight;
 
+                    // Bonus per 100 coins
+                    Rect bonusPer100LabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(bonusPer100LabelRect, "CAP.CommandManager.PassionWagerBonusPer100".Translate());
+                    TooltipHandler.TipRegion(bonusPer100LabelRect, "CAP.CommandManager.PassionWagerBonusPer100Tip".Translate());
+                    Rect bonusPer100InputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                    string bonusPer100Key = "passion_wagerbonusper100";
+                    if (!numericBuffers.ContainsKey(bonusPer100Key))
+                        numericBuffers[bonusPer100Key] = settingsGlobalChat.PassionWagerBonusPer100.ToString("F1");
+                    string bonusPer100Buffer = numericBuffers[bonusPer100Key];
+                    Widgets.TextFieldNumeric(bonusPer100InputRect, ref settingsGlobalChat.PassionWagerBonusPer100, ref bonusPer100Buffer, 0f, 10f);
+                    numericBuffers[bonusPer100Key] = bonusPer100Buffer;
+                    y += sectionHeight;
+
+                    // Max wager bonus
+                    Rect maxBonusLabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(maxBonusLabelRect, "CAP.CommandManager.PassionMaxWagerBonus".Translate());
+                    TooltipHandler.TipRegion(maxBonusLabelRect, "CAP.CommandManager.PassionMaxWagerBonusTip".Translate());
+                    Rect maxBonusInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                    string maxBonusKey = "passion_maxwagerbonus";
+                    if (!numericBuffers.ContainsKey(maxBonusKey))
+                        numericBuffers[maxBonusKey] = settingsGlobalChat.MaxPassionWagerBonus.ToString("F1");
+                    string maxBonusBuffer = numericBuffers[maxBonusKey];
+                    Widgets.TextFieldNumeric(maxBonusInputRect, ref settingsGlobalChat.MaxPassionWagerBonus, ref maxBonusBuffer, 0f, 100f);
+                    numericBuffers[maxBonusKey] = maxBonusBuffer;
+                    y += sectionHeight;
+
+                    // ── Success Chance Scaling ───────────────────────────────────────────────
+                    Rect successSubHeader = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
+                    Widgets.Label(successSubHeader, "CAP.CommandManager.PassionSuccessScaling".Translate());
                     y += sectionHeight;
 
                     // Base success chance
-                    Rect baseChanceRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(baseChanceRect, "CAP.CommandManager.PassionBaseSuccess".Translate());
+                    Rect baseChanceLabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(baseChanceLabelRect, "CAP.CommandManager.PassionBaseSuccess".Translate());
+                    TooltipHandler.TipRegion(baseChanceLabelRect, "CAP.CommandManager.PassionBaseSuccessTip".Translate());
                     Rect baseChanceInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-
                     string baseChanceKey = "passion_basechance";
                     if (!numericBuffers.ContainsKey(baseChanceKey))
-                    {
-                        numericBuffers[baseChanceKey] = settingsGlobalChat.BasePassionSuccessChance.ToString();
-                    }
+                        numericBuffers[baseChanceKey] = settingsGlobalChat.BasePassionSuccessChance.ToString("F1");
                     string baseChanceBuffer = numericBuffers[baseChanceKey];
-                    Widgets.TextFieldNumeric(baseChanceInputRect, ref settingsGlobalChat.BasePassionSuccessChance, ref baseChanceBuffer, 1.0f, 100.0f);
+                    Widgets.TextFieldNumeric(baseChanceInputRect, ref settingsGlobalChat.BasePassionSuccessChance, ref baseChanceBuffer, 1f, 100f);
                     numericBuffers[baseChanceKey] = baseChanceBuffer;
-
                     y += sectionHeight;
 
                     // Max success chance
-                    Rect maxChanceRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(maxChanceRect, "CAP.CommandManager.PassionMaxSuccess".Translate());
+                    Rect maxChanceLabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(maxChanceLabelRect, "CAP.CommandManager.PassionMaxSuccess".Translate());
+                    TooltipHandler.TipRegion(maxChanceLabelRect, "CAP.CommandManager.PassionMaxSuccessTip".Translate());
                     Rect maxChanceInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-
                     string maxChanceKey = "passion_maxchance";
                     if (!numericBuffers.ContainsKey(maxChanceKey))
-                    {
-                        numericBuffers[maxChanceKey] = settingsGlobalChat.MaxPassionSuccessChance.ToString();
-                    }
+                        numericBuffers[maxChanceKey] = settingsGlobalChat.MaxPassionSuccessChance.ToString("F1");
                     string maxChanceBuffer = numericBuffers[maxChanceKey];
                     Widgets.TextFieldNumeric(maxChanceInputRect, ref settingsGlobalChat.MaxPassionSuccessChance, ref maxChanceBuffer,
-                        settingsGlobalChat.BasePassionSuccessChance, 100.0f);
+                        settingsGlobalChat.BasePassionSuccessChance, 100f);
                     numericBuffers[maxChanceKey] = maxChanceBuffer;
-
                     y += sectionHeight;
 
-                    // Description
+                    // ── Critical Success ─────────────────────────────────────────────────────
+                    Rect critSuccessSubHeader = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
+                    Widgets.Label(critSuccessSubHeader, "CAP.CommandManager.PassionCritSuccess".Translate());
+                    y += sectionHeight;
+
+                    // Critical success ratio
+                    Rect critRatioLabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(critRatioLabelRect, "CAP.CommandManager.PassionCritSuccessRatio".Translate());
+                    TooltipHandler.TipRegion(critRatioLabelRect, "CAP.CommandManager.PassionCritSuccessRatioTip".Translate());
+                    Rect critRatioInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                    string critRatioKey = "passion_critsuccessratio";
+                    if (!numericBuffers.ContainsKey(critRatioKey))
+                        numericBuffers[critRatioKey] = settingsGlobalChat.CriticalSuccessRatio.ToString("F2");
+                    string critRatioBuffer = numericBuffers[critRatioKey];
+                    Widgets.TextFieldNumeric(critRatioInputRect, ref settingsGlobalChat.CriticalSuccessRatio, ref critRatioBuffer, 0f, 2f);
+                    numericBuffers[critRatioKey] = critRatioBuffer;
+                    y += sectionHeight;
+
+                    // Max critical success chance
+                    Rect maxCritLabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(maxCritLabelRect, "CAP.CommandManager.PassionMaxCritSuccess".Translate());
+                    TooltipHandler.TipRegion(maxCritLabelRect, "CAP.CommandManager.PassionMaxCritSuccessTip".Translate());
+                    Rect maxCritInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                    string maxCritKey = "passion_maxcritsuccess";
+                    if (!numericBuffers.ContainsKey(maxCritKey))
+                        numericBuffers[maxCritKey] = settingsGlobalChat.MaxCriticalSuccessChance.ToString("F1");
+                    string maxCritBuffer = numericBuffers[maxCritKey];
+                    Widgets.TextFieldNumeric(maxCritInputRect, ref settingsGlobalChat.MaxCriticalSuccessChance, ref maxCritBuffer, 0f, 20f);
+                    numericBuffers[maxCritKey] = maxCritBuffer;
+                    y += sectionHeight;
+
+                    // ── Critical Failure ─────────────────────────────────────────────────────
+                    Rect critFailSubHeader = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
+                    Widgets.Label(critFailSubHeader, "CAP.CommandManager.PassionCritFailure".Translate());
+                    y += sectionHeight;
+
+                    // Base crit fail chance
+                    Rect baseFailLabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(baseFailLabelRect, "CAP.CommandManager.PassionCritFailBase".Translate());
+                    TooltipHandler.TipRegion(baseFailLabelRect, "CAP.CommandManager.PassionCritFailBaseTip".Translate());
+                    Rect baseFailInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                    string baseFailKey = "passion_critfailbase";
+                    if (!numericBuffers.ContainsKey(baseFailKey))
+                        numericBuffers[baseFailKey] = settingsGlobalChat.CriticalFailBaseChance.ToString("F1");
+                    string baseFailBuffer = numericBuffers[baseFailKey];
+                    Widgets.TextFieldNumeric(baseFailInputRect, ref settingsGlobalChat.CriticalFailBaseChance, ref baseFailBuffer, 0f, 50f);
+                    numericBuffers[baseFailKey] = baseFailBuffer;
+                    y += sectionHeight;
+
+                    // Reduction factor
+                    Rect reductionLabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(reductionLabelRect, "CAP.CommandManager.PassionCritFailReduction".Translate());
+                    TooltipHandler.TipRegion(reductionLabelRect, "CAP.CommandManager.PassionCritFailReductionTip".Translate());
+                    Rect reductionInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                    string reductionKey = "passion_critfailreduction";
+                    if (!numericBuffers.ContainsKey(reductionKey))
+                        numericBuffers[reductionKey] = settingsGlobalChat.CriticalFailReductionFactor.ToString("F2");
+                    string reductionBuffer = numericBuffers[reductionKey];
+                    Widgets.TextFieldNumeric(reductionInputRect, ref settingsGlobalChat.CriticalFailReductionFactor, ref reductionBuffer, 0f, 1f);
+                    numericBuffers[reductionKey] = reductionBuffer;
+                    y += sectionHeight;
+
+                    // Min crit fail chance
+                    Rect minFailLabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(minFailLabelRect, "CAP.CommandManager.PassionCritFailMin".Translate());
+                    TooltipHandler.TipRegion(minFailLabelRect, "CAP.CommandManager.PassionCritFailMinTip".Translate());
+                    Rect minFailInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                    string minFailKey = "passion_critfailmin";
+                    if (!numericBuffers.ContainsKey(minFailKey))
+                        numericBuffers[minFailKey] = settingsGlobalChat.MinCriticalFailChance.ToString("F1");
+                    string minFailBuffer = numericBuffers[minFailKey];
+                    Widgets.TextFieldNumeric(minFailInputRect, ref settingsGlobalChat.MinCriticalFailChance, ref minFailBuffer, 0f, 20f);
+                    numericBuffers[minFailKey] = minFailBuffer;
+                    y += sectionHeight;
+
+                    // ── Outcome Biases (Advanced) ────────────────────────────────────────────
+                    Rect biasSubHeader = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
+                    Widgets.Label(biasSubHeader, "CAP.CommandManager.PassionOutcomeBiases".Translate());
+                    y += sectionHeight;
+
+                    // Crit success upgrade vs new
+                    Rect upgradeLabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(upgradeLabelRect, "CAP.CommandManager.PassionCritSuccessUpgradeChance".Translate());
+                    TooltipHandler.TipRegion(upgradeLabelRect, "CAP.CommandManager.PassionCritSuccessUpgradeChanceTip".Translate());
+                    Rect upgradeInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                    string upgradeKey = "passion_critupgrade";
+                    if (!numericBuffers.ContainsKey(upgradeKey))
+                        numericBuffers[upgradeKey] = settingsGlobalChat.CritSuccessUpgradeVsNewChance.ToString("F2");
+                    string upgradeBuffer = numericBuffers[upgradeKey];
+                    Widgets.TextFieldNumeric(upgradeInputRect, ref settingsGlobalChat.CritSuccessUpgradeVsNewChance, ref upgradeBuffer, 0f, 1f);
+                    numericBuffers[upgradeKey] = upgradeBuffer;
+                    y += sectionHeight;
+
+                    // Crit fail lose vs wrong
+                    Rect loseLabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(loseLabelRect, "CAP.CommandManager.PassionCritFailLoseChance".Translate());
+                    TooltipHandler.TipRegion(loseLabelRect, "CAP.CommandManager.PassionCritFailLoseChanceTip".Translate());
+                    Rect loseInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                    string loseKey = "passion_critlose";
+                    if (!numericBuffers.ContainsKey(loseKey))
+                        numericBuffers[loseKey] = settingsGlobalChat.CritFailLoseVsWrongChance.ToString("F2");
+                    string loseBuffer = numericBuffers[loseKey];
+                    Widgets.TextFieldNumeric(loseInputRect, ref settingsGlobalChat.CritFailLoseVsWrongChance, ref loseBuffer, 0f, 1f);
+                    numericBuffers[loseKey] = loseBuffer;
+                    y += sectionHeight;
+
+                    // Targeted crit fail affect target
+                    Rect targetedLabelRect = new Rect(leftPadding + 20f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(targetedLabelRect, "CAP.CommandManager.PassionTargetedCritFailChance".Translate());
+                    TooltipHandler.TipRegion(targetedLabelRect, "CAP.CommandManager.PassionTargetedCritFailChanceTip".Translate());
+                    Rect targetedInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                    string targetedKey = "passion_targetedcritfail";
+                    if (!numericBuffers.ContainsKey(targetedKey))
+                        numericBuffers[targetedKey] = settingsGlobalChat.TargetedCritFailAffectTargetChance.ToString("F2");
+                    string targetedBuffer = numericBuffers[targetedKey];
+                    Widgets.TextFieldNumeric(targetedInputRect, ref settingsGlobalChat.TargetedCritFailAffectTargetChance, ref targetedBuffer, 0f, 1f);
+                    numericBuffers[targetedKey] = targetedBuffer;
+                    y += sectionHeight;
+
+                    // Overall description (kept from original)
                     Rect passionDescRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, 28f);
                     Text.Font = GameFont.Tiny;
                     GUI.color = new Color(0.7f, 0.7f, 0.7f);
                     Widgets.Label(passionDescRect, "CAP.CommandManager.PassionDescription".Translate());
                     Text.Font = GameFont.Small;
                     GUI.color = Color.white;
-                    y += 20f;
+                    y += 28f;
                 }
 
                 // SURGERY-SPECIFIC SETTINGS - Only show for surgery command
@@ -1077,13 +1220,20 @@ namespace CAP_ChatInteractive
             // PASSION-SPECIFIC SETTINGS HEIGHT
             if (selectedCommand != null && selectedCommand.commandText.ToLower() == "passion")
             {
-                height += 10f; // Extra spacing
-                height += 28f; // Passion header
-                height += 28f; // Min wager
-                height += 28f; // Max wager
-                height += 28f; // Base success chance
-                height += 28f; // Max success chance
-                height += 28f; // Description (taller than normal)
+                height += 10f;  // Extra spacing
+                height += 28f;  // Main Passion header
+                height += 28f;  // Wager sub-header
+                height += 28f * 4; // 4 wager fields
+                height += 28f;  // Success sub-header
+                height += 28f * 2; // 2 success fields
+                height += 28f;  // Critical Success sub-header
+                height += 28f * 2; // 2 crit success fields
+                height += 28f;  // Critical Failure sub-header
+                height += 28f * 3; // 3 crit failure fields
+                height += 28f;  // Outcome Biases sub-header
+                height += 28f * 3; // 3 bias fields
+                height += 28f;  // Overall description
+                height += 28f;  // A little extra to prevent cut off.
             }
 
             // SURGERY-SPECIFIC SETTINGS HEIGHT

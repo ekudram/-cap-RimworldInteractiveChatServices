@@ -89,7 +89,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var response = $"🔍 {"RICS.LCH.ResultsFor".Translate(displayCategory, searchTerm)}: ";
                 response += string.Join(" | ", results.Select(r =>
-                    $"{TextUtilities.StripTags(r.Name)} ({r.Type.Translate()}): {r.Cost} {currencySymbol}"));
+                {
+                    // For xenotypes: skip the redundant "(Xenotype)" type label
+                    string displayType = r.Type == "RICS.LCH.Xenotype"
+                        ? ""  // empty → no type shown
+                        : $" ({r.Type.Translate()})";
+
+                    return $"{TextUtilities.StripTags(r.Name)}{displayType}: {r.Cost} {currencySymbol}";
+                }));
 
                 return response;
             }

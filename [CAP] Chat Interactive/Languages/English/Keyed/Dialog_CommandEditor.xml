@@ -83,7 +83,63 @@
   <CAP.CommandManager.PassionMaxWager>Max wager:</CAP.CommandManager.PassionMaxWager>
   <CAP.CommandManager.PassionBaseSuccess>Base success chance (%):</CAP.CommandManager.PassionBaseSuccess>
   <CAP.CommandManager.PassionMaxSuccess>Max success chance (%):</CAP.CommandManager.PassionMaxSuccess>
-  <CAP.CommandManager.PassionDescription>Higher wagers = better success chances. Base chance scales with wager amount.</CAP.CommandManager.PassionDescription>
+  <CAP.CommandManager.PassionDescription>These settings control how risky and rewarding the !passion command is. Higher wagers usually improve chances, but critical outcomes can be very powerful — or very punishing.</CAP.CommandManager.PassionDescription>
+
+  <CAP.CommandManager.PassionSettings>Passion Gamble Settings</CAP.CommandManager.PassionSettings>
+  <CAP.CommandManager.PassionWagerSettings>Wager Limits and Scaling</CAP.CommandManager.PassionWagerSettings>
+  <CAP.CommandManager.PassionSuccessScaling>Success Chance Scaling</CAP.CommandManager.PassionSuccessScaling>
+  <CAP.CommandManager.PassionCritSuccess>Critical Success</CAP.CommandManager.PassionCritSuccess>
+  <CAP.CommandManager.PassionCritFailure>Critical Failure</CAP.CommandManager.PassionCritFailure>
+  <CAP.CommandManager.PassionOutcomeBiases>Outcome Biases (Advanced)</CAP.CommandManager.PassionOutcomeBiases>
+
+  <!-- Wager section -->
+  <CAP.CommandManager.PassionMinWager>Minimum wager</CAP.CommandManager.PassionMinWager>
+  <CAP.CommandManager.PassionMaxWager>Maximum wager</CAP.CommandManager.PassionMaxWager>
+  <CAP.CommandManager.PassionWagerBonusPer100>Bonus % per 100 coins wagered</CAP.CommandManager.PassionWagerBonusPer100>
+  <CAP.CommandManager.PassionMaxWagerBonus>Maximum bonus from wager</CAP.CommandManager.PassionMaxWagerBonus>
+
+  <!-- Success scaling -->
+  <CAP.CommandManager.PassionBaseSuccess>Base success chance (%)</CAP.CommandManager.PassionBaseSuccess>
+  <CAP.CommandManager.PassionMaxSuccess>Maximum success chance (%)</CAP.CommandManager.PassionMaxSuccess>
+
+  <!-- Critical success -->
+  <CAP.CommandManager.PassionCritSuccessRatio>Critical success multiplier (of base chance)</CAP.CommandManager.PassionCritSuccessRatio>
+  <CAP.CommandManager.PassionMaxCritSuccess>Hard cap on critical success chance (%)</CAP.CommandManager.PassionMaxCritSuccess>
+
+  <!-- Critical failure -->
+  <CAP.CommandManager.PassionCritFailBase>Base critical failure chance (%)</CAP.CommandManager.PassionCritFailBase>
+  <CAP.CommandManager.PassionCritFailReduction>Crit-fail reduction per success chance point</CAP.CommandManager.PassionCritFailReduction>
+  <CAP.CommandManager.PassionCritFailMin>Minimum critical failure chance (%)</CAP.CommandManager.PassionCritFailMin>
+
+  <!-- Outcome biases -->
+  <CAP.CommandManager.PassionCritSuccessUpgradeChance>Chance to upgrade existing passion (vs gain new) on crit success</CAP.CommandManager.PassionCritSuccessUpgradeChance>
+  <CAP.CommandManager.PassionCritFailLoseChance>Chance to lose passion (vs gain useless one) on crit failure</CAP.CommandManager.PassionCritFailLoseChance>
+  <CAP.CommandManager.PassionTargetedCritFailChance>Chance targeted skill is affected (vs random other) on targeted crit failure</CAP.CommandManager.PassionTargetedCritFailChance>
+
+  <!-- Wager section tooltips -->
+  <CAP.CommandManager.PassionMinWagerTip>Lowest number of coins a viewer can wager on !passion (default: 10)</CAP.CommandManager.PassionMinWagerTip>
+  <CAP.CommandManager.PassionMaxWagerTip>Highest number of coins allowed in a single !passion wager (default: 1000)</CAP.CommandManager.PassionMaxWagerTip>
+  <CAP.CommandManager.PassionWagerBonusPer100Tip>How many % success chance is added for every 100 coins wagered (default: 1.0 = +1% per 100 coins)</CAP.CommandManager.PassionWagerBonusPer100Tip>
+  <CAP.CommandManager.PassionMaxWagerBonusTip>Maximum bonus percentage that can come from large wagers (default: 30%)</CAP.CommandManager.PassionMaxWagerBonusTip>
+  
+  <!-- Success scaling tooltips -->
+  <CAP.CommandManager.PassionBaseSuccessTip>Starting success chance before any wager bonus (default: 15%)</CAP.CommandManager.PassionBaseSuccessTip>
+  <CAP.CommandManager.PassionMaxSuccessTip>Hard upper limit on total success chance, even with big wagers (default: 60%)</CAP.CommandManager.PassionMaxSuccessTip>
+
+  <!-- Critical success tooltips -->
+  <CAP.CommandManager.PassionCritSuccessRatioTip>Critical success chance = base success × this value (default: 0.2 = 20% of success chance)</CAP.CommandManager.PassionCritSuccessRatioTip>
+  <CAP.CommandManager.PassionMaxCritSuccessTip>Absolute maximum chance for a critical success outcome (default: 5%)</CAP.CommandManager.PassionMaxCritSuccessTip>
+
+  <!-- Critical failure tooltips -->
+  <CAP.CommandManager.PassionCritFailBaseTip>Starting critical failure chance before reduction (default: 10%)</CAP.CommandManager.PassionCritFailBaseTip>
+  <CAP.CommandManager.PassionCritFailReductionTip>How much the crit-fail chance decreases for each % of base success (default: 0.1 = -1% crit-fail per 10% success)</CAP.CommandManager.PassionCritFailReductionTip>
+  <CAP.CommandManager.PassionCritFailMinTip>Lowest the critical failure chance can ever go (default: 2%)</CAP.CommandManager.PassionCritFailMinTip>
+
+  <!-- Outcome bias tooltips -->
+  <CAP.CommandManager.PassionCritSuccessUpgradeChanceTip>Probability to upgrade an existing passion instead of adding a new one on critical success (default: 0.5 = 50%)</CAP.CommandManager.PassionCritSuccessUpgradeChanceTip>
+  <CAP.CommandManager.PassionCritFailLoseChanceTip>Probability to lose an existing passion instead of gaining a useless one on critical failure (default: 0.6 = 60%)</CAP.CommandManager.PassionCritFailLoseChanceTip>
+  <CAP.CommandManager.PassionTargetedCritFailChanceTip>
+    When using !passion [skill] — chance the targeted skill is affected on crit failure (default: 0.7 = 70%)</CAP.CommandManager.PassionTargetedCritFailChanceTip>
 
   <!-- Surgery command Section-->
   <CAP.CommandManager.SurgerySettings>Surgery Command Settings:</CAP.CommandManager.SurgerySettings>
