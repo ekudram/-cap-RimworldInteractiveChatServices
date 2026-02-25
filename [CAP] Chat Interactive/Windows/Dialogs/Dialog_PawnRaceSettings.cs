@@ -22,6 +22,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Xml;
 using UnityEngine;
 using Verse;
 
@@ -574,8 +575,7 @@ namespace CAP_ChatInteractive
                 }
                 y += sectionHeight + 10f;
 
-                // Xenotype Settings section (only if Biotech is active)
-                // Xenotype Settings section (only if Biotech is active)
+                // === Xenotype Settings section (only if Biotech is active)
                 if (ModsConfig.BiotechActive)
                 {
                     Rect xenotypeLabelRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
@@ -623,7 +623,23 @@ namespace CAP_ChatInteractive
 
                             // Xenotype name
                             Rect xenotypeNameRect = new Rect(leftPadding, y, columnWidth - 10f, sectionHeight);
-                            Widgets.Label(xenotypeNameRect, xenotype);
+                            string displayName = xenotype; // fallback
+
+                            if (ModsConfig.BiotechActive)
+                            {
+                                var xenotypeDef = DefDatabase<XenotypeDef>.GetNamedSilentFail(xenotype);
+                                if (xenotypeDef != null)
+                                {
+                                    displayName = xenotypeDef.LabelCap + " ~ " + xenotype;
+                                }
+                                else
+                                {
+                                    // Optional: log once per missing xenotype to help debugging
+                                    // Logger.WarningOnce($"Xenotype not found in DefDatabase: {xenotype}", xenotype.GetHashCode());
+                                }
+                            }
+
+                            Widgets.Label(xenotypeNameRect, displayName);
 
                             // Enabled checkbox 
                             Rect xenotypeEnabledRect = new Rect(leftPadding + columnWidth, y, 30f, sectionHeight);
