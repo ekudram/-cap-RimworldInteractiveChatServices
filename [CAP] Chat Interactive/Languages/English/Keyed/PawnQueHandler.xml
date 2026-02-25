@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- Pawn Queue Command Handler (RICS.PQCH.*) -->
+
+  <RICS.PQCH.AlreadyHasPawn>You already have a pawn assigned! Use !leave to release your current pawn first.</RICS.PQCH.AlreadyHasPawn>
+  <RICS.PQCH.AlreadyInQueue>You are already in the pawn queue at position #{0}.</RICS.PQCH.AlreadyInQueue>
+  <RICS.PQCH.JoinSuccess>✅ You have joined the pawn queue! Position: #{0} of {1}</RICS.PQCH.JoinSuccess>
+  <RICS.PQCH.JoinFailed>Failed to join the pawn queue. Please try again.</RICS.PQCH.JoinFailed>
+
+  <RICS.PQCH.NotInQueue>You are not in the pawn queue.</RICS.PQCH.NotInQueue>
+  <RICS.PQCH.LeaveSuccess>✅ You have left the pawn queue.</RICS.PQCH.LeaveSuccess>
+  <RICS.PQCH.LeaveFailed>Failed to leave the pawn queue. Please try again.</RICS.PQCH.LeaveFailed>
+
+  <RICS.PQCH.QueueStatusIn>You are in the pawn queue at position #{0} of {1}.</RICS.PQCH.QueueStatusIn>
+  <RICS.PQCH.QueueStatusNot>You are not in the pawn queue. Current queue size: {0}</RICS.PQCH.QueueStatusNot>
+
+  <RICS.PQCH.NoPendingOffer>You don't have a pending pawn offer. Join the queue with !join to get in line!</RICS.PQCH.NoPendingOffer>
+  <RICS.PQCH.AcceptAlreadyHasPawn>You already have a pawn assigned! Use !leave to release your current pawn first.</RICS.PQCH.AcceptAlreadyHasPawn>
+  <RICS.PQCH.AcceptSuccess>🎉 @{0}, you have accepted your pawn {1}. Welcome to the colony!</RICS.PQCH.AcceptSuccess>
+  <RICS.PQCH.AcceptFailed>❌ Your pawn offer is no longer valid. Please join the queue again with !join</RICS.PQCH.AcceptFailed>
+  <RICS.PQCH.AcceptError>Error accepting pawn. Please try again.</RICS.PQCH.AcceptError>
+
+  <!-- Generic error fallback (used in catch blocks) -->
+  <RICS.PQCH.ErrorJoin>Error joining pawn queue. Please try again.</RICS.PQCH.ErrorJoin>
+  <RICS.PQCH.ErrorLeave>Error leaving pawn queue. Please try again.</RICS.PQCH.ErrorLeave>
+
+</LanguageData>
