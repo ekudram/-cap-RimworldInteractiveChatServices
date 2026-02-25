@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+	<!-- Raid Command Handler (RICS.Raid.*) -->
+
+	<RICS.Raid.ErrorViewerData>Error: Could not find your viewer data.</RICS.Raid.ErrorViewerData>
+
+	<RICS.Raid.GlobalLimitReached>❌ Global event limit reached! ({0}/{1} used this period)</RICS.Raid.GlobalLimitReached>
+	<RICS.Raid.BadLimitReached>❌ BAD event limit reached! ({0}/{1} used this period)</RICS.Raid.BadLimitReached>
+	<RICS.Raid.OnCooldown>❌ Raid command is on cooldown.</RICS.Raid.OnCooldown>
+
+	<RICS.Raid.WagerInvalid>Wager must be between {0} and {1}{2}.</RICS.Raid.WagerInvalid>
+	<RICS.Raid.NotEnoughCoins>You need {0}{1} to call a raid! You have {2}{1}.</RICS.Raid.NotEnoughCoins>
+
+	<RICS.Raid.TypeNotAllowed>Raid type '{0}' is not allowed. Allowed types: {1}</RICS.Raid.TypeNotAllowed>
+	<RICS.Raid.StrategyNotAllowed>Strategy '{0}' is not allowed. Allowed strategies: {1}</RICS.Raid.StrategyNotAllowed>
+
+	<RICS.Raid.GameNotReady>Game not ready for raid (no colony, in menu, etc.)</RICS.Raid.GameNotReady>
+
+	<RICS.Raid.MechClusterRequiresRoyalty>Mech Cluster raids require the Royalty DLC. Use '!raid mech' for standard mechanoid raids.</RICS.Raid.MechClusterRequiresRoyalty>
+	<RICS.Raid.WaterRequiresBiotech>Water edge raids require the Biotech DLC.</RICS.Raid.WaterRequiresBiotech>
+
+	<RICS.Raid.SuccessMessage>🎯 Raid incoming! {0} spent {1}{2} to summon a {3} raid.</RICS.Raid.SuccessMessage>
+	<RICS.Raid.FailureNoDeduction>{0} No {1} were deducted.</RICS.Raid.FailureNoDeduction>
+	<RICS.Raid.GenericError>Error calling raid. Please try again.</RICS.Raid.GenericError>
+
+	<!-- Raid description fragments (used in letters / messages) -->
+
+	<RICS.Raid.LetterTitle>Raid Called by {0}</RICS.Raid.LetterTitle>
+	<RICS.Raid.LetterText>{0} has called for a {1} raid!\n\nCost: {2}{3}\n{4}</RICS.Raid.LetterText>
+
+	<!-- Fallback / debug strings (rarely shown to players) -->
+
+	<RICS.Raid.NoPlayerMaps>No player home maps found.</RICS.Raid.NoPlayerMaps>
+	<RICS.Raid.NoValidTargets>No valid targets or factions available for raid right now.</RICS.Raid.NoValidTargets>
+
+</LanguageData>

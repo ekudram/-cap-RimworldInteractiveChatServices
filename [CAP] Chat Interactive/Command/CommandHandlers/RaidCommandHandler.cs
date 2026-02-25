@@ -63,87 +63,65 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     MessageHandler.SendFailureLetter("Raid Failed",
                         $"Could not find viewer data for {user.Username}");
-                    return "Error: Could not find your viewer data.";
+                    return "RICS.Raid.ErrorViewerData".Translate();
                 }
 
-                // NEW: Get raid command settings
                 var raidSettings = GetRaidCommandSettings();
 
-                // NEW: Check global cooldowns using the unified system
                 var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
                 if (cooldownManager != null)
                 {
-                    Logger.Debug($"=== RAID COOLDOWN DEBUG ===");
-                    Logger.Debug($"Raid type: {raidType}");
-                    Logger.Debug($"Strategy: {strategy}");
-                    Logger.Debug($"Wager: {wager}");
-
-                    // Use the unified cooldown check
                     if (!cooldownManager.CanUseCommand("raid", raidSettings, settings))
                     {
-                        // Provide appropriate feedback based on what failed
                         if (!cooldownManager.CanUseGlobalEvents(settings))
                         {
                             int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
-                            Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
-                            // MessageHandler.SendFailureLetter("Raid Blocked",$"{user.Username} tried to call raid but global limit reached\n\n{totalEvents}/{settings.EventsperCooldown} events used");
-                            return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
+                            return "RICS.Raid.GlobalLimitReached".Translate(totalEvents, settings.EventsperCooldown);
                         }
 
-                        // Check bad event limit specifically
                         if (settings.KarmaTypeLimitsEnabled && !cooldownManager.CanUseEvent("bad", settings))
                         {
                             var badRecord = cooldownManager.data.EventUsage.GetValueOrDefault("bad");
                             int badUsed = badRecord?.CurrentPeriodUses ?? 0;
-                            string cooldownMessage = $"❌ BAD event limit reached! ({badUsed}/{settings.MaxBadEvents} used this period)";
-                            Logger.Debug($"Bad event limit reached: {badUsed}/{settings.MaxBadEvents}");
-                            // MessageHandler.SendFailureLetter("Raid Blocked",$"{user.Username} tried to call raid but bad event limit reached\n\n{badUsed}/{settings.MaxBadEvents} bad events used");
-                            return cooldownMessage;
+                            return "RICS.Raid.BadLimitReached".Translate(badUsed, settings.MaxBadEvents);
                         }
 
-                        return $"❌ Raid command is on cooldown.";
+                        return "RICS.Raid.OnCooldown".Translate();
                     }
-
-                    Logger.Debug($"Raid cooldown check passed");
                 }
 
-                // Validate wager amount against settings
                 if (wager < raidSettings.MinRaidWager || wager > raidSettings.MaxRaidWager)
                 {
-                    return $"Wager must be between {raidSettings.MinRaidWager} and {raidSettings.MaxRaidWager}{currencySymbol}.";
+                    return "RICS.Raid.WagerInvalid".Translate(raidSettings.MinRaidWager, raidSettings.MaxRaidWager, currencySymbol);
                 }
 
-                // Validate wager amount
                 if (viewer.Coins < wager)
                 {
-                    return $"You need {wager}{currencySymbol} to call a raid! You have {viewer.Coins}{currencySymbol}.";
+                    return "RICS.Raid.NotEnoughCoins".Translate(wager, currencySymbol, viewer.Coins);
                 }
 
-                // NEW: Check if raid type is allowed
                 if (raidSettings.AllowedRaidTypes != null && raidSettings.AllowedRaidTypes.Count > 0 &&
                     !raidSettings.AllowedRaidTypes.Contains(raidType.ToLower()))
                 {
-                    return $"Raid type '{raidType}' is not allowed. Allowed types: {string.Join(", ", raidSettings.AllowedRaidTypes)}";
+                    return "RICS.Raid.TypeNotAllowed".Translate(raidType, string.Join(", ", raidSettings.AllowedRaidTypes));
                 }
 
-                // NEW: Check if strategy is allowed
                 if (!string.IsNullOrEmpty(strategy) && strategy.ToLower() != "default" &&
                     raidSettings.AllowedRaidStrategies != null && raidSettings.AllowedRaidStrategies.Count > 0 &&
                     !raidSettings.AllowedRaidStrategies.Contains(strategy.ToLower()))
                 {
-                    return $"Strategy '{strategy}' is not allowed. Allowed strategies: {string.Join(", ", raidSettings.AllowedRaidStrategies)}";
+                    return "RICS.Raid.StrategyNotAllowed".Translate(strategy, string.Join(", ", raidSettings.AllowedRaidStrategies));
                 }
 
                 if (!IsGameReadyForRaid())
                 {
-                    return "Game not ready for raid (no colony, in menu, etc.)";
+                    return "RICS.Raid.GameNotReady".Translate();
                 }
 
-                // Validate raid type availability
                 var validationResult = ValidateRaidType(raidType);
                 if (!validationResult.IsValid)
                 {
-                    return validationResult.Message;
+                    return validationResult.Message;  // already contains translated content in most cases
                 }
 
                 var result = TriggerRaid(user.Username, raidType, strategy, wager);
@@ -151,41 +129,31 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (result.Success)
                 {
                     viewer.TakeCoins(wager);
-
                     viewer.TakeKarma(CalculateKarmaChange(wager, raidType, strategy));
 
-                    // Record raid usage for cooldowns ONLY ON SUCCESS
                     if (cooldownManager != null)
                     {
-                        cooldownManager.RecordEventUse("bad"); // Raids are always bad events
-                        Logger.Debug($"Recorded raid usage as bad event");
-
-                        // Log current state after recording
-                        var badRecord = cooldownManager.data.EventUsage.GetValueOrDefault("bad");
-                        if (badRecord != null)
-                        {
-                            Logger.Debug($"Current bad event usage: {badRecord.CurrentPeriodUses}");
-                        }
+                        cooldownManager.RecordEventUse("bad");
                     }
 
                     string raidDetails = BuildRaidDetails(result, wager, currencySymbol);
 
                     MessageHandler.SendFailureLetter(
-                        $"Raid Called by {user.Username}",
-                        $"{user.Username} has called for a {raidType} raid!\n\nCost: {wager}{currencySymbol}\n{raidDetails}"
+                        "RICS.Raid.LetterTitle".Translate(user.Username),
+                        "RICS.Raid.LetterText".Translate(user.Username, raidType, wager, currencySymbol, raidDetails)
                     );
 
-                    return result.Message;
+                    return "RICS.Raid.SuccessMessage".Translate(user.Username, wager, currencySymbol, raidType);
                 }
                 else
                 {
-                    return $"{result.Message} No {currencySymbol} were deducted.";
+                    return "RICS.Raid.FailureNoDeduction".Translate(result.Message, currencySymbol);
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error handling raid command: {ex}");
-                return "Error calling raid. Please try again.";
+                return "RICS.Raid.GenericError".Translate();
             }
         }
 
@@ -196,8 +164,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 case "mechcluster":
                     if (!HasRoyaltyDLC)
                     {
-                        return new RaidValidationResult(false,
-                            "Mech Cluster raids require the Royalty DLC. Use '!raid mech' for standard mechanoid raids.");
+                        return new RaidValidationResult(false, "RICS.Raid.MechClusterRequiresRoyalty".Translate());
                     }
                     break;
 
@@ -205,8 +172,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 case "wateredge":
                     if (!HasBiotechDLC)
                     {
-                        return new RaidValidationResult(false,
-                            "Water edge raids require the Biotech DLC.");
+                        return new RaidValidationResult(false, "RICS.Raid.WaterRequiresBiotech".Translate());
                     }
                     break;
             }
@@ -220,7 +186,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (!playerMaps.Any())
             {
-                return new RaidResult(false, "No player home maps found.");
+                // return new RaidResult(false, "No player home maps found.");
+                return new RaidResult(false, "RICSRICS.Raid.NoValidMaps".Translate()); 
             }
 
             // Try each player map until we find one that works
@@ -255,7 +222,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            return new RaidResult(false, "No valid targets or factions available for raid right now.");
+            // return new RaidResult(false, "No valid targets or factions available for raid right now.");
+            return new RaidResult(false, "RICS.raid.NoValidTargets".Translate() );
         }
 
         private static string BuildRaidDescription(RaidConfiguration config, string raidType)
