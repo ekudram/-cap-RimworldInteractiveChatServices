@@ -32,30 +32,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
-                Logger.Debug($"HandleRevivePawn called for user: {user.Username}, args: {string.Join(", ", args)}");
-
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
                 var viewer = Viewers.GetViewer(user);
 
-                // Get the Resurrector Mech Serum store item for pricing
                 var resurrectorSerum = StoreInventory.GetStoreItem("MechSerumResurrector");
-                if (resurrectorSerum == null)
+                if (resurrectorSerum == null || (!resurrectorSerum.IsUsable && !resurrectorSerum.Enabled))
                 {
-                    return "Resurrector Mech Serum is not available for revival services.";
-                }
-
-                if (!resurrectorSerum.IsUsable && !resurrectorSerum.Enabled)
-                {
-                    return "Resurrector Mech Serum is not available for revival services.";
+                    return "RICS.RPCH.SerumNotAvailable".Translate();
                 }
 
                 int pricePerRevive = resurrectorSerum.BasePrice;
 
-                // Parse command arguments
                 if (args.Length == 0)
                 {
-                    // Revive self
                     return ReviveSelf(user, viewer, pricePerRevive, currencySymbol);
                 }
 
@@ -63,141 +53,114 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (target == "all")
                 {
-                    // Revive all dead pawns
                     return ReviveAll(user, viewer, pricePerRevive, currencySymbol);
                 }
                 else
                 {
-                    // Revive specific user's pawn
                     return ReviveSpecificUser(user, viewer, target, pricePerRevive, currencySymbol);
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in HandleRevivePawn: {ex}");
-                return "Error processing revive command. Please try again.";
+                return "RICS.RPCH.GenericError".Translate();
             }
         }
 
-        private static string ReviveSelf(ChatMessageWrapper user, Viewer viewer, int pricePerRevive, string currencySymbol)
+        private static string ReviveSelf(ChatMessageWrapper user, Viewer viewer, int price, string currencySymbol)
         {
             var viewerPawn = PawnItemHelper.GetViewerPawn(user);
 
             if (viewerPawn == null)
-            {
-                return "You don't have a pawn assigned. Use !buy pawn first.";
-            }
+                return "RICS.RPCH.NoArgsSelf".Translate();
 
             if (!viewerPawn.Dead)
-            {
-                return "Your pawn is already alive!";
-            }
+                return "RICS.RPCH.AlreadyAlive".Translate();
 
             if (UseItemCommandHandler.CannotResurrectPawn(viewerPawn))
+                return "RICS.RPCH.BodyDestroyed".Translate();
+
+            if (!StoreCommandHelper.CanUserAfford(user, price))
             {
-                return "Your pawn's body has been completely destroyed and cannot be revived.";
+                return "RICS.RPCH.CannotAffordSelf".Translate(
+                    StoreCommandHelper.FormatCurrencyMessage(price, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)
+                );
             }
 
-            // Check if user can afford
-            if (!StoreCommandHelper.CanUserAfford(user, pricePerRevive))
-            {
-                return $"You need {StoreCommandHelper.FormatCurrencyMessage(pricePerRevive, currencySymbol)} to revive your pawn! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
-            }
-
-            // Deduct coins and revive
-            viewer.TakeCoins(pricePerRevive);
+            viewer.TakeCoins(price);
             UseItemCommandHandler.ResurrectPawn(viewerPawn);
 
-            int karmaEarned = pricePerRevive / 100;
-            if (karmaEarned > 0)
+            int karma = price / 100;
+            if (karma > 0)
             {
-                viewer.GiveKarma(karmaEarned);
-                Logger.Debug($"Awarded {karmaEarned} karma for {pricePerRevive} coin purchase");
+                viewer.GiveKarma(karma);
             }
 
-            // Record the purchase for cooldown tracking
             var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
-            if (cooldownManager != null)
-            {
-                cooldownManager.RecordItemPurchase("revive"); // or "heal" for healpawn
-            }
+            cooldownManager?.RecordItemPurchase("revive");
 
-            // Send resurrection invoice
-            string invoiceLabel = $"💖 Rimazon Resurrection - {user.Username}";
-            string invoiceMessage = UseItemCommandHandler.CreateRimazonResurrectionInvoice(user.Username, "Pawn Resurrection", pricePerRevive, currencySymbol);
-            MessageHandler.SendPinkLetter(invoiceLabel, invoiceMessage);
+            string label = "RICS.RPCH.InvoiceSelfLabel".Translate(user.Username);
+            string message = BuildSelfResurrectionInvoice(user.Username, price, currencySymbol);
+            MessageHandler.SendPinkLetter(label, message);
 
-            Logger.Debug($"Revive self successful: {user.Username} revived their pawn for {pricePerRevive}{currencySymbol}");
-            return $"💖 RESURRECTION! Revived your pawn for {StoreCommandHelper.FormatCurrencyMessage(pricePerRevive, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            return "RICS.RPCH.ReviveSelfSuccess".Translate(
+                StoreCommandHelper.FormatCurrencyMessage(price, currencySymbol),
+                StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)
+            );
         }
 
-        private static string ReviveSpecificUser(ChatMessageWrapper user, Viewer viewer, string targetUsername, int pricePerRevive, string currencySymbol)
+        private static string ReviveSpecificUser(ChatMessageWrapper user, Viewer viewer, string targetUsername, int price, string currencySymbol)
         {
-            // Check if user can afford
-            if (!StoreCommandHelper.CanUserAfford(user, pricePerRevive))
+            if (!StoreCommandHelper.CanUserAfford(user, price))
             {
-                return $"You need {StoreCommandHelper.FormatCurrencyMessage(pricePerRevive, currencySymbol)} to revive {targetUsername}'s pawn! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return "RICS.RPCH.CannotAffordTarget".Translate(
+                    StoreCommandHelper.FormatCurrencyMessage(price, currencySymbol),
+                    targetUsername,
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)
+                );
             }
 
-            // FIXED: Use assignment manager directly for better debugging
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
             var targetPawn = assignmentManager.GetAssignedPawn(targetUsername);
 
-            Logger.Debug($"ReviveSpecificUser: Looking for pawn for '{targetUsername}'");
-            Logger.Debug($"ReviveSpecificUser: Assignment manager found pawn: {targetPawn != null}");
-
             if (targetPawn == null)
-            {
-                Logger.Debug($"ReviveSpecificUser: No pawn found for username '{targetUsername}'");
-                return $"{targetUsername} doesn't have a pawn assigned.";
-            }
+                return "RICS.RPCH.NoPawnForTarget".Translate(targetUsername);
 
             if (!targetPawn.Dead)
-            {
-                return $"{targetUsername}'s pawn is already alive!";
-            }
+                return "RICS.RPCH.TargetAlreadyAlive".Translate(targetUsername);
 
             if (UseItemCommandHandler.CannotResurrectPawn(targetPawn))
-            {
-                return $"{targetUsername}'s pawn body has been completely destroyed and cannot be revived.";
-            }
+                return "RICS.RPCH.TargetBodyDestroyed".Translate(targetUsername);
 
-            // Rest of the method remains the same...
-            viewer.TakeCoins(pricePerRevive);
+            viewer.TakeCoins(price);
             UseItemCommandHandler.ResurrectPawn(targetPawn);
 
-            int karmaEarned = pricePerRevive / 100;
-            if (karmaEarned > 0)
-            {
-                viewer.GiveKarma(karmaEarned);
-                Logger.Debug($"Awarded {karmaEarned} karma for {pricePerRevive} coin purchase");
-            }
+            int karma = price / 100;
+            if (karma > 0) viewer.GiveKarma(karma);
 
-            // Record the purchase for cooldown tracking
             var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
-            if (cooldownManager != null)
-            {
-                cooldownManager.RecordItemPurchase("revive"); // or "heal" for healpawn
-            }
+            cooldownManager?.RecordItemPurchase("revive");
 
-            // Send resurrection invoice
-            string invoiceLabel = $"💖 Rimazon Resurrection - {user.Username} → {targetUsername}";
-            string invoiceMessage = CreateMultiUserResurrectionInvoice(user.Username, targetUsername, pricePerRevive, currencySymbol);
-            MessageHandler.SendPinkLetter(invoiceLabel, invoiceMessage);
+            string label = "RICS.RPCH.InvoiceTargetLabel".Translate(user.Username, targetUsername);
+            string message = BuildTargetResurrectionInvoice(user.Username, targetUsername, price, currencySymbol);
+            MessageHandler.SendPinkLetter(label, message);
 
-            Logger.Debug($"Revive specific user successful: {user.Username} revived {targetUsername}'s pawn for {pricePerRevive}{currencySymbol}");
-            return $"💖 RESURRECTION! Revived {targetUsername}'s pawn for {StoreCommandHelper.FormatCurrencyMessage(pricePerRevive, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            return "RICS.RPCH.ReviveTargetSuccess".Translate(
+                targetUsername,
+                StoreCommandHelper.FormatCurrencyMessage(price, currencySymbol),
+                StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)
+            );
         }
 
         private static string ReviveAll(ChatMessageWrapper user, Viewer viewer, int pricePerRevive, string currencySymbol)
         {
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-            var allAssignedUsernames = assignmentManager.GetAllAssignedUsernames().ToList();
+            var allUsernames = assignmentManager.GetAllAssignedUsernames().ToList();
 
-            var deadPawns = new List<(string username, Verse.Pawn pawn)>();
+            var deadPawns = new List<(string username, Pawn pawn)>();
 
-            // Find all dead assigned pawns - FIXED: Use assignment manager directly
-            foreach (var username in allAssignedUsernames)
+            foreach (var username in allUsernames)
             {
                 var pawn = assignmentManager.GetAssignedPawn(username);
                 if (pawn != null && pawn.Dead && !UseItemCommandHandler.CannotResurrectPawn(pawn))
@@ -206,25 +169,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            // Rest of the method remains the same...
             if (deadPawns.Count == 0)
-            {
-                return "No dead pawns found to revive.";
-            }
+                return "RICS.RPCH.NoDeadPawns".Translate();
 
             int totalCost = deadPawns.Count * pricePerRevive;
 
-            // Check if user can afford all revives
             if (!StoreCommandHelper.CanUserAfford(user, totalCost))
             {
-                return $"You need {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)} to revive all {deadPawns.Count} dead pawns! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return "RICS.RPCH.CannotAffordAll".Translate(
+                    StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                    deadPawns.Count,
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)
+                );
             }
 
-            // Revive all dead pawns
             int revivedCount = 0;
-            foreach (var (username, pawn) in deadPawns)
+            foreach (var (_, pawn) in deadPawns)
             {
-                // Double-check pawn is still dead and not destroyed
                 if (pawn.Dead && !UseItemCommandHandler.CannotResurrectPawn(pawn))
                 {
                     UseItemCommandHandler.ResurrectPawn(pawn);
@@ -232,64 +193,65 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            // Deduct total cost
             viewer.TakeCoins(totalCost);
 
-            int karmaEarned = pricePerRevive / 100;
-            if (karmaEarned > 0)
-            {
-                viewer.GiveKarma(karmaEarned);
-                Logger.Debug($"Awarded {karmaEarned} karma for {pricePerRevive} coin purchase");
-            }
+            int karma = pricePerRevive / 100;
+            if (karma > 0) viewer.GiveKarma(karma);
 
-            // Record the purchase for cooldown tracking
             var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
-            if (cooldownManager != null)
-            {
-                cooldownManager.RecordItemPurchase("revive"); // or "heal" for healpawn
-            }
+            cooldownManager?.RecordItemPurchase("revive");
 
-            // Send resurrection invoice
-            string invoiceLabel = $"💖 Rimazon Mass Resurrection - {user.Username}";
-            string invoiceMessage = CreateMassResurrectionInvoice(user.Username, revivedCount, totalCost, currencySymbol);
-            MessageHandler.SendPinkLetter(invoiceLabel, invoiceMessage);
+            string label = "RICS.RPCH.InvoiceMassLabel".Translate(user.Username);
+            string message = BuildMassResurrectionInvoice(user.Username, revivedCount, totalCost, currencySymbol);
+            MessageHandler.SendPinkLetter(label, message);
 
-            Logger.Debug($"Revive all successful: {user.Username} revived {revivedCount} pawns for {totalCost}{currencySymbol}");
-            return $"💖 MASS RESURRECTION! Revived {revivedCount} pawns for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            return "RICS.RPCH.MassReviveSuccess".Translate(
+                revivedCount,
+                StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)
+            );
         }
 
-        private static string CreateMultiUserResurrectionInvoice(string reviverUsername, string targetUsername, int price, string currencySymbol)
-        {
-            string invoice = $"RIMAZON RESURRECTION SERVICE\n";
-            invoice += $"====================\n";
-            invoice += $"Reviver: {reviverUsername}\n";
-            invoice += $"Target: {targetUsername}\n";
-            invoice += $"Service: Pawn Resurrection\n";
-            invoice += $"====================\n";
-            invoice += $"Total: {price}{currencySymbol}\n";
-            invoice += $"====================\n";
-            invoice += $"Thank you for using Rimazon Resurrection!\n";
-            invoice += $"A kind soul has restored {targetUsername}'s pawn to life!\n";
-            invoice += $"Life is precious - cherish every moment! 💖";
+        // ───────────────────────────────────────────────
+        // Helper methods for building translatable invoices
+        // ───────────────────────────────────────────────
 
-            return invoice;
+        private static string BuildSelfResurrectionInvoice(string username, int price, string currencySymbol)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("RICS.RPCH.InvoiceHeader".Translate());
+            sb.AppendLine("RICS.RPCH.InvoiceReviver".Translate(username));
+            sb.AppendLine("RICS.RPCH.InvoiceService".Translate());
+            sb.AppendLine("RICS.RPCH.InvoiceTotal".Translate(StoreCommandHelper.FormatCurrencyMessage(price, currencySymbol)));
+            sb.AppendLine("RICS.RPCH.InvoiceFooter".Translate());
+            sb.AppendLine("RICS.RPCH.InvoiceSelfThanks".Translate());
+            return sb.ToString();
         }
 
-        private static string CreateMassResurrectionInvoice(string reviverUsername, int revivedCount, int totalPrice, string currencySymbol)
+        private static string BuildTargetResurrectionInvoice(string reviver, string target, int price, string currencySymbol)
         {
-            string invoice = $"RIMAZON MASS RESURRECTION SERVICE\n";
-            invoice += $"====================\n";
-            invoice += $"Reviver: {reviverUsername}\n";
-            invoice += $"Service: Mass Resurrection\n";
-            invoice += $"Pawns Revived: {revivedCount}\n";
-            invoice += $"====================\n";
-            invoice += $"Total: {totalPrice}{currencySymbol}\n";
-            invoice += $"====================\n";
-            invoice += $"Thank you for using Rimazon Mass Resurrection!\n";
-            invoice += $"You have restored {revivedCount} souls to life!\n";
-            invoice += $"The colony thanks you for your generosity! 💖";
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("RICS.RPCH.InvoiceHeader".Translate());
+            sb.AppendLine("RICS.RPCH.InvoiceReviver".Translate(reviver));
+            sb.AppendLine("RICS.RPCH.InvoiceTarget".Translate(target));
+            sb.AppendLine("RICS.RPCH.InvoiceService".Translate());
+            sb.AppendLine("RICS.RPCH.InvoiceTotal".Translate(StoreCommandHelper.FormatCurrencyMessage(price, currencySymbol)));
+            sb.AppendLine("RICS.RPCH.InvoiceFooter".Translate());
+            sb.AppendLine("RICS.RPCH.InvoiceTargetThanks".Translate(target));
+            return sb.ToString();
+        }
 
-            return invoice;
+        private static string BuildMassResurrectionInvoice(string reviver, int count, int total, string currencySymbol)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("RICS.RPCH.InvoiceHeader".Translate());
+            sb.AppendLine("RICS.RPCH.InvoiceReviver".Translate(reviver));
+            sb.AppendLine("RICS.RPCH.InvoiceMassService".Translate());
+            sb.AppendLine("RICS.RPCH.InvoicePawnsRevived".Translate(count));
+            sb.AppendLine("RICS.RPCH.InvoiceTotal".Translate(StoreCommandHelper.FormatCurrencyMessage(total, currencySymbol)));
+            sb.AppendLine("RICS.RPCH.InvoiceFooter".Translate());
+            sb.AppendLine("RICS.RPCH.InvoiceMassThanks".Translate(count));
+            return sb.ToString();
         }
     }
 }

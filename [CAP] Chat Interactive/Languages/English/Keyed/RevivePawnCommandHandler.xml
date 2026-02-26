@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- Revive Pawn Command Handler (RICS.RPCH.*) -->
+
+  <RICS.RPCH.SerumNotAvailable>Resurrector Mech Serum is not available for revival services.</RICS.RPCH.SerumNotAvailable>
+
+  <RICS.RPCH.NoArgsSelf>You don't have a pawn assigned. Use !buy pawn first.</RICS.RPCH.NoArgsSelf>
+  <RICS.RPCH.AlreadyAlive>Your pawn is already alive!</RICS.RPCH.AlreadyAlive>
+  <RICS.RPCH.BodyDestroyed>Your pawn's body has been completely destroyed and cannot be revived.</RICS.RPCH.BodyDestroyed>
+
+  <RICS.RPCH.CannotAffordSelf>You need {0} to revive your pawn! You have {1}.</RICS.RPCH.CannotAffordSelf>
+  <RICS.RPCH.ReviveSelfSuccess>💖 RESURRECTION! Revived your pawn for {0}! Remaining: {1}.</RICS.RPCH.ReviveSelfSuccess>
+
+  <RICS.RPCH.NoPawnForTarget>{0} doesn't have a pawn assigned.</RICS.RPCH.NoPawnForTarget>
+  <RICS.RPCH.TargetAlreadyAlive>{0}'s pawn is already alive!</RICS.RPCH.TargetAlreadyAlive>
+  <RICS.RPCH.TargetBodyDestroyed>{0}'s pawn body has been completely destroyed and cannot be revived.</RICS.RPCH.TargetBodyDestroyed>
+  <RICS.RPCH.CannotAffordTarget>You need {0} to revive {1}'s pawn! You have {2}.</RICS.RPCH.CannotAffordTarget>
+  <RICS.RPCH.ReviveTargetSuccess>💖 RESURRECTION! Revived {0}'s pawn for {1}! Remaining: {2}.</RICS.RPCH.ReviveTargetSuccess>
+
+  <RICS.RPCH.NoDeadPawns>No dead pawns found to revive.</RICS.RPCH.NoDeadPawns>
+  <RICS.RPCH.CannotAffordAll>You need {0} to revive all {1} dead pawns! You have {2}.</RICS.RPCH.CannotAffordAll>
+  <RICS.RPCH.MassReviveSuccess>💖 MASS RESURRECTION! Revived {0} pawns for {1}! Remaining: {2}.</RICS.RPCH.MassReviveSuccess>
+
+  <RICS.RPCH.GenericError>Error processing revive command. Please try again.</RICS.RPCH.GenericError>
+
+  <!-- Rimazon invoice fragments -->
+
+  <RICS.RPCH.InvoiceSelfLabel>💖 Rimazon Resurrection - {0}</RICS.RPCH.InvoiceSelfLabel>
+  <RICS.RPCH.InvoiceTargetLabel>💖 Rimazon Resurrection - {0} → {1}</RICS.RPCH.InvoiceTargetLabel>
+  <RICS.RPCH.InvoiceMassLabel>💖 Rimazon Mass Resurrection - {0}</RICS.RPCH.InvoiceMassLabel>
+
+  <!-- Invoice body parts (can be combined or overridden per language) -->
+
+  <RICS.RPCH.InvoiceHeader>RIMAZON RESURRECTION SERVICE\n====================</RICS.RPCH.InvoiceHeader>
+  <RICS.RPCH.InvoiceReviver>Reviver: {0}</RICS.RPCH.InvoiceReviver>
+  <RICS.RPCH.InvoiceTarget>Target: {0}</RICS.RPCH.InvoiceTarget>
+  <RICS.RPCH.InvoiceService>Service: Pawn Resurrection</RICS.RPCH.InvoiceService>
+  <RICS.RPCH.InvoiceMassService>Service: Mass Resurrection</RICS.RPCH.InvoiceMassService>
+  <RICS.RPCH.InvoicePawnsRevived>Pawns Revived: {0}</RICS.RPCH.InvoicePawnsRevived>
+  <RICS.RPCH.InvoiceTotal>Total: {0}</RICS.RPCH.InvoiceTotal>
+  <RICS.RPCH.InvoiceFooter>====================\nThank you for using Rimazon Resurrection!</RICS.RPCH.InvoiceFooter>
+
+  <RICS.RPCH.InvoiceSelfThanks>A kind soul has restored your pawn to life!\nLife is precious - cherish every moment! 💖</RICS.RPCH.InvoiceSelfThanks>
+  <RICS.RPCH.InvoiceTargetThanks>A kind soul has restored {0}'s pawn to life!\nLife is precious - cherish every moment! 💖</RICS.RPCH.InvoiceTargetThanks>
+  <RICS.RPCH.InvoiceMassThanks>You have restored {0} souls to life!\nThe colony thanks you for your generosity! 💖</RICS.RPCH.InvoiceMassThanks>
+
+</LanguageData>
