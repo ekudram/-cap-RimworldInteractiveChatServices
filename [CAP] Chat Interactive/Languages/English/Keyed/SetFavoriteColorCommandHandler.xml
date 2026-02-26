@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- Set Favorite Color Command Handler (RICS.SFCCH.*) -->
+
+  <RICS.SFCCH.NoPawn>You need to have a pawn in the colony to set a favorite color. Use !buy pawn first.</RICS.SFCCH.NoPawn>
+  <RICS.SFCCH.NoStory>Your pawn doesn't have a background story. This shouldn't happen!</RICS.SFCCH.NoStory>
+
+  <RICS.SFCCH.UsageNoArgs>Please specify a color. Current color: {0}\nUsage: !setfavoritecolor [color] (e.g., !setfavoritecolor blue or !setfavoritecolor #FF0000)</RICS.SFCCH.UsageNoArgs>
+
+  <RICS.SFCCH.SuccessNamed>Your pawn's favorite color has been set to {0}!</RICS.SFCCH.SuccessNamed>
+  <RICS.SFCCH.SuccessHSV>Your pawn's favorite color has been set to {0} HSV {1}!</RICS.SFCCH.SuccessHSV>
+  <RICS.SFCCH.SuccessGeneric>Your pawn's favorite color has been set to {0}!</RICS.SFCCH.SuccessGeneric>
+
+  <RICS.SFCCH.InvalidColor>'{0}' is not a valid color. Use color names or hex codes like #FF0000.</RICS.SFCCH.InvalidColor>
+  <RICS.SFCCH.FailedToSet>Failed to set favorite color.</RICS.SFCCH.FailedToSet>
+
+  <!-- Optional: more detailed error (rarely shown to players) -->
+  <RICS.SFCCH.ErrorLogPrefix>Failed to set favorite color for pawn {0}: {1}</RICS.SFCCH.ErrorLogPrefix>
+
+</LanguageData>

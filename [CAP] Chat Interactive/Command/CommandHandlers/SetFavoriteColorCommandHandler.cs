@@ -32,104 +32,88 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         internal static string HandleSetFavoriteColorCommand(ChatMessageWrapper messageWrapper, string[] args)
         {
-            // Get the viewer's pawn
             Verse.Pawn viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
             if (viewerPawn == null)
             {
-                return "You need to have a pawn in the colony to set a favorite color. Use !buy pawn first.";
+                return "RICS.SFCCH.NoPawn".Translate();
             }
 
-            // Check if pawn has a story (should always have one, but safety check)
             if (viewerPawn.story == null)
             {
-                return "Your pawn doesn't have a background story. This shouldn't happen!";
+                return "RICS.SFCCH.NoStory".Translate();
             }
 
-            // Parse color from arguments
+            // Show current color + usage when no arguments
             if (args.Length == 0 || string.IsNullOrEmpty(args[0]))
             {
-                var colour = viewerPawn.story.favoriteColor.defName;
-                return $"Please specify a color.Current color:{colour} Usage: !setfavoritecolor <color> (e.g., !setfavoritecolor blue or !setfavoritecolor #FF0000)";
+                var currentColorDef = viewerPawn.story.favoriteColor;
+                string current = currentColorDef != null ? currentColorDef.defName : "none";
+                return "RICS.SFCCH.UsageNoArgs".Translate(current);
             }
 
-            // Combine args to handle multi-word color names (up to 3 words)
+            // Combine args for multi-word color names (up to 3 words)
             string colorInput = args[0];
             if (args.Length > 1)
             {
-                // Combine first 3 words at most for color names like "Dark Red" or "Sky Blue"
-                int wordsToCombine = Mathf.Min(args.Length, 3);
-                colorInput = string.Join(" ", args.Take(wordsToCombine));
+                int wordsToTake = Mathf.Min(args.Length, 3);
+                colorInput = string.Join(" ", args.Take(wordsToTake));
             }
 
-            // First try to find an exact match in ColorDefs by name
+            // 1. Try exact ColorDef by name
             ColorDef colorDefFromName = FindColorDefByName(colorInput);
             if (colorDefFromName != null)
             {
-                // We found a ColorDef by name, use it directly
-                bool successColorDef = SetPawnFavoriteColor(viewerPawn, colorDefFromName.color);
-                if (successColorDef)
+                bool success = SetPawnFavoriteColor(viewerPawn, colorDefFromName.color);
+                if (success)
                 {
-                    return $"Your pawn's favorite color has been set to {colorDefFromName.label}!";
+                    return "RICS.SFCCH.SuccessNamed".Translate(colorDefFromName.label);
                 }
             }
 
-            // If not found by name, try parsing as color value
-            Color? color = ColorHelper.ParseColor(colorInput);
-            if (!color.HasValue)
+            // 2. Try parsing as hex / rgb etc.
+            Color? parsedColor = ColorHelper.ParseColor(colorInput);
+            if (!parsedColor.HasValue)
             {
-                // Before giving up, check if there's a close ColorDef match by value
+                // Try closest match as fallback
                 colorDefFromName = FindClosestColorDef(colorInput);
                 if (colorDefFromName != null)
                 {
-                    bool successParseColor = SetPawnFavoriteColor(viewerPawn, colorDefFromName.color);
-                    if (successParseColor)
+                    bool success = SetPawnFavoriteColor(viewerPawn, colorDefFromName.color);
+                    if (success)
                     {
-                        return $"Your pawn's favorite color has been set to {colorDefFromName.label} HSV {colorDefFromName.color}!";
+                        return "RICS.SFCCH.SuccessHSV".Translate(
+                            colorDefFromName.label,
+                            colorDefFromName.color.ToString()
+                        );
                     }
                 }
 
-                return $"'{colorInput}' is not a valid color. Use color names or hex codes like #FF0000.";
+                return "RICS.SFCCH.InvalidColor".Translate(colorInput);
             }
 
-            if (!color.HasValue)
+            // 3. Set parsed color
+            bool setSuccess = SetPawnFavoriteColor(viewerPawn, parsedColor.Value);
+
+            if (setSuccess)
             {
-                return $"'{args[0]}' is not a valid color. Use color names or hex codes like #FF0000.";
+                string colorName = GetColorName(parsedColor.Value);
+                return "RICS.SFCCH.SuccessGeneric".Translate(colorName);
             }
 
-            // Debug: Log what color we're trying to set
-            Log.Message($"Setting favorite color: {args[0]} -> RGBA({color.Value.r}, {color.Value.g}, {color.Value.b}, {color.Value.a})");
-
-            // Set the favorite color
-            bool success = SetPawnFavoriteColor(viewerPawn, color.Value);
-
-            if (success)
-            {
-                string colorName = GetColorName(color.Value);
-                // Also log what ColorDef was actually set
-                if (viewerPawn.story.favoriteColor != null)
-                {
-                    Log.Message($"Successfully set favorite color to: {viewerPawn.story.favoriteColor.defName} - RGBA({viewerPawn.story.favoriteColor.color.r}, {viewerPawn.story.favoriteColor.color.g}, {viewerPawn.story.favoriteColor.color.b}, {viewerPawn.story.favoriteColor.color.a})");
-                }
-                return $"Your pawn's favorite color has been set to {colorName}!";
-            }
-            else
-            {
-                return "Failed to set favorite color.";
-            }
+            return "RICS.SFCCH.FailedToSet".Translate();
         }
 
         private static bool SetPawnFavoriteColor(Verse.Pawn pawn, Color color)
         {
             try
             {
-                // Create or get a ColorDef for this color
                 ColorDef colorDef = GetColorDef(color);
                 pawn.story.favoriteColor = colorDef;
                 return true;
             }
             catch (Exception ex)
             {
-                Log.Error($"Failed to set favorite color for pawn {pawn.Name}: {ex.Message}");
+                Log.Error("RICS.SFCCH.ErrorLogPrefix".Translate(pawn.Name.ToString(), ex.Message));
                 return false;
             }
         }
@@ -143,7 +127,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             }
             catch (Exception ex)
             {
-                Log.Error($"Failed to set favorite color for pawn {pawn.Name}: {ex.Message}");
+                Log.Error("RICS.SFCCH.ErrorLogPrefix".Translate(pawn.Name.ToString(), ex.Message));
                 return false;
             }
         }
