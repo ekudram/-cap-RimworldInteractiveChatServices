@@ -41,7 +41,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             catch (Exception ex)
             {
                 Log.Error($"Error in research command: {ex}");
-                return "An error occurred while processing the research command.";
+                return "RICS.Research.Error".Translate();
             }
         }
 
@@ -52,19 +52,23 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             if (currentProject == null)
             {
-                return "No research project is currently selected.";
+                return "RICS.Research.NoArgsCurrent".Translate();
             }
 
             float progressPercent = currentProject.ProgressApparent;
             float totalCost = currentProject.CostApparent;
-            float remainingCost = totalCost - progressPercent;
+            float percent = totalCost > 0 ? (progressPercent / totalCost) * 100 : 0;
 
-            return $"Current research: {currentProject.LabelCap} - {progressPercent:F0}/{totalCost:F0} ({progressPercent / totalCost * 100:F1}% complete)";
+            return "RICS.Research.CurrentStatus".Translate(
+                currentProject.LabelCap,
+                progressPercent,
+                totalCost,
+                percent
+            );
         }
 
         private static string GetSpecificResearchStatus(string researchName)
         {
-            // Find research project by name
             var allResearch = DefDatabase<ResearchProjectDef>.AllDefs;
             var matchingProjects = allResearch.Where(r =>
                 r.LabelCap.ToString().ToLower().Contains(researchName.ToLower()) ||
@@ -73,13 +77,14 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             if (matchingProjects.Count == 0)
             {
-                return $"No research project found matching '{researchName}'. Use !research without arguments to see current project.";
+                return "RICS.Research.NoMatch".Translate(researchName);
             }
 
             if (matchingProjects.Count > 1)
             {
                 var projectNames = string.Join(", ", matchingProjects.Take(3).Select(p => p.LabelCap));
-                return $"Multiple projects match '{researchName}': {projectNames}" + (matchingProjects.Count > 3 ? "..." : "");
+                string ellipsis = matchingProjects.Count > 3 ? "RICS.Research.MultipleEllipsis".Translate() : "";
+                return "RICS.Research.MultipleMatches".Translate(researchName, projectNames, ellipsis);
             }
 
             var project = matchingProjects[0];
@@ -87,23 +92,31 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             if (project.IsFinished)
             {
-                return $"{project.LabelCap} - COMPLETED";
+                return "RICS.Research.Completed".Translate(project.LabelCap);
             }
 
             float progress = researchManager.GetProgress(project);
             float totalCost = project.CostApparent;
-            float progressPercent = totalCost > 0 ? (progress / totalCost) * 100 : 0;
+            float percent = totalCost > 0 ? (progress / totalCost) * 100 : 0;
 
-            string status = project.CanStartNow ? "Available" : "Locked (prerequisites missing)";
+            string status = project.CanStartNow
+                ? "RICS.Research.StatusAvailable".Translate()
+                : "RICS.Research.StatusLocked".Translate();
 
-            return $"{project.LabelCap} - {progress:F0}/{totalCost:F0} ({progressPercent:F1}% complete) - {status}";
+            return "RICS.Research.SpecificStatus".Translate(
+                project.LabelCap,
+                progress,
+                totalCost,
+                percent,
+                status
+            );
         }
 
         internal static string HandleStudyCommand(ChatMessageWrapper messageWrapper, string[] args)
         {
             var research = Find.ResearchManager;
             if (research == null)
-                return "No research manager.";
+                return "RICS.Research.NoResearchManager".Translate();
 
             var projects = research.CurrentAnomalyKnowledgeProjects
                 ?.Select(a => a.project)
@@ -111,7 +124,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 .ToList();
 
             if (projects == null || projects.Count == 0)
-                return "No active anomaly research.";
+                return "RICS.Research.NoActiveAnomaly".Translate();
 
             var basic = projects
                 .FirstOrDefault(p => p.knowledgeCategory.overflowCategory == null);
@@ -120,14 +133,22 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 .FirstOrDefault(p => p.knowledgeCategory.overflowCategory != null);
 
             string bas = basic != null
-                ? $"{basic.LabelCap} - {basic.ProgressApparent}/{basic.CostApparent} ({basic.ProgressPercent}%)"
-                : "none";
+                ? "RICS.Research.StudyFormat".Translate(
+                    basic.LabelCap,
+                    basic.ProgressApparent,
+                    basic.CostApparent,
+                    basic.ProgressPercent)
+                : "RICS.Research.StudyNone".Translate();
 
             string adv = advanced != null
-                ? $"{advanced.LabelCap} - {advanced.ProgressApparent}/{advanced.CostApparent} ({advanced.ProgressPercent}%)"
-                : "none";
+                ? "RICS.Research.StudyFormat".Translate(
+                    advanced.LabelCap,
+                    advanced.ProgressApparent,
+                    advanced.CostApparent,
+                    advanced.ProgressPercent)
+                : "RICS.Research.StudyNone".Translate();
 
-            return $"Basic: {bas} | Advanced: {adv}";
+            return "RICS.Research.StudyStatus".Translate(bas, adv);
         }
     }
 }

@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- Research & Study Command Handler (RICS.Research.*) -->
+
+  <RICS.Research.NoArgsCurrent>No research project is currently selected.</RICS.Research.NoArgsCurrent>
+  <RICS.Research.CurrentStatus>Current research: {0} - {1:F0}/{2:F0} ({3:F1}% complete)</RICS.Research.CurrentStatus>
+
+  <RICS.Research.NoMatch>No research project found matching '{0}'. Use !research without arguments to see current project.</RICS.Research.NoMatch>
+  <RICS.Research.MultipleMatches>Multiple projects match '{0}': {1}{2}</RICS.Research.MultipleMatches>
+  <RICS.Research.MultipleEllipsis>...</RICS.Research.MultipleEllipsis>
+
+  <RICS.Research.Completed>{0} - COMPLETED</RICS.Research.Completed>
+  <RICS.Research.SpecificStatus>{0} - {1:F0}/{2:F0} ({3:F1}% complete) - {4}</RICS.Research.SpecificStatus>
+  <RICS.Research.StatusAvailable>Available</RICS.Research.StatusAvailable>
+  <RICS.Research.StatusLocked>Locked (prerequisites missing)</RICS.Research.StatusLocked>
+
+  <RICS.Research.Error>An error occurred while processing the research command.</RICS.Research.Error>
+
+  <!-- Study (Anomaly knowledge) command -->
+
+  <RICS.Research.NoResearchManager>No research manager.</RICS.Research.NoResearchManager>
+  <RICS.Research.NoActiveAnomaly>No active anomaly research.</RICS.Research.NoActiveAnomaly>
+  <RICS.Research.StudyStatus>Basic: {0} | Advanced: {1}</RICS.Research.StudyStatus>
+  <RICS.Research.StudyNone>none</RICS.Research.StudyNone>
+  <RICS.Research.StudyFormat>{0} - {1}/{2} ({3:F1}%)</RICS.Research.StudyFormat>
+
+</LanguageData>
