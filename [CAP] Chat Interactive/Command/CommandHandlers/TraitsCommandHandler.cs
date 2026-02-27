@@ -35,15 +35,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 if (args.Length == 0)
                 {
-                    return "Usage: !trait <trait_name> - Look up information about a specific trait. Can also use !lookup trait to search for a trait";
+                    return "RICS.TCH.Lookup.Usage".Translate();
                 }
 
-                string traitName = string.Join(" ", args).ToLower();
+                string traitName = string.Join(" ", args).ToLowerInvariant();
                 var buyableTrait = FindBuyableTrait(traitName);
 
                 if (buyableTrait == null)
                 {
-                    return $"Trait '{string.Join(" ", args)}' not found. Use !traits to see available traits.";
+                    return "RICS.TCH.Lookup.TraitNotFound".Translate(string.Join(" ", args));
                 }
 
                 return FormatTraitInfoSimple(buyableTrait);
@@ -51,26 +51,38 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error in LookupTrait command handler: {ex}");
-                return "An error occurred while looking up the trait.";
+                return "RICS.TCH.Error".Translate();
             }
         }
 
         private static string FormatTraitInfoSimple(BuyableTrait buyableTrait)
         {
-            var sb = new StringBuilder();
-            sb.Append($"📖 {buyableTrait.Name}: ");
-            sb.Append($"Add - {buyableTrait.AddPrice} coins, ");
-            sb.Append($"Remove - {buyableTrait.RemovePrice} coins");
+            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
-            // Add truncated description if available
+            // Base format without description
+            string baseFormat = "RICS.TCH.SimpleInfo.Format".Translate(
+                buyableTrait.Name,
+                buyableTrait.AddPrice,
+                buyableTrait.RemovePrice,
+                currencySymbol
+            );
+
             if (!string.IsNullOrEmpty(buyableTrait.Description))
             {
                 string cleanDescription = Dialog_TraitsEditor.ReplacePawnVariables(buyableTrait.Description);
-                string truncatedDesc = TruncateDescription(cleanDescription, 200); // Leave room for the rest
-                sb.Append($" | {truncatedDesc}");
+                string truncatedDesc = TruncateDescription(cleanDescription, 200);
+
+                return "RICS.TCH.SimpleInfo.WithDescription".Translate(
+                    buyableTrait.Name,
+                    buyableTrait.AddPrice,
+                    buyableTrait.RemovePrice,
+                    currencySymbol,
+                    truncatedDesc
+                );
             }
 
-            return sb.ToString();
+            return baseFormat;
         }
 
         private static string TruncateDescription(string description, int maxLength)
@@ -94,88 +106,92 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 if (args.Length == 0)
                 {
-                    return "Usage: !addtrait [trait_name] - Add a trait to your pawn.";
+                    return "RICS.TCH.Add.Usage".Translate();
                 }
 
-                // Get the viewer and their pawn
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
                 {
-                    return "Could not find your viewer data.";
+                    return "RICS.TCH.Add.NoViewerData".Translate();
                 }
 
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
                 Pawn pawn = assignmentManager.GetAssignedPawn(messageWrapper);
 
-                if (pawn == null || pawn.Dead)
+                if (pawn == null)
                 {
-                    return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
+                    return "RICS.TCH.Add.NoPawn".Translate();
+                }
+                if (pawn.Dead)
+                {
+                    return "RICS.TCH.Add.PawnDead".Translate();
                 }
 
-                string traitName = string.Join(" ", args).ToLower();
+                string traitName = string.Join(" ", args).ToLowerInvariant();
                 var buyableTrait = FindBuyableTrait(traitName);
 
                 if (buyableTrait == null)
                 {
-                    return $"Trait '{string.Join(" ", args)}' not found. Use !traits to see available traits.";
+                    return "RICS.TCH.Add.TraitNotFound".Translate(string.Join(" ", args));
                 }
 
-                // Check if trait can be added
                 if (!buyableTrait.CanAdd)
                 {
-                    return $"The trait '{buyableTrait.Name}' cannot be added to pawns.";
+                    return "RICS.TCH.Add.CannotAdd".Translate(buyableTrait.Name);
                 }
 
-                // Check if pawn already has max traits (unless trait bypasses limit)
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 int maxTraits = settings?.MaxTraits ?? 4;
                 if (pawn.story.traits.allTraits.Count >= maxTraits && !buyableTrait.BypassLimit)
                 {
-                    return $"Your pawn already has the maximum of {maxTraits} traits. Use !removetrait to remove one first.";
+                    return "RICS.TCH.Add.MaxTraitsReached".Translate(maxTraits);
                 }
 
-                // Check if pawn already has this trait - get the TraitDef first
                 TraitDef traitDef = DefDatabase<TraitDef>.GetNamedSilentFail(buyableTrait.DefName);
                 if (traitDef != null && pawn.story.traits.HasTrait(traitDef))
                 {
-                    return $"Your pawn already has the trait '{buyableTrait.Name}'.";
+                    return "RICS.TCH.Add.AlreadyHasTrait".Translate(buyableTrait.Name);
                 }
 
-                // Check for conflicts with existing traits
                 string conflictCheck = CheckTraitConflicts(pawn, buyableTrait);
                 if (!string.IsNullOrEmpty(conflictCheck))
                 {
-                    return conflictCheck;
+                    return conflictCheck;  // ← assumes CheckTraitConflicts already returns translated string
                 }
 
-                // Check viewer's coins
                 int traitCost = buyableTrait.AddPrice;
+                var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
+
                 if (viewer.Coins < traitCost)
                 {
-                    return $"You need {traitCost} coins to add this trait, but you only have {viewer.Coins} coins.";
+                    return "RICS.TCH.Add.NotEnoughCoins".Translate(
+                        traitCost,
+                        viewer.Coins,
+                        currencySymbol
+                    );
                 }
 
-                // Add the trait - get the TraitDef from DefName
                 if (traitDef == null)
                 {
-                    return $"Error: Trait definition for '{buyableTrait.Name}' not found.";
+                    return "RICS.TCH.Add.TraitDefMissing".Translate(buyableTrait.Name);
                 }
 
                 Trait newTrait = new Trait(traitDef, buyableTrait.Degree, false);
                 pawn.story.traits.GainTrait(newTrait);
 
-                // Apply any skill adjustments from the trait
-                ApplyTraitSkillEffects(pawn, buyableTrait);
-
-                // Deduct coins
                 viewer.TakeCoins(traitCost);
 
-                return $"✅ Added trait '{buyableTrait.Name}' to {pawn.Name} for {traitCost} coins!";
+                return "RICS.TCH.Add.Success".Translate(
+                    buyableTrait.Name,
+                    pawn.Name.ToString(),
+                    traitCost,
+                    currencySymbol
+                );
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in AddTrait command handler: {ex}");
-                return "An error occurred while adding the trait.";
+                return "RICS.TCH.Error".Translate();
             }
         }
 
@@ -185,75 +201,85 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 if (args.Length == 0)
                 {
-                    return "Usage: !removetrait <trait_name> - Remove a trait from your pawn.";
+                    return "RICS.TCH.Remove.Usage".Translate();
                 }
 
-                // Get the viewer and their pawn
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
                 {
-                    return "Could not find your viewer data.";
+                    return "RICS.TCH.Remove.NoViewerData".Translate();
                 }
 
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
                 Pawn pawn = assignmentManager.GetAssignedPawn(messageWrapper);
 
-                if (pawn == null || pawn.Dead)
+                if (pawn == null)
                 {
-                    return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
+                    return "RICS.TCH.Remove.NoPawn".Translate();
+                }
+                if (pawn.Dead)
+                {
+                    return "RICS.TCH.Remove.PawnDead".Translate();
                 }
 
-                string traitName = string.Join(" ", args).ToLower();
+                string traitName = string.Join(" ", args).ToLowerInvariant();
                 var buyableTrait = FindBuyableTrait(traitName);
 
                 if (buyableTrait == null)
                 {
-                    return $"Trait '{string.Join(" ", args)}' not found. Use !traits to see available traits.";
+                    return "RICS.TCH.Remove.TraitNotFound".Translate(string.Join(" ", args));
                 }
 
-                // Check if trait can be removed
                 if (!buyableTrait.CanRemove)
                 {
-                    return $"The trait '{buyableTrait.Name}' cannot be removed from pawns.";
+                    return "RICS.TCH.Remove.CannotRemove".Translate(buyableTrait.Name);
                 }
 
-                // Check if pawn has this trait - get the TraitDef first  
                 TraitDef removeTraitDef = DefDatabase<TraitDef>.GetNamedSilentFail(buyableTrait.DefName);
                 var existingTrait = pawn.story.traits.allTraits.FirstOrDefault(t =>
                     t.def.defName == buyableTrait.DefName && t.Degree == buyableTrait.Degree);
+
                 if (existingTrait == null)
                 {
-                    return $"Your pawn does not have the trait '{buyableTrait.Name}'.";
+                    return "RICS.TCH.Remove.DoesNotHaveTrait".Translate(buyableTrait.Name);
                 }
 
                 // NEW CHECK: Prevent removal of forced traits (e.g., from genes)
                 if (existingTrait.sourceGene != null || existingTrait.ScenForced)
                 {
-                    return $"❌ The trait '{buyableTrait.Name}' is forced (e.g., from genes) and cannot be removed.";
+                    return "RICS.TCH.Remove.ForcedTrait".Translate(buyableTrait.Name);
                 }
 
-                // Check viewer's coins
                 int removeCost = buyableTrait.RemovePrice;
+                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
+
                 if (viewer.Coins < removeCost)
                 {
-                    return $"You need {removeCost} coins to remove this trait, but you only have {viewer.Coins} coins.";
+                    return "RICS.TCH.Remove.NotEnoughCoins".Translate(
+                        removeCost,
+                        viewer.Coins,
+                        currencySymbol
+                    );
                 }
 
                 // Remove the trait
                 pawn.story.traits.RemoveTrait(existingTrait);
 
-                // Remove any skill adjustments from the trait
-                RemoveTraitSkillEffects(pawn, buyableTrait);
-
                 // Deduct coins
                 viewer.TakeCoins(removeCost);
 
-                return $"✅ Removed trait '{buyableTrait.Name}' from {pawn.Name} for {removeCost} coins!";
+                return "RICS.TCH.Remove.Success".Translate(
+                    buyableTrait.Name,
+                    pawn.Name.ToString(),
+                    removeCost,
+                    currencySymbol
+                );
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in RemoveTrait command handler: {ex}");
-                return "An error occurred while removing the trait.";
+                return "RICS.TCH.Error".Translate();
             }
         }
 
@@ -263,119 +289,121 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 if (args.Length < 2)
                 {
-                    return "Usage: !replacetrait <old_trait_name> <new_trait_name> - Replace one trait with another on your pawn.";
+                    return "RICS.TCH.Replace.Usage".Translate();
                 }
 
-                // Get the viewer and their pawn
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
                 {
-                    return "Could not find your viewer data.";
+                    return "RICS.TCH.Replace.NoViewerData".Translate();
                 }
 
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
                 Pawn pawn = assignmentManager.GetAssignedPawn(messageWrapper);
 
-                if (pawn == null || pawn.Dead)
+                if (pawn == null)
                 {
-                    return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
+                    return "RICS.TCH.Replace.NoPawn".Translate();
                 }
-
-                // SIMPLE PARSING: First arg = old trait, rest = new trait
-                //string oldTraitName = args[0].ToLower();
-                //string newTraitName = string.Join(" ", args.Skip(1)).ToLower();
+                if (pawn.Dead)
+                {
+                    return "RICS.TCH.Replace.PawnDead".Translate();
+                }
 
                 string oldTraitName = ParseTraitNames(args, out string newTraitName);
 
                 if (string.IsNullOrEmpty(oldTraitName) || string.IsNullOrEmpty(newTraitName))
                 {
-                    return "Could not parse trait names. Try: !replacetrait \"old trait\" \"new trait\"";
+                    return "RICS.TCH.Replace.ParseError".Translate();
                 }
 
                 Logger.Debug($"ReplaceTrait: old='{oldTraitName}', new='{newTraitName}'");
 
-                // Find the traits in the database
                 var oldBuyableTrait = FindBuyableTrait(oldTraitName);
                 var newBuyableTrait = FindBuyableTrait(newTraitName);
 
                 if (oldBuyableTrait == null)
                 {
-                    return $"Trait '{oldTraitName}' not found. Use !traits to see available traits.";
+                    return "RICS.TCH.Replace.OldTraitNotFound".Translate(oldTraitName);
                 }
 
                 if (newBuyableTrait == null)
                 {
-                    return $"Trait '{newTraitName}' not found. Use !traits to see available traits.";
+                    return "RICS.TCH.Replace.NewTraitNotFound".Translate(newTraitName);
                 }
 
-                // Check if old trait can be removed
                 if (!oldBuyableTrait.CanRemove)
                 {
-                    return $"The trait '{oldBuyableTrait.Name}' cannot be removed from pawns.";
+                    return "RICS.TCH.Replace.OldCannotRemove".Translate(oldBuyableTrait.Name);
                 }
 
-                // Check if new trait can be added
                 if (!newBuyableTrait.CanAdd)
                 {
-                    return $"The trait '{newBuyableTrait.Name}' cannot be added to pawns.";
+                    return "RICS.TCH.Replace.NewCannotAdd".Translate(newBuyableTrait.Name);
                 }
 
-                // Get the TraitDefs
                 TraitDef oldTraitDef = DefDatabase<TraitDef>.GetNamedSilentFail(oldBuyableTrait.DefName);
                 TraitDef newTraitDef = DefDatabase<TraitDef>.GetNamedSilentFail(newBuyableTrait.DefName);
 
                 if (oldTraitDef == null)
                 {
-                    return $"Error: Trait definition for '{oldBuyableTrait.Name}' not found.";
+                    return "RICS.TCH.Replace.OldTraitDefMissing".Translate(oldBuyableTrait.Name);
                 }
 
                 if (newTraitDef == null)
                 {
-                    return $"Error: Trait definition for '{newBuyableTrait.Name}' not found.";
+                    return "RICS.TCH.Replace.NewTraitDefMissing".Translate(newBuyableTrait.Name);
                 }
 
-                // Check if pawn has the old trait
                 var existingTrait = pawn.story.traits.allTraits.FirstOrDefault(t =>
                     t.def.defName == oldBuyableTrait.DefName && t.Degree == oldBuyableTrait.Degree);
 
                 if (existingTrait == null)
                 {
-                    return $"Your pawn does not have the trait '{oldBuyableTrait.Name}'.";
+                    return "RICS.TCH.Replace.DoesNotHaveOld".Translate(oldBuyableTrait.Name);
                 }
 
-                // NEW CHECK: Prevent removal of forced traits (e.g., from genes)
                 if (existingTrait.sourceGene != null || existingTrait.ScenForced)
                 {
-                    return $"❌ The trait '{oldBuyableTrait.Name}' is forced (e.g., from genes) and cannot be replaced.";
+                    return "RICS.TCH.Replace.OldTraitForced".Translate(oldBuyableTrait.Name);
                 }
 
-                // Check if pawn already has the new trait (different from old trait)
+                // Check if pawn already has the new trait (different from old)
                 if (oldBuyableTrait.DefName != newBuyableTrait.DefName || oldBuyableTrait.Degree != newBuyableTrait.Degree)
                 {
                     if (pawn.story.traits.allTraits.Any(t =>
                         t.def.defName == newBuyableTrait.DefName && t.Degree == newBuyableTrait.Degree))
                     {
-                        return $"Your pawn already has the trait '{newBuyableTrait.Name}'.";
+                        return "RICS.TCH.Replace.AlreadyHasNew".Translate(newBuyableTrait.Name);
                     }
                 }
 
-                // Check for conflicts with other existing traits (excluding the one being replaced)
+                // Check conflicts with other existing traits (excluding the one being replaced)
                 var otherTraits = pawn.story.traits.allTraits.Where(t => t != existingTrait).ToList();
                 foreach (var otherTrait in otherTraits)
                 {
                     if (newTraitDef.ConflictsWith(otherTrait) || otherTrait.def.ConflictsWith(newTraitDef))
                     {
-                        return $"❌ {newBuyableTrait.Name} conflicts with your pawn's existing trait {otherTrait.Label}.";
+                        return "RICS.TCH.Replace.ConflictWithExisting".Translate(
+                            newBuyableTrait.Name,
+                            otherTrait.Label
+                        );
                     }
                 }
 
-                // Calculate total cost
                 int totalCost = oldBuyableTrait.RemovePrice + newBuyableTrait.AddPrice;
+                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
-                // Check viewer's coins
                 if (viewer.Coins < totalCost)
                 {
-                    return $"You need {totalCost} coins to replace {oldBuyableTrait.Name} with {newBuyableTrait.Name}, but you only have {viewer.Coins} coins.";
+                    return "RICS.TCH.Replace.NotEnoughCoins".Translate(
+                        totalCost,
+                        oldBuyableTrait.Name,
+                        newBuyableTrait.Name,
+                        currencySymbol,
+                        viewer.Coins
+                    );
                 }
 
                 // Remove old trait
@@ -388,12 +416,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Deduct coins
                 viewer.TakeCoins(totalCost);
 
-                return $"✅ Replaced trait '{oldBuyableTrait.Name}' with '{newBuyableTrait.Name}' on {pawn.Name} for {totalCost} coins!";
+                return "RICS.TCH.Replace.Success".Translate(
+                    oldBuyableTrait.Name,
+                    newBuyableTrait.Name,
+                    pawn.Name.ToString(),
+                    totalCost,
+                    currencySymbol
+                );
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in ReplaceTrait command handler: {ex}");
-                return "An error occurred while replacing the trait.";
+                return "RICS.TCH.Error".Translate();
             }
         }
 
@@ -403,21 +437,25 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 if (args.Length < 1)
                 {
-                    return "Usage: !settraits [trait_name] [trait_name]. Add and replace traits in bulk.";  // oops use [] not <>, the later gets stripped from chat messages
+                    return "RICS.TCH.Set.Usage".Translate();
                 }
 
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
                 {
-                    return "Could not find your viewer data.";
+                    return "RICS.TCH.Set.NoViewerData".Translate();
                 }
 
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
                 Pawn pawn = assignmentManager.GetAssignedPawn(messageWrapper);
 
-                if (pawn == null || pawn.Dead)
+                if (pawn == null)
                 {
-                    return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
+                    return "RICS.TCH.Set.NoPawn".Translate();
+                }
+                if (pawn.Dead)
+                {
+                    return "RICS.TCH.Set.PawnDead".Translate();
                 }
 
                 // Step 1: Find and validate all requested traits
@@ -428,17 +466,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     BuyableTrait trait = TraitsManager.AllBuyableTraits.Values
                         .FirstOrDefault(t =>
-                            t.Name.ToLower() == args[i].ToLower() ||
-                            t.DefName.ToLower() == args[i].ToLower());
+                            t.Name.ToLowerInvariant() == args[i].ToLowerInvariant() ||
+                            t.DefName.ToLowerInvariant() == args[i].ToLowerInvariant());
 
                     // Try joining with next word if single word didn't match
                     if (trait == null && i + 1 < args.Length)
                     {
-                        string joined = $"{args[i]} {args[i + 1]}".ToLower();
+                        string joined = $"{args[i]} {args[i + 1]}".ToLowerInvariant();
                         trait = TraitsManager.AllBuyableTraits.Values
                             .FirstOrDefault(t =>
-                                t.Name.ToLower() == joined ||
-                                t.DefName.ToLower() == joined);
+                                t.Name.ToLowerInvariant() == joined ||
+                                t.DefName.ToLowerInvariant() == joined);
 
                         if (trait != null)
                             i++; // consume second word
@@ -446,12 +484,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                     if (trait == null)
                     {
-                        return $"Trait '{args[i]}' not found. Use !traits to see available traits.";
+                        return "RICS.TCH.Set.TraitNotFound".Translate(args[i]);
                     }
 
                     if (!trait.CanAdd)
                     {
-                        return $"The trait '{trait.Name}' cannot be added to pawns.";
+                        return "RICS.TCH.Set.CannotAdd".Translate(trait.Name);
                     }
 
                     if (trait.BypassLimit == true)
@@ -476,7 +514,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             (traitDefA != null && traitDefB != null && traitDefA.ConflictsWith(traitDefB)) ||
                             (traitDefA.defName == traitDefB.defName))
                         {
-                            return $"❌ {traitA.Name} conflicts with {traitB.Name}.";
+                            return "RICS.TCH.Set.ConflictBetweenRequested".Translate(
+                                traitA.Name,
+                                traitB.Name
+                            );
                         }
                     }
                 }
@@ -497,11 +538,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var protectedTraits = forcedList.Concat(unremovableList)
                     .Select(existing => TraitsManager.AllBuyableTraits.Values
-                        .FirstOrDefault(bt => bt.DefName == existing.def.defName && bt.Degree == existing.Degree))
-                    .Where(bt => bt != null)
+                        .FirstOrDefault(t => t.DefName == existing.def.defName && t.Degree == existing.Degree))
+                    .Where(t => t != null)
                     .ToList();
 
-                // Step 4: Check for conflicts with protected traits
+                // Step 4: Check requested traits for conflicts with protected traits
                 foreach (var requestedTrait in resolvedTraits)
                 {
                     var traitDefA = DefDatabase<TraitDef>.GetNamedSilentFail(requestedTrait.DefName);
@@ -513,7 +554,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             (traitDefA != null && traitDefB != null && traitDefA.ConflictsWith(traitDefB)) ||
                             (traitDefA.defName == traitDefB.defName))
                         {
-                            return $"❌ {requestedTrait.Name} conflicts with protected trait {protectedTrait.Name}.";
+                            return "RICS.TCH.Set.ConflictWithProtected".Translate(
+                                requestedTrait.Name,
+                                protectedTrait.Name
+                            );
                         }
                     }
                 }
@@ -528,7 +572,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (requestedCount > effectiveMax)
                 {
-                    return $"Too many traits ({requestedCount}). With {protectedCount} protected traits, your max is {effectiveMax}.";
+                    return "RICS.TCH.Set.TooManyTraits".Translate(
+                        requestedCount,
+                        protectedCount,
+                        effectiveMax
+                    );
                 }
 
                 // Step 6: Remove overlaps (traits already on pawn that are also requested)
@@ -567,9 +615,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // Step 9: Check if user can afford
+                var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
+
                 if (viewer.Coins < totalCost)
                 {
-                    return $"You need {totalCost} coins, but you only have {viewer.Coins} coins.";
+                    return "RICS.TCH.Set.NotEnoughCoins".Translate(
+                        totalCost,
+                        currencySymbol,
+                        viewer.Coins
+                    );
                 }
 
                 // Step 10: Apply changes
@@ -585,7 +639,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     TraitDef newTraitDef = DefDatabase<TraitDef>.GetNamedSilentFail(t.DefName);
                     if (newTraitDef == null)
                     {
-                        return $"Error: Trait definition for '{t.Name}' not found.";
+                        return "RICS.TCH.Set.TraitDefMissing".Translate(t.Name);
                     }
                     Trait newTrait = new Trait(newTraitDef, t.Degree, false);
                     pawn.story.traits.GainTrait(newTrait);
@@ -594,12 +648,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Deduct coins
                 viewer.TakeCoins(totalCost);
 
-                return $"✅ Set new traits: {string.Join(", ", resolvedTraits.Select(t => t.Name))} for {totalCost} coins";
+                return "RICS.TCH.Set.Success".Translate(
+                    string.Join(", ", resolvedTraits.Select(t => t.Name)),
+                    totalCost,
+                    currencySymbol
+                );
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in SetTraits command handler: {ex}");
-                return "An error occurred while setting traits.";
+                return "RICS.TCH.Error".Translate();
             }
         }
 
@@ -660,11 +718,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (!enabledTraits.Any())
                 {
-                    return "No traits are currently available.";
+                    return "RICS.TCH.List.NoTraits".Translate();
                 }
 
                 var response = new StringBuilder();
-                response.AppendLine("📋 Available Traits:");
+                response.AppendLine("RICS.TCH.List.Header".Translate());
 
                 // Group by mod source for better organization
                 var traitsByMod = enabledTraits.GroupBy(t => t.ModSource)
@@ -672,7 +730,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 foreach (var modGroup in traitsByMod)
                 {
-                    response.AppendLine($"\n📁 {modGroup.Key}:");
+                    response.AppendLine("\n" + "RICS.TCH.List.ModGroup".Translate(modGroup.Key));
 
                     var traitList = modGroup.Select(t => t.Name)
                                           .OrderBy(label => label)
@@ -682,18 +740,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                     if (modGroup.Count() > 10)
                     {
-                        response.AppendLine($"... and {modGroup.Count() - 10} more traits");
+                        response.AppendLine("RICS.TCH.List.MoreTraits".Translate(modGroup.Count() - 10));
                     }
                 }
 
-                response.AppendLine($"\n💡 Use !trait <name> for details, !addtrait <name> to add, !removetrait <name> to remove");
+                response.AppendLine("\n" + "RICS.TCH.List.Footer".Translate());
 
                 return response.ToString();
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in ListTraits command handler: {ex}");
-                return "An error occurred while listing traits.";
+                return "RICS.TCH.Error".Translate();
             }
         }
 
@@ -715,24 +773,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 if (newTraitDef.ConflictsWith(existingTrait) || existingTrait.def.ConflictsWith(newTraitDef))
                 {
-                    return $"❌ {newTrait.Name} conflicts with your pawn's existing trait {existingTrait.Label}.";
+                    return "RICS.TCH.ConflictWithExisting".Translate(
+                        newTrait.Name,
+                        existingTrait.Label
+                    );
                 }
             }
+
             return null;
-        }
-
-        private static void ApplyTraitSkillEffects(Pawn pawn, BuyableTrait buyableTrait)
-        {
-            // RimWorld automatically applies skill gains when traits are added
-            // No need for manual skill adjustment - the trait system handles this
-            Logger.Debug($"Trait {buyableTrait.Name} added to {pawn.Name} - skill effects applied automatically by RimWorld");
-        }
-
-        private static void RemoveTraitSkillEffects(Pawn pawn, BuyableTrait buyableTrait)
-        {
-            // RimWorld automatically removes skill effects when traits are removed
-            // No need for manual skill adjustment - the trait system handles this
-            Logger.Debug($"Trait {buyableTrait.Name} removed from {pawn.Name} - skill effects removed automatically by RimWorld");
         }
     }
 }

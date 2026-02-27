@@ -1,0 +1,143 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- Traits Command Handler (RICS.TCH.*) -->
+
+  <RICS.TCH.Lookup.Usage>Usage: !trait &lt;trait_name&gt; - Look up information about a specific trait.\nYou can also use !lookup trait to search for a trait.</RICS.TCH.Lookup.Usage>
+
+  <RICS.TCH.Lookup.TraitNotFound>Trait '{0}' not found. Use !traits to see available traits.</RICS.TCH.Lookup.TraitNotFound>
+
+  <RICS.TCH.Error>An error occurred while looking up the trait.</RICS.TCH.Error>
+
+  <!-- Trait info formatting (simple view) -->
+
+  <RICS.TCH.SimpleInfo.Format>📖 {0}: Add - {1}{3}, Remove - {2}{3}</RICS.TCH.SimpleInfo.Format>
+
+  <RICS.TCH.SimpleInfo.WithDescription>📖 {0}: Add - {1}{3}, Remove - {2}{3} | {4}</RICS.TCH.SimpleInfo.WithDescription>
+
+  <!-- Add Trait Command (RICS.TCH.Add.*) -->
+
+  <RICS.TCH.Add.Usage>Usage: !addtrait [trait_name] - Add a trait to your pawn.</RICS.TCH.Add.Usage>
+
+  <RICS.TCH.Add.NoViewerData>Could not find your viewer data.</RICS.TCH.Add.NoViewerData>
+  <RICS.TCH.Add.NoPawn>You don't have an active pawn in the colony. Use !pawn to purchase one!</RICS.TCH.Add.NoPawn>
+  <RICS.TCH.Add.PawnDead>Your pawn is dead.</RICS.TCH.Add.PawnDead>
+
+  <RICS.TCH.Add.TraitNotFound>Trait '{0}' not found. Use !traits to see available traits.</RICS.TCH.Add.TraitNotFound>
+  <RICS.TCH.Add.CannotAdd>The trait '{0}' cannot be added to pawns.</RICS.TCH.Add.CannotAdd>
+
+  <RICS.TCH.Add.MaxTraitsReached>Your pawn already has the maximum of {0} traits. Use !removetrait to remove one first.</RICS.TCH.Add.MaxTraitsReached>
+
+  <RICS.TCH.Add.AlreadyHasTrait>Your pawn already has the trait '{0}'.</RICS.TCH.Add.AlreadyHasTrait>
+
+  <RICS.TCH.Add.TraitDefMissing>Error: Trait definition for '{0}' not found.</RICS.TCH.Add.TraitDefMissing>
+
+  <RICS.TCH.Add.NotEnoughCoins>You need {0}{2} to add this trait, but you only have {1}{2}.</RICS.TCH.Add.NotEnoughCoins>
+
+  <RICS.TCH.Add.Success>✅ Added trait '{0}' to {1} for {2}{3}!</RICS.TCH.Add.Success>
+
+  <RICS.TCH.Error>An error occurred while adding the trait.</RICS.TCH.Error>
+
+  <!-- These can be reused in conflict messages from CheckTraitConflicts -->
+  <RICS.TCH.ConflictPrefix>Conflict: </RICS.TCH.ConflictPrefix>
+  <RICS.TCH.ConflictCannotAdd>This trait conflicts with one or more existing traits on your pawn.</RICS.TCH.ConflictCannotAdd>
+
+  <!-- Remove Trait Command (RICS.TCH.Remove.*) -->
+
+  <RICS.TCH.Remove.Usage>Usage: !removetrait &lt;trait_name&gt; - Remove a trait from your pawn.</RICS.TCH.Remove.Usage>
+
+  <RICS.TCH.Remove.TraitNotFound>Trait '{0}' not found. Use !traits to see available traits.</RICS.TCH.Remove.TraitNotFound>
+  <RICS.TCH.Remove.CannotRemove>The trait '{0}' cannot be removed from pawns.</RICS.TCH.Remove.CannotRemove>
+
+  <RICS.TCH.Remove.DoesNotHaveTrait>Your pawn does not have the trait '{0}'.</RICS.TCH.Remove.DoesNotHaveTrait>
+
+  <RICS.TCH.Remove.ForcedTrait>❌ The trait '{0}' is forced (e.g. from genes) and cannot be removed.</RICS.TCH.Remove.ForcedTrait>
+
+  <RICS.TCH.Remove.NotEnoughCoins>You need {0}{2} to remove this trait, but you only have {1}{2}.</RICS.TCH.Remove.NotEnoughCoins>
+
+  <RICS.TCH.Remove.Success>✅ Removed trait '{0}' from {1} for {2}{3}!</RICS.TCH.Remove.Success>
+
+  <!-- Reuse the same generic error key as add command -->
+  <!-- <RICS.TCH.Error>An error occurred while removing the trait.</RICS.TCH.Error> -->
+
+  <!-- Replace Trait Command (RICS.TCH.Replace.*) -->
+
+  <RICS.TCH.Replace.Usage>Usage: !replacetrait &lt;old_trait_name&gt; &lt;new_trait_name&gt; - Replace one trait with another on your pawn.</RICS.TCH.Replace.Usage>
+
+  <RICS.TCH.Replace.OldTraitNotFound>Trait '{0}' (old) not found. Use !traits to see available traits.</RICS.TCH.Replace.OldTraitNotFound>
+  <RICS.TCH.Replace.NewTraitNotFound>Trait '{0}' (new) not found. Use !traits to see available traits.</RICS.TCH.Replace.NewTraitNotFound>
+
+  <RICS.TCH.Replace.OldCannotRemove>The trait '{0}' cannot be removed from pawns.</RICS.TCH.Replace.OldCannotRemove>
+  <RICS.TCH.Replace.NewCannotAdd>The trait '{0}' cannot be added to pawns.</RICS.TCH.Replace.NewCannotAdd>
+
+  <RICS.TCH.Replace.OldTraitDefMissing>Error: Trait definition for '{0}' (old) not found.</RICS.TCH.Replace.OldTraitDefMissing>
+  <RICS.TCH.Replace.NewTraitDefMissing>Error: Trait definition for '{0}' (new) not found.</RICS.TCH.Replace.NewTraitDefMissing>
+
+  <RICS.TCH.Replace.DoesNotHaveOld>Your pawn does not have the trait '{0}' to replace.</RICS.TCH.Replace.DoesNotHaveOld>
+
+  <RICS.TCH.Replace.OldTraitForced>❌ The trait '{0}' is forced (e.g. from genes) and cannot be replaced.</RICS.TCH.Replace.OldTraitForced>
+
+  <RICS.TCH.Replace.AlreadyHasNew>Your pawn already has the trait '{0}'.</RICS.TCH.Replace.AlreadyHasNew>
+
+  <RICS.TCH.Replace.ConflictWithExisting>❌ {0} conflicts with your pawn's existing trait {1}.</RICS.TCH.Replace.ConflictWithExisting>
+
+  <RICS.TCH.Replace.NotEnoughCoins>You need {0}{3} to replace {1} with {2}, but you only have {4}{3}.</RICS.TCH.Replace.NotEnoughCoins>
+
+  <RICS.TCH.Replace.Success>✅ Replaced trait '{0}' with '{1}' on {2} for {3}{4}!</RICS.TCH.Replace.Success>
+
+  <!-- Parsing error (rare) -->
+  <RICS.TCH.Replace.ParseError>Could not parse trait names. Try: !replacetrait "old trait" "new trait"</RICS.TCH.Replace.ParseError>
+
+  <!-- Set Traits Command (RICS.TCH.Set.*) -->
+
+  <RICS.TCH.Set.Usage>Usage: !settraits [trait_name] [trait_name]. Add and replace traits in bulk.</RICS.TCH.Set.Usage>
+  
+  <RICS.TCH.Set.TraitNotFound>Trait '{0}' not found. Use !traits to see available traits.</RICS.TCH.Set.TraitNotFound>
+  <RICS.TCH.Set.CannotAdd>The trait '{0}' cannot be added to pawns.</RICS.TCH.Set.CannotAdd>
+
+  <RICS.TCH.Set.ConflictBetweenRequested>❌ {0} conflicts with {1}.</RICS.TCH.Set.ConflictBetweenRequested>
+  <RICS.TCH.Set.ConflictWithProtected>❌ {0} conflicts with protected trait {1}.</RICS.TCH.Set.ConflictWithProtected>
+
+  <RICS.TCH.Set.TooManyTraits>Too many traits ({0}). With {1} protected traits, your max is {2}.</RICS.TCH.Set.TooManyTraits>
+
+  <RICS.TCH.Set.TraitDefMissing>Error: Trait definition for '{0}' not found.</RICS.TCH.Set.TraitDefMissing>
+
+  <RICS.TCH.Set.NotEnoughCoins>You need {0}{1} to set traits, but you only have {2}{1}.</RICS.TCH.Set.NotEnoughCoins>
+
+  <RICS.TCH.Set.Success>✅ Set new traits: {0} for {1}{2}</RICS.TCH.Set.Success>
+
+  <RICS.TCH.Error>An error occurred while setting traits.</RICS.TCH.Error>
+
+  <!-- List Traits Command (RICS.TCH.List.*) -->
+
+  <RICS.TCH.List.NoTraits>No traits are currently available.</RICS.TCH.List.NoTraits>
+
+  <RICS.TCH.List.Header>📋 Available Traits:</RICS.TCH.List.Header>
+
+  <RICS.TCH.List.ModGroup>📁 {0}:</RICS.TCH.List.ModGroup>
+
+  <RICS.TCH.List.MoreTraits>... and {0} more traits</RICS.TCH.List.MoreTraits>
+
+  <RICS.TCH.List.Footer>💡 Use !trait &lt;name&gt; for details, !addtrait &lt;name&gt; to add, !removetrait &lt;name&gt; to remove</RICS.TCH.List.Footer>
+
+  <RICS.TCH.Error>An error occurred while listing traits.</RICS.TCH.Error>
+
+  <!-- Conflict message used in multiple trait commands -->
+  <RICS.TCH.ConflictWithExisting>❌ {0} conflicts with your pawn's existing trait {1}.</RICS.TCH.ConflictWithExisting>
+
+  <!-- These will be used later when we get to FormatTraitInfoSimple / FormatTraitInfoFull -->
+  <RICS.TCH.TraitInfo.Name>Name: {0}</RICS.TCH.TraitInfo.Name>
+  <RICS.TCH.TraitInfo.Description>Description: {0}</RICS.TCH.TraitInfo.Description>
+  <RICS.TCH.TraitInfo.Commonality>Commonality: {0:F1}%</RICS.TCH.TraitInfo.Commonality>
+  <RICS.TCH.TraitInfo.Conflicts>Conflicts with: {0}</RICS.TCH.TraitInfo.Conflicts>
+  <RICS.TCH.TraitInfo.ExcludedFrom>Excluded from: {0}</RICS.TCH.TraitInfo.ExcludedFrom>
+  <RICS.TCH.TraitInfo.BuyPrice>Buy price: {0}{1}</RICS.TCH.TraitInfo.BuyPrice>
+  <RICS.TCH.TraitInfo.SellPrice>Sell price: {0}{1}</RICS.TCH.TraitInfo.SellPrice>
+  <RICS.TCH.TraitInfo.NoConflicts>No conflicts</RICS.TCH.TraitInfo.NoConflicts>
+  <RICS.TCH.TraitInfo.NoExclusions>No exclusions</RICS.TCH.TraitInfo.NoExclusions>
+
+  <!-- Placeholder for future trait list / search commands -->
+  <RICS.TCH.List.Header>Available buyable traits ({0} total):</RICS.TCH.List.Header>
+  <RICS.TCH.List.NoTraits>No buyable traits configured.</RICS.TCH.List.NoTraits>
+
+</LanguageData>
