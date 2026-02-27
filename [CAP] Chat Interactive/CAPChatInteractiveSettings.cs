@@ -85,7 +85,7 @@ namespace CAP_ChatInteractive
     public class CAPGlobalChatSettings : IExposable
     {
         // Existing properties...
-        public string modVersion = "1.20d";  // Current mod version WE DONT SAVE THIS! Used in history control
+        public string modVersion = "1.21";  // Current mod version WE DONT SAVE THIS! Used in history control
         public string modVersionSaved = "";
         public string priceListUrl = "https://github.com/ekudram/RICS-Pricelist";
         public bool EnableDebugLogging = false;

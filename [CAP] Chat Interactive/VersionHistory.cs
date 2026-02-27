@@ -576,6 +576,40 @@ Then → CAP → ""Delete JSON & Rebuild Store"" (full reset)
 Warning: resets all custom store settings to defaults
 
 =========================================================================="
+            },
+            {"1.21",
+                "==========================================================================\r\n" +
+                "RICS 1.21 - Update\r\n" +
+                "Released: February 28, 2026" +
+                "\r\n" +
+                "Updated\r\n" +
+                "https://github.com/ekudram/-cap-RimworldInteractiveChatServices/wiki/Lookup-Command\r\n" +
+                "Lookup command changes. Added Race and Xenotype lookup.\r\n" +
+                "https://github.com/ekudram/-cap-RimworldInteractiveChatServices/wiki/Passion-Command\r\n" +
+                "Passion command new page and new settings in the Command Editor.\r\n" +
+                "\r\n" +
+                "Fixed:\r\n" +
+                "\r\n" +
+                "I broke the xenotype selection when I fixed the lookup command\r\n" +
+                "Is now fixed\r\n" +
+                "\r\n" +
+                "Added\r\n" +
+                "\r\n" +
+                "Pawn Race Settings for xenotypes now displays Name and DefName , also you can buy xenotypes by the name or defname (1.20c)\r\n\r\n" +
+                "Translations:\r\n" +
+                "LookupCommandHandler.xml added.\r\n" +
+                "LootboxCommandHandler.xml added.\r\n" +
+                "MilitaryAidCommandHandler.xml added.\r\n" +
+                "MyPawnCommandHandler.xml added.\r\n" +
+                "PassionsCommandHandler.xml added.\r\n" +
+                "PawnQueCommandHandler.xml added.\r\n" +
+                "RaidCommandHandler.xml added.\r\n" +
+                "ResearchCommandHandler.xml added.\r\n" +
+                "RevivePawnCommandHandler.xml added.\r\n" +
+                "SetFavoriteColorCommandHandler.xml added.\r\n" +
+                "TraitsCommandHandler.xml added.\r\n" +
+                "UseItemCommandHandler.xml added.\r\n" +
+                "WealthCommandHandler.xml added."
             }
                         // Add more versions here as they're released
         };
