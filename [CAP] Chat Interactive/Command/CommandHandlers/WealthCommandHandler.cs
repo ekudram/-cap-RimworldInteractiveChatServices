@@ -31,41 +31,42 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 var map = GetCurrentMap();
                 if (map == null)
-                    return "❌ No active colony found.";
+                    return "RICS.Wealth.NoMap".Translate();
 
                 var wealthWatcher = map.wealthWatcher;
 
                 var report = new StringBuilder();
-                report.AppendLine("💰 **Colony Wealth Report**");
+                report.AppendLine("RICS.Wealth.Header".Translate());
 
                 // Total wealth
-                report.AppendLine($"**Total Wealth:** {FormatWealth(wealthWatcher.WealthTotal)}");
+                report.AppendLine("RICS.Wealth.Total".Translate(FormatWealth(wealthWatcher.WealthTotal)));
                 report.AppendLine();
 
                 // Breakdown
-                report.AppendLine("**Wealth Breakdown:**");
-                report.AppendLine($"• Items: {FormatWealth(wealthWatcher.WealthItems)}");
-                report.AppendLine($"• Buildings: {FormatWealth(wealthWatcher.WealthBuildings)}");
-                report.AppendLine($"• Pawns: {FormatWealth(wealthWatcher.WealthPawns)}");
+                report.AppendLine("RICS.Wealth.BreakdownHeader".Translate());
+                report.AppendLine("RICS.Wealth.Items".Translate(FormatWealth(wealthWatcher.WealthItems)));
+                report.AppendLine("RICS.Wealth.Buildings".Translate(FormatWealth(wealthWatcher.WealthBuildings)));
+                report.AppendLine("RICS.Wealth.Pawns".Translate(FormatWealth(wealthWatcher.WealthPawns)));
 
-                // Optional: Raid point calculations (shows what kind of threats this wealth attracts)
-                if (args.Length > 0 && args[0].ToLower() == "raid")
+                // Optional: Raid point calculations
+                if (args.Length > 0 && args[0].ToLowerInvariant() == "raid")
                 {
                     report.AppendLine();
-                    report.AppendLine("**Raid Threat Estimates:**");
+                    report.AppendLine("RICS.Wealth.RaidHeader".Translate());
+
                     float raidPoints = CalculateRaidPoints(map);
-                    report.AppendLine($"• Raid Points: {raidPoints:F0}");
-                    report.AppendLine("*(Higher wealth = stronger raids)*");
+                    report.AppendLine("RICS.Wealth.RaidPoints".Translate(raidPoints));
+                    report.AppendLine("RICS.Wealth.RaidNote".Translate());
                 }
 
-                // Optional: Show wealth trend
-                if (args.Length > 0 && args[0].ToLower() == "trend")
+                // Optional: Wealth trend tips
+                if (args.Length > 0 && args[0].ToLowerInvariant() == "trend")
                 {
                     report.AppendLine();
-                    report.AppendLine("**Wealth Management Tips:**");
-                    report.AppendLine("• Keep wealth growth sustainable");
-                    report.AppendLine("• Convert items to useful buildings/defenses");
-                    report.AppendLine("• Don't hoard unused valuables");
+                    report.AppendLine("RICS.Wealth.TrendHeader".Translate());
+                    report.AppendLine("RICS.Wealth.Tip1".Translate());
+                    report.AppendLine("RICS.Wealth.Tip2".Translate());
+                    report.AppendLine("RICS.Wealth.Tip3".Translate());
                 }
 
                 return report.ToString();
@@ -73,14 +74,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error in wealth command: {ex}");
-                return "❌ Error retrieving colony wealth.";
+                return "RICS.Wealth.Error".Translate();
             }
         }
 
         private static string FormatWealth(float wealth)
         {
-            // Format with thousands separator and no decimals
-            return wealth.ToString("N0") + " silver";
+            string currency = "RICS.Wealth.Currency".Translate();
+            return wealth.ToString("N0") + " " + currency;
         }
 
         private static Map GetCurrentMap()

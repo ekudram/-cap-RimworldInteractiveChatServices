@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- Wealth Command Handler (RICS.Wealth.*) -->
+
+  <RICS.Wealth.NoMap>❌ No active colony found.</RICS.Wealth.NoMap>
+
+  <RICS.Wealth.Header>💰 **Colony Wealth Report**</RICS.Wealth.Header>
+
+  <RICS.Wealth.Total>Total Wealth: {0}</RICS.Wealth.Total>
+
+  <RICS.Wealth.BreakdownHeader>**Wealth Breakdown:**</RICS.Wealth.BreakdownHeader>
+  <RICS.Wealth.Items>• Items: {0}</RICS.Wealth.Items>
+  <RICS.Wealth.Buildings>• Buildings: {0}</RICS.Wealth.Buildings>
+  <RICS.Wealth.Pawns>• Pawns: {0}</RICS.Wealth.Pawns>
+
+  <RICS.Wealth.RaidHeader>**Raid Threat Estimates:**</RICS.Wealth.RaidHeader>
+  <RICS.Wealth.RaidPoints>• Raid Points: {0:F0}</RICS.Wealth.RaidPoints>
+  <RICS.Wealth.RaidNote>*(Higher wealth = stronger raids)*</RICS.Wealth.RaidNote>
+
+  <RICS.Wealth.TrendHeader>**Wealth Management Tips:**</RICS.Wealth.TrendHeader>
+  <RICS.Wealth.Tip1>• Keep wealth growth sustainable</RICS.Wealth.Tip1>
+  <RICS.Wealth.Tip2>• Convert items to useful buildings/defenses</RICS.Wealth.Tip2>
+  <RICS.Wealth.Tip3>• Don't hoard unused valuables</RICS.Wealth.Tip3>
+
+  <RICS.Wealth.Error>❌ Error retrieving colony wealth.</RICS.Wealth.Error>
+
+  <!-- Currency label (used in FormatWealth) -->
+  <RICS.Wealth.Currency>silver</RICS.Wealth.Currency>
+
+</LanguageData>
