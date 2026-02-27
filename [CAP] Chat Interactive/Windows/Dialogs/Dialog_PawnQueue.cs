@@ -366,12 +366,13 @@ namespace CAP_ChatInteractive
             Text.Anchor = TextAnchor.UpperLeft;
 
             // Name, Gender, Age
-            // string nameInfo = $"{pawn.Name?.ToStringFull ?? "Unnamed"} • {GetGenderSymbol(pawn)} • {pawn.ageTracker.AgeBiologicalYears}";
-            string nameInfo = "RICS.Pawn.NameGenderAge".Translate(
-                pawn.Name?.ToStringFull ?? "RICS.Pawn.Unnamed".Translate(),
-                GetGenderSymbol(pawn),
-                pawn.ageTracker.AgeBiologicalYears
-            );
+            string nameInfo = $"{pawn.Name?.ToStringFull ?? "Unnamed"} • {GetGenderSymbol(pawn)} • {pawn.ageTracker.AgeBiologicalYears}";
+            
+            //string nameInfo = "RICS.Pawn.NameGenderAge".Translate(
+            //    pawn.Name?.ToStringFull ?? "RICS.Pawn.Unnamed".Translate(),
+            //    GetGenderSymbol(pawn),
+            //    pawn.ageTracker.AgeBiologicalYears
+            //);
             Widgets.Label(new Rect(rect.x, currentY, rect.width, lineHeight), nameInfo);
             currentY += lineHeight;
 
@@ -683,7 +684,7 @@ namespace CAP_ChatInteractive
             // Send confirmation message to chat (user-facing)
             // string assignMessage = $"🎉 You have been assigned {pawn.Name}! Use !mypawn to check your pawn's status.";
             string assignMessage = "RICS.Message.PawnAssigned".Translate(pawn.Name.ToStringFull);
-            
+
             ChatCommandProcessor.SendMessageToUsername(username, assignMessage);
 
             // Update UI
@@ -706,5 +707,6 @@ namespace CAP_ChatInteractive
         {
             return CAPChatInteractiveMod.GetPawnAssignmentManager();
         }
+
     }
 }

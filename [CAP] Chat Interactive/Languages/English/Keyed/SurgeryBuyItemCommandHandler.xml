@@ -1,0 +1,115 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- Surgery Buy/Command Handler (RICS.SBCH.*) -->
+
+  <RICS.SBCH.Usage>Usage: !surgery [implant] [left/right] [quantity] or [genderswap]</RICS.SBCH.Usage>
+
+  <RICS.SBCH.ImplantNotFound>Implant '{0}' not found in Rimazon.</RICS.SBCH.ImplantNotFound>
+  <RICS.SBCH.ImplantNotAvailable>Implant '{0}' is not available for purchase.</RICS.SBCH.ImplantNotAvailable>
+  <RICS.SBCH.ImplantDefNotFound>Error: Implant definition not found.</RICS.SBCH.ImplantDefNotFound>
+  <RICS.SBCH.NotValidSurgeryItem>{0} is not a valid implant or surgery item. Use !buy instead for regular items.</RICS.SBCH.NotValidSurgeryItem>
+  <RICS.SBCH.ResearchNotCompleted>{0} requires research that hasn't been completed yet.</RICS.SBCH.ResearchNotCompleted>
+
+  <RICS.SBCH.NoPawn>You need to have a pawn in the colony to perform surgery. Use !buy pawn first.</RICS.SBCH.NoPawn>
+  <RICS.SBCH.PawnDead>Your pawn is dead. You cannot get this surgery.</RICS.SBCH.PawnDead>
+  <RICS.SBCH.Sorry>Sorry, this surgery cannot be performed: {0}</RICS.SBCH.Sorry>
+
+  <RICS.SBCH.NoProcedure>No surgical procedure found for {0} on your pawn.</RICS.SBCH.NoProcedure>
+  <RICS.SBCH.NoBodyParts>No suitable body parts found for {0} surgery. Available: {1}. Try specifying left/right.</RICS.SBCH.NoBodyParts>
+  <RICS.SBCH.NoBodyPartsNotSpecified>No suitable body parts found.</RICS.SBCH.NoBodyPartsNotSpecified>
+  <RICS.SBCH.SuccessScheduled>Scheduled {0}x {1} surgery for {2}! Implant {3} please give them to the doctor. Remaining: {4}.</RICS.SBCH.SuccessScheduled>
+
+  <!-- Special surgery handlers -->
+  <RICS.SBCH.GenderSwapCannotAfford>You need {0} for gender swap surgery! You have {1}.</RICS.SBCH.GenderSwapCannotAfford>
+  <RICS.SBCH.BodyChangeCannotAfford>You need {0} for {1} surgery! You have {2}.</RICS.SBCH.BodyChangeCannotAfford>
+  <RICS.SBCH.BiotechCannotAfford>Need {0} for {1}! You have {2}.</RICS.SBCH.BiotechCannotAfford>
+
+  <RICS.SBCH.GenderSwapSuccess>Gender swap surgery scheduled for {0}! Your doctors will take care of it. Remaining balance: {1}.</RICS.SBCH.GenderSwapSuccess>
+  <RICS.SBCH.BodyChangeSuccess>{0} surgery scheduled for {1}! Your doctors will transform your pawn. Remaining balance: {2}.</RICS.SBCH.BodyChangeSuccess>
+  <RICS.SBCH.BiotechSuccess>{0} surgery scheduled for {1}! Your doctors will take care of it. Remaining balance: {2}.</RICS.SBCH.BiotechSuccess>
+
+  <!-- Disabled messages -->
+  <RICS.SBCH.GenderSwapDisabled>Gender swap surgery is currently disabled. (use !surgerycosts to see available options)</RICS.SBCH.GenderSwapDisabled>
+  <RICS.SBCH.BodyChangeDisabled>Body modification surgeries are currently disabled. (use !surgerycosts to see available options)</RICS.SBCH.BodyChangeDisabled>
+  <RICS.SBCH.SterilizeDisabled>Sterilization (vasectomy/tubal ligation) is currently disabled. (use !surgerycosts to see available options)</RICS.SBCH.SterilizeDisabled>
+  <RICS.SBCH.IUDDisabled>IUD implantation/removal is currently disabled. (use !surgerycosts to see available options)</RICS.SBCH.IUDDisabled>
+  <RICS.SBCH.VasReverseDisabled>Vasectomy reversal is currently disabled. (use !surgerycosts to see available options)</RICS.SBCH.VasReverseDisabled>
+  <RICS.SBCH.TerminateDisabled>Pregnancy termination is currently disabled. (use !surgerycosts to see available options)</RICS.SBCH.TerminateDisabled>
+  <RICS.SBCH.HemogenDisabled>Hemogen extraction is currently disabled. (use !surgerycosts to see available options)</RICS.SBCH.HemogenDisabled>
+  <RICS.SBCH.TransfusionDisabled>Blood transfusion is currently disabled. (use !surgerycosts to see available options)</RICS.SBCH.TransfusionDisabled>
+  <RICS.SBCH.MiscBiotechDisabled>Miscellaneous biotech surgeries are currently disabled. (use !surgerycosts to see available options)</RICS.SBCH.MiscBiotechDisabled>
+
+  <!-- Validation reasons -->
+  <RICS.SBCH.TooYoung>Your pawn is too young (biological age: {0:F1}). Minimum age for body-altering surgery is {1}.</RICS.SBCH.TooYoung>
+  <RICS.SBCH.ChildBodyType>Your pawn has a Child body type, indicating they are not an adult.</RICS.SBCH.ChildBodyType>
+  <RICS.SBCH.Pregnant>Your pawn is currently pregnant. Major body-altering surgeries are not safe during pregnancy.</RICS.SBCH.Pregnant>
+  <RICS.SBCH.DelicateGene>Your pawn has the 'Delicate' gene, making major body reshaping unsafe.</RICS.SBCH.DelicateGene>
+  <RICS.SBCH.ConflictingGene>Your pawn's unique genetic makeup (xenogenes) makes major body reshaping unsafe or incompatible. Consider gene extraction/reimplantation first.</RICS.SBCH.ConflictingGene>
+  <RICS.SBCH.FleshPurity>Your pawn follows a flesh purity ideology and refuses major artificial body modification.</RICS.SBCH.FleshPurity>
+  <RICS.SBCH.UniqueBodyType>Your pawn has a unique {0} body type from their race. Major body reshaping is not compatible with their physiology.</RICS.SBCH.UniqueBodyType>
+  <RICS.SBCH.AlreadyHasBodyType>Your pawn already has a {0} body type. No change needed!</RICS.SBCH.AlreadyHasBodyType>
+  <RICS.SBCH.SurgeryAlreadyScheduled>{0} surgery is already scheduled for your pawn. Please wait.</RICS.SBCH.SurgeryAlreadyScheduled>
+  <RICS.SBCH.DeniedReason>Sorry, gender swap surgery cannot be performed: {0}</RICS.SBCH.DeniedReason>
+  
+  <RICS.SBCH.MinAgeRequired>Minimum age {0} required.</RICS.SBCH.MinAgeRequired>
+  <RICS.SBCH.RequiresFemale>Requires female pawn.</RICS.SBCH.RequiresFemale>
+  <RICS.SBCH.RequiresMale>Requires male pawn.</RICS.SBCH.RequiresMale>
+  <RICS.SBCH.IncompatibleCondition>Incompatible: {0} condition present (e.g. already sterilized or ovum extracted).</RICS.SBCH.IncompatibleCondition>
+  <RICS.SBCH.AlreadyScheduled>Already scheduled for this pawn.</RICS.SBCH.AlreadyScheduled>
+  <RICS.SBCH.AlreadyScheduled.GenderSwap>Already scheduled for this pawn.</RICS.SBCH.AlreadyScheduled.GenderSwap>
+  <RICS.SBCH.NotPregnant>Pawn is not pregnant.</RICS.SBCH.NotPregnant>
+  <RICS.SBCH.NoVasectomy>Pawn lacks vasectomy.</RICS.SBCH.NoVasectomy>
+  <RICS.SBCH.NoIUD>No IUD found.</RICS.SBCH.NoIUD>
+  <RICS.SBCH.NoBloodLoss>No blood loss and is not hemogenic—no benefit from transfusion.</RICS.SBCH.NoBloodLoss>
+  <RICS.SBCH.NotSuitableAge>Pawn is not suitable for this procedure (age/body type).</RICS.SBCH.NotSuitableAge>
+  <RICS.SBCH.NoResearch>{0} requires research that hasn't been completed yet.</RICS.SBCH.NoResearch>
+
+  <!-- Body surgery adult / safety validation reasons -->
+
+  <RICS.SBCH.TooYoung>Your pawn is too young (biological age: {0:F1}). Minimum age for body-altering surgery is {1}.</RICS.SBCH.TooYoung>
+  <RICS.SBCH.ChildBodyType>Your pawn has a Child body type, indicating they are not an adult.</RICS.SBCH.ChildBodyType>
+  <RICS.SBCH.Pregnant>Your pawn is currently pregnant. Major body-altering surgeries are not safe during pregnancy.</RICS.SBCH.Pregnant>
+
+  <!-- Rare / error cases -->
+  <RICS.SBCH.NullPawn>Error: Null Pawn.</RICS.SBCH.NullPawn>
+
+  <!-- Misc / Biotech surgery validation reasons -->
+
+  <RICS.SBCH.MinAgeRequired>Minimum age {0} required.</RICS.SBCH.MinAgeRequired>
+  <RICS.SBCH.RequiresFemale>Requires female pawn.</RICS.SBCH.RequiresFemale>
+  <RICS.SBCH.RequiresMale>Requires male pawn.</RICS.SBCH.RequiresMale>
+
+  <RICS.SBCH.IncompatibleCondition>Incompatible: {0} condition present (e.g. already sterilized or ovum extracted).</RICS.SBCH.IncompatibleCondition>
+  <RICS.SBCH.AlreadyScheduled>Already scheduled for this pawn.</RICS.SBCH.AlreadyScheduled>
+
+  <RICS.SBCH.NotPregnant>Pawn is not pregnant.</RICS.SBCH.NotPregnant>
+  <RICS.SBCH.NoVasectomy>Pawn lacks vasectomy.</RICS.SBCH.NoVasectomy>
+  <RICS.SBCH.NoIUD>No IUD found.</RICS.SBCH.NoIUD>
+  <RICS.SBCH.NoBenefitTransfusion>Pawn has no blood loss and is not hemogenic—no benefit from transfusion.</RICS.SBCH.NoBenefitTransfusion>
+
+  <RICS.SBCH.NotSuitableProcedure>Pawn is not suitable for this procedure (age/body type).</RICS.SBCH.NotSuitableProcedure>
+  
+
+  <!-- Invoice fragments -->
+  <RICS.SBCH.InvoiceSurgeryLabal>🏥 Rimazon Surgery - {0}</RICS.SBCH.InvoiceSurgeryLabal>
+  
+  <RICS.SBCH.InvoiceHeader>RIMAZON SURGERY SERVICE\n====================</RICS.SBCH.InvoiceHeader>
+  <RICS.SBCH.InvoiceCustomer>Customer: {0}</RICS.SBCH.InvoiceCustomer>
+  <RICS.SBCH.InvoiceProcedure>Procedure: {0} x{1}</RICS.SBCH.InvoiceProcedure>
+  <RICS.SBCH.InvoiceBodyParts>Body Parts: {0}</RICS.SBCH.InvoiceBodyParts>
+  <RICS.SBCH.InvoiceDeliveryLocker>Delivery: Rimazon Locker\nLocation: Locker Delivery</RICS.SBCH.InvoiceDeliveryLocker>
+  <RICS.SBCH.InvoiceDeliveryDropPod>Delivery: Standard Drop Pod\nLocation: Drop Pod Delivery</RICS.SBCH.InvoiceDeliveryDropPod>
+  <RICS.SBCH.InvoiceDeliveryMixed>Delivery: Mixed Delivery\n  • Locker: x{0}\n  • Drop Pod: x{1}</RICS.SBCH.InvoiceDeliveryMixed>
+  <RICS.SBCH.InvoiceDeliveryColony>Delivery: Colony Delivery</RICS.SBCH.InvoiceDeliveryColony>
+  <RICS.SBCH.InvoiceTotal>Total: {0:N0}{1}</RICS.SBCH.InvoiceTotal>
+  <RICS.SBCH.InvoiceFooter>====================\nThank you for using Rimazon Surgery!</RICS.SBCH.InvoiceFooter>
+  <RICS.SBCH.InvoiceImplantsLocker>Implants delivered to your Rimazon Locker.\nSurgery scheduled with colony doctors.</RICS.SBCH.InvoiceImplantsLocker>
+  <RICS.SBCH.InvoiceImplantsDropPod>Implants delivered via drop pod.\nSurgery scheduled with colony doctors.</RICS.SBCH.InvoiceImplantsDropPod>
+  <RICS.SBCH.InvoiceImplantsColony>Implants delivered to colony.\nSurgery scheduled with colony doctors.</RICS.SBCH.InvoiceImplantsColony>
+  <RICS.SBCH.InvoiceServiceFallback>Service: Surgical Implantation</RICS.SBCH.InvoiceServiceFallback>
+
+  <!-- Generic -->
+  <RICS.SBCH.GenericError>Error scheduling surgery. Please try again.</RICS.SBCH.GenericError>
+
+</LanguageData>

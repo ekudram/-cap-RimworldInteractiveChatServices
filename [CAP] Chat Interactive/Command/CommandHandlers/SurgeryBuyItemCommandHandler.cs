@@ -13,6 +13,8 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+
+// Filename: SurgeryBuyItemCommandHandler.cs
 using _CAP__Chat_Interactive.Command.CommandHelpers;
 using CAP_ChatInteractive.Utilities;
 using RimWorld;
@@ -66,80 +68,52 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (args.Length == 0)
                 {
-                    return "Usage: !surgery [implant] [left/right] [quantity] or [genderswap]";
+                    return "RICS.SBCH.Usage".Translate();
                 }
 
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
                 var viewer = Viewers.GetViewer(messageWrapper);
 
-                // REPLACE the parsing code (about 40 lines) with:
                 var parsed = CommandParserUtility.ParseCommandArguments(args, allowQuality: false, allowMaterial: false, allowSide: true, allowQuantity: true);
                 if (parsed.HasError)
                     return parsed.Error;
 
-                //string itemName = parsed.ItemName.ToLower(); // Normalize to lower for case-insensitive matching
                 string sideStr = parsed.Side;
                 string quantityStr = parsed.Quantity.ToString();
 
-                // Special handling for custom surgeries (no ThingDef)
+                string itemName = parsed.ItemName.ToLowerInvariant();
 
-                bool isAllowed;
-                string disabledMessage;
-
-                string itemName = parsed.ItemName.ToLowerInvariant(); // case-insensitive
-
-                // ── Determine surgery category and basic info ──
                 string surgeryCategory = null;
                 string recipeDefName = null;
                 string displayName = null;
-                string handlerType = null; // "gender", "body", "biotech"
+                string handlerType = null;
 
-                // ── Gender Swap (special case - own handler) ──
                 if (new[] { "genderswap", "gender swap", "swapgender" }.Contains(itemName))
                 {
                     handlerType = "gender";
                     displayName = "Gender Swap";
                 }
-
-                // ── Body Change Surgeries ──
                 else if (new[] { "fatbody", "fat body", "fat", "body fat" }.Contains(itemName))
                 {
-                    handlerType = "body";
-                    surgeryCategory = "fat body";
-                    recipeDefName = "FatBodySurgery";
-                    displayName = "Fat Body";
+                    handlerType = "body"; surgeryCategory = "fat body"; recipeDefName = "FatBodySurgery"; displayName = "Fat Body";
                 }
                 else if (new[] { "femininebody", "feminine body", "feminine", "bodyfeminine", "female" }.Contains(itemName))
                 {
-                    handlerType = "body";
-                    surgeryCategory = "feminine body";
-                    recipeDefName = "FeminineBodySurgery";
-                    displayName = "Feminine Body";
+                    handlerType = "body"; surgeryCategory = "feminine body"; recipeDefName = "FeminineBodySurgery"; displayName = "Feminine Body";
                 }
                 else if (new[] { "hulkingbody", "hulking body", "hulk", "bodyhulking" }.Contains(itemName))
                 {
-                    handlerType = "body";
-                    surgeryCategory = "hulking body";
-                    recipeDefName = "HulkingBodySurgery";
-                    displayName = "Hulking Body";
+                    handlerType = "body"; surgeryCategory = "hulking body"; recipeDefName = "HulkingBodySurgery"; displayName = "Hulking Body";
                 }
                 else if (new[] { "masculinebody", "masculine body", "masculine", "bodymasculine", "male" }.Contains(itemName))
                 {
-                    handlerType = "body";
-                    surgeryCategory = "masculine body";
-                    recipeDefName = "MasculineBodySurgery";
-                    displayName = "Masculine Body";
+                    handlerType = "body"; surgeryCategory = "masculine body"; recipeDefName = "MasculineBodySurgery"; displayName = "Masculine Body";
                 }
                 else if (new[] { "thinbody", "thin body", "thin", "bodythin" }.Contains(itemName))
                 {
-                    handlerType = "body";
-                    surgeryCategory = "thin body";
-                    recipeDefName = "ThinBodySurgery";
-                    displayName = "Thin Body";
+                    handlerType = "body"; surgeryCategory = "thin body"; recipeDefName = "ThinBodySurgery"; displayName = "Thin Body";
                 }
-
-                // ── Biotech / Misc Surgeries ──
                 else if (BiotechSurgeryCommands.TryGetValue(itemName, out string recipeKey))
                 {
                     handlerType = "biotech";
@@ -147,118 +121,59 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     displayName = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(itemName);
                 }
 
-                // ── Not recognized ──  DONT DO THIS IT STOPS IMPLANT HANDLING
-                //if (handlerType == null)
-                //{
-                //    return "Unknown surgery type. Try: genderswap, fat body, feminine body, hulking body, masculine body, thin body, or a biotech surgery.";
-                //}
-
-                // ── Single place to check permission ──
+                bool isAllowed;
+                string disabledMessage;
                 CheckSurgeryEnabled(settings, itemName, out isAllowed, out disabledMessage);
-
-                Logger.Debug($"[Surgery Handler] Permission result for '{itemName}': Allowed = {isAllowed}, Message = '{disabledMessage ?? "none"}'");
 
                 if (!isAllowed)
                 {
-                    Logger.Debug($"[Surgery Handler] BLOCKED: {disabledMessage} for user {messageWrapper.Username}");
-                    return disabledMessage + " (use !surgerycosts to see available options)";
+                    return disabledMessage;
                 }
 
-                // ── Dispatch to correct handler ──
                 switch (handlerType)
                 {
-                    case "gender":
-                        return HandleGenderSwapSurgery(messageWrapper, viewer, currencySymbol);
-
-                    case "body":
-                        return HandleBodyChangeSurgery(messageWrapper, viewer, currencySymbol, surgeryCategory, recipeDefName, displayName);
-
-                    case "biotech":
-                        return HandleBiotechSurgery(messageWrapper, viewer, currencySymbol, recipeDefName, displayName);
+                    case "gender": return HandleGenderSwapSurgery(messageWrapper, viewer, currencySymbol);
+                    case "body": return HandleBodyChangeSurgery(messageWrapper, viewer, currencySymbol, surgeryCategory, recipeDefName, displayName);
+                    case "biotech": return HandleBiotechSurgery(messageWrapper, viewer, currencySymbol, recipeDefName, displayName);
                 }
 
-                // Get store item
+                // ── Regular implant surgery path (unchanged logic, only strings translated) ──
                 var storeItem = StoreCommandHelper.GetStoreItemByName(itemName);
-                if (storeItem == null)
-                {
-                    return $"Implant '{itemName}' not found in Rimazon.";
-                }
+                if (storeItem == null) return "RICS.SBCH.ImplantNotFound".Translate(itemName);
+                if (!storeItem.Enabled) return "RICS.SBCH.ImplantNotAvailable".Translate(itemName);
 
-                if (!storeItem.Enabled)
-                {
-                    return $"Implant '{itemName}' is not available for purchase.";
-                }
-
-                // Check if this is actually an implant/surgery item
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
-                if (thingDef == null && itemName != "gender swap") // Allow gender swap even without ThingDef
-                {
-                    Logger.Error($"ThingDef not found: {storeItem.DefName}");
-                    return $"Error: Implant definition not found.";
-                }
+                if (thingDef == null) return "RICS.SBCH.ImplantDefNotFound".Translate();
 
-
-
-                // Check if this is a valid surgery item (bionic, implant, etc.)
                 if (!IsValidSurgeryItem(thingDef))
-                {
-                    return $"{itemName} is not a valid implant or surgery item. Use !buy instead for regular items.";
-                }
+                    return "RICS.SBCH.NotValidSurgeryItem".Translate(itemName);
 
-                // Check research requirements
                 if (!StoreCommandHelper.HasRequiredResearch(storeItem))
-                {
-                    return $"{itemName} requires research that hasn't been completed yet.";
-                }
+                    return "RICS.SBCH.ResearchNotCompleted".Translate(itemName);
 
-                // Get viewer's pawn
                 Verse.Pawn viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
-                if (viewerPawn == null)
-                {
-                    return "You need to have a pawn in the colony to perform surgery. Use !buy pawn first.";
-                }
+                if (viewerPawn == null) return "RICS.SBCH.NoPawn".Translate();
+                if (viewerPawn.Dead) return "RICS.SBCH.PawnDead".Translate();
 
-                if (viewerPawn.Dead)
-                {
-                    return "Your pawn is dead. You cannot perform surgery.";
-                }
-
-                // Parse quantity
-                if (!int.TryParse(quantityStr, out int quantity) || quantity < 1)
-                {
-                    quantity = 1;
-                }
-
-                // SPECIAL HANDLING FOR SURGERY ITEMS: Allow up to 2 for body parts
+                if (!int.TryParse(quantityStr, out int quantity) || quantity < 1) quantity = 1;
                 int surgeryQuantityLimit = Math.Max(storeItem.QuantityLimit, 2);
-                if (quantity > surgeryQuantityLimit)
-                {
-                    Logger.Debug($"Quantity {quantity} exceeds surgery limit of {surgeryQuantityLimit} for {itemName}, clamping");
-                    quantity = surgeryQuantityLimit;
-                }
+                if (quantity > surgeryQuantityLimit) quantity = surgeryQuantityLimit;
 
-                // Calculate final price (no quality/material for surgery items)
                 int finalPrice = storeItem.BasePrice * quantity;
 
-                // Check if user can afford
                 if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
                 {
                     return $"You need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} for {quantity}x {itemName} surgery! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
                 }
 
-                // Find appropriate recipe for this implant
                 var recipe = FindSurgeryRecipeForImplant(thingDef, viewerPawn);
-                if (recipe == null)
-                {
-                    return $"No surgical procedure found for {itemName} on your pawn.";
-                }
+                if (recipe == null) return "RICS.SBCH.NoProcedure".Translate(itemName);
 
-                // Find body parts for the surgery - let RimWorld decide which parts, we just filter by side
                 var bodyParts = FindBodyPartsForSurgery(recipe, viewerPawn, sideStr, quantity);
                 if (bodyParts.Count == 0)
                 {
-                    string availableParts = GetAvailableBodyPartsDescription(recipe, viewerPawn);
-                    return $"No suitable body parts found for {itemName} surgery. Available: {availableParts}. Try specifying left/right.";
+                    string available = GetAvailableBodyPartsDescription(recipe, viewerPawn);
+                    return "RICS.SBCH.NoBodyParts".Translate(itemName, available);
                 }
 
                 // Limit quantity to available body parts
@@ -274,7 +189,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (karmaEarned > 0)
                 {
                     viewer.GiveKarma(karmaEarned);
-                    Logger.Debug($"Awarded {karmaEarned} karma for {finalPrice} coin surgery");
+                    // Logger.Debug($"Awarded {karmaEarned} karma for {finalPrice} coin surgery");
                 }
 
                 // Track delivery results
@@ -319,31 +234,31 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     // Items went to locker - target the locker
                     surgeryLookTargets = new LookTargets(combinedResult.DeliveryPosition, viewerPawn.Map);
-                    Logger.Debug($"Created LookTargets for locker position: {combinedResult.DeliveryPosition}");
+                    // Logger.Debug($"Created LookTargets for locker position: {combinedResult.DeliveryPosition}");
                 }
                 else if (surgeryDropPos.IsValid)
                 {
                     // Items were dropped somewhere - target that spot
                     surgeryLookTargets = new LookTargets(surgeryDropPos, viewerPawn.Map);
-                    Logger.Debug($"Created LookTargets for surgery item drop position: {surgeryDropPos}");
+                    // Logger.Debug($"Created LookTargets for surgery item drop position: {surgeryDropPos}");
                 }
                 else
                 {
                     // Fallback to targeting the patient
                     surgeryLookTargets = new LookTargets(viewerPawn);
-                    Logger.Debug($"Created LookTargets for patient: {viewerPawn.Name}");
+                    // Logger.Debug($"Created LookTargets for patient: {viewerPawn.Name}");
                 }
 
                 // Create the invoice with actual delivery info
-                string invoiceLabel = $"🏥 Rimazon Surgery - {messageWrapper.Username}";
+                // string invoiceLabel = $"🏥 Rimazon Surgery - {messageWrapper.Username}";
+                string invoiceLabel = "RICS.SBCH.InvoiceSurgeryLabal".Translate(messageWrapper.Username);
                 string invoiceMessage = CreateRimazonSurgeryInvoice(
                     messageWrapper.Username, itemName, quantity, finalPrice, currencySymbol,
                     bodyParts.Take(quantity).ToList(), combinedResult);
                 MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, surgeryLookTargets);
 
-                Logger.Debug($"Surgery scheduled: {messageWrapper.Username} scheduled {quantity}x {itemName} for {finalPrice}{currencySymbol}");
+                // Logger.Debug($"Surgery scheduled: {messageWrapper.Username} scheduled {quantity}x {itemName} for {finalPrice}{currencySymbol}");
 
-                // Update the return success message:
                 string deliveryMessage = combinedResult.PrimaryMethod switch
                 {
                     DeliveryMethod.Locker => "delivered to your Rimazon Locker",
@@ -351,14 +266,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     _ => "delivered to colony"
                 };
 
-                return $"Scheduled {quantity}x {itemName} surgery for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)}! " +
-                       $"Implant {deliveryMessage} please give them to the doctor. " +
-                       $"Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return "RICS.SBCH.SuccessScheduled".Translate(quantity, itemName, StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol), deliveryMessage, StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in HandleSurgery: {ex}");
-                return $"Error scheduling surgery. Please try again.{ex}";
+                return "RICS.SBCH.GenericError".Translate();
             }
         }
 
@@ -370,102 +283,49 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             switch (itemNameLower)
             {
-                // ── Gender Swap ──
-                case "genderswap":
-                case "gender swap":
-                case "swapgender":
+                case "genderswap" or "gender swap" or "swapgender":
                     isAllowed = settings.SurgeryAllowGenderSwap;
-                    disabledMessage = "Gender swap surgery is currently disabled.";
+                    disabledMessage = "RICS.SBCH.GenderSwapDisabled".Translate();
                     break;
 
-                // ── Body Changes (all share one toggle) ──
-                case "fatbody":
-                case "fat body":
-                case "fat":
-                case "body fat":
-                case "femininebody":
-                case "feminine body":
-                case "feminine":
-                case "bodyfeminine":
-                case "hulkingbody":
-                case "hulking body":
-                case "hulk":
-                case "bodyhulking":
-                case "masculinebody":
-                case "masculine body":
-                case "masculine":
-                case "bodymasculine":
-                case "thinbody":
-                case "thin body":
-                case "thin":
-                case "bodythin":
+                case "fatbody" or "fat body" or "fat" or "body fat" or "femininebody" or "feminine body" or "feminine" or "bodyfeminine" or "hulkingbody" or "hulking body" or "hulk" or "bodyhulking" or "masculinebody" or "masculine body" or "masculine" or "bodymasculine" or "thinbody" or "thin body" or "thin" or "bodythin":
                     isAllowed = settings.SurgeryAllowBodyChange;
-                    disabledMessage = "Body modification surgeries are currently disabled.";
+                    disabledMessage = "RICS.SBCH.BodyChangeDisabled".Translate();
                     break;
 
-                // ── Sterilization (vasectomy, tubal ligation, sterilize) ──
-                case "sterilize":
-                case "vasectomy":
-                case "tubal":
-                case "tuballigation":
+                case "sterilize" or "vasectomy" or "tubal" or "tuballigation":
                     isAllowed = settings.SurgeryAllowSterilize;
-                    disabledMessage = "Sterilization (vasectomy/tubal ligation) is currently disabled.";
+                    disabledMessage = "RICS.SBCH.SterilizeDisabled".Translate();
                     break;
 
-                // ── IUD (implant + remove) ──
-                case "iud":
-                case "iudimplant":
-                case "implant iud":
-                case "iudremove":
-                case "removeiud":
-                case "remove iud":
+                case "iud" or "iudimplant" or "implant iud" or "iudremove" or "removeiud" or "remove iud":
                     isAllowed = settings.SurgeryAllowIUD;
-                    disabledMessage = "IUD implantation/removal is currently disabled.";
+                    disabledMessage = "RICS.SBCH.IUDDisabled".Translate();
                     break;
 
-                // ── Vasectomy Reversal ──
-                case "vasreverse":
-                case "vas reverse":
-                case "reversovasectomy":
-                case "reverse vasectomy":
-                case "reversevasectomy":
+                case "vasreverse" or "vas reverse" or "reversovasectomy" or "reverse vasectomy" or "reversevasectomy":
                     isAllowed = settings.SurgeryAllowVasReverse;
-                    disabledMessage = "Vasectomy reversal is currently disabled.";
+                    disabledMessage = "RICS.SBCH.VasReverseDisabled".Translate();
                     break;
 
-                // ── Pregnancy Termination ──
-                case "terminate":
-                case "termination":
-                case "pregnancy termination":
-                case "pregnancytermination":
-                case "abortion":
+                case "terminate" or "termination" or "pregnancy termination" or "pregnancytermination" or "abortion":
                     isAllowed = settings.SurgeryAllowTerminate;
-                    disabledMessage = "Pregnancy termination is currently disabled.";
+                    disabledMessage = "RICS.SBCH.TerminateDisabled".Translate();
                     break;
 
-                // ── Hemogen Extraction ──
-                case "hemogen":
-                case "giveblood":
-                case "extract hemogen":
-                case "extracthemogen":
+                case "hemogen" or "giveblood" or "extract hemogen" or "extracthemogen":
                     isAllowed = settings.SurgeryAllowHemogen;
-                    disabledMessage = "Hemogen extraction is currently disabled.";
+                    disabledMessage = "RICS.SBCH.HemogenDisabled".Translate();
                     break;
 
-                // ── Transfusion ──
-                case "transfusion":
-                case "getblood":
-                case "blood transfusion":
-                case "bloodtransfusion":
-                case "blood":
+                case "transfusion" or "getblood" or "blood transfusion" or "bloodtransfusion" or "blood":
                     isAllowed = settings.SurgeryAllowTransfusion;
-                    disabledMessage = "Blood transfusion is currently disabled.";
+                    disabledMessage = "RICS.SBCH.TransfusionDisabled".Translate();
                     break;
 
-                // ── Fallback for truly misc/uncategorized biotech (add future ones here if needed) ──
                 default:
                     isAllowed = settings.SurgeryAllowMiscBiotech;
-                    disabledMessage = "Miscellaneous biotech surgeries are currently disabled.";
+                    disabledMessage = "RICS.SBCH.MiscBiotechDisabled".Translate();
                     break;
             }
         }
@@ -480,111 +340,120 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
             {
-                return $"You need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} for {displayName} surgery! " +
-                       $"You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return "RICS.SBCH.BodyChangeCannotAfford".Translate(
+                    StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
+                    displayName,
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
             }
             // Get viewer's pawn
             Verse.Pawn pawn = PawnItemHelper.GetViewerPawn(messageWrapper);
             if (pawn == null)
-                return "You need to have a pawn in the colony to perform surgery. Use !buy pawn first.";
+                // return "You need to have a pawn in the colony to perform surgery. Use !buy pawn first.";
+                return "RICS.SBCH.NoPawn".Translate();
             if (pawn.Dead)
-                return "Your pawn is dead. You cannot perform surgery.";
+                // return "Your pawn is dead. You cannot perform surgery.";
+                return "RICS.SBCH.PawnDead".Translate();
 
             // Body validation
             if (!IsSuitableForBodyChangingSurgery(pawn, out string restrictionReason))
             {
-                return $"Sorry, this surgery cannot be performed: {restrictionReason}";
+                // return $"Sorry, this surgery cannot be performed: {restrictionReason}";
+                return "RICS.SBCH.Sorry".Translate(restrictionReason);
             }
 
             var recipe = DefDatabase<RecipeDef>.GetNamedSilentFail(recipeDefName);
             if (recipe == null)
             {
-                Logger.Error($"{recipeDefName} RecipeDef not found.");
+                // Logger.Error($"{recipeDefName} RecipeDef not found.");
                 return $"Error: {displayName} procedure not available (mod configuration issue).";
             }
 
             var corePart = pawn.RaceProps.body.corePart;
             if (corePart == null)
-                return "Error: No suitable body part found for surgery.";
+                // return "Error: No suitable body part found for surgery.";
+                return "RICS.SBCH.NoBodyPartsNotSpecified".Translate() ;
 
             if (HasSurgeryScheduled(pawn, recipe, corePart))
-                return $"{displayName} surgery is already scheduled for your pawn. Please wait.";
+                // return $"{displayName} surgery is already scheduled for your pawn. Please wait.";
+                return "RICS.SBCH.SurgeryAlreadyScheduled".Translate(displayName);
 
-            // Optional: Check if pawn already has this body type (to prevent redundant surgery)
             BodyTypeDef targetBodyType = GetTargetBodyTypeForSurgery(surgeryType); // Define this helper method
             if (targetBodyType != null && pawn.story.bodyType == targetBodyType)
             {
-                return $"Your pawn already has a {displayName.ToLower()} body type. No change needed!";
+                // return $"Your pawn already has a {displayName.ToLower()} body type. No change needed!";
+                return "RICS.SBCH.AlreadyHasBodyType".Translate(displayName);
             }
-
-            // Optional: Gender compatibility check (e.g., block "masculine" on female pawns?)
-            // if (surgeryType == "masculine" && pawn.gender == Gender.Female) return "This surgery is not compatible with female pawns.";
 
             viewer.TakeCoins(finalPrice);
 
-            int karmaEarned = finalPrice / 200; // Conservative karma
+            int karmaEarned = finalPrice / 100; // Needs to be a configurable setting.
             if (karmaEarned > 0)
             {
                 viewer.GiveKarma(karmaEarned);
-                Logger.Debug($"Awarded {karmaEarned} karma for {displayName} surgery");
+                // Logger.Debug($"Awarded {karmaEarned} karma for {displayName} surgery");
             }
 
             ScheduleSurgeries(pawn, recipe, new List<BodyPartRecord> { corePart });
 
             LookTargets targets = new LookTargets(pawn);
-            string invoiceLabel = $"🏥 Rimazon Surgery - {messageWrapper.Username}";
+            //string invoiceLabel = $"🏥 Rimazon Surgery - {messageWrapper.Username}";
+            string invoiceLabel = "RICS.SBCH.InvoiceSurgeryLabal".Translate(messageWrapper.Username);
             string invoiceMessage = CreateRimazonSurgeryInvoice(
                 messageWrapper.Username, displayName, quantity, finalPrice, currencySymbol,
                 new List<BodyPartRecord> { corePart });
 
             MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, targets);
 
-            Logger.Debug($"{displayName} surgery scheduled for {messageWrapper.Username} - {finalPrice}{currencySymbol}");
+            // Logger.Debug($"{displayName} surgery scheduled for {messageWrapper.Username} - {finalPrice}{currencySymbol}");
 
-            return $"{displayName} surgery scheduled for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)}! " +
-                   $"Your doctors will transform your pawn. Remaining balance: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            return "RICS.SBCH.BodyChangeSuccess".Translate(
+                    displayName,
+                    StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
         }
 
-        // New method for handling gender swap surgery
         private static string HandleGenderSwapSurgery(ChatMessageWrapper messageWrapper, Viewer viewer, string currencySymbol)
         {
             const int quantity = 1;
 
             var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
             int finalPrice = globalSettings.SurgeryGenderSwapCost;
-
             if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
             {
-                return $"You need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} for gender swap surgery! " +
-                       $"You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return "RICS.SBCH.GenderSwapCannotAfford".Translate(
+                    StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
             }
 
             // Get viewer's pawn
             Verse.Pawn pawn = PawnItemHelper.GetViewerPawn(messageWrapper);
             if (pawn == null)
-                return "You need to have a pawn in the colony to perform surgery. Use !buy pawn first.";
+                return "RICS.SBCH.NoPawn".Translate(); //"You need to have a pawn in the colony to perform surgery. Use !buy pawn first.";
             if (pawn.Dead)
-                return "Your pawn is dead. You cannot perform surgery.";
+                return "RICS.SBCH.PawnDead".Translate();  //"Your pawn is dead. You cannot perform surgery.";
 
             // Age validation
             if (!IsAdultForBodySurgery(pawn, out string restrictionReason))
             {
-                return $"Sorry, gender swap surgery cannot be performed: {restrictionReason}";
+                return "RICS.SBCH.DeniedReason".Translate(restrictionReason);  //$"Sorry, gender swap surgery cannot be performed: {restrictionReason}";
             }
 
             var recipe = DefDatabase<RecipeDef>.GetNamedSilentFail("GenderSwapSurgery");
             if (recipe == null)
             {
                 Logger.Error("GenderSwapSurgery RecipeDef not found.");
-                return "Error: Gender swap procedure not available (mod configuration issue).";
+                return "RICS.SBCH.GenericError".Translate(); //  Error: Gender swap procedure not available (mod configuration issue).";
             }
 
             var corePart = pawn.RaceProps.body.corePart;
             if (corePart == null)
-                return "Error: No suitable body part found for surgery.";
+                // return "Error: No suitable body part found for surgery.";\
+                return "RICS.SBCH.NotSuitableAge".Translate();
+
+
 
             if (HasSurgeryScheduled(pawn, recipe, corePart))
-                return "Gender swap surgery is already scheduled for your pawn. Please wait.";
+                return "RICS.SBCH.AlreadyScheduled.GenderSwap".Translate(); // Gender swap surgery is already scheduled for your pawn. Please wait.";
 
             // Optional: prevent redundant swaps (comment out if you want to allow funny double-swaps)
             if (pawn.gender == Gender.None) return "Your pawn has no gender to swap... mysterious.";
@@ -596,13 +465,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (karmaEarned > 0)
             {
                 viewer.GiveKarma(karmaEarned);
-                Logger.Debug($"Awarded {karmaEarned} karma for gender swap purchase");
+                // Logger.Debug($"Awarded {karmaEarned} karma for gender swap purchase");
             }
 
             ScheduleSurgeries(pawn, recipe, new List<BodyPartRecord> { corePart });
 
             LookTargets targets = new LookTargets(pawn);
-            string invoiceLabel = $"🏥 Rimazon Surgery - {messageWrapper.Username}";
+            string invoiceLabel = "RICS.SBCH.InvoiceSurgeryLabal".Translate(messageWrapper.Username);  //$"🏥 Rimazon Surgery - {messageWrapper.Username}";
             string invoiceMessage = CreateRimazonSurgeryInvoice(
                 messageWrapper.Username, "Gender Swap", quantity, finalPrice, currencySymbol,
                 new List<BodyPartRecord> { corePart });
@@ -611,8 +480,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             Logger.Debug($"Gender swap scheduled for {messageWrapper.Username} - {finalPrice}{currencySymbol}");
 
-            return $"Gender swap surgery scheduled for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)}! " +
-                   $"Your doctors will take care of it. Remaining balance: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            return "RICS.SBCH.GenderSwapSuccess".Translate(
+                    StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
         }
 
         private static string HandleBiotechSurgery(ChatMessageWrapper messageWrapper, Viewer viewer, string currencySymbol, string recipeKey, string displayName)
@@ -620,8 +490,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             const int quantity = 1; // Fixed to 1 for misc surgeries
 
             Verse.Pawn pawn = PawnItemHelper.GetViewerPawn(messageWrapper);
-            if (pawn == null) return "You need a pawn. Use !buy pawn first.";
-            if (pawn.Dead) return "Pawn is dead.";
+            if (pawn == null)
+                return "RICS.SBCH.NoPawn".Translate(); //"You need to have a pawn in the colony to perform surgery. Use !buy pawn first.";
+            if (pawn.Dead)
+                return "RICS.SBCH.PawnDead".Translate();  //"Your pawn is dead. You cannot perform surgery.";
 
             // Special handling for 'sterilize' → override key & name
             if (recipeKey == "STERILIZE")
@@ -645,20 +517,24 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (recipe.researchPrerequisites != null &&
                 !recipe.researchPrerequisites.All(rp => rp.IsFinished))
             {
-                return $"{displayName} requires research that hasn't been completed yet.";
+                // return $"{displayName} requires research that hasn't been completed yet.";
+                return "RICS.SBCH.NoResearch".Translate(displayName) ;
             }
 
             // Validation
             if (!IsSuitableForMiscSurgery(pawn, recipe, out string restrictionReason))
             {
-                return $"Cannot perform {displayName}: {restrictionReason}";
+                // return $"Cannot perform {displayName}: {restrictionReason}";
+                return "RICS.SBCH.Sorry".Translate(restrictionReason) ;
             }
 
             // Affordability
             if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
             {
-                return $"Need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} for {displayName}! " +
-                       $"You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                return "RICS.SBCH.BiotechCannotAfford".Translate(
+                    StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
+                    displayName,
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
             }
 
             // Spawn required ingredients (medicine + any fixed like HemogenPack)
@@ -679,15 +555,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             // Invoice & notification
             LookTargets targets = new LookTargets(pawn);
-            string invoiceLabel = $"🏥 Rimazon Surgery - {messageWrapper.Username}";
+            // string invoiceLabel = $"🏥 Rimazon Surgery - {messageWrapper.Username}";
+            string invoiceLabel = "RICS.SBCH.InvoiceSurgeryLabal".Translate(messageWrapper.Username);
             string invoiceMessage = CreateRimazonSurgeryInvoice(
                 messageWrapper.Username, displayName, quantity, finalPrice, currencySymbol, bodyParts);
             MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, targets);
 
-            Logger.Debug($"{displayName} ({recipeKey}) scheduled for {messageWrapper.Username} - {finalPrice}{currencySymbol}");
+            // Logger.Debug($"{displayName} ({recipeKey}) scheduled for {messageWrapper.Username} - {finalPrice}{currencySymbol}");
 
-            return $"{displayName} surgery scheduled for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)}! " +
-                   $"Your doctors will take care of it. Remaining balance: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+            return "RICS.SBCH.BiotechSuccess".Translate(
+                    displayName,
+                    StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
         }
 
         // ===== BODY PART SELECTION METHODS =====
@@ -753,84 +632,51 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         // ===== INVOICE CREATION METHODS =====
-        private static string CreateRimazonSurgeryInvoice(string username,
-            string itemName, int quantity, int price,
+        private static string CreateRimazonSurgeryInvoice(string username, string itemName, int quantity, int price,
             string currencySymbol, List<BodyPartRecord> bodyParts, DeliveryResult deliveryResult = null)
         {
-            string invoice = $"RIMAZON SURGERY SERVICE\n";
-            invoice += $"====================\n";
-            invoice += $"Customer: {username}\n";
-            invoice += $"Procedure: {itemName} x{quantity}\n";
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("RICS.SBCH.InvoiceHeader".Translate());
+            sb.AppendLine("RICS.SBCH.InvoiceCustomer".Translate(username));
+            sb.AppendLine("RICS.SBCH.InvoiceProcedure".Translate(itemName, quantity));
 
             if (bodyParts.Count > 0)
-            {
-                invoice += $"Body Parts: {string.Join(", ", bodyParts.Select(bp => bp.Label))}\n";
-            }
+                sb.AppendLine("RICS.SBCH.InvoiceBodyParts".Translate(string.Join(", ", bodyParts.Select(bp => bp.Label))));
 
-            // Add delivery information based on actual delivery method
-            if (deliveryResult != null)
-            {
-                int lockerCount = deliveryResult.LockerDeliveredItems.Sum(t => t.stackCount);
-                int dropPodCount = deliveryResult.DropPodDeliveredItems.Sum(t => t.stackCount);
-
-                if (deliveryResult.PrimaryMethod == DeliveryMethod.Locker)
-                {
-                    invoice += $"Delivery: Rimazon Locker\n";
-                    invoice += $"Location: Locker Delivery\n";
-                }
-                else if (deliveryResult.PrimaryMethod == DeliveryMethod.DropPod)
-                {
-                    invoice += $"Delivery: Standard Drop Pod\n";
-                    invoice += $"Location: Drop Pod Delivery\n";
-                }
-                else if (lockerCount > 0 && dropPodCount > 0)
-                {
-                    invoice += $"Delivery: Mixed Delivery\n";
-                    invoice += $"  • Locker: x{lockerCount}\n";
-                    invoice += $"  • Drop Pod: x{dropPodCount}\n";
-                }
-                else
-                {
-                    invoice += $"Delivery: Colony Delivery\n";
-                }
-            }
-            else
-            {
-                // Fallback for old behavior
-                invoice += $"Service: Surgical Implantation\n";
-            }
-
-            invoice += $"====================\n";
-            invoice += $"Total: {price:N0}{currencySymbol}\n";
-            invoice += $"====================\n";
-            invoice += $"Thank you for using Rimazon Surgery!\n";
-
-            // Update the delivery message based on actual method
             if (deliveryResult != null)
             {
                 if (deliveryResult.PrimaryMethod == DeliveryMethod.Locker)
-                {
-                    invoice += $"Implants delivered to your Rimazon Locker.\n";
-                }
+                    sb.AppendLine("RICS.SBCH.InvoiceDeliveryLocker".Translate());
                 else if (deliveryResult.PrimaryMethod == DeliveryMethod.DropPod)
-                {
-                    invoice += $"Implants delivered via drop pod.\n";
-                }
+                    sb.AppendLine("RICS.SBCH.InvoiceDeliveryDropPod".Translate());
+                else if (deliveryResult.LockerDeliveredItems.Count > 0 && deliveryResult.DropPodDeliveredItems.Count > 0)
+                    sb.AppendLine("RICS.SBCH.InvoiceDeliveryMixed".Translate(
+                        deliveryResult.LockerDeliveredItems.Sum(t => t.stackCount),
+                        deliveryResult.DropPodDeliveredItems.Sum(t => t.stackCount)));
                 else
-                {
-                    invoice += $"Implants delivered to colony.\n";
-                }
+                    sb.AppendLine("RICS.SBCH.InvoiceDeliveryColony".Translate());
             }
             else
             {
-                // Old fallback message
-                invoice += $"Implants delivered to pawn's inventory.\n";
+                sb.AppendLine("RICS.SBCH.InvoiceServiceFallback".Translate());
             }
 
-            invoice += $"Surgery scheduled with colony doctors.";
+            sb.AppendLine("RICS.SBCH.InvoiceTotal".Translate(price, currencySymbol));
+            sb.AppendLine("RICS.SBCH.InvoiceFooter".Translate());
 
-            return invoice;
+            if (deliveryResult != null)
+            {
+                if (deliveryResult.PrimaryMethod == DeliveryMethod.Locker)
+                    sb.AppendLine("RICS.SBCH.InvoiceImplantsLocker".Translate());
+                else if (deliveryResult.PrimaryMethod == DeliveryMethod.DropPod)
+                    sb.AppendLine("RICS.SBCH.InvoiceImplantsDropPod".Translate());
+                else
+                    sb.AppendLine("RICS.SBCH.InvoiceImplantsColony".Translate());
+            }
+
+            return sb.ToString();
         }
+
 
         private static DeliveryMethod DeterminePrimaryDeliveryMethod(List<DeliveryResult> results)
         {
@@ -1006,9 +852,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static bool IsAdultForBodySurgery(Verse.Pawn pawn, out string reason)
         {
+            reason = null;
+
             if (pawn == null)
             {
-                reason = "Error: Null Pawn.";
+                reason = "RICS.SBCH.NullPawn".Translate();
                 return false;
             }
 
@@ -1016,46 +864,50 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (pawn.ageTracker != null)
             {
                 float biologicalAge = pawn.ageTracker.AgeBiologicalYearsFloat;
-
-                // RimWorld vanilla adulthood threshold is usually 18
-                // You can make this configurable later if desired
-               const float MIN_ADULT_AGE = 14f;
+                const float MIN_ADULT_AGE = 14f;  // ← you can later make this a setting if desired
 
                 if (biologicalAge < MIN_ADULT_AGE)
                 {
-                    reason = $"Your pawn is too young (biological age: {biologicalAge:F1}). Minimum age for body-altering surgery is {MIN_ADULT_AGE}.";
+                    reason = "RICS.SBCH.TooYoung".Translate(biologicalAge, MIN_ADULT_AGE);
                     Logger.Debug($"Pawn {pawn.Name} is too young (bio age: {biologicalAge:F1}) for body-changing surgery");
                     return false;
                 }
             }
 
-            // 2. Fallback: Check body type (useful when age tracker is missing or for modded races)
+            // 2. Fallback: Check body type (useful for modded races or missing age tracker)
             if (pawn.story != null && pawn.story.bodyType != null)
             {
                 if (pawn.story.bodyType == BodyTypeDefOf.Child)
                 {
-                    reason = "Your pawn has a Child body type, indicating they are not an adult.";
+                    reason = "RICS.SBCH.ChildBodyType".Translate();
                     Logger.Debug($"Pawn {pawn.Name} has Child body type - blocking body surgery");
                     return false;
                 }
             }
 
-            // Pregnancy check
+            // 3. Pregnancy check – major body mods unsafe during pregnancy
             if (pawn.health?.hediffSet != null)
             {
                 var pregnancyHediff = pawn.health.hediffSet.hediffs
-                    .FirstOrDefault(h => h.def.defName.ToLower().Contains("pregnancy") || h is Hediff_Pregnant);
+                    .FirstOrDefault(h =>
+                        h.def.defName.ToLowerInvariant().Contains("pregnancy") ||
+                        h is Hediff_Pregnant);
 
                 if (pregnancyHediff != null)
                 {
-                    reason = "Your pawn is currently pregnant. Major body-altering surgeries are not safe during pregnancy.";
+                    reason = "RICS.SBCH.Pregnant".Translate();
                     return false;
                 }
 
-                // Lactating block (optional - you already have it commented; keep if wanted)
-                // if (pawn.health.hediffSet.HasHediff(HediffDefOf.Lactating)) { ... }
+                // Optional: you can add lactating check later if desired
+                // if (pawn.health.hediffSet.HasHediff(HediffDefOf.Lactating))
+                // {
+                //     reason = "RICS.SBCH.LactatingBlocked".Translate();  // ← add key if you enable this
+                //     return false;
+                // }
             }
 
+            // All checks passed
             reason = null;
             return true;
         }
@@ -1157,23 +1009,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Age
             if (recipe.minAllowedAge > 0 && pawn.ageTracker?.AgeBiologicalYearsFloat < recipe.minAllowedAge)
             {
-                reason = $"Minimum age {recipe.minAllowedAge} required.";
+                reason = "RICS.SBCH.MinAgeRequired".Translate(recipe.minAllowedAge);
                 return false;
             }
 
             // Gender prerequisite (nullable Gender)
             if (recipe.genderPrerequisite == Gender.Female && pawn.gender != Gender.Female)
             {
-                reason = "Requires female pawn.";
+                reason = "RICS.SBCH.RequiresFemale".Translate();
                 return false;
             }
             if (recipe.genderPrerequisite == Gender.Male && pawn.gender != Gender.Male)
             {
-                reason = "Requires male pawn.";
+                reason = "RICS.SBCH.RequiresMale".Translate();
                 return false;
             }
 
-            // Incompatible hediff tags  tags
+            // Incompatible hediff tags
             if (recipe.incompatibleWithHediffTags != null)
             {
                 foreach (string forbiddenTag in recipe.incompatibleWithHediffTags)
@@ -1181,7 +1033,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     if (pawn.health.hediffSet.hediffs.Any(h =>
                         h.def.tags != null && h.def.tags.Contains(forbiddenTag)))
                     {
-                        reason = $"Incompatible: {forbiddenTag} condition present (e.g. already sterilized or ovum extracted).";
+                        reason = "RICS.SBCH.IncompatibleCondition".Translate(forbiddenTag);
                         return false;
                     }
                 }
@@ -1190,7 +1042,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Already scheduled (null part for most misc surgeries)
             if (HasSurgeryScheduled(pawn, recipe, null))
             {
-                reason = "Already scheduled for this pawn.";
+                reason = "RICS.SBCH.AlreadyScheduled".Translate();
                 return false;
             }
 
@@ -1203,7 +1055,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         h is Hediff_Pregnant);
                     if (!isPregnant)
                     {
-                        reason = "Pawn is not pregnant.";
+                        reason = "RICS.SBCH.NotPregnant".Translate();
                         return false;
                     }
                     break;
@@ -1211,7 +1063,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 case "ReverseVasectomy":
                     if (!pawn.health.hediffSet.HasHediff(DefDatabase<HediffDef>.GetNamedSilentFail("Vasectomy")))
                     {
-                        reason = "Pawn lacks vasectomy.";
+                        reason = "RICS.SBCH.NoVasectomy".Translate();
                         return false;
                     }
                     break;
@@ -1219,23 +1071,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 case "RemoveIUD":
                     if (!pawn.health.hediffSet.HasHediff(DefDatabase<HediffDef>.GetNamedSilentFail("ImplantedIUD")))
                     {
-                        reason = "No IUD found.";
+                        reason = "RICS.SBCH.NoIUD".Translate();
                         return false;
                     }
                     break;
+
                 case "BloodTransfusion":
                     bool needsBlood = pawn.health.hediffSet.HasHediff(HediffDefOf.BloodLoss);
 
                     bool isHemogenic = pawn.genes != null &&
                         pawn.genes.GenesListForReading.Any(g =>
-                            //g.def.hemogenOffset != 0 ||   // any gene affecting hemogen
                             g.def == GeneDefOf.Bloodfeeder ||
-                            g.def == GeneDefOf.Hemogenic   // if your mod adds custom ones
+                            g.def == GeneDefOf.Hemogenic
                         );
 
                     if (!needsBlood && !isHemogenic)
                     {
-                        reason = "Pawn has no blood loss and is not hemogenic—no benefit from transfusion.";
+                        reason = "RICS.SBCH.NoBenefitTransfusion".Translate();
                         return false;
                     }
                     break;
@@ -1244,7 +1096,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Optional: Reuse body surgery adult check
             if (!IsAdultForBodySurgery(pawn, out _))
             {
-                reason = "Pawn is not suitable for this procedure (age/body type).";
+                reason = "RICS.SBCH.NotSuitableProcedure".Translate();
                 return false;
             }
 
