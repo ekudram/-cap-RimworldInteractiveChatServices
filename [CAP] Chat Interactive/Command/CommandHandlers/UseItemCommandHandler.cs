@@ -23,6 +23,7 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Verse;
 using Verse.Sound;
 
@@ -39,14 +40,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (args.Length == 0)
                 {
-                    return "Usage: !use <item> [quantity]";
+                    return "RICS.UICH.Usage".Translate();
                 }
 
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
                 var viewer = Viewers.GetViewer(messageWrapper.Username);
 
-                // REPLACE the parsing code (about 30 lines) with:
                 var parsed = CommandParserUtility.ParseCommandArguments(args, allowQuality: false, allowMaterial: false, allowSide: false, allowQuantity: true);
                 if (parsed.HasError)
                     return parsed.Error;
@@ -54,72 +54,75 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 string itemName = parsed.ItemName;
                 string quantityStr = parsed.Quantity.ToString();
 
-                // Get store item
                 var storeItem = StoreCommandHelper.GetStoreItemByName(itemName);
                 if (storeItem == null)
                 {
-                    return $"Item '{itemName}' not found in Rimazon.";
+                    return "RICS.UICH.ItemNotFound".Translate(itemName);
                 }
-
-                // if (!storeItem.Enabled)
-                //{
-                //    return $"Item '{itemName}' is not available for purchase.";
-                //}
 
                 if (!storeItem.IsUsable)
                 {
-                    return $"{itemName} is not a usable item.";
+                    return "RICS.UICH.NotUsable".Translate(itemName);
                 }
 
-                // Check research requirements
                 if (!StoreCommandHelper.HasRequiredResearch(storeItem))
                 {
-                    return $"{itemName} requires research that hasn't been completed yet.";
+                    return "RICS.UICH.ResearchRequired".Translate(itemName);
                 }
 
-                // Parse quantity
                 if (!int.TryParse(quantityStr, out int quantity) || quantity < 1)
                 {
                     quantity = 1;
                 }
 
-                // Check quantity limits and clamp to maximum allowed
                 if (storeItem.HasQuantityLimit && quantity > storeItem.QuantityLimit)
                 {
                     Logger.Debug($"Quantity {quantity} exceeds limit of {storeItem.QuantityLimit} for {itemName}, clamping to maximum");
                     quantity = storeItem.QuantityLimit;
                 }
 
-                // Get viewer's pawn
                 var viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
-                Verse.Pawn rimworldPawn = viewerPawn; // This is already a Verse.Pawn
-                Logger.Debug($"Viewer pawn for {messageWrapper.Username}: {(viewerPawn != null ? viewerPawn.Name.ToString() : "null")}");
-                Logger.Debug($"Viewer pawn dead status: {(viewerPawn != null ? viewerPawn.Dead.ToString() : "N/A")}");
-                Logger.Debug($"Rimworld pawn for {messageWrapper.Username}: {(rimworldPawn != null ? rimworldPawn.Name.ToString() : "null")}");
-                Logger.Debug($"Rimworld pawn dead status: {(rimworldPawn != null ? rimworldPawn.Dead.ToString() : "N/A")}");
+                Verse.Pawn rimworldPawn = viewerPawn;
 
                 if (viewerPawn == null)
                 {
-                    return "You need to have a pawn in the colony to use items. Use !buy pawn first.";
+                    return "RICS.UICH.NoPawn".Translate();
                 }
 
-                // SPECIAL RESURRECTION LOGIC: Allow Resurrector Mech Serum on dead pawns
                 bool isResurrectorSerum = storeItem.DefName == "MechSerumResurrector";
 
                 if (viewerPawn.Dead && !isResurrectorSerum)
                 {
-                    return "Your pawn is dead. You cannot use items.";
+                    return "RICS.UICH.PawnDead".Translate();
                 }
 
-                // For resurrector serum on dead pawns, force quantity to 1
                 if (isResurrectorSerum && viewerPawn.Dead)
                 {
                     quantity = 1;
-                    Logger.Debug($"Using Resurrector Mech Serum on dead pawn, quantity forced to 1");
                 }
 
-                // Calculate final price (no quality/material multipliers for usable items)
                 int finalPrice = storeItem.BasePrice * quantity;
+
+                if (viewer.Coins < finalPrice)
+                {
+                    return "RICS.UICH.NotEnoughCoins".Translate(
+                        StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
+                        quantity,
+                        itemName,
+                        StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)
+                    );
+                }
+
+                var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
+                if (thingDef == null)
+                {
+                    return "RICS.UICH.ItemDefMissing".Translate(itemName);  // ← add this key if needed: <RICS.UICH.ItemDefMissing>Error: Item definition for '{0}' not found.</RICS.UICH.ItemDefMissing>
+                }
+
+                if (isResurrectorSerum && viewerPawn.Dead && CannotResurrectPawn(viewerPawn))
+                {
+                    return "RICS.UICH.BodyDestroyed".Translate();
+                }
 
                 string validationError = ValidateMechanitorImplant(storeItem, rimworldPawn, itemName, quantity);
                 if (validationError != null)
@@ -127,113 +130,100 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return validationError;
                 }
 
-                // Check if user can afford
-                if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
-                {
-                    return $"You need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} to use {quantity}x {itemName}! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
-                }
-
-                // Get thing def
-                var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
-                if (thingDef == null)
-                {
-                    Logger.Error($"ThingDef not found: {storeItem.DefName}");
-                    return $"Error: Item definition not found.";
-                }
-
-                // Deduct coins
                 viewer.TakeCoins(finalPrice);
 
                 int karmaEarned = finalPrice / 100;
                 if (karmaEarned > 0)
                 {
                     viewer.GiveKarma(karmaEarned);
-                    Logger.Debug($"Awarded {karmaEarned} karma for {finalPrice} coin purchase");
                 }
 
-                // SPECIAL RESURRECTION: Handle resurrector serum differently
                 if (isResurrectorSerum && viewerPawn.Dead)
                 {
                     var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
-                    cooldownManager.RecordItemPurchase(storeItem.DefName); // or "apparel", "item", etc.
+                    cooldownManager.RecordItemPurchase(storeItem.DefName);
                     ResurrectPawn(viewerPawn);
                 }
                 else
                 {
-                    // Normal item usage
                     var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
-                    cooldownManager.RecordItemPurchase(storeItem.DefName); // or "apparel", "item", etc.
+                    cooldownManager.RecordItemPurchase(storeItem.DefName);
                     UseItemImmediately(thingDef, quantity, rimworldPawn);
                 }
 
-                // Send appropriate letter notification
                 string itemLabel = thingDef?.LabelCap ?? itemName;
                 string invoiceLabel;
                 string invoiceMessage;
 
                 if (isResurrectorSerum && viewerPawn.Dead)
                 {
-                    // Pink letter for resurrection
-                    invoiceLabel = $"💖 Rimazon Resurrection - {messageWrapper.Username}";
-                    invoiceMessage = CreateRimazonResurrectionInvoice(messageWrapper.Username, itemLabel, finalPrice, currencySymbol);
+                    invoiceLabel = "RICS.UICH.InvoiceResurrectLabel".Translate(messageWrapper.Username);
+                    invoiceMessage = CreateRimazonResurrectionInvoice(messageWrapper.Username, itemLabel, finalPrice, currencySymbol);  // ← translate this function separately if pasted
                     LookTargets resurrectionLookTargets = new LookTargets(viewerPawn);
-                    Logger.Debug($"Sending resurrection letter to {messageWrapper.Username} for pawn {viewerPawn.Name}");
-                    Logger.Debug($"Resurrection look targets: {resurrectionLookTargets}");
                     MessageHandler.SendPinkLetter(invoiceLabel, invoiceMessage, resurrectionLookTargets);
                 }
-                else if (IsMajorPurchase(finalPrice, null)) // Don't check quality for use commands
+                else if (IsMajorPurchase(finalPrice, null))
                 {
-                    invoiceLabel = $"🔵 Rimazon Instant - {messageWrapper.Username}";
-                    invoiceMessage = CreateRimazonInstantInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol);
+                    invoiceLabel = "RICS.UICH.InvoiceInstantLabel".Translate(messageWrapper.Username);
+                    invoiceMessage = CreateRimazonInstantInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol);  // ← translate this function separately if pasted
                     LookTargets useLookTargets = new LookTargets(rimworldPawn);
-                    Logger.Debug($"Sending major use letter to {messageWrapper.Username} for pawn {rimworldPawn.Name}");
-                    Logger.Debug($"Use look targets: {useLookTargets}");
                     MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, useLookTargets);
                 }
                 else
                 {
-                    invoiceLabel = $"🔵 Rimazon Instant - {messageWrapper.Username}";
+                    invoiceLabel = "RICS.UICH.InvoiceInstantLabel".Translate(messageWrapper.Username);
                     invoiceMessage = CreateRimazonInstantInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol);
                     LookTargets useLookTargets = new LookTargets(rimworldPawn);
-                    Logger.Debug($"Sending regular use letter to {messageWrapper.Username} for pawn {rimworldPawn.Name}");
-                    Logger.Debug($"Use look targets: {useLookTargets}");
                     MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, useLookTargets);
                 }
 
-                Logger.Debug($"Use item successful: {messageWrapper.Username} used {quantity}x {itemName} for {finalPrice}{currencySymbol}");
-
-                // Return appropriate success message
                 if (isResurrectorSerum && viewerPawn.Dead)
                 {
-                    return $"💖 RESURRECTION! Used {itemName} to bring your pawn back to life for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                    return "RICS.UICH.SuccessResurrect".Translate(
+                        itemName,
+                        StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
+                        StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)
+                    );
                 }
                 else
                 {
-                    return $"Used {quantity}x {itemName} for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                    return "RICS.UICH.SuccessNormal".Translate(
+                        quantity,
+                        itemName,
+                        StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
+                        StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)
+                    );
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in HandleUseItem: {ex}");
-                return "Error using item. Please try again.";
+                return "RICS.UICH.GenericError".Translate();
             }
         }
 
         public static string CreateRimazonResurrectionInvoice(string username, string itemName, int price, string currencySymbol)
         {
-            string invoice = $"RIMAZON RESURRECTION SERVICE\n";
-            invoice += $"====================\n";
-            invoice += $"Customer: {username}\n";
-            invoice += $"Service: Pawn Resurrection\n";
-            invoice += $"Item: {itemName}\n";
-            invoice += $"====================\n";
-            invoice += $"Total: {price:N0}{currencySymbol}\n";
-            invoice += $"====================\n";
-            invoice += $"Thank you for using Rimazon Resurrection!\n";
-            invoice += $"Your pawn has been restored to life!\n";
-            invoice += $"Life is precious - cherish every moment! 💖";
+            var sb = new StringBuilder();
 
-            return invoice;
+            sb.AppendLine("RICS.UICH.Invoice.Resurrect.Header".Translate());
+            sb.AppendLine("RICS.UICH.Invoice.Separator".Translate());
+
+            sb.AppendLine("RICS.UICH.Invoice.Customer".Translate(username));
+            sb.AppendLine("RICS.UICH.Invoice.Service".Translate());
+            sb.AppendLine("RICS.UICH.Invoice.Item".Translate(itemName));
+
+            sb.AppendLine("RICS.UICH.Invoice.Separator".Translate());
+
+            sb.AppendLine("RICS.UICH.Invoice.Total".Translate(price, currencySymbol));
+
+            sb.AppendLine("RICS.UICH.Invoice.Separator".Translate());
+
+            sb.AppendLine("RICS.UICH.Invoice.ThankYou".Translate());
+            sb.AppendLine("RICS.UICH.Invoice.Restored".Translate());
+            sb.AppendLine("RICS.UICH.Invoice.Closing".Translate());
+
+            return sb.ToString();
         }
 
         public static bool CannotResurrectPawn(Verse.Pawn pawn)
@@ -300,7 +290,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // If we get here, the pawn is completely gone
-                Logger.Debug($"Pawn {pawn.Name} is completely destroyed - no corpse found in any map or world pawns");
+                // Logger.Debug($"Pawn {pawn.Name} is completely destroyed - no corpse found in any map or world pawns");
                 return true;
             }
             catch (Exception ex)
@@ -361,18 +351,25 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static string CreateRimazonInstantInvoice(string username, string itemName, int quantity, int price, string currencySymbol)
         {
-            string invoice = $"RIMAZON INSTANT\n";
-            invoice += $"====================\n";
-            invoice += $"Customer: {username}\n";
-            invoice += $"Item: {itemName} x{quantity}\n";
-            invoice += $"Service: Immediate Use\n";
-            invoice += $"====================\n";
-            invoice += $"Total: {price:N0}{currencySymbol}\n";
-            invoice += $"====================\n";
-            invoice += $"Thank you for using Rimazon Instant!\n";
-            invoice += $"No delivery required - instant satisfaction!";
+            var sb = new StringBuilder();
 
-            return invoice;
+            sb.AppendLine("RICS.UICH.Invoice.Instant.Header".Translate());
+            sb.AppendLine("RICS.UICH.Invoice.Separator".Translate());
+
+            sb.AppendLine("RICS.UICH.Invoice.Customer".Translate(username));
+            sb.AppendLine("RICS.UICH.Invoice.Item".Translate(itemName, quantity));
+            sb.AppendLine("RICS.UICH.Invoice.Service".Translate());
+
+            sb.AppendLine("RICS.UICH.Invoice.Separator".Translate());
+
+            sb.AppendLine("RICS.UICH.Invoice.Total".Translate(price, currencySymbol));
+
+            sb.AppendLine("RICS.UICH.Invoice.Separator".Translate());
+
+            sb.AppendLine("RICS.UICH.Invoice.ThankYouInstant".Translate());
+            sb.AppendLine("RICS.UICH.Invoice.NoDelivery".Translate());
+
+            return sb.ToString();
         }
 
         private static SkillDef GetSkillDefFromNeurotrainer(string defName)
@@ -631,7 +628,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
-                Logger.Debug($"Attempting to use item: {thing.def.defName} on pawn {pawn.Name}");
+                //Logger.Debug($"Attempting to use item: {thing.def.defName} on pawn {pawn.Name}");
 
                 // Spawn the item temporarily so comps can initialize
                 GenSpawn.Spawn(thing, pawn.Position, pawn.Map);
@@ -760,6 +757,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 !isRemoteRepairer && !isRemoteShielder && !isRepairProbe)
                 return null;
 
+            // NEW: Check for Psychically Deaf trait (prevents mechanitor implant use/benefit)
+            TraitDef psychicallyDeafDef = DefDatabase<TraitDef>.GetNamedSilentFail("PsychicallyDeaf");
+            if (psychicallyDeafDef != null && (pawn.story?.traits?.HasTrait(psychicallyDeafDef) ?? false))
+            {
+                return "RICS.UICH.Mechanitor.PsychicallyDeaf".Translate();
+            }
+
             // Get all hediffs on the pawn
             var hediffs = pawn.health?.hediffSet?.hediffs;
             if (hediffs == null)
@@ -774,16 +778,27 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (isControlSublink)
                 {
                     // Standard sublink: max 3
-                    if (currentLevel >= 3)
+                    int maxAllowed = 3;
+                    if (currentLevel >= maxAllowed)
                     {
-                        return $"Cannot install {itemName}. Maximum of 3 already installed. Current: {currentLevel}/3";
+                        return "RICS.UICH.Mechanitor.MaxReached".Translate(
+                            itemName,
+                            maxAllowed,
+                            currentLevel
+                        );
                     }
 
                     // Check if quantity would exceed max limit
-                    if (quantity > 1 && (currentLevel + quantity) > 3)
+                    if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
                     {
-                        int availableSlots = 3 - currentLevel;
-                        return $"Cannot install {quantity}x {itemName}. You only have {availableSlots} slot(s) available. Current: {currentLevel}/3";
+                        int availableSlots = maxAllowed - currentLevel;
+                        return "RICS.UICH.Mechanitor.ExceedsLimit".Translate(
+                            quantity,
+                            itemName,
+                            availableSlots,
+                            currentLevel,
+                            maxAllowed
+                        );
                     }
                 }
                 else if (isControlSublinkHigh)
@@ -791,39 +806,61 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     // High sublink: max 6, requires at least 3 standard first
                     if (currentLevel < 3)
                     {
-                        return $"Cannot install {itemName}. You need 3 standard Control Sublinks first. Current: {currentLevel}/3";
+                        return "RICS.UICH.Mechanitor.StandardRequired".Translate(
+                            itemName,
+                            currentLevel
+                        );
                     }
 
-                    if (currentLevel >= 6)
+                    int maxAllowed = 6;
+                    if (currentLevel >= maxAllowed)
                     {
-                        return $"Cannot install {itemName}. Maximum of 6 already installed. Current: {currentLevel}/6";
+                        return "RICS.UICH.Mechanitor.MaxReached".Translate(
+                            itemName,
+                            maxAllowed,
+                            currentLevel
+                        );
                     }
 
                     // Check if quantity would exceed max limit
-                    if (quantity > 1 && (currentLevel + quantity) > 6)
+                    if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
                     {
-                        int availableSlots = 6 - currentLevel;
-                        return $"Cannot install {quantity}x {itemName}. You only have {availableSlots} slot(s) available. Current: {currentLevel}/6";
+                        int availableSlots = maxAllowed - currentLevel;
+                        return "RICS.UICH.Mechanitor.ExceedsLimit".Translate(
+                            quantity,
+                            itemName,
+                            availableSlots,
+                            currentLevel,
+                            maxAllowed
+                        );
                     }
                 }
             }
-
-            // For other Mechanitor implants (all use Hediff_Level with levelIsQuantity=true)
             else if (isMechFormfeeder)
             {
                 var hediff = hediffs.FirstOrDefault(h => h.def.defName == "MechFormfeederImplant") as Hediff_Level;
                 int currentLevel = hediff?.level ?? 0;
-                int maxAllowed = 6;
+                int maxAllowed = 3;
 
                 if (currentLevel >= maxAllowed)
                 {
-                    return $"Cannot install {itemName}. Maximum of {maxAllowed} already installed. Current: {currentLevel}/{maxAllowed}";
+                    return "RICS.UICH.Mechanitor.MaxReached".Translate(
+                        itemName,
+                        maxAllowed,
+                        currentLevel
+                    );
                 }
 
                 if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
                 {
                     int availableSlots = maxAllowed - currentLevel;
-                    return $"Cannot install {quantity}x {itemName}. You only have {availableSlots} slot(s) available. Current: {currentLevel}/{maxAllowed}";
+                    return "RICS.UICH.Mechanitor.ExceedsLimit".Translate(
+                        quantity,
+                        itemName,
+                        availableSlots,
+                        currentLevel,
+                        maxAllowed
+                    );
                 }
             }
             else if (isRemoteRepairer)
@@ -834,13 +871,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (currentLevel >= maxAllowed)
                 {
-                    return $"Cannot install {itemName}. Maximum of {maxAllowed} already installed. Current: {currentLevel}/{maxAllowed}";
+                    return "RICS.UICH.Mechanitor.MaxReached".Translate(
+                        itemName,
+                        maxAllowed,
+                        currentLevel
+                    );
                 }
 
                 if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
                 {
                     int availableSlots = maxAllowed - currentLevel;
-                    return $"Cannot install {quantity}x {itemName}. You only have {availableSlots} slot(s) available. Current: {currentLevel}/{maxAllowed}";
+                    return "RICS.UICH.Mechanitor.ExceedsLimit".Translate(
+                        quantity,
+                        itemName,
+                        availableSlots,
+                        currentLevel,
+                        maxAllowed
+                    );
                 }
             }
             else if (isRemoteShielder)
@@ -851,13 +898,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (currentLevel >= maxAllowed)
                 {
-                    return $"Cannot install {itemName}. Maximum of {maxAllowed} already installed. Current: {currentLevel}/{maxAllowed}";
+                    return "RICS.UICH.Mechanitor.MaxReached".Translate(
+                        itemName,
+                        maxAllowed,
+                        currentLevel
+                    );
                 }
 
                 if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
                 {
                     int availableSlots = maxAllowed - currentLevel;
-                    return $"Cannot install {quantity}x {itemName}. You only have {availableSlots} slot(s) available. Current: {currentLevel}/{maxAllowed}";
+                    return "RICS.UICH.Mechanitor.ExceedsLimit".Translate(
+                        quantity,
+                        itemName,
+                        availableSlots,
+                        currentLevel,
+                        maxAllowed
+                    );
                 }
             }
             else if (isRepairProbe)
@@ -868,18 +925,27 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (currentLevel >= maxAllowed)
                 {
-                    return $"Cannot install {itemName}. Maximum of {maxAllowed} already installed. Current: {currentLevel}/{maxAllowed}";
+                    return "RICS.UICH.Mechanitor.MaxReached".Translate(
+                        itemName,
+                        maxAllowed,
+                        currentLevel
+                    );
                 }
 
                 if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
                 {
                     int availableSlots = maxAllowed - currentLevel;
-                    return $"Cannot install {quantity}x {itemName}. You only have {availableSlots} slot(s) available. Current: {currentLevel}/{maxAllowed}";
+                    return "RICS.UICH.Mechanitor.ExceedsLimit".Translate(
+                        quantity,
+                        itemName,
+                        availableSlots,
+                        currentLevel,
+                        maxAllowed
+                    );
                 }
             }
 
             return null;
         }
-
     }
 }
