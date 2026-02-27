@@ -18,6 +18,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Verse;
 
 // Add this class to a new file or within your existing files
@@ -592,6 +593,7 @@ Warning: resets all custom store settings to defaults
                 "\r\n" +
                 "I broke the xenotype selection when I fixed the lookup command\r\n" +
                 "Is now fixed\r\n" +
+                "Psychically Deaf pawns should no longer be able to install Mech link.\r\n" +
                 "\r\n" +
                 "Added\r\n" +
                 "\r\n" +
