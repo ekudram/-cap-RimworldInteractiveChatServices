@@ -64,7 +64,7 @@ namespace CAP_ChatInteractive
                 return settings?.PermissionLevel ?? "everyone";
             }
         }
-        public virtual int CooldownSeconds => 0;
+        public virtual int CooldownSeconds => GetCommandSettings()?.CooldownSeconds ?? 0;
 
         public abstract string Execute(ChatMessageWrapper user, string[] args);
 
