@@ -3,7 +3,6 @@
   
   <!-- Return messages -->
   <RICS.HPCH.Return.Notavailble>Healer Mech Serum is not available for healing services.</RICS.HPCH.Return.Notavailble>
-  <RICS.HPCH.Return.NoInjuries>No injuries found to heal.</RICS.HPCH.Return.NoInjuries>
   <RICS.HPCH.Return.Error>Error processing heal command.  Send this stack trace to mod devolper!</RICS.HPCH.Return.Error>
   <RICS.HPCH.Return.NoPawn>You don't have a pawn assigned. Use !buy pawn first.</RICS.HPCH.Return.NoPawn>
   <RICS.HPCH.Return.TargetNoPawn>{0} doesn't have a pawn assigned.</RICS.HPCH.Return.TargetNoPawn>

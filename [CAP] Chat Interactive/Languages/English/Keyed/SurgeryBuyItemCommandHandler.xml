@@ -65,31 +65,8 @@
   <RICS.SBCH.NotSuitableAge>Pawn is not suitable for this procedure (age/body type).</RICS.SBCH.NotSuitableAge>
   <RICS.SBCH.NoResearch>{0} requires research that hasn't been completed yet.</RICS.SBCH.NoResearch>
 
-  <!-- Body surgery adult / safety validation reasons -->
-
-  <RICS.SBCH.TooYoung>Your pawn is too young (biological age: {0:F1}). Minimum age for body-altering surgery is {1}.</RICS.SBCH.TooYoung>
-  <RICS.SBCH.ChildBodyType>Your pawn has a Child body type, indicating they are not an adult.</RICS.SBCH.ChildBodyType>
-  <RICS.SBCH.Pregnant>Your pawn is currently pregnant. Major body-altering surgeries are not safe during pregnancy.</RICS.SBCH.Pregnant>
-
   <!-- Rare / error cases -->
   <RICS.SBCH.NullPawn>Error: Null Pawn.</RICS.SBCH.NullPawn>
-
-  <!-- Misc / Biotech surgery validation reasons -->
-
-  <RICS.SBCH.MinAgeRequired>Minimum age {0} required.</RICS.SBCH.MinAgeRequired>
-  <RICS.SBCH.RequiresFemale>Requires female pawn.</RICS.SBCH.RequiresFemale>
-  <RICS.SBCH.RequiresMale>Requires male pawn.</RICS.SBCH.RequiresMale>
-
-  <RICS.SBCH.IncompatibleCondition>Incompatible: {0} condition present (e.g. already sterilized or ovum extracted).</RICS.SBCH.IncompatibleCondition>
-  <RICS.SBCH.AlreadyScheduled>Already scheduled for this pawn.</RICS.SBCH.AlreadyScheduled>
-
-  <RICS.SBCH.NotPregnant>Pawn is not pregnant.</RICS.SBCH.NotPregnant>
-  <RICS.SBCH.NoVasectomy>Pawn lacks vasectomy.</RICS.SBCH.NoVasectomy>
-  <RICS.SBCH.NoIUD>No IUD found.</RICS.SBCH.NoIUD>
-  <RICS.SBCH.NoBenefitTransfusion>Pawn has no blood loss and is not hemogenic—no benefit from transfusion.</RICS.SBCH.NoBenefitTransfusion>
-
-  <RICS.SBCH.NotSuitableProcedure>Pawn is not suitable for this procedure (age/body type).</RICS.SBCH.NotSuitableProcedure>
-  
 
   <!-- Invoice fragments -->
   <RICS.SBCH.InvoiceSurgeryLabal>🏥 Rimazon Surgery - {0}</RICS.SBCH.InvoiceSurgeryLabal>

@@ -85,7 +85,6 @@
   <CAP.CommandManager.PassionMaxSuccess>Max success chance (%):</CAP.CommandManager.PassionMaxSuccess>
   <CAP.CommandManager.PassionDescription>These settings control how risky and rewarding the !passion command is. Higher wagers usually improve chances, but critical outcomes can be very powerful — or very punishing.</CAP.CommandManager.PassionDescription>
 
-  <CAP.CommandManager.PassionSettings>Passion Gamble Settings</CAP.CommandManager.PassionSettings>
   <CAP.CommandManager.PassionWagerSettings>Wager Limits and Scaling</CAP.CommandManager.PassionWagerSettings>
   <CAP.CommandManager.PassionSuccessScaling>Success Chance Scaling</CAP.CommandManager.PassionSuccessScaling>
   <CAP.CommandManager.PassionCritSuccess>Critical Success</CAP.CommandManager.PassionCritSuccess>
@@ -93,14 +92,8 @@
   <CAP.CommandManager.PassionOutcomeBiases>Outcome Biases (Advanced)</CAP.CommandManager.PassionOutcomeBiases>
 
   <!-- Wager section -->
-  <CAP.CommandManager.PassionMinWager>Minimum wager</CAP.CommandManager.PassionMinWager>
-  <CAP.CommandManager.PassionMaxWager>Maximum wager</CAP.CommandManager.PassionMaxWager>
   <CAP.CommandManager.PassionWagerBonusPer100>Bonus % per 100 coins wagered</CAP.CommandManager.PassionWagerBonusPer100>
   <CAP.CommandManager.PassionMaxWagerBonus>Maximum bonus from wager</CAP.CommandManager.PassionMaxWagerBonus>
-
-  <!-- Success scaling -->
-  <CAP.CommandManager.PassionBaseSuccess>Base success chance (%)</CAP.CommandManager.PassionBaseSuccess>
-  <CAP.CommandManager.PassionMaxSuccess>Maximum success chance (%)</CAP.CommandManager.PassionMaxSuccess>
 
   <!-- Critical success -->
   <CAP.CommandManager.PassionCritSuccessRatio>Critical success multiplier (of base chance)</CAP.CommandManager.PassionCritSuccessRatio>

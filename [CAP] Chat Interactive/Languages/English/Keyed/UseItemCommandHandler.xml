@@ -42,15 +42,11 @@
   <!-- Instant Use Invoice (used for normal !use items, blue Rimazon letter) -->
 
   <RICS.UICH.Invoice.Instant.Header>RIMAZON INSTANT</RICS.UICH.Invoice.Instant.Header>
-  <RICS.UICH.Invoice.Separator>====================</RICS.UICH.Invoice.Separator>
-
-  <RICS.UICH.Invoice.Customer>Customer: {0}</RICS.UICH.Invoice.Customer>
+  
   <RICS.UICH.Invoice.Item>Item: {0} x{1}</RICS.UICH.Invoice.Item>
-  <RICS.UICH.Invoice.Service>Service: Immediate Use</RICS.UICH.Invoice.Service>
+  <RICS.UICH.Invoice.Service.Immediate>Service: Immediate Use</RICS.UICH.Invoice.Service.Immediate>
 
-  <RICS.UICH.Invoice.Total>Total: {0:N0}{1}</RICS.UICH.Invoice.Total>
-
-  <RICS.UICH.Invoice.ThankYouInstant>Thank you for using Rimazon Instant!</RICS.UICH.Invoice.ThankYouInstant>
+    <RICS.UICH.Invoice.ThankYouInstant>Thank you for using Rimazon Instant!</RICS.UICH.Invoice.ThankYouInstant>
   <RICS.UICH.Invoice.NoDelivery>No delivery required - instant satisfaction!</RICS.UICH.Invoice.NoDelivery>
 
   <!-- Mechanitor Implant Validation (RICS.UICH.Mechanitor.*) -->

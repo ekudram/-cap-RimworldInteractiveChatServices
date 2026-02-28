@@ -191,7 +191,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error in AddTrait command handler: {ex}");
-                return "RICS.TCH.Error".Translate();
+                return "RICS.TCH.Erroradd".Translate();
             }
         }
 
@@ -279,7 +279,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error in RemoveTrait command handler: {ex}");
-                return "RICS.TCH.Error".Translate();
+                return "RICS.TCH.Errorremove".Translate();
             }
         }
 
@@ -427,7 +427,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error in ReplaceTrait command handler: {ex}");
-                return "RICS.TCH.Error".Translate();
+                return "RICS.TCH.Error.Replace".Translate();
             }
         }
 
@@ -657,7 +657,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error in SetTraits command handler: {ex}");
-                return "RICS.TCH.Error".Translate();
+                return "RICS.TCH.Error.setting".Translate();
             }
         }
 
@@ -751,7 +751,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error in ListTraits command handler: {ex}");
-                return "RICS.TCH.Error".Translate();
+                return "RICS.TCH.Error.list".Translate();
             }
         }
 

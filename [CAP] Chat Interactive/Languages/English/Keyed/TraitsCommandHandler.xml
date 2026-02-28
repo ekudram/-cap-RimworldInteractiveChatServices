@@ -36,7 +36,7 @@
 
   <RICS.TCH.Add.Success>✅ Added trait '{0}' to {1} for {2}{3}!</RICS.TCH.Add.Success>
 
-  <RICS.TCH.Error>An error occurred while adding the trait.</RICS.TCH.Error>
+  <RICS.TCH.Error.add>An error occurred while adding the trait.</RICS.TCH.Error.add>
 
   <!-- These can be reused in conflict messages from CheckTraitConflicts -->
   <RICS.TCH.ConflictPrefix>Conflict: </RICS.TCH.ConflictPrefix>
@@ -58,7 +58,7 @@
   <RICS.TCH.Remove.Success>✅ Removed trait '{0}' from {1} for {2}{3}!</RICS.TCH.Remove.Success>
 
   <!-- Reuse the same generic error key as add command -->
-  <!-- <RICS.TCH.Error>An error occurred while removing the trait.</RICS.TCH.Error> -->
+  <RICS.TCH.Errorremove>An error occurred while removing the trait.</RICS.TCH.Errorremove> 
 
   <!-- Replace Trait Command (RICS.TCH.Replace.*) -->
 
@@ -85,6 +85,8 @@
 
   <RICS.TCH.Replace.Success>✅ Replaced trait '{0}' with '{1}' on {2} for {3}{4}!</RICS.TCH.Replace.Success>
 
+  <RICS.TCH.Error.Replace>An error occurred while replacing traits.</RICS.TCH.Error.Replace>
+
   <!-- Parsing error (rare) -->
   <RICS.TCH.Replace.ParseError>Could not parse trait names. Try: !replacetrait "old trait" "new trait"</RICS.TCH.Replace.ParseError>
 
@@ -106,7 +108,7 @@
 
   <RICS.TCH.Set.Success>✅ Set new traits: {0} for {1}{2}</RICS.TCH.Set.Success>
 
-  <RICS.TCH.Error>An error occurred while setting traits.</RICS.TCH.Error>
+  <RICS.TCH.Error.setting>An error occurred while setting traits.</RICS.TCH.Error.setting>
 
   <!-- List Traits Command (RICS.TCH.List.*) -->
 
@@ -120,7 +122,7 @@
 
   <RICS.TCH.List.Footer>💡 Use !trait &lt;name&gt; for details, !addtrait &lt;name&gt; to add, !removetrait &lt;name&gt; to remove</RICS.TCH.List.Footer>
 
-  <RICS.TCH.Error>An error occurred while listing traits.</RICS.TCH.Error>
+  <RICS.TCH.Error.list>An error occurred while listing traits.</RICS.TCH.Error.list>
 
   <!-- Conflict message used in multiple trait commands -->
   <RICS.TCH.ConflictWithExisting>❌ {0} conflicts with your pawn's existing trait {1}.</RICS.TCH.ConflictWithExisting>
@@ -135,9 +137,5 @@
   <RICS.TCH.TraitInfo.SellPrice>Sell price: {0}{1}</RICS.TCH.TraitInfo.SellPrice>
   <RICS.TCH.TraitInfo.NoConflicts>No conflicts</RICS.TCH.TraitInfo.NoConflicts>
   <RICS.TCH.TraitInfo.NoExclusions>No exclusions</RICS.TCH.TraitInfo.NoExclusions>
-
-  <!-- Placeholder for future trait list / search commands -->
-  <RICS.TCH.List.Header>Available buyable traits ({0} total):</RICS.TCH.List.Header>
-  <RICS.TCH.List.NoTraits>No buyable traits configured.</RICS.TCH.List.NoTraits>
 
 </LanguageData>

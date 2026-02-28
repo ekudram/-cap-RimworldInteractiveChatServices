@@ -358,7 +358,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             sb.AppendLine("RICS.UICH.Invoice.Customer".Translate(username));
             sb.AppendLine("RICS.UICH.Invoice.Item".Translate(itemName, quantity));
-            sb.AppendLine("RICS.UICH.Invoice.Service".Translate());
+            sb.AppendLine("RICS.UICH.Invoice.Service.Immediate".Translate());
 
             sb.AppendLine("RICS.UICH.Invoice.Separator".Translate());
 
