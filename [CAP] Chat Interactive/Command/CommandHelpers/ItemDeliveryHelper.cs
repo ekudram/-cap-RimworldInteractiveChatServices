@@ -56,13 +56,13 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             {
                 if (map == null || thing == null)
                 {
-                    Logger.Debug("FindSuitableLocker: Map or thing is null");
+                    //Logger.Debug("FindSuitableLocker: Map or thing is null");
                     return null;
                 }
 
                 if (thing.def.Minifiable)
                 {
-                    Logger.Debug($"{thing.def.defName} is minifiable - skipping locker delivery");
+                    //Logger.Debug($"{thing.def.defName} is minifiable - skipping locker delivery");
                     return null;
                 }
 
@@ -76,7 +76,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     var smallLockers = map.listerThings.ThingsOfDef(smallLockerDef)
                         .OfType<Building_RimazonLocker>();
                     allLockers.AddRange(smallLockers);
-                    Logger.Debug($"Found {smallLockers.Count()} small lockers");
+                    //Logger.Debug($"Found {smallLockers.Count()} small lockers");
                 }
 
                 // Try large locker def (might not exist yet)
@@ -86,16 +86,16 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     var largeLockers = map.listerThings.ThingsOfDef(largeLockerDef)
                         .OfType<Building_RimazonLocker>();
                     allLockers.AddRange(largeLockers);
-                    Logger.Debug($"Found {largeLockers.Count()} large lockers");
+                    //Logger.Debug($"Found {largeLockers.Count()} large lockers");
                 }
 
                 if (!allLockers.Any())
                 {
-                    Logger.Debug($"No RimazonLockers found on map");
+                    //Logger.Debug($"No RimazonLockers found on map");
                     return null;
                 }
 
-                Logger.Debug($"Found {allLockers.Count} total lockers on map");
+                //Logger.Debug($"Found {allLockers.Count} total lockers on map");
 
                 // CRITICAL FIX: Check if the locker can accept this SPECIFIC thing
                 // This considers merging with existing stacks
@@ -109,23 +109,23 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                 if (!suitableLockers.Any())
                 {
-                    Logger.Debug($"No suitable RimazonLocker found for {thing.def.defName} x{thing.stackCount}");
+                    //Logger.Debug($"No suitable RimazonLocker found for {thing.def.defName} x{thing.stackCount}");
 
                     // Log debug info for each locker
-                    foreach (var locker in allLockers.Take(3)) // Just first 3 for brevity
-                    {
-                        Logger.Debug($"Locker at {locker.Position}: " +
-                                   $"Spawned={locker.Spawned}, " +
-                                   $"MapMatch={locker.Map == map}, " +
-                                   $"Destroyed={locker.Destroyed}, " +
-                                   $"Accepts={locker.Accepts(thing)}, " +
-                                   $"CurrentItems={locker.InnerContainer.TotalStackCount}/{locker.MaxStacks}");
-                    }
+                    //foreach (var locker in allLockers.Take(3)) // Just first 3 for brevity
+                    //{
+                    //    Logger.Debug($"Locker at {locker.Position}: " +
+                    //               $"Spawned={locker.Spawned}, " +
+                    //               $"MapMatch={locker.Map == map}, " +
+                    //               $"Destroyed={locker.Destroyed}, " +
+                    //               $"Accepts={locker.Accepts(thing)}, " +
+                    //               $"CurrentItems={locker.InnerContainer.TotalStackCount}/{locker.MaxStacks}");
+                    //}
 
                     return null;
                 }
 
-                Logger.Debug($"Found {suitableLockers.Count} suitable lockers for {thing.def.defName}");
+                //Logger.Debug($"Found {suitableLockers.Count} suitable lockers for {thing.def.defName}");
 
                 // Selection priority:
                 Building_RimazonLocker bestLocker = null;
@@ -143,7 +143,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                     if (bestLocker != null)
                     {
-                        Logger.Debug($"Selected locker with same item type at {bestLocker.Position} (for stack merging)");
+                        //Logger.Debug($"Selected locker with same item type at {bestLocker.Position} (for stack merging)");
                         return bestLocker;
                     }
                 }
@@ -158,12 +158,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     .ThenByDescending(locker => locker.MaxStacks - locker.InnerContainer.TotalStackCount) // Most space left
                     .FirstOrDefault();
 
-                if (bestLocker != null)
-                {
-                    Logger.Debug($"Selected locker at {bestLocker.Position} " +
-                                $"(distance to target: {bestLocker.Position.DistanceTo(targetPos):F1}, " +
-                                $"space left: {bestLocker.MaxStacks - bestLocker.InnerContainer.TotalStackCount})");
-                }
+                //if (bestLocker != null)
+                //{
+                //    Logger.Debug($"Selected locker at {bestLocker.Position} " +
+                //                $"(distance to target: {bestLocker.Position.DistanceTo(targetPos):F1}, " +
+                //                $"space left: {bestLocker.MaxStacks - bestLocker.InnerContainer.TotalStackCount})");
+                //}
 
                 return bestLocker;
             }
@@ -178,7 +178,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         {
             if (map == null)
             {
-                Logger.Error("GetCustomDropSpot: Map is null");
+                //Logger.Error("GetCustomDropSpot: Map is null");
                 return IntVec3.Invalid;
             }
 
@@ -196,7 +196,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             if (dropSpotThing != null)
             {
-                Logger.Debug($"Using explicit 'drop spot' item '{dropSpotThing.Label}' at {dropSpotThing.Position}");
+                //Logger.Debug($"Using explicit 'drop spot' item '{dropSpotThing.Label}' at {dropSpotThing.Position}");
                 return dropSpotThing.Position;
             }
 
@@ -210,7 +210,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (tradeBeacons.Any())
             {
                 var beacon = tradeBeacons.First(); // or .OrderBy(b => some criteria).First()
-                Logger.Debug($"Using roof-free Orbital Trade Beacon at {beacon.Position}");
+                //Logger.Debug($"Using roof-free Orbital Trade Beacon at {beacon.Position}");
                 return beacon.Position;
             }
 
@@ -220,7 +220,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             Building shipBeacon = map.listerBuildings.AllBuildingsColonistOfDef(ThingDefOf.ShipLandingBeacon).FirstOrDefault();
             if (shipBeacon != null)
             {
-                Logger.Debug($"Using Ship Landing Beacon position: {shipBeacon.Position}");
+                //Logger.Debug($"Using Ship Landing Beacon position: {shipBeacon.Position}");
                 return shipBeacon.Position;
             }
 
@@ -235,7 +235,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 Building hitchingSpot = map.listerBuildings.AllBuildingsColonistOfDef(hitchingDef).FirstOrDefault();
                 if (hitchingSpot != null)
                 {
-                    Logger.Debug($"Using Caravan Hitching/Packing Spot at: {hitchingSpot.Position}");
+                    //Logger.Debug($"Using Caravan Hitching/Packing Spot at: {hitchingSpot.Position}");
                     return hitchingSpot.Position;
                 }
             }
@@ -260,18 +260,20 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     c => c.Standable(map) && !c.Fogged(map),
                     out IntVec3 spot))
                 {
-                    Logger.Debug($"Using central colonist area fallback: {spot}");
+                    //Logger.Debug($"Using central colonist area fallback: {spot}");
                     return spot;
                 }
             }
 
             // ───────────────────────────────────────────────
             // 6. Underground map → try surface if possible
+            // We have a check that is supposed to catch but 
+            // just in case
             // ───────────────────────────────────────────────
             if (IsUndergroundMap(map) && Find.Maps.Any(m => !IsUndergroundMap(m) && m.IsPlayerHome))
             {
                 Map surface = Find.Maps.First(m => !IsUndergroundMap(m) && m.IsPlayerHome);
-                Logger.Debug("Underground map detected → falling back to surface map drop spot");
+                //Logger.Debug("Underground map detected → falling back to surface map drop spot");
                 return GetCustomDropSpot(surface); // recursive, but surface won't redirect again
             }
 
@@ -460,7 +462,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (pawnDeliveryResult.success)
             {
                 result.DeliveryPosition = pawnDeliveryResult.spawnPosition;
-                Logger.Debug($"Pawn delivery successful at position: {result.DeliveryPosition}");
+                // Logger.Debug($"Pawn delivery successful at position: {result.DeliveryPosition}");
             }
 
             return result;
@@ -479,7 +481,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (thingDef.MadeFromStuff && finalMaterial == null)
             {
                 finalMaterial = GenStuff.RandomStuffFor(thingDef);
-                Logger.Debug($"Item requires stuff, selected random material: {finalMaterial?.defName}");
+                //Logger.Debug($"Item requires stuff, selected random material: {finalMaterial?.defName}");
             }
 
             // Create items
