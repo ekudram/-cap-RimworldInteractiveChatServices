@@ -77,7 +77,7 @@ namespace CAP_ChatInteractive.Store
             if (thingDef == null) return false;
 
             // Explicitly exclude things that are clearly NOT consumable/usable
-            if (thingDef.IsWeapon) return false;
+            // if (thingDef.IsWeapon) return false; // If you do this Beer and other items will not be useable
             if (thingDef.IsBuildingArtificial) return false;
 
             // NEW: Apparel is NEVER usable (wear instead). This fixes all DLC/modded belt packs consistently.
