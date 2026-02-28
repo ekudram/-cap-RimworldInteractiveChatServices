@@ -44,7 +44,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 // Start with the base market value from storeItem  
                 float baseCost = storeItem.BasePrice;
 
-                Logger.Debug($"Base market value for {thingDef.defName}: {baseCost}");
+                // Logger.Debug($"Base market value for {thingDef.defName}: {baseCost}");
 
                 // Apply material cost if it's a stuff-based item and material is specified
                 if (thingDef.MadeFromStuff && material != null)
@@ -56,7 +56,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     // Apply the material multiplier to base cost
                     baseCost *= materialMultiplier;
 
-                    Logger.Debug($"Material cost: {material.defName} ({stuffCost}) = multiplier {materialMultiplier:F2}");
+                    // Logger.Debug($"Material cost: {material.defName} ({stuffCost}) = multiplier {materialMultiplier:F2}");
                 }
 
                 // Apply quality multiplier if the item supports quality
@@ -64,19 +64,19 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 {
                     float qualityMultiplier = GetQualityMultiplier(quality.Value);
                     baseCost *= qualityMultiplier;
-                    Logger.Debug($"Quality multiplier for {quality.Value}: {qualityMultiplier}");
+                    // Logger.Debug($"Quality multiplier for {quality.Value}: {qualityMultiplier}");
                 }
 
                 // Apply quantity and round to whole number
                 int finalPrice = (int)(baseCost * quantity);
 
-                Logger.Debug($"Final price for {quantity}x {thingDef.defName}: {finalPrice} (Base: {thingDef.BaseMarketValue}, Quality: {quality}, Material: {material?.defName})");
+                // Logger.Debug($"Final price for {quantity}x {thingDef.defName}: {finalPrice} (Base: {thingDef.BaseMarketValue}, Quality: {quality}, Material: {material?.defName})");
 
                 return Math.Max(1, finalPrice); // Ensure at least 1 coin
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error calculating final price for {storeItem.DefName}: {ex}");
+                // Logger.Error($"Error calculating final price for {storeItem.DefName}: {ex}");
                 // Fallback to simple calculation
                 return storeItem.BasePrice * quantity;
             }
@@ -167,7 +167,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             if (settings == null)
             {
-                Logger.Debug($"GetQualityMultiplier: No settings found, using default values");
+                // Logger.Debug($"GetQualityMultiplier: No settings found, using default values");
                 // Fallback to default values if settings aren't available
                 return quality switch
                 {
