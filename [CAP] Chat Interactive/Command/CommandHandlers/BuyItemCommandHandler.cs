@@ -375,8 +375,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string CreateRimazonInvoice(string username, string itemName, int quantity, int price,
             string currencySymbol, QualityCategory? quality, ThingDef material, DeliveryResult deliveryResult)
         {
-            int lockerCount = deliveryResult.LockerDeliveredItems.Sum(t => t.stackCount);
-            int dropPodCount = deliveryResult.DropPodDeliveredItems.Sum(t => t.stackCount);
+            int lockerCount = deliveryResult.LockerDeliveredCount;
+            int dropPodCount = deliveryResult.DropPodDeliveredCount;
 
             // ───────────────────────────────────────────────
             // Delivery description WITHOUT the "Delivery: " prefix
@@ -486,8 +486,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string CreateSplitInvoice(string username, string itemName, int quantity, int price,
     string currencySymbol, QualityCategory? quality, ThingDef material, DeliveryResult deliveryResult)
         {
-            int lockerCount = deliveryResult.LockerDeliveredItems.Sum(t => t.stackCount);
-            int dropPodCount = deliveryResult.DropPodDeliveredItems.Sum(t => t.stackCount);
+            int lockerCount = deliveryResult.LockerDeliveredCount;
+            int dropPodCount = deliveryResult.DropPodDeliveredCount;
 
             StringBuilder invoice = new StringBuilder();
 

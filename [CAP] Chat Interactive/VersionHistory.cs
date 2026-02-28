@@ -578,10 +578,13 @@ Warning: resets all custom store settings to defaults
 
 =========================================================================="
             },
-            {"1.21",
+            {"1.21a",
                 "==========================================================================\r\n" +
                 "RICS 1.21 - Update\r\n" +
                 "Released: February 28, 2026" +
+                "\r\n" +
+                "Hotfix:\r\n" +
+                "Fixed odd bug with Locker and Drop spots.\r\n" +
                 "\r\n" +
                 "Updated\r\n" +
                 "https://github.com/ekudram/-cap-RimworldInteractiveChatServices/wiki/Lookup-Command\r\n" +

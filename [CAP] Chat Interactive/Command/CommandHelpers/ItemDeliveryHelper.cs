@@ -33,6 +33,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         public List<Thing> LockerDeliveredItems { get; set; } = new List<Thing>();
         public List<Thing> DropPodDeliveredItems { get; set; } = new List<Thing>();
         public List<Thing> DirectlyDeliveredItems { get; set; } = new List<Thing>();
+        public int LockerDeliveredCount { get; set; } = 0;
+        public int DropPodDeliveredCount { get; set; } = 0;
         public IntVec3 DeliveryPosition { get; set; }
         public DeliveryMethod PrimaryMethod { get; set; }
     }
@@ -131,24 +133,51 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 Building_RimazonLocker bestLocker = null;
 
                 // 1. Try to find lockers that already have this item type (for stack merging)
-                var lockersWithSameItem = suitableLockers
-                    .Where(l => l.InnerContainer.Any(t => t.def == thing.def))
+                var matchingLockers = suitableLockers
+                    .Where(l =>
+                    {
+                        return l.InnerContainer.Any(t =>
+                            t.def == thing.def &&
+                            t.Stuff == thing.Stuff &&                     // same material
+                            (!t.TryGetQuality(out var q) ||               // either no quality
+                             !thing.TryGetQuality(out var q2) ||
+                             q == q2)                                     // or same quality
+                        );
+                    })
                     .ToList();
 
-                if (lockersWithSameItem.Any())
+                if (matchingLockers.Any())
                 {
-                    bestLocker = lockersWithSameItem
+                    // Prefer the one closest to target + with most free space
+                    bestLocker = matchingLockers
                         .OrderBy(l => l.Position.DistanceToSquared(forPawn?.Position ?? GetCustomDropSpot(map)))
+                        .ThenByDescending(l => l.MaxStacks - l.InnerContainer.TotalStackCount)
                         .FirstOrDefault();
 
                     if (bestLocker != null)
                     {
-                        //Logger.Debug($"Selected locker with same item type at {bestLocker.Position} (for stack merging)");
+                        Logger.Debug($"Selected BEST MATCH locker for stacking: {bestLocker.Position} " +
+                                     $"(free stacks: {bestLocker.MaxStacks - bestLocker.InnerContainer.TotalStackCount})");
                         return bestLocker;
                     }
                 }
 
-                // 2. Fall back to proximity
+                // 2. If no perfect match, still prefer ANY suitable locker over drop pod
+                if (suitableLockers.Any())
+                {
+                    bestLocker = suitableLockers
+                        .OrderBy(l => l.Position.DistanceToSquared(forPawn?.Position ?? GetCustomDropSpot(map)))
+                        .ThenByDescending(l => l.MaxStacks - l.InnerContainer.TotalStackCount)
+                        .FirstOrDefault();
+
+                    if (bestLocker != null)
+                    {
+                        Logger.Debug($"No perfect stack match → selected nearest suitable locker anyway: {bestLocker.Position}");
+                        return bestLocker;
+                    }
+                }
+
+                // 3. Fall back to proximity
                 IntVec3 targetPos = forPawn != null && forPawn.Spawned && forPawn.Map == map
                     ? forPawn.Position
                     : GetCustomDropSpot(map);
@@ -579,25 +608,44 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             // Try to deliver each item to a locker
             List<Thing> undeliveredItems = new List<Thing>();
+            int attemptedLockerTotal = 0;
+
             foreach (var item in itemsToDeliver)
             {
+                int thisCount = item.stackCount;
+                attemptedLockerTotal += thisCount;
+
                 if (!TryDeliverToLocker(item, targetMap, pawn, result))
                 {
                     undeliveredItems.Add(item);
                 }
             }
 
+            if (undeliveredItems.Count > 0)
+            {
+                int dropCount = undeliveredItems.Sum(t => t?.stackCount ?? 0);
+                Logger.Debug($"{undeliveredItems.Count} stacks ({dropCount} total units) rejected by lockers → using drop pod");
+                // ... rest unchanged (TryShuttleDelivery etc.)
+                result.DropPodDeliveredCount += dropCount;
+            }
+
             // Handle undelivered items with drop pod
             if (undeliveredItems.Count > 0)
             {
-                Logger.Debug($"{undeliveredItems.Count} items couldn't fit in lockers, using drop pod");
+                int dropCount = undeliveredItems.Sum(t => t?.stackCount ?? 0);  // Null-safe
+                Logger.Debug($"{undeliveredItems.Count} items ({dropCount} total count) couldn't fit in lockers, using drop pod");
                 result.DropPodDeliveredItems.AddRange(undeliveredItems);
 
                 IntVec3 dropPos = GetDeliveryPosition(targetMap, pawn);
                 if (TryShuttleDelivery(undeliveredItems, dropPos, targetMap))
                 {
+                    result.DropPodDeliveredCount += dropCount;
                     result.DeliveryPosition = dropPos;
-                    Logger.Debug($"Drop pod delivery successful at {dropPos}");
+                    Logger.Debug($"Drop pod delivery successful at {dropPos} with {dropCount} items");
+                }
+                else
+                {
+                    Logger.Error("Drop pod delivery failed");
                 }
             }
 
@@ -619,22 +667,45 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
         private static bool TryDeliverToLocker(Thing item, Map map, Pawn pawn, DeliveryResult result)
         {
-            var locker = FindSuitableLockerFor(item, map, pawn);
-            if (locker != null && locker.TryAcceptThing(item))
+            if (item == null || item.Destroyed)
             {
-                Logger.Debug($"Delivered {item.def.defName} x{item.stackCount} to locker at {locker.Position}");
-                result.LockerDeliveredItems.Add(item);
+                Logger.Error("TryDeliverToLocker: Item is null or already destroyed before delivery attempt");
+                return false;
+            }
 
-                if (result.DeliveryPosition == IntVec3.Invalid || result.DeliveryPosition == default(IntVec3))
+            var locker = FindSuitableLockerFor(item, map, pawn);
+            if (locker == null)
+            {
+                Logger.Debug($"No suitable Rimazon locker found for {item.def.defName} x{item.stackCount}");
+                return false;
+            }
+
+            int attemptedCount = item.stackCount;  // Snapshot BEFORE possible merge/destroy
+
+            bool accepted = locker.TryAcceptThing(item, allowSpecialEffects: false);  // false = no extra effects/motes from storage
+
+            if (accepted)
+            {
+                // Whether merged or new stack — delivery succeeded
+                Logger.Debug($"Successfully delivered/merged {item.def.defName} x{attemptedCount} → locker at {locker.Position}");
+
+                result.LockerDeliveredCount += attemptedCount;
+
+                // Set position if not already set (first successful locker wins for letter targeting)
+                if (result.DeliveryPosition == IntVec3.Invalid)
                 {
                     result.DeliveryPosition = locker.Position;
                 }
 
                 return true;
             }
-
-            Logger.Debug($"Could not deliver {item.def.defName} x{item.stackCount} to locker");
-            return false;
+            else
+            {
+                Logger.Debug($"Locker {locker.Position} refused {item.def.defName} x{attemptedCount} " +
+                             $"(current: {locker.InnerContainer.TotalStackCount}/{locker.MaxStacks}, " +
+                             $"storage settings allow? {locker.settings?.AllowedToAccept(item) ?? false})");
+                return false;
+            }
         }
 
         private static Map GetTargetMapForDelivery(Pawn pawn)
@@ -682,17 +753,25 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
         private static void DeterminePrimaryDeliveryMethod(DeliveryResult result)
         {
-            if (result.LockerDeliveredItems.Count > 0 && result.DropPodDeliveredItems.Count == 0)
+            if (result.LockerDeliveredCount > 0)
             {
-                result.PrimaryMethod = DeliveryMethod.Locker;
+                if (result.DropPodDeliveredCount > 0)
+                {
+                    result.PrimaryMethod = DeliveryMethod.DropPod; // mixed → show as drop pod (conservative letter)
+                }
+                else
+                {
+                    result.PrimaryMethod = DeliveryMethod.Locker;
+                }
             }
-            else if (result.LockerDeliveredItems.Count == 0 && result.DropPodDeliveredItems.Count > 0)
+            else if (result.DropPodDeliveredCount > 0)
             {
                 result.PrimaryMethod = DeliveryMethod.DropPod;
             }
-            else if (result.LockerDeliveredItems.Count > 0 && result.DropPodDeliveredItems.Count > 0)
+            else
             {
-                result.PrimaryMethod = DeliveryMethod.DropPod; // Mixed, prioritize drop pod
+                // fallback (should rarely hit)
+                result.PrimaryMethod = DeliveryMethod.DropPod;
             }
         }
 

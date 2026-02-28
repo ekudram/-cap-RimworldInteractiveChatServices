@@ -423,27 +423,29 @@ namespace CAP_ChatInteractive
                         // Logger.Debug("[CRITICAL-DEBUG] Detached thing from previous holder");
                     }
 
-                    bool added = innerContainer.TryAdd(thing, allowSpecialEffects);
-
-                    if (added)
+                    if (thing.stackCount > 0)
                     {
-                        if (thing is Thing t)
+                        bool added = innerContainer.TryAdd(thing, allowSpecialEffects);
+                        if (added)
                         {
-                            // This helps with position tracking
-                            t.holdingOwner = innerContainer;
-                        }
+                            if (thing is Thing t)
+                            {
+                                // This helps with position tracking
+                                t.holdingOwner = innerContainer;
+                            }
 
-                        // Logger.Debug($"[Locker] SUCCESS: Added {thing.LabelShort} x{thing.stackCount}" + (merged ? " (partial merge)" : ""));
-                        if (allowSpecialEffects)
-                        {
-                            MoteMaker.ThrowText(DrawPos + new Vector3(0f, 0f, 0.25f), Map, "Delivery Received", Color.white, 2f);
+                            // Logger.Debug($"[Locker] SUCCESS: Added {thing.LabelShort} x{thing.stackCount}" + (merged ? " (partial merge)" : ""));
+                            if (allowSpecialEffects)
+                            {
+                                MoteMaker.ThrowText(DrawPos + new Vector3(0f, 0f, 0.25f), Map, "Delivery Received", Color.white, 2f);
+                            }
+                            return true;
                         }
-                        return true;
-                    }
-                    else
-                    {
-                        Log.Warning($"[Locker] TryAdd returned false for {thing.LabelShort} x{thing.stackCount}");
-                        return false;
+                        else
+                        {
+                            Log.Warning($"[Locker] TryAdd returned false for {thing.LabelShort} x{thing.stackCount}");
+                            return false;
+                        }
                     }
                 }
 
