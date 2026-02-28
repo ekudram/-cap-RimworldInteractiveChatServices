@@ -57,7 +57,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var viewer = Viewers.GetViewer(user);
                 if (viewer == null)
                 {
-                    return "Error: Could not find your viewer data.";
+                    return "RICS.WCH.ViewerNotFound".Translate();
                 }
 
                 // Find the weather by command input (supports defName, label, or partial match)
@@ -65,23 +65,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (buyableWeather == null)
                 {
                     var availableTypes = GetAvailableWeatherTypes().Take(8).Select(w => w.Key);
-                    return $"Unknown weather type: {weatherType}. Available: {string.Join(", ", availableTypes)}...";
+                    return "RICS.WCH.UnknownWeather".Translate(weatherType, string.Join(", ", availableTypes));
                 }
 
                 // Check if weather is enabled
                 if (!buyableWeather.Enabled)
                 {
-                    return $"The {buyableWeather.Label} weather type is currently disabled.";
+                    return "RICS.WCH.WeatherDisabled".Translate(buyableWeather.Label);
                 }
 
                 // NEW: Check global cooldowns using the unified system
                 var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
                 if (cooldownManager != null)
                 {
-                    Logger.Debug($"=== WEATHER COOLDOWN DEBUG ===");
-                    Logger.Debug($"Weather: {buyableWeather.Label}");
-                    Logger.Debug($"DefName: {buyableWeather.DefName}");
-                    Logger.Debug($"KarmaType: {buyableWeather.KarmaType}");
+                    //Logger.Debug($"=== WEATHER COOLDOWN DEBUG ===");
+                    //Logger.Debug($"Weather: {buyableWeather.Label}");
+                    //Logger.Debug($"DefName: {buyableWeather.DefName}");
+                    //Logger.Debug($"KarmaType: {buyableWeather.KarmaType}");
 
                     // Get command settings for weather command
                     var commandSettings = CommandSettingsManager.GetSettings("weather");
@@ -93,15 +93,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         if (!cooldownManager.CanUseGlobalEvents(settings))
                         {
                             int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
-                            Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
-                            return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
+                            // Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
+                            return "RICS.WCH.GlobalEventLimitReached".Translate(totalEvents, settings.EventsperCooldown);
                         }
 
                         // Check karma-type specific limit
                         if (settings.KarmaTypeLimitsEnabled)
                         {
                             string eventType = GetKarmaTypeForWeather(buyableWeather.KarmaType);
-                            Logger.Debug($"Converted event type: {eventType}");
+                            // Logger.Debug($"Converted event type: {eventType}");
 
                             if (!cooldownManager.CanUseEvent(eventType, settings))
                             {
@@ -112,28 +112,33 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                     "good" => settings.MaxGoodEvents,
                                     "bad" => settings.MaxBadEvents,
                                     "neutral" => settings.MaxNeutralEvents,
-                                    "doom" => 1,
+                                    "doom" => settings.MaxBadEvents,
                                     _ => 10
                                 };
-                                string cooldownMessage = $"❌ {eventType.ToUpper()} event limit reached! ({used}/{max} used this period)";
-                                Logger.Debug($"Karma type limit reached: {used}/{max}");
+                                // string cooldownMessage = $"❌ {eventType.ToUpper()} event limit reached! ({used}/{max} used this period)";
+                                string cooldownMessage = "RICS.WCH.KarmaTypeLimitReached"
+                                    .Translate(
+                                        eventType.ToUpper(),
+                                        used,
+                                        max
+                                    );
+                                // Logger.Debug($"Karma type limit reached: {used}/{max}");
                                 return cooldownMessage;
                             }
                         }
 
-                        return $"❌ Weather command is on cooldown.";
+                        //return $"❌ Weather command is on cooldown.";
+                        return "RICS.WCH.CommandOnCooldown".Translate();
                     }
 
-                    Logger.Debug($"Weather cooldown check passed");
+                    // Logger.Debug($"Weather cooldown check passed");
                 }
 
                 // Get cost and check if viewer can afford it
                 int cost = buyableWeather.BaseCost;
                 if (viewer.Coins < cost)
                 {
-                    MessageHandler.SendFailureLetter("Weather Change Failed",
-                        $"{user.Username} doesn't have enough {currencySymbol} for {buyableWeather.Label}\n\nNeeded: {cost}{currencySymbol}, Has: {viewer.Coins}{currencySymbol}");
-                    return $"You need {cost}{currencySymbol} for {buyableWeather.Label}!";
+                    return "RICS.WCH.InsufficientFunds".Translate(cost, currencySymbol, buyableWeather.Label);
                 }
 
                 bool success = false;
@@ -166,18 +171,27 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     {
                         string eventType = GetKarmaTypeForWeather(buyableWeather.KarmaType);
                         cooldownManager.RecordEventUse(eventType);
-                        Logger.Debug($"Recorded weather usage as {eventType} event");
+                        // Logger.Debug($"Recorded weather usage as {eventType} event");
 
                         // Log current state after recording
                         var record = cooldownManager.data.EventUsage.GetValueOrDefault(eventType);
-                        if (record != null)
-                        {
-                            Logger.Debug($"Current {eventType} event usage: {record.CurrentPeriodUses}");
-                        }
+                        //if (record != null)
+                        //{
+                        //    Logger.Debug($"Current {eventType} event usage: {record.CurrentPeriodUses}");
+                        //}
                     }
-
-                    MessageHandler.SendBlueLetter("Weather Changed",
-                        $"{user.Username} changed the weather to {buyableWeather.Label} for {cost}{currencySymbol}\n\n{resultMessage}");
+                    //MessageHandler.SendBlueLetter("Weather Changed",
+                    //    $"{user.Username} changed the weather to {buyableWeather.Label} for {cost}{currencySymbol}\n\n{resultMessage}");
+                    MessageHandler.SendBlueLetter(
+                        "RICS.WCH.WeatherChangedTitle".Translate(),
+                        "RICS.WCH.WeatherChangedBody".Translate(
+                            user.Username,
+                            buyableWeather.Label,
+                            cost,
+                            currencySymbol,
+                            resultMessage
+                        )
+                    );
                 }
                 else
                 {
@@ -188,9 +202,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error handling weather command: {ex}");
-                MessageHandler.SendFailureLetter("Weather Error",
-                    $"Error changing weather: {ex.Message}\n\nPlease try again later.");
-                return "Error changing weather. Please try again.";
+                return $"Error changing weather. {ex}";
             }
         }
 
@@ -257,12 +269,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static bool TriggerSimpleWeather(BuyableWeather weather, string username, out string immersiveMessage)
         {
             immersiveMessage = "";
-            
+
             var weatherDef = DefDatabase<WeatherDef>.GetNamedSilentFail(weather.DefName);
             if (weatherDef == null)
             {
                 Logger.Error($"WeatherDef not found: {weather.DefName}");
-                immersiveMessage = $"The weather spirits don't recognize '{weather.Label}'.";
+                immersiveMessage = "RICS.WCH.SimpleWeatherDefNotFound".Translate(weather.Label);
                 return false;
             }
 
@@ -274,17 +286,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (!suitableMaps.Any())
             {
-                immersiveMessage = $"The weather is already {weather.Label} or transitioning to it.";
+                immersiveMessage = "RICS.WCH.WeatherAlreadyActive".Translate(weather.Label);
                 return false;
             }
-
 
             // Apply weather to a random suitable map
             var targetMap = suitableMaps.RandomElement();
 
             if (!IsBiomeValidForWeather(targetMap))
             {
-                immersiveMessage = GetBiomeRestrictionMessage(targetMap);
+                string biomeMsg = GetBiomeRestrictionMessage(targetMap);
+                immersiveMessage = "RICS.WCH.BiomeRestriction".Translate(biomeMsg);
                 return false;
             }
 
@@ -297,11 +309,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Build immersive message
             if (finalWeatherDef != weatherDef)
             {
-                immersiveMessage = $"Your {weather.Label} was transformed by the cold into {finalWeatherDef.label}! {conversionMessage}";
+                immersiveMessage = "RICS.WCH.WeatherConvertedByCold".Translate(
+                    weather.Label,
+                    finalWeatherDef.label,
+                    conversionMessage
+                );
             }
             else
             {
-                immersiveMessage = $"The skies shift as {weather.Label} begins to fall across the land.";
+                immersiveMessage = "RICS.WCH.WeatherTransitionSuccess".Translate(weather.Label);
             }
 
             return true;
@@ -313,7 +329,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             float currentTemp = map.mapTemperature.OutdoorTemp;
             string requestedName = requestedWeather.defName;
 
-            // Temperature-based conversions (same logic as before)
+            // Temperature-based conversions
             if (currentTemp < 0f)
             {
                 switch (requestedName)
@@ -322,16 +338,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         var snowDef = DefDatabase<WeatherDef>.GetNamedSilentFail("SnowGentle");
                         if (snowDef != null)
                         {
-                            conversionMessage = "The freezing air turns the rain to snow.";
+                            conversionMessage = "RICS.WCH.ConvertRainToSnow".Translate();
                             return snowDef;
                         }
                         break;
+
                     case "RainyThunderstorm":
                     case "DryThunderstorm":
                         var thundersnowDef = DefDatabase<WeatherDef>.GetNamedSilentFail("SnowyThunderStorm");
                         if (thundersnowDef != null)
                         {
-                            conversionMessage = "The thunderstorm freezes into a raging thundersnow!";
+                            conversionMessage = "RICS.WCH.ConvertThunderToThundersnow".Translate();
                             return thundersnowDef;
                         }
                         break;
@@ -345,21 +362,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         var rainDef = DefDatabase<WeatherDef>.GetNamedSilentFail("Rain");
                         if (rainDef != null)
                         {
-                            conversionMessage = "The warm air melts the snow into rain.";
+                            conversionMessage = "RICS.WCH.ConvertSnowGentleToRain".Translate();
                             return rainDef;
                         }
                         break;
+
                     case "SnowHard":
                         var snowGentleDef = DefDatabase<WeatherDef>.GetNamedSilentFail("SnowGentle");
                         if (snowGentleDef != null)
                         {
-                            conversionMessage = "The warming air lightens the heavy snow.";
+                            conversionMessage = "RICS.WCH.ConvertHeavySnowToLight".Translate();
                             return snowGentleDef;
                         }
                         break;
                 }
             }
 
+            // No conversion occurred
             return requestedWeather;
         }
 
@@ -370,7 +389,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (incidentDef == null)
             {
                 Logger.Error($"IncidentDef not found: {weather.DefName}");
-                immersiveMessage = $"The ancient powers refuse to summon {weather.Label}.";
+                immersiveMessage = "RICS.WCH.GameConditionDefNotFound".Translate(weather.Label);
                 return false;
             }
 
@@ -378,7 +397,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (worker == null)
             {
                 Logger.Error($"No worker for incident: {weather.DefName}");
-                immersiveMessage = $"The weather mages cannot conjure {weather.Label}.";
+                immersiveMessage = "RICS.WCH.NoWorkerForIncident".Translate(weather.Label);
                 return false;
             }
 
@@ -414,11 +433,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // If we get here, either no valid biomes or weather couldn't trigger
             if (playerMaps.Any(map => IsBiomeValidForWeather(map)))
             {
-                immersiveMessage = $"The cosmic alignment prevents {weather.Label} from forming right now.";
+                immersiveMessage = "RICS.WCH.GameConditionCosmicAlignment".Translate(weather.Label);
             }
             else
             {
-                immersiveMessage = $"No suitable locations found for {weather.Label} in your current biomes.";
+                immersiveMessage = "RICS.WCH.GameConditionNoSuitableLocation".Translate(weather.Label);
             }
             return false;
         }
@@ -427,15 +446,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             return weather.DefName switch
             {
-                "SolarFlare" => "The sun flares with cosmic energy, disrupting all electronics!",
-                "ToxicFallout" => "A sickly green haze descends as toxic fallout begins...",
-                "Flashstorm" => "Dark clouds gather as a flashstorm crackles to life!",
-                "Eclipse" => "An unnatural darkness falls as the sun is eclipsed!",
-                "Aurora" => "The sky dances with shimmering auroral lights!",
-                "HeatWave" => "A blistering heat wave settles over the land!",
-                "ColdSnap" => "An icy cold snap freezes the air!",
-                "VolcanicWinter" => "Volcanic ash clouds block the sun, bringing endless winter!",
-                _ => $"The {weather.Label} takes hold across the land."
+                "SolarFlare" => "RICS.WCH.SolarFlareMessage".Translate(),
+                "ToxicFallout" => "RICS.WCH.ToxicFalloutMessage".Translate(),
+                "Flashstorm" => "RICS.WCH.FlashstormMessage".Translate(),
+                "Eclipse" => "RICS.WCH.EclipseMessage".Translate(),
+                "Aurora" => "RICS.WCH.AuroraMessage".Translate(),
+                "HeatWave" => "RICS.WCH.HeatWaveMessage".Translate(),
+                "ColdSnap" => "RICS.WCH.ColdSnapMessage".Translate(),
+                "VolcanicWinter" => "RICS.WCH.VolcanicWinterMessage".Translate(),
+                _ => "RICS.WCH.GenericGameConditionMessage".Translate(weather.Label)
             };
         }
 
@@ -458,27 +477,41 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             status = "❌";
                         }
                     }
-                    return $"{kvp.Value.Label} ({kvp.Value.BaseCost}{currencySymbol}){status}";
+
+                    // Use translatable entry format
+                    return "RICS.WCH.WeatherListEntry".Translate(
+                        kvp.Value.Label,
+                        kvp.Value.BaseCost,
+                        currencySymbol,
+                        status
+                    );
                 })
                 .ToList();
 
-            // Add cooldown summary if limits are enabled
+            // Build the entries part
+            string entriesPart = string.Join(", ", availableWeathers.Take(8));
+
+            // Cooldown summary (still comes from GetCooldownSummary – we'll handle that next if needed)
             string cooldownSummary = "";
             if (settings.KarmaTypeLimitsEnabled && cooldownManager != null)
             {
                 cooldownSummary = GetCooldownSummary(settings, cooldownManager);
             }
 
-            var message = "Available weather: " + string.Join(", ", availableWeathers.Take(8));
+            // Assemble final message
+            string message = "RICS.WCH.WeatherListTitle".Translate() + " " + entriesPart;
 
             if (!string.IsNullOrEmpty(cooldownSummary))
             {
-                message += $" | {cooldownSummary}";
+                message += "RICS.WCH.WeatherListSeparator".Translate() + cooldownSummary;
             }
 
             if (availableWeathers.Count > 8)
             {
-                message += "... (see more with !weather list2)";
+                // Assuming your weather command prefix is "weather " or "!"
+                // → adjust the argument if your actual prefix/command is different
+                string listCommandExample = "weather list2";   // or "!weather list2", etc.
+                message += " " + "RICS.WCH.WeatherListTruncated".Translate(listCommandExample);
             }
 
             return message;
@@ -492,7 +525,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (settings.EventCooldownsEnabled && settings.EventsperCooldown > 0)
             {
                 int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
-                summaries.Add($"Total: {totalEvents}/{settings.EventsperCooldown}");
+                summaries.Add("RICS.WCH.CooldownTotal".Translate(
+                    totalEvents,
+                    settings.EventsperCooldown
+                ));
             }
 
             // Karma-type limits
@@ -502,25 +538,39 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     var goodRecord = cooldownManager.data.EventUsage.GetValueOrDefault("good");
                     int goodUsed = goodRecord?.CurrentPeriodUses ?? 0;
-                    summaries.Add($"Good: {goodUsed}/{settings.MaxGoodEvents}");
+                    summaries.Add("RICS.WCH.CooldownGood".Translate(
+                        goodUsed,
+                        settings.MaxGoodEvents
+                    ));
                 }
 
                 if (settings.MaxBadEvents > 0)
                 {
                     var badRecord = cooldownManager.data.EventUsage.GetValueOrDefault("bad");
                     int badUsed = badRecord?.CurrentPeriodUses ?? 0;
-                    summaries.Add($"Bad: {badUsed}/{settings.MaxBadEvents}");
+                    summaries.Add("RICS.WCH.CooldownBad".Translate(
+                        badUsed,
+                        settings.MaxBadEvents
+                    ));
                 }
 
                 if (settings.MaxNeutralEvents > 0)
                 {
                     var neutralRecord = cooldownManager.data.EventUsage.GetValueOrDefault("neutral");
                     int neutralUsed = neutralRecord?.CurrentPeriodUses ?? 0;
-                    summaries.Add($"Neutral: {neutralUsed}/{settings.MaxNeutralEvents}");
+                    summaries.Add("RICS.WCH.CooldownNeutral".Translate(
+                        neutralUsed,
+                        settings.MaxNeutralEvents
+                    ));
                 }
             }
 
-            return string.Join(" | ", summaries);
+            if (!summaries.Any())
+            {
+                return "";
+            }
+
+            return string.Join("RICS.WCH.CooldownSeparator".Translate(), summaries);
         }
 
         private static string GetWeatherListPage(int page)
@@ -530,18 +580,36 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             var availableWeathers = GetAvailableWeatherTypes()
                 .Where(kvp => !IsGameConditionWeather(kvp.Value.DefName))
-                .Select(kvp => $"{kvp.Value.Label} ({kvp.Value.BaseCost}{currencySymbol})")
+                .Select(kvp =>
+                {
+                    // For consistency with GetWeatherList() — include status if you want
+                    // (currently your original code does NOT show ✅/❌ on paged views)
+                    // If you want to match the non-paged version, add status logic here too.
+
+                    return "RICS.WCH.WeatherListEntry".Translate(
+                        kvp.Value.Label,
+                        kvp.Value.BaseCost,
+                        currencySymbol,
+                        ""   // ← empty status if you don't want icons on pages
+                             // or compute status the same way as in GetWeatherList() if desired
+                    );
+                })
                 .ToList();
 
             int itemsPerPage = 8;
             int startIndex = (page - 1) * itemsPerPage;
-            int endIndex = Math.Min(startIndex + itemsPerPage, availableWeathers.Count);
 
             if (startIndex >= availableWeathers.Count)
-                return "No more weather types to display.";
+            {
+                return "RICS.WCH.WeatherListPageNoMore".Translate();
+            }
 
+            int endIndex = Math.Min(startIndex + itemsPerPage, availableWeathers.Count);
             var pageItems = availableWeathers.Skip(startIndex).Take(itemsPerPage);
-            return $"Available weather (page {page}): " + string.Join(", ", pageItems);
+
+            string entries = string.Join(", ", pageItems);
+
+            return "RICS.WCH.WeatherListPageTitle".Translate(page) + " " + entries;
         }
 
         private static bool IsBiomeValidForWeather(Map map)
@@ -559,7 +627,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string GetBiomeRestrictionMessage(Map map)
         {
             string biomeName = map.Biome?.label ?? "this location";
-            return $"Sorry, you can't change the weather in {biomeName}.";
+            return "RICS.WCH.BiomeRestriction".Translate(biomeName);
         }
 
         [DebugAction("CAP", "Test Weather Conversion", allowedGameStates = AllowedGameStates.Playing)]

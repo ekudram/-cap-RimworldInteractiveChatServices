@@ -1,0 +1,103 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- Weather command - general errors / feedback -->
+  <RICS.WCH.ViewerNotFound>Error: Could not find your viewer data.</RICS.WCH.ViewerNotFound>
+  <RICS.WCH.UnknownWeather>Unknown weather type: {0}. Available: {1}...</RICS.WCH.UnknownWeather>
+  <RICS.WCH.WeatherDisabled>The {0} weather type is currently disabled.</RICS.WCH.WeatherDisabled>
+  <RICS.WCH.GlobalEventLimitReached>❌ Global event limit reached! ({0}/{1} used this period)</RICS.WCH.GlobalEventLimitReached>
+  <RICS.WCH.KarmaTypeLimitReached>❌ {0} event limit reached! ({1}/{2} used this period)</RICS.WCH.KarmaTypeLimitReached>
+  <RICS.WCH.CommandOnCooldown>❌ Weather command is on cooldown.</RICS.WCH.CommandOnCooldown>
+  <RICS.WCH.InsufficientFunds>You need {0}{1} for {2}!</RICS.WCH.InsufficientFunds>
+  
+
+  <!-- Success messages -->
+  <RICS.WCH.WeatherChangedTitle>Weather Changed</RICS.WCH.WeatherChangedTitle>
+  <RICS.WCH.WeatherChangedBody>{0} changed the weather to {1} for {2}{3}\n\n{4}</RICS.WCH.WeatherChangedBody>
+
+  <!-- Failure suffix when no coins deducted -->
+  <RICS.WCH.NoCoinsDeducted>No {0} were deducted.</RICS.WCH.NoCoinsDeducted>
+
+  <!-- Optional: more granular messages if you split logic later -->
+  <RICS.WCH.ListCommandHint>Use "weather list" or "weather list N" to see pages.</RICS.WCH.ListCommandHint>
+
+  <!-- TriggerSimpleWeather messages -->
+  <RICS.WCH.SimpleWeatherDefNotFound>The weather spirits don't recognize '{0}'.</RICS.WCH.SimpleWeatherDefNotFound>
+
+  <RICS.WCH.WeatherAlreadyActive>The weather is already {0} or transitioning to it.</RICS.WCH.WeatherAlreadyActive>
+
+  <RICS.WCH.BiomeRestriction>{0}</RICS.WCH.BiomeRestriction>
+  
+  <!-- ^ placeholder — the actual message comes from GetBiomeRestrictionMessage() -->
+
+  <RICS.WCH.WeatherConvertedByCold>Your {0} was transformed by the cold into {1}! {2}</RICS.WCH.WeatherConvertedByCold>
+
+  <RICS.WCH.WeatherTransitionSuccess>The skies shift as {0} begins to fall across the land.</RICS.WCH.WeatherTransitionSuccess>
+
+  <!-- Temperature-based weather conversion messages -->
+  <RICS.WCH.ConvertRainToSnow>The freezing air turns the rain to snow.</RICS.WCH.ConvertRainToSnow>
+
+  <RICS.WCH.ConvertThunderToThundersnow>The thunderstorm freezes into a raging thundersnow!</RICS.WCH.ConvertThunderToThundersnow>
+
+  <RICS.WCH.ConvertSnowGentleToRain>The warm air melts the snow into rain.</RICS.WCH.ConvertSnowGentleToRain>
+
+  <RICS.WCH.ConvertHeavySnowToLight>The warming air lightens the heavy snow.</RICS.WCH.ConvertHeavySnowToLight>
+
+  <!-- Game condition (IncidentDef) weather messages -->
+  <RICS.WCH.GameConditionDefNotFound>The ancient powers refuse to summon {0}.</RICS.WCH.GameConditionDefNotFound>
+
+  <RICS.WCH.NoWorkerForIncident>The weather mages cannot conjure {0}.</RICS.WCH.NoWorkerForIncident>
+
+  <RICS.WCH.GameConditionCosmicAlignment>The cosmic alignment prevents {0} from forming right now.</RICS.WCH.GameConditionCosmicAlignment>
+
+  <RICS.WCH.GameConditionNoSuitableLocation>No suitable locations found for {0} in your current biomes.</RICS.WCH.GameConditionNoSuitableLocation>
+
+  <!-- Game condition activation flavor messages -->
+  <RICS.WCH.SolarFlareMessage>The sun flares with cosmic energy, disrupting all electronics!</RICS.WCH.SolarFlareMessage>
+
+  <RICS.WCH.ToxicFalloutMessage>A sickly green haze descends as toxic fallout begins...</RICS.WCH.ToxicFalloutMessage>
+
+  <RICS.WCH.FlashstormMessage>Dark clouds gather as a flashstorm crackles to life!</RICS.WCH.FlashstormMessage>
+
+  <RICS.WCH.EclipseMessage>An unnatural darkness falls as the sun is eclipsed!</RICS.WCH.EclipseMessage>
+
+  <RICS.WCH.AuroraMessage>The sky dances with shimmering auroral lights!</RICS.WCH.AuroraMessage>
+
+  <RICS.WCH.HeatWaveMessage>A blistering heat wave settles over the land!</RICS.WCH.HeatWaveMessage>
+
+  <RICS.WCH.ColdSnapMessage>An icy cold snap freezes the air!</RICS.WCH.ColdSnapMessage>
+
+  <RICS.WCH.VolcanicWinterMessage>Volcanic ash clouds block the sun, bringing endless winter!</RICS.WCH.VolcanicWinterMessage>
+
+  <RICS.WCH.GenericGameConditionMessage>The {0} takes hold across the land.</RICS.WCH.GenericGameConditionMessage>
+
+  <!-- Weather list command -->
+  <RICS.WCH.WeatherListTitle>Available weather:</RICS.WCH.WeatherListTitle>
+  <RICS.WCH.WeatherListEntry>{0} ({1}{2}){3}</RICS.WCH.WeatherListEntry>
+  <!-- args: label, cost, currencySymbol, status (✅ or ❌) -->
+
+  <RICS.WCH.WeatherListTruncated>... (see more with {0}list2)</RICS.WCH.WeatherListTruncated>
+  <!-- arg: command prefix, usually "weather " or "!" depending on your chat prefix -->
+
+  <RICS.WCH.WeatherListSeparator> | </RICS.WCH.WeatherListSeparator>
+  <!-- separator between list and cooldown summary -->
+
+  <!-- If you want the whole list line to be more flexible / reorderable -->
+  <!-- <RICS.WCH.WeatherListFull>{0}: {1}</RICS.WCH.WeatherListFull> -->
+  <!-- args: title, joined entries + optional summary -->
+
+  <!-- Cooldown summary parts (used in weather list) -->
+  <RICS.WCH.CooldownTotal>Total: {0}/{1}</RICS.WCH.CooldownTotal>
+  <RICS.WCH.CooldownGood>Good: {0}/{1}</RICS.WCH.CooldownGood>
+  <RICS.WCH.CooldownBad>Bad: {0}/{1}</RICS.WCH.CooldownBad>
+  <RICS.WCH.CooldownNeutral>Neutral: {0}/{1}</RICS.WCH.CooldownNeutral>
+  <RICS.WCH.CooldownSeparator> | </RICS.WCH.CooldownSeparator>
+
+    <!-- Paged weather list -->
+  <RICS.WCH.WeatherListPageTitle>Available weather (page {0}):</RICS.WCH.WeatherListPageTitle>
+  <RICS.WCH.WeatherListPageNoMore>No more weather types to display.</RICS.WCH.WeatherListPageNoMore>
+
+  <!-- Biome restriction message -->
+  <RICS.WCH.BiomeRestriction>Sorry, you can't change the weather in {0}.</RICS.WCH.BiomeRestriction>
+
+</LanguageData>

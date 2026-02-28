@@ -60,7 +60,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         if (!cooldownManager.CanUseGlobalEvents(settings))
                         {
                             int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
-                            Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
+                            // Logger.Debug($"Global event limit reached: {totalEvents}/{settings.EventsperCooldown}");
                             // return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
                             return "RICS.MACH.GlobalEventLimitReached".Translate(totalEvents, settings.EventsperCooldown);
                         }
@@ -72,7 +72,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             int goodUsed = goodRecord?.CurrentPeriodUses ?? 0;
                             // string cooldownMessage = $"❌ GOOD event limit reached! ({goodUsed}/{settings.MaxGoodEvents} used this period)";
                             string cooldownMessage = "RICS.MACH.GoodEventLimitReached".Translate(goodUsed, settings.MaxGoodEvents);
-                            Logger.Debug($"Good event limit reached: {goodUsed}/{settings.MaxGoodEvents}");
+                            // Logger.Debug($"Good event limit reached: {goodUsed}/{settings.MaxGoodEvents}");
                             return cooldownMessage;
                         }
 

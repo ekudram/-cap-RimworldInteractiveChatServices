@@ -140,9 +140,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 int cost = buyableIncident.BaseCost;
                 if (viewer.Coins < cost)
                 {
-                    MessageHandler.SendFailureLetter("Incident Failed",
-                        $"{messageWrapper.Username} can't afford {buyableIncident.Label}");
-                    return $"You need {cost}{currencySymbol} for {buyableIncident.Label}!";
+                    return "RICS.WCH.InsufficientFunds".Translate(cost, currencySymbol, buyableIncident.Label);
                 }
 
                 // Try to trigger the incident
