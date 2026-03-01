@@ -1370,7 +1370,7 @@ namespace CAP_ChatInteractive
             bool wasEnabled = item.Enabled;
             bool currentEnabled = item.Enabled;
             // Widgets.CheckboxLabeled(rect, "Enabled", ref currentEnabled);
-            Widgets.CheckboxLabeled(rect, "RICS.SE.Enabled".Translate(), ref currentEnabled);
+            Widgets.CheckboxLabeled(rect, "RICS.SE.Buyable".Translate(), ref currentEnabled);
             if (currentEnabled != wasEnabled)
             {
                 item.Enabled = currentEnabled;
