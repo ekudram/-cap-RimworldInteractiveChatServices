@@ -43,7 +43,7 @@
 
   <RICS.UICH.Invoice.Instant.Header>RIMAZON INSTANT</RICS.UICH.Invoice.Instant.Header>
   
-  <RICS.UICH.Invoice.Item>Item: {0} x{1}</RICS.UICH.Invoice.Item>
+  <RICS.UICH.Invoice.Iteminstant>Item: {0} x{1}</RICS.UICH.Invoice.Iteminstant>
   <RICS.UICH.Invoice.Service.Immediate>Service: Immediate Use</RICS.UICH.Invoice.Service.Immediate>
 
     <RICS.UICH.Invoice.ThankYouInstant>Thank you for using Rimazon Instant!</RICS.UICH.Invoice.ThankYouInstant>
