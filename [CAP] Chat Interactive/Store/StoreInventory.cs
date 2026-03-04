@@ -287,12 +287,12 @@ namespace CAP_ChatInteractive.Store
                     AllStoreItems[key] = newItem;
                     addedItems++;
                 }
-                else if (_completeStoreData.ContainsKey(key))
+                else
                 {
-                    // Existing item - preserve user settings but update game properties
                     var existingItem = _completeStoreData[key];
 
-                    // Store user settings before any updates
+                    // ────────────────────────────────────────
+                    // 1. Preserve user settings (these are not derived from def)
                     bool userEnabled = existingItem.Enabled;
                     string userCustomName = existingItem.CustomName;
                     int userBasePrice = existingItem.BasePrice;
@@ -303,27 +303,31 @@ namespace CAP_ChatInteractive.Store
                     bool userIsEquippable = existingItem.IsEquippable;
                     bool userIsWearable = existingItem.IsWearable;
 
-                    // MIGRATE: Update item format for existing items
+                    // ────────────────────────────────────────
+                    // 2. Update internal "Can" flags (always re-derived, never saved)
+                    existingItem.CanUse = StoreItem.IsItemUsable(thingDef);
+                    existingItem.CanWear = StoreItem.IsItemWearable(thingDef);
+                    existingItem.CanEquip = StoreItem.IsItemEquipable(thingDef);
+
+                    // ────────────────────────────────────────
+                    // 3. Run migration (for schema/format changes)
                     MigrateStoreItemFormat(existingItem, thingDef.defName);
                     migratedItems++;
 
-                    // Update game-derived properties
-                    // Special case: rename old "Animal" category to "Mechs" for mechanoids
+                    // ────────────────────────────────────────
+                    // 4. Update derived game properties
+                    // Category special cases
                     if (existingItem.Category == "Animal" && thingDef.race?.IsMechanoid == true)
                     {
                         existingItem.Category = "Mechs";
                     }
-                    else if ("VehiclePawn".Equals(thingDef.thingClass?.Name, StringComparison.OrdinalIgnoreCase))
-                    {
-                        existingItem.Category = "Vehicles";
-                    }
-                    else if (thingDef.thingClass?.FullName?.Contains("vehiclePawn") == true)
+                    else if ("VehiclePawn".Equals(thingDef.thingClass?.Name, StringComparison.OrdinalIgnoreCase) ||
+                             thingDef.thingClass?.FullName?.Contains("vehiclePawn") == true)
                     {
                         existingItem.Category = "Vehicles";
                     }
                     else
                     {
-                        // Update category from thing def
                         string newCategory = StoreItem.GetCategoryFromThingDef(thingDef) ?? "Uncategorized";
                         if (existingItem.Category != newCategory)
                         {
@@ -331,10 +335,10 @@ namespace CAP_ChatInteractive.Store
                         }
                     }
 
-                    // Update mod source
+                    // Mod source (always update - mods can change)
                     existingItem.ModSource = thingDef.modContentPack?.Name ?? "RimWorld";
 
-                    // Check if quantity limit needs fixing (0 or invalid)
+                    // Fix invalid quantity limits
                     if (existingItem.QuantityLimit <= 0)
                     {
                         int baseStack = Mathf.Max(1, thingDef.stackLimit);
@@ -343,17 +347,33 @@ namespace CAP_ChatInteractive.Store
                         existingItem.HasQuantityLimit = true;
                     }
 
-                    // CRITICAL: Restore ALL user settings from JSON
+                    // ────────────────────────────────────────
+                    // 5. Restore user settings
                     existingItem.Enabled = userEnabled;
                     existingItem.CustomName = userCustomName;
                     existingItem.BasePrice = userBasePrice;
                     existingItem.HasQuantityLimit = userHasQuantityLimit;
                     existingItem.QuantityLimit = userQuantityLimit;
                     existingItem.LimitMode = userLimitMode;
-                    existingItem.IsUsable = userIsUsable;
-                    existingItem.IsEquippable = userIsEquippable;
-                    existingItem.IsWearable = userIsWearable;
+                    // Fixes anything from previous version that was in error.
+                    // If we cant use wear or Equip the item we should not have the Flags for it set to true.
+                    // otherwise keep streamer settings.
+                    if (!existingItem.CanUse)
+                        existingItem.IsUsable = false;
+                    else
+                        existingItem.IsUsable = userIsUsable;
 
+                    if (!existingItem.CanWear)
+                        existingItem.IsWearable = false;
+                    else
+                        existingItem.IsWearable = userIsWearable;
+
+                    if (!existingItem.CanEquip)
+                        existingItem.IsEquippable = false;
+                    else
+                        existingItem.IsEquippable = userIsEquippable;
+
+                    AllStoreItems[key] = existingItem;
                     updatedItems++;
                 }
             }

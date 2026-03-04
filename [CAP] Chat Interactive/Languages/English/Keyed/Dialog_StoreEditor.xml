@@ -24,6 +24,7 @@
   <RICS.SE.DisableArrow>Disable →</RICS.SE.DisableArrow>
     
   <!-- Checkboxes -->
+  <RICS.SE.All>All items</RICS.SE.All>
   <RICS.SE.Buyable>Buyable</RICS.SE.Buyable>
   <RICS.SE.Usable>Usable</RICS.SE.Usable>
   <RICS.SE.Wearable>Wearable</RICS.SE.Wearable>
@@ -113,6 +114,10 @@
     {labelCapLine}
     {editHint}
   </RICS.SE.CustomNameTooltip>
+  <!-- New for 1.22-->
+  <RICS.SE.LabelCap>LabelCap: {0}</RICS.SE.LabelCap>
+  <RICS.SE.ClickToEdit>(Click icon to edit custom name)</RICS.SE.ClickToEdit>
+  
   <RICS.SE.CustomNameIndicatorTooltip>Custom name is set</RICS.SE.CustomNameIndicatorTooltip>
   <RICS.SE.SetAllQtyTooltip>Enable/disable quantity limits for all visible items</RICS.SE.SetAllQtyTooltip>
   <RICS.SE.ManualLimitTooltip>Manual limit (current: {0})</RICS.SE.ManualLimitTooltip>
@@ -120,6 +125,18 @@
   <RICS.SE.SetAllThreeStacksTooltip>Set all visible items to 3 stacks limit</RICS.SE.SetAllThreeStacksTooltip>
   <RICS.SE.SetAllFiveStacksTooltip>Set all visible items to 5 stacks limit</RICS.SE.SetAllFiveStacksTooltip>
   
+  <!-- NEW 1.22 -->
+
+  <RICS.SE.AllItems>All items:</RICS.SE.AllItems>
+  <RICS.SE.Buy>Buy</RICS.SE.Buy>
+  <RICS.SE.Use>Use</RICS.SE.Use>
+  <RICS.SE.Wear>Wear</RICS.SE.Wear>
+  <RICS.SE.Equip>Equip</RICS.SE.Equip>
+  <RICS.SE.ToggleAllFlags>Toggle all flags (Buy, Use, Wear, Equip) for all visible items</RICS.SE.ToggleAllFlags>
+  <RICS.SE.ToggleBuyable>Toggle buyable for all visible items</RICS.SE.ToggleBuyable>
+  <RICS.SE.ToggleUsable>Toggle usable for all visible items</RICS.SE.ToggleUsable>
+  <RICS.SE.ToggleWearable>Toggle wearable for all visible items</RICS.SE.ToggleWearable>
+  <RICS.SE.ToggleEquippable>Toggle equippable for all visible items</RICS.SE.ToggleEquippable>
   
   
 </LanguageData>

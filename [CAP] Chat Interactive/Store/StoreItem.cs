@@ -31,9 +31,15 @@ namespace CAP_ChatInteractive.Store
         public bool HasQuantityLimit { get; set; } = true;
         public int QuantityLimit { get; set; } = 1;
         public QuantityLimitMode LimitMode { get; set; } = QuantityLimitMode.OneStack; // Changed from Each to OneStack
-        public bool IsUsable { get; set; } = true;
-        public bool IsEquippable { get; set; }
-        public bool IsWearable { get; set; }
+
+        public bool Enabled { get; set; } = true;
+        public bool IsUsable { get; set; } = true; // Setting for Streamer to turn on and off
+        public bool CanUse { get; set; } = true; // Setting internal to know if we want the Checkbox to show up so Streamer can turn on and off
+        public bool IsEquippable { get; set; } // Setting for Streamer to turn on and off
+        public bool CanEquip { get; set; }  // Setting internal to know if we want the Checkbox to show up so Streamer can turn on and off
+        public bool IsWearable { get; set; } // Setting for Streamer to turn on and off
+        public bool CanWear { get; set; } // Setting internal to know if we want the Checkbox to show up so Streamer can turn on and off
+
         // public bool IsWeapon { get; set; }  // Not needed for store json 4 ref but we can really just pull this from def
         // public bool IsMelee { get; set; }// Not needed for store json
         // public bool IsRanged { get; set; }// Not needed for store json
@@ -42,11 +48,11 @@ namespace CAP_ChatInteractive.Store
         public string Category { get; set; }
         public string ModSource { get; set; }
         public bool modactive { get; set; } = false;
-        public bool Enabled { get; set; } = true;
 
-        // REMOVE the entire ExposeData method
 
         public StoreItem() { }
+
+        // Sets up Item defaults.
 
         public StoreItem(ThingDef thingDef)
         {
@@ -61,9 +67,23 @@ namespace CAP_ChatInteractive.Store
             // IsWeapon = thingDef.IsWeapon;
             // IsMelee = thingDef.IsMeleeWeapon;
             // IsRanged = thingDef.IsRangedWeapon;
+
             IsUsable = IsItemUsable(thingDef);
-            IsEquippable = !IsUsable && thingDef.IsWeapon;
-            IsWearable = !IsUsable && !IsEquippable && IsItemWearable(thingDef);
+            CanUse = IsItemUsable(thingDef); // Uses same Logic just not a setable flag is used to determine check box
+
+            // Change in logic to allow for multiple flags Usefull for things like Beer that can be equiped or used.
+            // Note that pawns might just drink the beer.  I would.
+
+            // IsEquippable = !IsUsable && thingDef.IsWeapon;  // Old Logic
+            IsEquippable = IsItemEquipable(thingDef);  // Just every weapon
+            CanEquip = IsItemEquipable(thingDef); // Same Logic for this flag
+
+            //
+            // IsWearable = !IsUsable && !IsEquippable && IsItemWearable(thingDef);
+            IsWearable = IsItemWearable(thingDef);  // Might be able to go back to IsWearable = thingDef.IsApparel; Still testing
+            
+            
+            
             // IsStuffAllowed = thingDef.IsStuff;
 
             // FIX: Set default quantity limit to 1 stack instead of 0
@@ -75,6 +95,10 @@ namespace CAP_ChatInteractive.Store
         public static bool IsItemUsable(ThingDef thingDef)
         {
             if (thingDef == null) return false;
+            // * ---------------------------------------------------------
+            //  We are going to allow multiple flags to be available now.  
+            //  Verision 1.22
+            // * ---------------------------------------------------------
 
             // Explicitly exclude things that are clearly NOT consumable/usable
             // if (thingDef.IsWeapon) return false; // If you do this Beer and other items will not be useable
@@ -82,18 +106,18 @@ namespace CAP_ChatInteractive.Store
 
             // NEW: Apparel is NEVER usable (wear instead). This fixes all DLC/modded belt packs consistently.
             // (Rare modded "apparel implants" with CompUsableImplant would still be caught by name/comp below if truly needed, but none exist in vanilla/DLC.)
-            if (thingDef.IsApparel) return false;
+            // if (thingDef.IsApparel) return false; //  We are going to allow multiple flags to be on now.
 
             // Core usable categories
             if (thingDef.IsIngestible) return true;
-            if (thingDef.IsMedicine) return true;
+            // if (thingDef.IsMedicine) return true; // keep this line but not meds yet!  Need to add ablity to !use Command Handler First.
             if (thingDef.IsDrug || thingDef.IsPleasureDrug) return true;
 
-            // Check for CompUsableImplant / CompUsable
+            // Check for CompUsableImplant / CompUsable / For BIOTECH Mechinator stuff
             if (thingDef.HasComp<CompUsableImplant>()) return true;
             if (thingDef.HasComp<CompUsable>()) return true;
 
-            // Name-based fallbacks (only as last resort — all are non-apparel)
+            // Name-based fallbacks (only as last resort)
             string defName = thingDef.defName?.ToLowerInvariant() ?? "";
             if (defName.Contains("neurotrainer") ||
                 defName.Contains("psytrainer") ||
@@ -103,22 +127,27 @@ namespace CAP_ChatInteractive.Store
                 return true;
             }
 
-            // Catch remaining non-apparel "Pack" items that are actually usable
-            if (defName.Contains("pack") && !thingDef.IsApparel)
-            {
-                return true;
-            }
+            // Catch remaining non-apparel "Pack" items that are actually usable 
+            // Is to vague
+            //if (defName.Contains("pack") && !thingDef.IsApparel)
+            //{
+            //    return true;
+            //}
 
             return false;
         }
-
+        // Still Testing maybe obsolete
         public static bool IsItemWearable(ThingDef thingDef)
         {
             if (thingDef == null) return false;
-
+            if (thingDef.IsBuildingArtificial) return false;
             // All normal apparel = wearable
-            if (thingDef.IsApparel) return true;
+            if (thingDef.IsApparel) return true;  // This really should catch packs so lets remark out 
 
+
+            /*************************************
+             * HOLD ON TO THIS CODE.
+             * 
             // Special handling for DLC/modded utility packs that sometimes slip (Biotech/Anomaly/Odyssey etc.)
             // These are the exact ones you listed as "not being caught at all"
             string defNameLower = thingDef.defName?.ToLowerInvariant() ?? "";
@@ -132,7 +161,17 @@ namespace CAP_ChatInteractive.Store
             {
                 return true;
             }
+            */
+            return false;
+        }
 
+        public static bool IsItemEquipable(ThingDef thingDef)
+        {
+            if (thingDef == null)
+                return false;
+            // If we need to exclude anything it goes first
+            if (thingDef.IsBuildingArtificial) return false;
+            if (thingDef.IsWeapon) return true;
             return false;
         }
 

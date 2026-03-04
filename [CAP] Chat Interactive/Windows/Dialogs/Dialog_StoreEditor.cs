@@ -567,7 +567,7 @@ namespace CAP_ChatInteractive
                 DrawCategoryList(listRect);
             }
             else
-            {
+            { 
                 DrawModSourcesList(listRect);
             }
 
@@ -801,21 +801,11 @@ namespace CAP_ChatInteractive
             // ────────────────────────────────────────
             // First: calculate final header height (same logic as before)
             float headerHeight = 30f; // count row
-
+            
             if (showBulkControls)
             {
-                headerHeight += 30f; // quantity controls
-
-                bool showPriceControls = false;
-                if (listViewType == StoreListViewType.Category && selectedCategory != "All")
-                    showPriceControls = true;
-                else if (listViewType == StoreListViewType.ModSource && selectedModSource != "All")
-                    showPriceControls = true;
-
-                if (showPriceControls)
-                {
-                    headerHeight += 30f; // price/enable/disable row
-                }
+                headerHeight += 30f; // bulk controls row (flags + quantity)
+                                     // No extra 30f for price controls anymore – we'll draw reset button lower if needed
             }
 
             // ────────────────────────────────────────
@@ -856,38 +846,76 @@ namespace CAP_ChatInteractive
             // Bulk controls section
             if (showBulkControls)
             {
-                // Quantity controls (always when items present)
-                Rect qtyControlsRect = new Rect(rect.x, rect.y + currentY, rect.width, 28f);
-                DrawBulkQuantityControls(qtyControlsRect);
+                // Bulk flags + quantity controls – absolute position inside the right panel
+                Rect bulkRect = new Rect(rect.x, rect.y + currentY, rect.width, 30f);
+                DrawBulkControls(bulkRect);
                 currentY += 30f;
 
-                // Price/enable/disable controls (only when specific category or mod source selected)
-                bool showPriceControls = false;
-                if (listViewType == StoreListViewType.Category && selectedCategory != "All")
-                    showPriceControls = true;
-                else if (listViewType == StoreListViewType.ModSource && selectedModSource != "All")
-                    showPriceControls = true;
+                // Contextual price reset button (only when narrowed to category or mod)
+                bool showResetButton = (listViewType == StoreListViewType.Category && selectedCategory != "All") ||
+                                       (listViewType == StoreListViewType.ModSource && selectedModSource != "All");
 
-                if (showPriceControls)
+                if (showResetButton)
                 {
-                    Rect priceControlsRect = new Rect(rect.x, rect.y + currentY, rect.width, 28f);
+                    // Absolute position below bulk
+                    Rect resetGroupRect = new Rect(rect.x, rect.y + currentY, rect.width, 35f);
 
-                    if (listViewType == StoreListViewType.Category)
+                    Widgets.BeginGroup(resetGroupRect);
+
+                    float btnWidth = 220f;
+                    float xCenter = (resetGroupRect.width - btnWidth) / 2f;
+
+                    Rect buttonRect = new Rect(xCenter, 5f, btnWidth, 28f);  // slight top padding
+
+                    string targetName = (listViewType == StoreListViewType.Category)
+                        ? selectedCategory
+                        : GetDisplayModName(selectedModSource);
+
+                    string label = "RICS.SE.ResetAll".Translate() + $" ({targetName})";
+
+                    if (Widgets.ButtonText(buttonRect, label))
                     {
-                        DrawCategoryPriceControls(priceControlsRect);
+                        string confirmKey = (listViewType == StoreListViewType.Category)
+                            ? "RICS.SE.ResetCategoryPricesConfirmText"
+                            : "RICS.SE.ResetAllPricesConfirmText";
+
+                        string confirmText = confirmKey.Translate(
+                            filteredItems.Count.Named("count"),
+                            targetName.Named(listViewType == StoreListViewType.Category ? "category" : "modName")
+                        );
+
+                        Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                            confirmText,
+                            () =>
+                            {
+                                if (listViewType == StoreListViewType.Category)
+                                    ResetCategoryPrices();
+                                else
+                                    ResetModSourcePrices();
+                            },
+                            title: "RICS.SE.ResetCategoryPricesConfirmTitle".Translate()
+                        ));
                     }
-                    else // ModSource
-                    {
-                        DrawModSourcePriceControls(priceControlsRect);
-                    }
-                    currentY += 30f;
+
+                    // Small label above the button (looks odd and need better placement)
+                    //Rect labelRect = new Rect(0f, 0f, resetGroupRect.width, 20f);
+                    //Text.Font = GameFont.Tiny;
+                    //Text.Anchor = TextAnchor.MiddleCenter;
+                    //Widgets.Label(labelRect, "Price Controls (this view only)".Translate());
+                    //Text.Anchor = TextAnchor.UpperLeft;
+                    //Text.Font = GameFont.Small;
+
+                    Widgets.EndGroup();
+
+                    currentY += 35f;
                 }
             }
 
             Text.Anchor = TextAnchor.UpperLeft;
 
-            // Item list starts after header + small padding
-            Rect listRect = new Rect(rect.x, rect.y + headerHeight + 4f, rect.width, rect.height - headerHeight - 8f);
+            // list starts after whatever we actually drew
+            float headerContentEnd = currentY + 4f;  // currentY already includes all drawn rows
+            Rect listRect = new Rect(rect.x, rect.y + headerContentEnd, rect.width, rect.height - headerContentEnd - 8f);
 
             if (filteredItems.Count == 0)
             {
@@ -896,7 +924,7 @@ namespace CAP_ChatInteractive
                 return;
             }
 
-            float rowHeight = 64f;
+            float rowHeight = 96f;  // 3 lines @ 32f each for info block + flags
             float viewHeight = filteredItems.Count * rowHeight;
             Rect viewRect = new Rect(0f, 0f, listRect.width - 16f, viewHeight); // -16f ≈ scrollbar width
 
@@ -929,7 +957,185 @@ namespace CAP_ChatInteractive
         }
         // This method draws a single item row, given the rect and the StoreItem data
         // Only draws the Rows that are visible based on the scroll position and row height
-        private void DrawItemRow(Rect rect, StoreItem item, int index)
+
+        private void DrawItemRow(Rect rowRect, StoreItem item, int index)
+        {
+            Widgets.BeginGroup(rowRect);
+            try
+            {
+                // Hover highlight for entire row (not needed inside group as it's on rowRect)
+
+                // Alternate row background
+                if (index % 2 == 0)
+                    Widgets.DrawAltRect(new Rect(0f, 0f, rowRect.width, rowRect.height));
+
+                float curX = 5f;  // small left padding inside group
+
+                // === Item Icon ===
+                var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
+                if (thingDef != null)
+                {
+                    float centerY = (rowRect.height - 64f) / 2f;
+                    Rect iconRect = new Rect(curX, centerY, 64f, 64f);
+                    Widgets.ThingIcon(iconRect, thingDef);
+
+                    // Clickable for Def info
+                    if (Widgets.ButtonInvisible(iconRect))
+                    {
+                        ShowDefInfoWindow(thingDef, item);
+                    }
+
+                    TooltipHandler.TipRegion(iconRect, "RICS.SE.IconTooltip".Translate());
+
+                    // Info card button next to icon
+                    Rect infoCardRect = new Rect(iconRect.xMax + 2f, centerY + (64f - 24f) / 2f, 24f, 24f);
+                    Widgets.InfoCardButton(infoCardRect.x, infoCardRect.y, thingDef);
+
+                    curX += 64f + 24f + 4f;  // icon + info button + spacing
+                }
+
+                // === Info Block: Name (line 1), Category (line 2), Mod Source (line 3) ===
+                float infoWidth = 200f;  // fixed width
+                float infoBlockHeight = 84f;  // 3 lines of 28f
+                float topPadding = 8f;        // fixed top margin
+                float availableHeight = rowRect.height - topPadding - 8f;  // reserve 8px bottom margin
+                float centeredY = topPadding + (availableHeight - infoBlockHeight) / 2f;
+
+                Rect infoRect = new Rect(curX, centeredY, infoWidth, infoBlockHeight);
+
+                Widgets.BeginGroup(infoRect);  // Group for relative drawing inside infoRect
+                try
+                {
+                    Text.Anchor = TextAnchor.MiddleLeft;
+                    Text.Font = GameFont.Small;
+
+                    // Line 1: Name (custom or default, with indicator if custom)
+                    Rect nameRect = new Rect(0f, 0f, infoWidth, 28f);
+                    string labelCapString = thingDef?.LabelCap.ToString();
+                    bool hasUserCustomName = !string.IsNullOrEmpty(item.CustomName) && item.CustomName != labelCapString;
+                    string displayName = hasUserCustomName ? item.CustomName : (labelCapString ?? item.DefName);
+                    string truncatedName = UIUtilities.Truncate(displayName, nameRect.width - (hasUserCustomName ? 20f : 0f));
+                    Widgets.Label(nameRect, truncatedName);
+
+                    // Custom name indicator
+                    if (hasUserCustomName)
+                    {
+                        Rect indicatorRect = new Rect(nameRect.width - 20f, 0f, 20f, 28f);
+                        GUI.color = Color.yellow;
+                        Widgets.Label(indicatorRect, "*");
+                        GUI.color = Color.white;
+                        TooltipHandler.TipRegion(indicatorRect, "RICS.SE.CustomNameIndicatorTooltip".Translate());
+                    }
+
+                    // Tooltip for name (truncated or custom)
+                    if (UIUtilities.WouldTruncate(displayName, infoWidth - 5f) || hasUserCustomName)
+                    {
+                        string defaultName = labelCapString ?? item.DefName;
+                        string labelCapLine = (thingDef != null && labelCapString != item.DefName)
+                            ? "\n" + "RICS.SE.LabelCap".Translate(thingDef.LabelCap.Named("0"))
+                            : "";
+                        string editHint = hasUserCustomName ? "RICS.SE.ClickToEdit".Translate() : "";
+                        string tooltipText = "RICS.SE.CustomNameTooltip".Translate(
+                            item.CustomName.Named("customName"),
+                            defaultName.Named("defaultName"),
+                            item.DefName.Named("defName"),
+                            labelCapLine.Named("labelCapLine"),
+                            editHint.Named("editHint")
+                        );
+                        TooltipHandler.TipRegion(nameRect, tooltipText);
+                    }
+
+                    // Line 2: Category
+                    Rect catRect = new Rect(0f, 28f, infoWidth, 28f);
+                    Text.Font = GameFont.Tiny;
+                    string categoryInfo = $"Category: {item.Category}";
+                    string truncatedCat = UIUtilities.Truncate(categoryInfo, infoWidth);
+                    Widgets.Label(catRect, truncatedCat);
+                    if (UIUtilities.WouldTruncate(categoryInfo, infoWidth))
+                        TooltipHandler.TipRegion(catRect, categoryInfo);
+
+                    // Line 3: Mod Source
+                    Rect modRect = new Rect(0f, 56f, infoWidth, 28f);
+                    string modInfo = $"Mod: {item.ModSource}";
+                    string truncatedMod = UIUtilities.Truncate(modInfo, infoWidth);
+                    Widgets.Label(modRect, truncatedMod);
+                    if (UIUtilities.WouldTruncate(modInfo, infoWidth))
+                        TooltipHandler.TipRegion(modRect, modInfo);
+                }
+                finally
+                {
+                    Widgets.EndGroup();
+                    Text.Font = GameFont.Small;
+                    Text.Anchor = TextAnchor.UpperLeft;
+                }
+
+                curX += infoWidth + 10f;
+
+                // === Buyable + stacked Use/Wear/Equip checkboxes ===
+                float flagsX = curX;                    // start right after info block
+                float flagsWidth = 100f;                 // total width for all flags — fixed so columns align row-to-row
+
+                float lineHeight = 28f;
+                float flagsY = 4f;                      // top-aligned inside group
+
+                // ────────────────────────────────────────
+                // Line 1: Usable (top, full width if present)
+                if (item.CanUse)
+                {
+                    Rect usableRect = new Rect(flagsX + flagsWidth + 4f, flagsY, flagsWidth, lineHeight);
+                    DrawUsableCheckbox(usableRect, item);
+                }
+
+                // ────────────────────────────────────────
+                // Line 2: Buyable (left half) + Wear (right half if present)
+                Rect buyRect = new Rect(flagsX, flagsY + lineHeight, flagsWidth, lineHeight);
+                DrawEnabledToggle(buyRect, item);  // Buyable
+
+                if (item.CanWear)
+                {
+                    Rect wearRect = new Rect(flagsX + flagsWidth + 4f, flagsY + lineHeight, flagsWidth, lineHeight);
+                    DrawWearableCheckbox(wearRect, item);
+                }
+
+                // ────────────────────────────────────────
+                // Line 3: Equip (full width if present)
+                if (item.CanEquip)
+                {
+                    Rect equipRect = new Rect(flagsX + flagsWidth + 4f, flagsY + lineHeight * 2, flagsWidth, lineHeight);
+                    DrawEquippableCheckbox(equipRect, item);
+                }
+
+                curX += flagsWidth + flagsWidth + 8f;  // advance past flags x2 + small gap before price
+
+                // === Price Controls ===
+                float flagsCenterY = (rowRect.height - 28f) / 2f;
+                Rect priceRect = new Rect(curX, flagsCenterY, 150f, 28f);
+                DrawPriceControls(priceRect, item);
+                curX += 150f + 8f;
+
+                // === Quantity Preset Controls ===
+                float qtyWidth = rowRect.width - curX - 10f;  // remaining inside group
+                if (qtyWidth > 200f)
+                {
+                    Rect qtyRect = new Rect(curX, flagsCenterY, qtyWidth, 28f);
+                    DrawQuantityPresetControls(qtyRect, item);
+                }
+                else
+                {
+                    // Compact fallback
+                    Rect qtyRect = new Rect(curX, flagsCenterY, 200f, 28f);
+                    DrawQuantityPresetControls(qtyRect, item);
+                }
+            }
+            finally
+            {
+                Widgets.EndGroup();
+                Text.Anchor = TextAnchor.UpperLeft;
+                GUI.color = Color.white;
+            }
+        }
+
+        private void DrawItemRow_old(Rect rect, StoreItem item, int index)
         {
             Widgets.BeginGroup(rect);
             try
@@ -1038,12 +1244,13 @@ namespace CAP_ChatInteractive
                 Text.Anchor = TextAnchor.UpperLeft;
                 x += infoWidth + 10f;
 
-                // === Enabled ===
+                // === Enabled === is now Buyable 
                 Rect enabledRect = new Rect(x, centerY, 80f, 30f);
                 DrawEnabledToggle(enabledRect, item);
                 x += enabledRect.width + 8f;
 
                 // === Type checkbox === (now only one, so center vertically)
+                // Change this to 
                 Rect typeRect = new Rect(x, centerY, 100f, 30f);
                 DrawItemTypeCheckboxes(typeRect, item);
                 x += typeRect.width + 12f;
@@ -1077,6 +1284,207 @@ namespace CAP_ChatInteractive
         }
 
         // This method draws the bulk quantity controls in the header of the item list.
+        private void DrawBulkControls(Rect rect)
+        {
+            if (filteredItems.NullOrEmpty()) return;
+
+            Widgets.BeginGroup(rect);
+
+            // Center the whole row like old method
+            float totalWidth = 70f + 24f + 10f + 40f + 24f + 10f + 40f + 24f + 10f + 50f + 24f + 10f + 50f + 24f + 10f + 100f + 24f + 10f + (24f + 6f) * 3;
+            float curX = (rect.width - totalWidth) / 2f;
+
+            // Helper to draw a checkbox with mixed state support
+            void DrawMixedCheckbox(Rect checkRect, bool? currentState, Action<bool> onToggle)
+            {
+                if (Widgets.ButtonInvisible(checkRect))
+                {
+                    // Toggle logic: if mixed or false → true; if true → false
+                    bool newState = currentState != true;
+                    onToggle(newState);
+                    SoundDefOf.Checkbox_TurnedOn.PlayOneShotOnCamera();  // or conditional
+                }
+
+                if (currentState.HasValue)
+                {
+                    bool state = currentState.Value;
+                    Widgets.Checkbox(checkRect.position, ref state, 24f);
+                }
+                else
+                {
+                    // Mixed state drawing
+                    Texture2D partialTex = ContentFinder<Texture2D>.Get("UI/Widgets/CheckBoxPartial", false);
+                    if (partialTex != null)
+                    {
+                        Widgets.DrawTextureFitted(checkRect, partialTex, 1f);
+                    }
+                    else
+                    {
+                        // Fallback: gray background + box
+                        Widgets.DrawBoxSolid(checkRect, new Color(0.5f, 0.5f, 0.5f, 0.4f));
+                        Widgets.DrawBox(checkRect);
+                    }
+                }
+            }
+
+            // Master "All items"
+            Rect allLabelRect = new Rect(curX, 0f, 70f, 30f);
+            Widgets.Label(allLabelRect, "RICS.SE.AllItems".Translate());
+            curX += 70f;
+            Rect allCheckRect = new Rect(curX, 3f, 24f, 24f);
+            bool? allFlagsState = filteredItems.All(i => i.Enabled && i.IsUsable && i.IsWearable && i.IsEquippable)
+                ? true
+                : filteredItems.Any(i => i.Enabled || i.IsUsable || i.IsWearable || i.IsEquippable)
+                    ? (bool?)null
+                    : false;
+            DrawMixedCheckbox(allCheckRect, allFlagsState, newState =>
+            {
+                int changed = 0;
+                foreach (var item in filteredItems)
+                {
+                    bool itemChanged = false;
+                    if (item.Enabled != newState) { item.Enabled = newState; itemChanged = true; }
+                    if (item.IsUsable != newState) { item.IsUsable = newState; itemChanged = true; }
+                    if (item.IsWearable != newState) { item.IsWearable = newState; itemChanged = true; }
+                    if (item.IsEquippable != newState) { item.IsEquippable = newState; itemChanged = true; }
+                    if (itemChanged) changed++;
+                }
+                if (changed > 0)
+                {
+                    StoreInventory.SaveStoreToJson();
+                    Logger.Debug($"Bulk master toggle to {newState} affected {changed} items");
+                }
+            });
+            TooltipHandler.TipRegion(allCheckRect, "RICS.SE.ToggleAllFlags".Translate());
+            curX += 24f + 10f;
+
+            // Buy checkbox
+            Rect buyLabelRect = new Rect(curX, 0f, 40f, 30f);
+            Widgets.Label(buyLabelRect, "RICS.SE.Buy".Translate());
+            curX += 40f;
+            Rect buyCheckRect = new Rect(curX, 3f, 24f, 24f);
+            bool? buyState = filteredItems.All(i => i.Enabled) ? true
+                             : filteredItems.Any(i => i.Enabled) ? (bool?)null : false;
+            DrawMixedCheckbox(buyCheckRect, buyState, newState =>
+            {
+                foreach (var item in filteredItems) item.Enabled = newState;
+                StoreInventory.SaveStoreToJson();
+                Logger.Debug($"Bulk Buy toggle to {newState}");
+            });
+            TooltipHandler.TipRegion(buyCheckRect, "RICS.SE.ToggleBuyable".Translate());
+            curX += 24f + 10f;
+
+            // Use checkbox (repeat pattern for Use, Wear, Equip)
+            Rect useLabelRect = new Rect(curX, 0f, 40f, 30f);
+            Widgets.Label(useLabelRect, "RICS.SE.Use".Translate());
+            curX += 40f;
+            Rect useCheckRect = new Rect(curX, 3f, 24f, 24f);
+            bool? useState = filteredItems.All(i => i.IsUsable) ? true
+                             : filteredItems.Any(i => i.IsUsable) ? (bool?)null : false;
+            DrawMixedCheckbox(useCheckRect, useState, newState =>
+            {
+                foreach (var item in filteredItems) item.IsUsable = newState;
+                StoreInventory.SaveStoreToJson();
+                Logger.Debug($"Bulk Use toggle to {newState}");
+            });
+            TooltipHandler.TipRegion(useCheckRect, "RICS.SE.ToggleUsable".Translate());
+            curX += 24f + 10f;
+
+            // Wear checkbox
+            Rect wearLabelRect = new Rect(curX, 0f, 50f, 30f);
+            Widgets.Label(wearLabelRect, "RICS.SE.Wear".Translate());
+            curX += 50f;
+            Rect wearCheckRect = new Rect(curX, 3f, 24f, 24f);
+            bool? wearState = filteredItems.All(i => i.IsWearable) ? true
+                              : filteredItems.Any(i => i.IsWearable) ? (bool?)null : false;
+            DrawMixedCheckbox(wearCheckRect, wearState, newState =>
+            {
+                foreach (var item in filteredItems) item.IsWearable = newState;
+                StoreInventory.SaveStoreToJson();
+                Logger.Debug($"Bulk Wear toggle to {newState}");
+            });
+            TooltipHandler.TipRegion(wearCheckRect, "RICS.SE.ToggleWearable".Translate());
+            curX += 24f + 10f;
+
+            // Equip checkbox
+            Rect equipLabelRect = new Rect(curX, 0f, 50f, 30f);
+            Widgets.Label(equipLabelRect, "RICS.SE.Equip".Translate());
+            curX += 50f;
+            Rect equipCheckRect = new Rect(curX, 3f, 24f, 24f);
+            bool? equipState = filteredItems.All(i => i.IsEquippable) ? true
+                               : filteredItems.Any(i => i.IsEquippable) ? (bool?)null : false;
+            DrawMixedCheckbox(equipCheckRect, equipState, newState =>
+            {
+                foreach (var item in filteredItems) item.IsEquippable = newState;
+                StoreInventory.SaveStoreToJson();
+                Logger.Debug($"Bulk Equip toggle to {newState}");
+            });
+            TooltipHandler.TipRegion(equipCheckRect, "RICS.SE.ToggleEquippable".Translate());
+            curX += 24f + 10f;
+
+            // Quantity limit checkbox (old logic restored)
+            Rect qtyLabelRect = new Rect(curX, 0f, 100f, 30f);
+            Widgets.Label(qtyLabelRect, "RICS.SE.SetAllQty".Translate());
+            curX += 100f;
+            Rect qtyCheckRect = new Rect(curX, 3f, 24f, 24f);
+            bool? qtyState = filteredItems.All(i => i.HasQuantityLimit) ? true
+                             : filteredItems.Any(i => i.HasQuantityLimit) ? (bool?)null : false;
+            DrawMixedCheckbox(qtyCheckRect, qtyState, newState =>
+            {
+                EnableQuantityLimitForAllVisible(newState);
+                Logger.Debug($"Bulk Qty limit toggle to {newState}");
+            });
+            TooltipHandler.TipRegion(qtyCheckRect, "RICS.SE.SetAllQtyTooltip".Translate());
+            curX += 24f + 10f;
+
+            // Quantity preset icons (unchanged)
+            DrawQuantityPresetIcon(curX, 0f, 1, "Stack1", "RICS.SE.SetAllOneStackTooltip");
+            curX += 24f + 6f;
+            DrawQuantityPresetIcon(curX, 0f, 3, "Stack3", "RICS.SE.SetAllThreeStacksTooltip");
+            curX += 24f + 6f;
+            DrawQuantityPresetIcon(curX, 0f, 5, "Stack5", "RICS.SE.SetAllFiveStacksTooltip");
+
+            Widgets.EndGroup();
+        }
+
+        private void DrawQuantityPresetIcon(float x, float y, int stacks, string iconName, string tooltipKey)
+        {
+            float iconSize = 24f;   // Adjust if your icons are larger/smaller
+            //float spacing = 6f;     // Space between icons Not used
+
+            Rect iconRect = new Rect(x, y + 3f, iconSize, iconSize);  // Slight vertical centering
+
+            Texture2D iconTex = ContentFinder<Texture2D>.Get($"UI/Icons/{iconName}", false);
+
+            if (iconTex == null)
+            {
+                Log.Warning($"[CAP] Could not load quantity icon: UI/Icons/{iconName}");
+                // Fallback: draw number as button text
+                if (Widgets.ButtonText(iconRect, $"{stacks}×"))
+                {
+                    SetAllVisibleItemsQuantityLimit(stacks);
+                }
+            }
+            else
+            {
+                // Hover effect
+                if (Mouse.IsOver(iconRect))
+                {
+                    Widgets.DrawHighlight(iconRect);
+                }
+
+                Widgets.DrawTextureFitted(iconRect, iconTex, 1f);
+
+                if (Widgets.ButtonInvisible(iconRect))
+                {
+                    SetAllVisibleItemsQuantityLimit(stacks);
+                    SoundDefOf.Click.PlayOneShotOnCamera();  // Optional: feedback
+                }
+            }
+
+            TooltipHandler.TipRegion(iconRect, tooltipKey.Translate());
+        }
+
         private void DrawBulkQuantityControls(Rect rect)
         {
             Widgets.BeginGroup(rect);
@@ -1198,6 +1606,7 @@ namespace CAP_ChatInteractive
 
             Widgets.EndGroup();
         }
+
         // This method draws the item type checkboxes (Usable, Equippable, Wearable) in the item row.
         private void DrawItemTypeCheckboxes(Rect rect, StoreItem item)
         {
