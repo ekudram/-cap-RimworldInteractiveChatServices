@@ -395,14 +395,14 @@ namespace CAP_ChatInteractive
                 if (pawn.story.Childhood != null)
                 {
                     string childhoodTitle = pawn.story.Childhood.TitleCapFor(pawn.gender);
-                    Widgets.Label(new Rect(rect.x, currentY, rect.width, lineHeight), $"RICS.Label.Childhood".Translate() + ": {childhoodTitle}");
+                    Widgets.Label(new Rect(rect.x, currentY, rect.width, lineHeight), $"RICS.Label.Childhood".Translate() + $": {childhoodTitle}");
                     currentY += lineHeight;
                 }
 
                 if (pawn.story.Adulthood != null)
                 {
                     string adulthoodTitle = pawn.story.Adulthood.TitleCapFor(pawn.gender);
-                    Widgets.Label(new Rect(rect.x, currentY, rect.width, lineHeight), $"RICS.Label.Adulthood".Translate() + ": {adulthoodTitle}");
+                    Widgets.Label(new Rect(rect.x, currentY, rect.width, lineHeight), $"RICS.Label.Adulthood".Translate() + $": {adulthoodTitle}");
                     currentY += lineHeight + 5f;
                 }
             }
