@@ -49,6 +49,7 @@ namespace CAP_ChatInteractive
     public class LockerThingOwner : ThingOwner<Thing>
     {
         private Building_RimazonLocker Locker => (Building_RimazonLocker)owner;
+        private static ThingFilter _defaultLockerFilterCache;
 
         public LockerThingOwner(IThingHolder parentHolder, bool oneStackOnly, LookMode lookMode)
                 : base(parentHolder, oneStackOnly, lookMode)
@@ -109,12 +110,10 @@ namespace CAP_ChatInteractive
             instanceId = ++instanceCounter;
             Logger.Debug($"Locker {instanceId}: Constructor called");
 
-            // The key is using the correct constructor parameters:
-            // 1. parentHolder (this)
-            // 2. oneStackOnly (false - we want multiple stacks)
-            // 3. lookMode (LookMode.Deep for proper serialization)
-            // innerContainer = new ThingOwner<Thing>(this, false, LookMode.Deep);
-            // innerContainer.maxStacks = MaxStacks; Set in Def         <maxStacks>24</maxStacks>
+            // Force early initialization BEFORE any external mod (e.g. FSF Tweaks) can strip defaults.
+            // This is the #1 robustness improvement.
+            _ = InnerContainer;
+            _ = GetStoreSettings(); // guarantees settings is never null
         }
 
         // === IThingHolder
@@ -140,16 +139,13 @@ namespace CAP_ChatInteractive
         public StorageSettings GetStoreSettings()
         {
             if (settings != null)
-            {
                 return settings;
-            }
 
-            // Lazy creation
             settings = new StorageSettings(this);
 
             bool copied = false;
 
-            // 1. Try the normal parent/defaults copy (what vanilla would have done)
+            // 1. Vanilla-style copy (what Building_Storage does)
             var parentSettings = GetParentStoreSettings();
             if (parentSettings != null)
             {
@@ -157,53 +153,45 @@ namespace CAP_ChatInteractive
                 {
                     settings.CopyFrom(parentSettings);
                     copied = true;
-                    // Logger.Debug($"[RICS Locker] Successfully copied settings from parent/defaults for {this.def.defName} at {this.Position}");
+                    Logger.Debug($"[RICS Locker] Copied default storage settings for locker at {Position}");
                 }
                 catch (Exception ex)
                 {
-                    // Logger.Error($"[RICS Locker] Failed to copy parent settings during lazy init: {ex.Message}. Using fallback.");
+                    Logger.Warning($"[RICS Locker] CopyFrom failed (possible mod interference): {ex.Message}");
                 }
             }
 
-            // 2. If no parent or copy failed, explicitly grab the def's defaultStorageSettings (your XML block)
-            if (!copied && def?.building?.defaultStorageSettings != null)
+            // 2. Ultra-robust fallback for [FSF] FrozenSnowFox Tweaks "no default storage"
+            // Uses the REAL vanilla method that exists in Verse.ThingFilter (SetAllowAll)
+            if (!copied)
             {
                 try
                 {
-                    settings.CopyFrom(def.building.defaultStorageSettings);
+                    settings.filter = new ThingFilter();
+                    settings.filter.SetAllowAll(null);           // ← correct method (allows every storable item)
+                    settings.filter.ResolveReferences();         // vanilla best practice after manual setup
+                    settings.Priority = StoragePriority.Low;
+
                     copied = true;
-                    // Logger.Debug($"[RICS Locker] Recovered by copying directly from def.defaultStorageSettings for {this.def.defName}");
+                    Logger.Warning($"[RICS Locker] FSF Tweaks / no-default-storage detected — using robust allow-all fallback");
                 }
                 catch (Exception ex)
                 {
-                    // Logger.Debug($"[RICS Locker] Failed to copy def defaults: {ex.Message}. Using allow-all fallback.");
+                    Logger.Error($"[RICS Locker] Even fallback filter creation failed: {ex.Message}");
+                    settings.filter = new ThingFilter(); // absolute last resort
                 }
             }
-
-            // 3. Ultimate fallback: make sure we have a usable filter (allow everything, low priority)
-            if (!copied)
-            {
-                settings.filter = new ThingFilter();
-                //settings.filter.SetAllowAllWhoCanHold(this);  // Or just SetAllowEverything() if you prefer broader
-                settings.Priority = StoragePriority.Low;      // Matches your XML intent
-                // Logger.Warning($"[RICS Locker] No valid settings source found for {this.def.defName} at {this.Position}. Using full allow-all fallback.");
-            }
-
-            // Optional: enforce any fixed restrictions from your XML <fixedStorageSettings> if you want
-            // (you can merge them here if needed)
 
             return settings;
         }
 
         public StorageSettings GetParentStoreSettings()
         {
+            // Extra safety — many storage tweak mods touch this field
             if (def?.building?.defaultStorageSettings != null)
-            {
                 return def.building.defaultStorageSettings;
-            }
 
-            // If def is null or no defaults (very rare during normal play)
-            // Logger.Warning($"[RICS] No defaultStorageSettings found on def for {def?.defName ?? "unknown"}");
+            Logger.Debug($"[RICS] No defaultStorageSettings on def (common with storage tweak mods)");
             return null;
         }
 
@@ -958,9 +946,12 @@ namespace CAP_ChatInteractive
         {
             try
             {
+                // Force initialization — survives any storage tweak mod
                 if (locker?.settings == null)
+                    locker.GetStoreSettings();
+
+                if (locker?.settings == null || locker.settings.filter == null)
                 {
-                    // Widgets.Label(inRect, "Storage settings not available.");
                     Widgets.Label(inRect, "RICS.Locker.StorageSettingsUnavailable".Translate());
                     return;
                 }
@@ -975,9 +966,10 @@ namespace CAP_ChatInteractive
                 // Draw priority
                 DrawPriority(new Rect(mainRect.x, mainRect.y, mainRect.width, 30f), locker.settings);
 
-                // Draw filter (below priority)
+                // Draw filter — use our own filter as parent if def was stripped
                 Rect filterRect = new Rect(mainRect.x, mainRect.y + 35f, mainRect.width, mainRect.height - 35f);
-                DrawFilter(filterRect, locker.settings.filter, locker.def.building?.defaultStorageSettings?.filter);
+                ThingFilter parentFilter = locker.def?.building?.defaultStorageSettings?.filter ?? locker.settings.filter;
+                DrawFilter(filterRect, locker.settings.filter, parentFilter);
             }
             catch (Exception ex)
             {
