@@ -83,8 +83,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var initiatorPawn = assignmentManager.GetAssignedPawn(messageWrapper);
                 if (initiatorPawn == null) return "You don't have an active pawn. Use !pawn to purchase one!";
 
-                // Find target pawn
-                Pawn targetPawn = FindInteractionTarget(initiatorPawn, args);
+                // Find target pawn - now passes interaction type so !nuzzle/!animalchat can target named colony animals
+                Pawn targetPawn = FindInteractionTarget(initiatorPawn, interaction, args);
                 if (targetPawn == null) return "No valid target found for interaction.";
 
                 if (!CanPawnsInteract(initiatorPawn, targetPawn))
@@ -128,8 +128,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        private static Pawn FindInteractionTarget(Pawn initiator, string[] args)
+        private static Pawn FindInteractionTarget(Pawn initiator, InteractionDef interaction, string[] args)
         {
+            // Animal-specific commands now search colony animals (named only)
+            bool isAnimalInteraction = interaction != null &&
+                (interaction == InteractionDefOf.Nuzzle ||
+                 interaction.defName?.ToLowerInvariant() == "animalchat" ||
+                 interaction.defName?.ToLowerInvariant().Contains("animalchat") == true);
+
             // If args provided, try to find specific target
             if (args.Length > 0)
             {
@@ -139,23 +145,34 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (targetQuery.StartsWith("@"))
                     targetQuery = targetQuery.Substring(1);
 
-                // Try to find by username
-                var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-                if (assignmentManager != null && assignmentManager.HasAssignedPawn(targetQuery))
+                if (isAnimalInteraction)
                 {
-                    var targetPawn = assignmentManager.GetAssignedPawn(targetQuery);
-                    if (targetPawn != null && targetPawn != initiator) return targetPawn;
+                    // New: colony animals by name (e.g. !nuzzle Fluffy)
+                    var targetAnimal = FindAnimalByName(targetQuery);
+                    if (targetAnimal != null && targetAnimal != initiator) return targetAnimal;
                 }
+                else
+                {
+                    // Existing human/colonist logic (unchanged)
+                    var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+                    if (assignmentManager != null && assignmentManager.HasAssignedPawn(targetQuery))
+                    {
+                        var targetPawn = assignmentManager.GetAssignedPawn(targetQuery);
+                        if (targetPawn != null && targetPawn != initiator) return targetPawn;
+                    }
 
-                // Try to find by pawn name
-                var namedPawn = FindPawnByName(targetQuery);
-                if (namedPawn != null && namedPawn != initiator) return namedPawn;
+                    // Try to find by pawn name
+                    var namedPawn = FindPawnByName(targetQuery);
+                    if (namedPawn != null && namedPawn != initiator) return namedPawn;
+                }
 
                 return null; // Specific target not found
             }
 
-            // No target specified - find random colonist
-            return FindRandomColonist(initiator);
+            // No target specified - use random animal for nuzzle/animalchat, random colonist otherwise
+            return isAnimalInteraction
+                ? FindRandomColonistAnimal(initiator)
+                : FindRandomColonist(initiator);
         }
 
         private static Pawn FindPawnByName(string name)
@@ -171,6 +188,33 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 .Where(p => !p.Dead && p != excludePawn)
                 .ToList();
             return colonists.Count > 0 ? colonists.RandomElement() : null;
+        }
+
+        // NEW: Named colony animals only (Faction.OfPlayer + has name) - used by !nuzzle and !animalchat
+        private static Pawn FindAnimalByName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return null;
+
+            return PawnsFinder.AllMapsCaravansAndTravellingTransporters_Alive
+                .FirstOrDefault(p => p.RaceProps != null && p.RaceProps.Animal &&
+                                     p.Faction == Faction.OfPlayer &&
+                                     !p.Dead &&
+                                     p.Name != null &&
+                                     p.Name.ToString().ToLowerInvariant().Contains(name.ToLowerInvariant()));
+        }
+
+        // NEW: Random named colony animal (fallback when no target name given)
+        private static Pawn FindRandomColonistAnimal(Pawn excludePawn)
+        {
+            var animals = PawnsFinder.AllMapsCaravansAndTravellingTransporters_Alive
+                .Where(p => p.RaceProps != null && p.RaceProps.Animal &&
+                            p.Faction == Faction.OfPlayer &&
+                            !p.Dead &&
+                            p != excludePawn &&
+                            p.Name != null)
+                .ToList();
+
+            return animals.Count > 0 ? animals.RandomElement() : null;
         }
 
         private static bool CanPawnsInteract(Pawn initiator, Pawn target)
