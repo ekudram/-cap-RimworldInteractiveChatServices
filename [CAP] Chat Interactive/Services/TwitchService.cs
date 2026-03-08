@@ -307,7 +307,7 @@ namespace CAP_ChatInteractive
                     // Send reminder if enough time has passed
                     if (timeSinceLastReminder.TotalSeconds >= reminderIntervalSeconds)
                     {
-                        SendMessage($"Please use whispers for commands. Type: /w {_settings.BotUsername} [command]");
+                        // SendMessage($"Please use whispers for commands. Type: /w {_settings.BotUsername} [command]");
                         _lastWhisperReminderTime = DateTime.Now;
                     }
                 }
