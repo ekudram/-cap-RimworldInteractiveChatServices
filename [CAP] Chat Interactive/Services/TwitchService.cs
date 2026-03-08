@@ -28,8 +28,12 @@
 using CAP_ChatInteractive.Utilities;
 using RimWorld;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TwitchLib.Api;
+using TwitchLib.Api.Core.Enums;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Extensions;
@@ -50,6 +54,9 @@ namespace CAP_ChatInteractive
         private bool _isConnecting = false;
         private CancellationTokenSource _connectionTimeoutToken;
         private DateTime _lastWhisperReminderTime = DateTime.MinValue;
+        private TwitchAPI _helixApi;
+        private readonly Dictionary<string, string> _userIdCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         public bool IsConnected => _client?.IsConnected == true;
 
         // Events for other parts of your mod to subscribe to
@@ -162,10 +169,27 @@ namespace CAP_ChatInteractive
 
             _client.Initialize(credentials, _settings.ChannelName?.ToLowerInvariant());
 
+            // NEW: Helix API for private whispers (replaces obsolete SendWhisper)
+            InitializeHelixApi(formattedToken);
+
             SubscribeToEvents();
             _client.Connect();
 
-            Logger.Debug("Twitch client initialized and connecting...");
+            Logger.Debug("Twitch client + Helix API (whispers) initialized");
+        }
+
+        private void InitializeHelixApi(string accessToken)
+        {
+            if (string.IsNullOrEmpty(_settings.ClientId))
+            {
+                Logger.Warning("No ClientId set — whispers will fallback to public chat (add in Twitch tab)");
+                return;
+            }
+
+            _helixApi = new TwitchAPI();
+            _helixApi.Settings.ClientId = _settings.ClientId;
+            _helixApi.Settings.AccessToken = accessToken.Replace("oauth:", "");
+            Logger.Debug("Helix API ready for private whispers");
         }
 
         private string CleanOAuthToken(string token)
@@ -487,34 +511,77 @@ namespace CAP_ChatInteractive
             }
         }
 
-        [Obsolete("Usage of SendWhisper through chat is not possible anymore. Use TwitchLib.Api.Helix.Whispers.SendWhisperAsync() instead.")]
-        public void SendWhisper(string username, string message)
+
+        /// <summary>
+        /// Sends private whisper via Helix API (required since Twitch deprecated IRC whispers).
+        /// Falls back to public @reply if ClientId missing or API fails.
+        /// </summary>
+        /// <summary>
+        /// Sends private whisper via Helix API (replaces obsolete IRC whisper).
+        /// Uses newRecipient: false (allows 10k chars). Our messages are always < 500 chars so safe.
+        /// Falls back to public @reply on any error (no ClientId, rate limit, missing scope, etc.).
+        /// </summary>
+        public async Task SendWhisperAsync(string username, string message)
         {
-            if (!IsConnected || string.IsNullOrEmpty(username))
+            if (!IsConnected || string.IsNullOrEmpty(username) || _helixApi == null)
+            {
+                SendMessage($"@{username} {message}");
                 return;
+            }
 
             try
             {
-                // Rate limiting for whispers (different from regular messages)
-                var now = DateTime.Now;
-                if (now - _lastMessageTime < _messageDelay)
+                string fromUserId = await GetBotUserIdAsync();
+                string toUserId = await GetUserIdAsync(username);
+
+                if (string.IsNullOrEmpty(fromUserId) || string.IsNullOrEmpty(toUserId))
                 {
-                    System.Threading.Thread.Sleep(_messageDelay - (now - _lastMessageTime));
+                    Logger.Warning($"Could not resolve User ID for whisper to {username} — falling back to public");
+                    SendMessage($"@{username} {message}");
+                    return;
                 }
-                // Obsolete
-                _client.SendWhisper(username, message);
+
+                await _helixApi.Helix.Whispers.SendWhisperAsync(
+                    fromUserId,
+                    toUserId,
+                    message,
+                    newRecipient: false   // false = repeat recipient (10k char limit)
+                );
+
                 _lastMessageTime = DateTime.Now;
-                Logger.Debug($"Sent Twitch whisper to {username}: {message}");
+                Logger.Debug($"✅ Private whisper sent to {username}");
             }
             catch (Exception ex)
             {
-                Logger.Error($"Failed to send Twitch whisper: {ex.Message}");
+                Logger.Error($"Helix whisper failed to {username}: {ex.Message} — falling back to public");
+                SendMessage($"@{username} {message}");
             }
         }
 
-        public void SendWhisperAsync()
+        private async Task<string> GetBotUserIdAsync()
         {
-            throw new NotImplementedException("SendWhisperAsync is not implemented.");
+            return await GetUserIdAsync(_settings.BotUsername ?? _settings.ChannelName);
+        }
+
+        private async Task<string> GetUserIdAsync(string login)
+        {
+            if (_userIdCache.TryGetValue(login.ToLowerInvariant(), out var cached)) return cached;
+
+            try
+            {
+                var response = await _helixApi.Helix.Users.GetUsersAsync(logins: new List<string> { login });
+                var user = response.Users.FirstOrDefault();
+                if (user != null)
+                {
+                    _userIdCache[login.ToLowerInvariant()] = user.Id;
+                    return user.Id;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"User ID lookup failed for {login}: {ex.Message}");
+            }
+            return null;
         }
 
 

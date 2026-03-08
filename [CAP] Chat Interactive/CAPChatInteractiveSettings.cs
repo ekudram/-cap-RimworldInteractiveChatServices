@@ -44,6 +44,7 @@ namespace CAP_ChatInteractive
         public string ChannelName = "";
         public string BotUsername = "";
         public string AccessToken = "";
+        public string ClientId = ""; // NEW: Required for Helix whispers (get from dev.twitch.tv or token generator page)
         public bool AutoConnect = false;
         public bool IsConnected = false;
         public bool suspendFeedback = false;
@@ -57,6 +58,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref ChannelName, "channelName", "");
             Scribe_Values.Look(ref BotUsername, "botUsername", "");
             Scribe_Values.Look(ref AccessToken, "accessToken", "");
+            Scribe_Values.Look(ref ClientId, "clientId", ""); // NEW: Helix Client ID
             Scribe_Values.Look(ref AutoConnect, "autoConnect", false);
             Scribe_Values.Look(ref IsConnected, "isConnected", false);
             Scribe_Values.Look(ref suspendFeedback,"suspendFeedback",false);

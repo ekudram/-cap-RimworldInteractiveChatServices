@@ -221,7 +221,27 @@ When "Force whisper-only commands" is enabled, this controls how often the remin
 • Without 'whispers:read', you won't receive whispers!
 • Bots can only reply to whispers from users they follow (Twitch restriction)]]>
   </RICS.Twitch.WhisperLimitationTooltip>
-  
-  
-  
+
+  <!-- Client ID Field (Helix whispers) -->
+  <RICS.Twitch.ClientIdLabel>Client ID (for Helix whispers):</RICS.Twitch.ClientIdLabel>
+
+  <RICS.Twitch.ClientIdTooltip>
+    <![CDATA[<b>FASTEST WAY:</b> Click the <b>Get Token</b> button above!
+
+• Your <b>Client ID</b> appears right below the Access Token on that page
+• (exactly as shown in the screenshot you just shared)
+
+<b>Client ID is PUBLIC and SAFE</b>
+• Not a secret — every Twitch app uses it openly
+• Only your Access Token must stay private]]>
+  </RICS.Twitch.ClientIdTooltip>
+
+  <!-- Extra note inside Token Generator dialog -->
+  <RICS.Twitch.TokenGeneratorClientIdHeader>
+    📋 <b>Also copy your CLIENT ID!</b>
+  </RICS.Twitch.TokenGeneratorClientIdHeader>
+  <RICS.Twitch.TokenGeneratorClientIdDesc>
+    It appears <b>right below your Access Token</b> on the same page (see screenshot in mod help).
+  </RICS.Twitch.TokenGeneratorClientIdDesc>
+
 </LanguageData>

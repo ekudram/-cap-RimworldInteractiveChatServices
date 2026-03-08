@@ -414,10 +414,17 @@ namespace CAP_ChatInteractive
                 if (mod == null) return;
 
                 var service = mod.GetChatService(message.Platform);
-
                 if (service is TwitchService twitchService)
                 {
-                    twitchService.SendMessage($"{message.Username} {cleanText}");
+                    if (message.IsWhisper)
+                    {
+                        // NEW: Private whisper reply when user whispered us
+                        _ = twitchService.SendWhisperAsync(message.Username, cleanText); // fire-and-forget (safe on main thread)
+                    }
+                    else
+                    {
+                        twitchService.SendMessage($"{message.Username} {cleanText}");
+                    }
                 }
                 else if (service is YouTubeChatService youtubeService)
                 {

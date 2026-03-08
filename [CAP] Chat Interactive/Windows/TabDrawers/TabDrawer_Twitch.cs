@@ -276,6 +276,8 @@ namespace _CAP__Chat_Interactive
                     "RICS.Twitch.TokenGeneratorStep10".Translate() + "\n" +
                     "RICS.Twitch.TokenGeneratorStep11".Translate() + "\n" +
                     "RICS.Twitch.TokenGeneratorStep12".Translate() + "\n\n" +
+                    "RICS.Twitch.TokenGeneratorClientIdHeader".Translate() + "\n" +
+                    "RICS.Twitch.TokenGeneratorClientIdDesc".Translate() + "\n\n" +
                     "🔒 <b>" + UIUtilities.Colorize("RICS.Twitch.TokenGeneratorSecurityHeader".Translate(), ColorLibrary.SubHeader) + "</b>\n" +
                     "RICS.Twitch.TokenGeneratorSecurityNote1".Translate() + "\n" +
                     "RICS.Twitch.TokenGeneratorSecurityNote2".Translate() + "\n" +
@@ -317,8 +319,16 @@ namespace _CAP__Chat_Interactive
 
                 // OLD: TooltipHandler.TipRegion(tokenTypeRect, "Shows which account this token belongs to");
                 TooltipHandler.TipRegion(tokenTypeRect,
-                    "RICS.Twitch.TokenTypeTooltip".Translate()
-                );
+                    "RICS.Twitch.TokenTypeTooltip".Translate());
+
+                // NEW: Client ID field (required for whispers) RICS 1.23
+                // Client ID field (Helix whispers) — now fully translated
+                listing.Gap(8f);
+                Rect clientIdLabelRect = listing.GetRect(24f);
+                Widgets.Label(clientIdLabelRect, "RICS.Twitch.ClientIdLabel".Translate());
+                TooltipHandler.TipRegion(clientIdLabelRect, "RICS.Twitch.ClientIdTooltip".Translate());
+                Rect clientIdFieldRect = listing.GetRect(30f);
+                settings.ClientId = Widgets.TextField(clientIdFieldRect, settings.ClientId);
             }
             else
             {
