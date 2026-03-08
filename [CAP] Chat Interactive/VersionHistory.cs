@@ -619,8 +619,17 @@ Warning: resets all custom store settings to defaults
                 "WealthCommandHandler.xml added."
             },
                         {"1.22",
-                @"RICS 1.22 Update Notes
+                @"RICS 1.23 Update Notes
 
+1.23 NOTES
+
+FIXED: WHipsers.  YOU WILL NEED A NEW TOKEN FOR WHISPERS!
+See the WIKI PAGE
+https://github.com/ekudram/-cap-RimworldInteractiveChatServices/wiki/SettingsTwitch
+
+https://twitchtokengenerator.com/quick/Mf3oFsjose
+
+1.22 NOTES
 Updated:
 - Store Item Editor
   New checkmarks added at the top of the Items View
