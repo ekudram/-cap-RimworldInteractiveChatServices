@@ -234,5 +234,8 @@
 
   <!-- Inheritance history entry -->
   <RICS.BICH.Ownership.HistoryEntry>Purchased via Rimazon</RICS.BICH.Ownership.HistoryEntry>
+  
+  <!-- ADDED 1.24 -->
+  <RICS.BICH.Return.HARRaceRestricted>{0} cannot be {1} by your race (racial restrictions).</RICS.BICH.Return.HARRaceRestricted>
 
 </LanguageData>

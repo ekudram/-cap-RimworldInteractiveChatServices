@@ -618,12 +618,12 @@ Warning: resets all custom store settings to defaults
                 "UseItemCommandHandler.xml added.\r\n" +
                 "WealthCommandHandler.xml added."
             },
-                        {"1.23",
+            {"1.23",
                 @"RICS 1.23 Update Notes
 
 1.23 NOTES
 
-FIXED: WHipsers.  YOU WILL NEED A NEW TOKEN FOR WHISPERS!
+FIXED: Whispers.  YOU WILL NEED A NEW TOKEN FOR WHISPERS!
 See the WIKI PAGE
 https://github.com/ekudram/-cap-RimworldInteractiveChatServices/wiki/SettingsTwitch
 
@@ -654,7 +654,22 @@ Compatibility Notes:
 
 Translation updates added for Weather, Use Item, moderator coin commands, store toggle, and Store Editor UI.
 "
-            }                        // Add more versions here as they're released
+            },
+            {"1.24",
+                "RICS 1.24 Update Notes" + "\r\n" +
+                "FIXED:" + "\r\n" +
+                "\r\n" +
+                " - Har Race Restrictions added for equip and wear." + "\r\n" + "\r\n" +
+                "TRANSLATIONS" + "\r\n" +
+                " - BuyItemCommandHandler.xml (modified)"
+
+            }    
+                
+                
+                
+            // Add more versions here as they're released
+
+
         };
 
         public static void CheckForVersionUpdate()
