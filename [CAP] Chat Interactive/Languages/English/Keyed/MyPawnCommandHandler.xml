@@ -79,6 +79,8 @@
   <RICS.MPCH.NoSkillsTracked>{0} has no skills tracked.</RICS.MPCH.NoSkillsTracked>
   <RICS.MPCH.TopSkillsHeader>🏆 Top Skills: </RICS.MPCH.TopSkillsHeader>
   <RICS.MPCH.SkillNotFound>❌ Skill '{0}' not found.</RICS.MPCH.SkillNotFound>
+  <RICS.MPCH.SkillDisabled>🚫 Disabled</RICS.MPCH.SkillDisabled>
+  <RICS.MPCH.SKillProgress>Progress: {0}/{1}</RICS.MPCH.SKillProgress>
 
   <!-- Stats -->
   <RICS.MPCH.StatsOverview>📊 Stats Overview:</RICS.MPCH.StatsOverview>

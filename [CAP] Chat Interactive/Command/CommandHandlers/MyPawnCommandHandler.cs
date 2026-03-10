@@ -1933,12 +1933,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (skill.TotallyDisabled)
                 {
-                    report.AppendLine("🚫 Disabled");   // backstory / gene / ideology role
+                    // report.AppendLine("🚫 Disabled");   // backstory / gene / ideology role
+                    report.AppendLine("RICS.MPCH.SkillDisabled".Translate());
                 }
 
-                if (skill.Level < 20)
+                if (skill.Level < 21)
                 {
-                    report.AppendLine($"Progress: {skill.xpSinceLastLevel}/{skill.XpRequiredForLevelUp}");
+                    // report.AppendLine($"Progress: {skill.xpSinceLastLevel}/{skill.XpRequiredForLevelUp}");
+                    int xpSinceLastLevel = (int)skill.xpSinceLastLevel;
+                    report.AppendLine("RICS.MPCH.SKillProgress".Translate(skill.xpSinceLastLevel, skill.XpRequiredForLevelUp));
                 }
 
                 return report.ToString();
