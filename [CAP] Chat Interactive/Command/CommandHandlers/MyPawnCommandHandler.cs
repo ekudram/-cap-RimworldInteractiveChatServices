@@ -2206,14 +2206,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string HandleTraitsInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
-            // report.AppendLine($"🎭 Traits:"); // for { pawn.Name}
             report.AppendLine("RICS.MPCH.TraitsHeader".Translate());
 
+            // Cleaner no-traits handling (original continued into foreach and could NRE if traits == null)
             if (pawn.story?.traits == null || pawn.story.traits.allTraits.Count == 0)
             {
-                // return $"{pawn.Name} has no traits.";
-                string pawnName = GetDisplayNameForRelations(pawn); 
+                string pawnName = GetDisplayNameForRelations(pawn);
                 report.AppendLine("RICS.MPCH.NoTraits".Translate(pawnName));
+                return report.ToString();
             }
 
             foreach (var trait in pawn.story.traits.allTraits)
@@ -2221,6 +2221,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (trait == null) continue;
 
                 string traitName = StripTags(trait.LabelCap);
+
+                // 🔒 Gene/race locked trait indicator (Biotech only)
+                // Verified vanilla behavior: gene-forced traits have trait.sourceGene set (used by Bio tab, trait removal, and surgery UI).
+                // We guard with ModsConfig.BiotechActive for perfect compatibility on non-Biotech saves.
+                if (ModsConfig.BiotechActive && trait.sourceGene != null)
+                {
+                    traitName += " 🔒";
+                }
+
                 string traitDesc = StripTags(trait.def.description);
 
                 report.AppendLine($"• {traitName}");
