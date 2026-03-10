@@ -1905,51 +1905,52 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string HandleSkillsInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
-            // report.AppendLine($"🎯 Skills Report: "); // for {pawn.Name}:
-            report.AppendLine("RICS.MPCH.SkillsHeader".Translate());    
+            report.AppendLine("RICS.MPCH.SkillsHeader".Translate());
 
             var skills = pawn.skills?.skills;
             if (skills == null || skills.Count == 0)
             {
-                // return $"{pawn.Name} has no skills tracked.";
                 string pawnName = GetDisplayNameForRelations(pawn);
-                return "RICS.MPCH.NoSkillsTracked".Translate(pawnName);
+                report.AppendLine("RICS.MPCH.NoSkillsTracked".Translate(pawnName));
+                return report.ToString();
             }
 
-            // Group skills by their display order (matching RimWorld's UI)
-            var orderedSkills = skills
-                .OrderBy(s => s.def.listOrder)
-                .ToList();
-
-            foreach (var skill in orderedSkills)
+            // Specific skill lookup (!mypawn skills shooting / melee / intellectual)
+            if (args.Length > 0)
             {
-                if (skill == null || skill.def == null) continue;
+                string search = string.Join(" ", args).ToLower().Replace("_", "").Replace(" ", "");
+                var skill = skills.FirstOrDefault(s =>
+                    s.def.defName.ToLower().Replace("_", "").Contains(search) ||
+                    s.def.label.ToLower().Replace(" ", "").Contains(search));
 
-                string skillName = StripTags(skill.def.LabelCap);
+                if (skill == null)
+                {
+                    return "RICS.MPCH.SkillNotFound".Translate(string.Join(" ", args));
+                }
+
                 string passionEmoji = GetPassionEmoji(skill.passion);
-                // Remove extra emote
-                // string levelDescription = GetSkillLevelDescriptionDetailed(skill.Level);
-                // report.AppendLine($"• {passionEmoji}{skillName}: {skill.Level} {levelDescription}");
-                report.AppendLine($"• {passionEmoji}{skillName}: {skill.Level} ");
+                report.AppendLine($"{passionEmoji}{StripTags(skill.def.LabelCap)}: Level {skill.Level}");
+
+                if (skill.TotallyDisabled)
+                {
+                    report.AppendLine("🚫 Disabled");   // backstory / gene / ideology role
+                }
+
+                if (skill.Level < 20)
+                {
+                    report.AppendLine($"Progress: {skill.xpSinceLastLevel}/{skill.XpRequiredForLevelUp}");
+                }
+
+                return report.ToString();
             }
 
-            //// Add learning summary
-            //var burningPassions = skills.Count(s => s.passion == Passion.Major);
-            //var minorPassions = skills.Count(s => s.passion == Passion.Minor);
-
-            //if (burningPassions > 0 || minorPassions > 0)
-            //{
-            //    report.AppendLine($"📚 Passions: {burningPassions} 🔥🔥, {minorPassions} 🔥");
-            //}
-
-            // Top 3 skills
-            var topSkills = skills.OrderByDescending(s => s.Level).Take(3);
-            if (topSkills.Any(s => s.Level >= 10))
+            // Full list view — compact + disabled indicator
+            foreach (var skill in skills.OrderBy(s => s.def.listOrder))
             {
-                // report.Append("🏆 Top Skills: ");
-                report.Append("RICS.MPCH.TopSkillsHeader".Translate()); 
-                var topSkillNames = topSkills.Select(s => $"{StripTags(s.def.LabelCap)} ({s.Level})");
-                report.AppendLine(string.Join(", ", topSkillNames));
+                if (skill?.def == null) continue;
+                string prefix = skill.TotallyDisabled ? "🚫 " : "";
+                string passionEmoji = GetPassionEmoji(skill.passion);
+                report.AppendLine($"{prefix}{passionEmoji}{StripTags(skill.def.LabelCap)}: {skill.Level}");
             }
 
             return report.ToString();
