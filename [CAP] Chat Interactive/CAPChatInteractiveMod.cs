@@ -38,6 +38,7 @@ namespace CAP_ChatInteractive
         // Service managers (we'll create these later)
         private TwitchService _twitchService;
         private YouTubeChatService _youTubeService;
+        private KickService _kickService;  // NEW — will be instantiated in next step
 
         public CAPChatInteractiveMod(ModContentPack content) : base(content)
         {
@@ -195,8 +196,8 @@ namespace CAP_ChatInteractive
             Logger.Debug("InitializeServices started");
 
             _twitchService = new TwitchService(Settings.TwitchSettings);
-            // Logger.Debug($"TwitchService created. AutoConnect: {Settings.TwitchSettings.AutoConnect}, CanConnect: {Settings.TwitchSettings.CanConnect}");
             _youTubeService = new YouTubeChatService(Settings.YouTubeSettings);
+            _kickService = new KickService(Settings.KickSettings);  // NEW (KickService.cs coming next)
 
             // Auto-connect if configured
             if (Settings.TwitchSettings.AutoConnect && Settings.TwitchSettings.CanConnect)
@@ -212,6 +213,12 @@ namespace CAP_ChatInteractive
             if (Settings.YouTubeSettings.AutoConnect && Settings.YouTubeSettings.CanConnect)
             {
                 _youTubeService.Connect();
+            }
+
+            if (Settings.KickSettings.AutoConnect && Settings.KickSettings.CanConnect)
+            {
+                Logger.Debug("Auto-connecting to Kick at startup");
+                _kickService.Connect();
             }
 
             Logger.Debug("InitializeServices completed");
@@ -232,6 +239,7 @@ namespace CAP_ChatInteractive
             {
                 "twitch" => _twitchService,
                 "youtube" => _youTubeService,
+                "kick" => _kickService,  // NEW
                 _ => null
             };
         }
@@ -240,6 +248,7 @@ namespace CAP_ChatInteractive
         // Public access to services for other parts of your mod
         public TwitchService TwitchService => _twitchService;
         public YouTubeChatService YouTubeService => _youTubeService;
+        public KickService KickService => _kickService;  // NEW — for future commands/UI
 
         public override void WriteSettings()
         {

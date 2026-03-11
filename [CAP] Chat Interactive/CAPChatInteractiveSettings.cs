@@ -28,12 +28,15 @@ namespace CAP_ChatInteractive
     {
         public StreamServiceSettings TwitchSettings = new StreamServiceSettings();
         public StreamServiceSettings YouTubeSettings = new StreamServiceSettings();
+        public StreamServiceSettings KickSettings = new StreamServiceSettings();
+
         public CAPGlobalChatSettings GlobalSettings = new CAPGlobalChatSettings();
 
         public override void ExposeData()
         {
             Scribe_Deep.Look(ref TwitchSettings, "twitchSettings");
             Scribe_Deep.Look(ref YouTubeSettings, "youtubeSettings");
+            Scribe_Deep.Look(ref KickSettings, "kickSettings");
             Scribe_Deep.Look(ref GlobalSettings, "globalSettings");
         }
     }
@@ -44,7 +47,7 @@ namespace CAP_ChatInteractive
         public string ChannelName = "";
         public string BotUsername = "";
         public string AccessToken = "";
-        public string ClientId = ""; // NEW: Required for Helix whispers (get from dev.twitch.tv or token generator page)
+        public string ClientId = ""; // Used by
         public bool AutoConnect = false;
         public bool IsConnected = false;
         public bool suspendFeedback = false;
@@ -52,19 +55,31 @@ namespace CAP_ChatInteractive
         public bool forceUseWhisper = false;  // 1.0.17 addition
         public int forceUseWhisperMessageTimer = 300; // 1.0.17 addition  if 0 do not use timer
 
+        // === KICK.COM SPECIFIC (official OAuth 2.1 + Pusher WS) ===
+        // All services now reuse the SAME generic fields below.
+        // Twitch/YouTube ignore ClientSecret/RefreshToken.
+        // Kick (and future Discord/Steam) use them via KickSettings.
+        // This keeps the class clean and fully extensible.
+        public string ClientSecret = "";   // Required for Kick OAuth 2.1 (dev.kick.com)
+        public string RefreshToken = "";   // Future-proof for long sessions (Kick + future services)
+
         public void ExposeData()
         {
             Scribe_Values.Look(ref Enabled, "enabled", false);
             Scribe_Values.Look(ref ChannelName, "channelName", "");
             Scribe_Values.Look(ref BotUsername, "botUsername", "");
             Scribe_Values.Look(ref AccessToken, "accessToken", "");
-            Scribe_Values.Look(ref ClientId, "clientId", ""); // NEW: Helix Client ID
+            Scribe_Values.Look(ref ClientId, "clientId", ""); // Used by Twitch (Helix) + Kick (OAuth)
             Scribe_Values.Look(ref AutoConnect, "autoConnect", false);
             Scribe_Values.Look(ref IsConnected, "isConnected", false);
-            Scribe_Values.Look(ref suspendFeedback,"suspendFeedback",false);
+            Scribe_Values.Look(ref suspendFeedback, "suspendFeedback", false);
             Scribe_Values.Look(ref useWhisperForCommands, "useWhisperForCommands", true);  // 1.0.17 addition
-            Scribe_Values.Look(ref forceUseWhisper, "forceUseWHisper", false);  // 1.0.17 addition
+            Scribe_Values.Look(ref forceUseWhisper, "forceUseWhisper", false);  // 1.0.17 addition (fixed typo)
             Scribe_Values.Look(ref forceUseWhisperMessageTimer, "forceUseWhisperMessageTimer", 300); // 1.0.17 addition
+
+            // Kick fields — now generic (saved for all services, unused ones stay default "")
+            Scribe_Values.Look(ref ClientSecret, "clientSecret", "");
+            Scribe_Values.Look(ref RefreshToken, "refreshToken", "");
         }
 
         public bool CanConnect
