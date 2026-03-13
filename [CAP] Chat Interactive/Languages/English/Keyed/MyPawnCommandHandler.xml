@@ -114,4 +114,15 @@
   <RICS.MPCH.WorkPriorityChanged>✅ {0}: {1}→{2} ({3})</RICS.MPCH.WorkPriorityChanged>
   <RICS.MPCH.WorkPriorityCurrent>📋 {0}: {1} ({2})</RICS.MPCH.WorkPriorityCurrent>
 
+  <!-- Job -->
+  <RICS.MPCH.DoingNothing>Doing nothing</RICS.MPCH.DoingNothing>
+  <RICS.MPCH.PawnJob>Your pawn is: {0}</RICS.MPCH.PawnJob>
+  <RICS.MPCH.PawnJobQueued>Your pawn is: {0} | Queued: {1}</RICS.MPCH.PawnJobQueued>
+	
+  <!-- Psycasts -->
+  <RICS.MPCH.NoRoyalty>Royalty DLC is not active.</RICS.MPCH.NoRoyalty>
+  <RICS.MPCH.NoPsycasts>{0} has no psycasts.</RICS.MPCH.NoPsycasts>
+  <RICS.MPCH.PsycastLevelGroup>L{0}: {1}</RICS.MPCH.PsycastLevelGroup>
+  <RICS.MPCH.PsycastSeparator> • </RICS.MPCH.PsycastSeparator>
+	
 </LanguageData>

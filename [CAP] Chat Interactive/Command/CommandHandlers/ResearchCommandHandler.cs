@@ -210,7 +210,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             float percent = (progress / cost) * 100f;
 
-            string progStr = progress.ToString("F0");
+            string progStr = progress.ToString("F2");
             string costStr = cost.ToString("F0");
             string percStr = percent.ToString("F1");
 

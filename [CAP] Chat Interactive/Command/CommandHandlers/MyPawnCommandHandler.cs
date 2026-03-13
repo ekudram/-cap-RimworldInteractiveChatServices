@@ -85,7 +85,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "traits":
                         return HandleTraitsInfo(pawn, args);
                     case "work":
-                        return HandleWorkInfo(pawn, args);
+                        return HandleWorkInfo(pawn, args);                  
+                    case "job":
+                    case "action":
+                        return HandleJobInfo(pawn);
+                    case "psycasts":
+                        return HandlePsycastsInfo(pawn);
                     default:
                         // return $"Unknown subcommand: {subCommand}. !mypawn [type]: body, health, implants, gear, kills, needs, relations, skills, stats, story, traits, work";
                         return "RICS.MPCH.UnknownSubcommand".Translate(subCommand);
@@ -99,7 +104,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        // === inplants ===
+        // === implants ===
         private static string HandleImplantsInfo(Pawn pawn, string[] args)
         {
             if (pawn.health?.hediffSet?.hediffs == null)
@@ -122,8 +127,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     bool isVisible = h.Visible;
                     bool isImplant = IsImplantOrAddedPart(h);
-                    //Logger.Debug($"Filtering: {h.def.defName}, Visible={isVisible}, IsImplant={isImplant}");
-                    return isVisible && isImplant;
+            //Logger.Debug($"Filtering: {h.def.defName}, Visible={isVisible}, IsImplant={isImplant}");
+            return isVisible && isImplant;
                 })
                 .ToList();
 
@@ -137,27 +142,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return report.ToString();
             }
 
-            // Group implants by body part
-            var groupedImplants = implants
-                .GroupBy(h => h.Part)
-                .OrderByDescending(g => g.Key?.height ?? 0f)
-                .ThenByDescending(g => g.Key?.coverageAbsWithChildren ?? 0f)
-                .ToList();
+            // Group identical implants directly to show count (e.g., "Bionic arm x2")
+            var groupedByImplant = implants
+                .GroupBy(h => StripTags(h.LabelCap))
+                .OrderBy(g => g.Key);
 
-            foreach (var partGroup in groupedImplants)
+            foreach (var implantGroup in groupedByImplant)
             {
-                //string partName = partGroup.Key?.LabelCap ?? "Whole Body";
-                //eport.AppendLine($"• {partName}:");
+                string implantName = implantGroup.Key;
+                int count = implantGroup.Count();
 
-                foreach (var implant in partGroup.OrderBy(h => h.def.label))
-                {
-                    string implantName = StripTags(implant.LabelCap);
-                    // string implantQuality = GetImplantQuality(implant);
-
-                    // report.AppendLine($"  ◦ {implantName}{implantQuality}");
+                if (count > 1)
+                    report.AppendLine($" ◦ {implantName} x{count}");
+                else
                     report.AppendLine($" ◦ {implantName}");
-                    //Logger.Debug($"  - Found implant: {implantName} on {partName}");
-                }
             }
 
             // Add summary
@@ -501,8 +499,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             // Sort body parts by height (head to toe)
             var sortedPartGroups = healthConditions
-                .OrderByDescending(g => g.Key?.height ?? 0f)
+                .OrderBy(g => g.Key != null)
+                .ThenByDescending(g => g.Key?.height ?? 0f)
                 .ThenByDescending(g => g.Key?.coverageAbsWithChildren ?? 0f)
+                
                 .ToList();
 
             int maxPartsToShow = targetPart != null ? 25 : 10; // Show more for specific part, than for full body
@@ -2382,6 +2382,72 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 4 => "👌 Low",
                 _ => "❌ Disabled"
             };
+        }
+
+        // === Job ===
+
+        private static string HandleJobInfo(Pawn pawn)
+        {
+            if (pawn?.jobs == null)
+            {
+                // return "Your pawn is doing nothing.";
+                return "RICS.MPCH.PawnJob".Translate("RICS.MPCH.DoingNothing".Translate());
+            }
+
+            string currentJob = pawn.jobs.curDriver != null
+                ? pawn.jobs.curDriver.GetReport().CapitalizeFirst()
+                // : "Doing nothing";
+                : "RICS.MPCH.DoingNothing".Translate().ToString();
+
+            string queuedJob = string.Empty;
+            if (pawn.jobs.jobQueue != null && pawn.jobs.jobQueue.Count > 0)
+            {
+                var firstQueueNode = pawn.jobs.jobQueue[0]?.job;
+                if (firstQueueNode != null)
+                {
+                    queuedJob = firstQueueNode.GetReport(pawn).CapitalizeFirst();
+                }
+            }
+
+            if (!string.IsNullOrEmpty(queuedJob))
+            {
+                // return $"Your pawn is: {currentJob} | Queued: {queuedJob}";
+                return "RICS.MPCH.PawnJobQueued".Translate(currentJob, queuedJob);
+            }
+
+            // return $"Your pawn is: {currentJob}";
+            return "RICS.MPCH.PawnJob".Translate(currentJob);
+        }
+
+        // === Psycasts ===
+
+        private static string HandlePsycastsInfo(Pawn pawn)
+        {
+            if (!ModsConfig.RoyaltyActive)
+                // return $"No Royalty DLC";
+                return "RICS.MPCH.NoRoyalty".Translate();
+
+            var psycasts = pawn?.abilities?.abilities?
+                .Where(a => a.def.IsPsycast)
+                .GroupBy(a => a.def.level)
+                .OrderBy(g => g.Key);
+
+            if (psycasts == null || !psycasts.Any())
+                // return "Your pawn has no psycasts";
+                return "RICS.MPCH.NoPsycasts".Translate(pawn.LabelShortCap);
+
+            List<string> levelStrings = new List<string>();
+
+            foreach (var group in psycasts)
+            {
+                string names = string.Join(", ", group.Select(a => a.def.LabelCap.Resolve()));
+
+                // levelStrings.Add($"L{group.Key}: {names}");
+                levelStrings.Add("RICS.MPCH.PsycastLevelGroup".Translate(group.Key, names));
+            }
+
+            // return string.Join(" • ", levelStrings);
+            return string.Join("RICS.MPCH.PsycastSeparator".Translate(), levelStrings);
         }
     }
 }
