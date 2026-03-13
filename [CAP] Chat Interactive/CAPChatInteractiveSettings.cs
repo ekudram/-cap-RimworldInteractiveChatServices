@@ -32,12 +32,27 @@ namespace CAP_ChatInteractive
 
         public CAPGlobalChatSettings GlobalSettings = new CAPGlobalChatSettings();
 
+        // Defensive constructor — guarantees NO nulls even on first load or old config.xml
+        public CAPChatInteractiveSettings()
+        {
+            TwitchSettings ??= new StreamServiceSettings();
+            YouTubeSettings ??= new StreamServiceSettings();
+            KickSettings ??= new StreamServiceSettings();
+            GlobalSettings ??= new CAPGlobalChatSettings();
+        }
+
         public override void ExposeData()
         {
             Scribe_Deep.Look(ref TwitchSettings, "twitchSettings");
             Scribe_Deep.Look(ref YouTubeSettings, "youtubeSettings");
             Scribe_Deep.Look(ref KickSettings, "kickSettings");
             Scribe_Deep.Look(ref GlobalSettings, "globalSettings");
+
+            // Extra safety — RimWorld sometimes skips field initializers on nested objects
+            TwitchSettings ??= new StreamServiceSettings();
+            YouTubeSettings ??= new StreamServiceSettings();
+            KickSettings ??= new StreamServiceSettings();
+            GlobalSettings ??= new CAPGlobalChatSettings();
         }
     }
 

@@ -8,6 +8,7 @@
   <RICS.CIS.Global>Global</RICS.CIS.Global>
   <RICS.CIS.Twitch>Twitch</RICS.CIS.Twitch>
   <RICS.CIS.YouTube>YouTube</RICS.CIS.YouTube>
+  <RICS.CIS.Kick>Kick (Beta)</RICS.CIS.Kick>
   <RICS.CIS.OAuth>OAuth</RICS.CIS.OAuth>
   <RICS.CIS.Economy>Economy</RICS.CIS.Economy>
   <RICS.CIS.GameEvents>Game Events</RICS.CIS.GameEvents>
@@ -17,6 +18,7 @@
   <RICS.CIS.Global.Tooltip>Configure global chat and economy settings</RICS.CIS.Global.Tooltip>
   <RICS.CIS.Twitch.Tooltip>Configure Twitch integration settings</RICS.CIS.Twitch.Tooltip>
   <RICS.CIS.YouTube.Tooltip>Configure YouTube integration settings</RICS.CIS.YouTube.Tooltip>
+  <RICS.CIS.Kick.Tooltip>Configure Kick integration settings</RICS.CIS.Kick.Tooltip>
   <RICS.CIS.OAuth.Tooltip>Configure YouTube OAuth settings</RICS.CIS.OAuth.Tooltip>
   <RICS.CIS.Economy.Tooltip>Configure karma and coin economy settings</RICS.CIS.Economy.Tooltip>
   <RICS.CIS.GameEvents.Tooltip>Manage events, traits, store items and cooldowns</RICS.CIS.GameEvents.Tooltip>

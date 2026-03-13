@@ -91,6 +91,15 @@
     </Reference>
   </ItemGroup>
 
+  <!-- Required for `dynamic` keyword in KickService.cs (Pusher WebSocket + Kick JSON handling).
+       Matches the exact style of your other System.* references.
+       Private=False prevents copying framework DLL to output folder. -->
+  <ItemGroup>
+    <Reference Include="Microsoft.CSharp">
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
   <ItemGroup>
     <Folder Include="Patches\" />
   </ItemGroup>

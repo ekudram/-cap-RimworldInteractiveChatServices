@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- Kick Tab -->
+  <RICS.Kick.KickIntegrationHeader>Kick.com Integration</RICS.Kick.KickIntegrationHeader>
+
+  <RICS.Kick.EnableIntegrationLabel>Enable Kick Integration</RICS.Kick.EnableIntegrationLabel>
+  <RICS.Kick.EnableIntegrationTooltip>Turn Kick chat on/off. When enabled, viewers can buy pawns, trigger events, etc.</RICS.Kick.EnableIntegrationTooltip>
+
+  <RICS.Kick.ChannelInformationHeader>Channel Information</RICS.Kick.ChannelInformationHeader>
+  <RICS.Kick.ChannelSlugLabel>Channel Slug:</RICS.Kick.ChannelSlugLabel>
+  <RICS.Kick.ChannelSlugTooltip>Your Kick channel name (the part after kick.com/)</RICS.Kick.ChannelSlugTooltip>
+  <RICS.Kick.ChannelSlugFieldTooltip>Example: "mykickstream" (no @ or URL)</RICS.Kick.ChannelSlugFieldTooltip>
+
+  <RICS.Kick.OAuthCredentialsHeader>OAuth 2.1 Credentials (dev.kick.com)</RICS.Kick.OAuthCredentialsHeader>
+
+  <RICS.Kick.ClientIdLabel>Client ID:</RICS.Kick.ClientIdLabel>
+  <RICS.Kick.ClientIdTooltip>Get this from your Kick Developer Portal</RICS.Kick.ClientIdTooltip>
+
+  <RICS.Kick.ClientSecretLabel>Client Secret:</RICS.Kick.ClientSecretLabel>
+  <RICS.Kick.ClientSecretTooltip>Never share this! Paste once — it is stored securely and never shown in plain text.</RICS.Kick.ClientSecretTooltip>
+  <RICS.Kick.ClientSecretPlaceholder>[Click Paste Secret below]</RICS.Kick.ClientSecretPlaceholder>
+
+  <RICS.Kick.PasteSecretButton>Paste Client Secret</RICS.Kick.PasteSecretButton>
+  <RICS.Kick.PasteSecretTooltip>Pastes from clipboard and masks for security</RICS.Kick.PasteSecretTooltip>
+  <RICS.Kick.SecretPastedSuccess>Client Secret saved securely!</RICS.Kick.SecretPastedSuccess>
+
+  <RICS.Kick.ConnectionSettingsHeader>Connection Settings</RICS.Kick.ConnectionSettingsHeader>
+  <RICS.Kick.AutoConnectLabel>Auto-connect on startup</RICS.Kick.AutoConnectLabel>
+  <RICS.Kick.AutoConnectTooltip>Connect to Kick automatically when RimWorld starts</RICS.Kick.AutoConnectTooltip>
+
+  <RICS.Kick.Status>Status: {0}</RICS.Kick.Status>
+  <RICS.Kick.Connected>Connected to Kick</RICS.Kick.Connected>
+  <RICS.Kick.Disconnected>Disconnected</RICS.Kick.Disconnected>
+
+  <RICS.Kick.ConnectButton>Connect to Kick</RICS.Kick.ConnectButton>
+  <RICS.Kick.DisconnectButton>Disconnect from Kick</RICS.Kick.DisconnectButton>
+  <RICS.Kick.DisconnectedMessage>Disconnected from Kick chat</RICS.Kick.DisconnectedMessage>
+  <RICS.Kick.ConnectingMessage>Connecting to Kick...</RICS.Kick.ConnectingMessage>
+
+  <RICS.Kick.CannotConnectButton>Cannot Connect (Missing Settings)</RICS.Kick.CannotConnectButton>
+  <RICS.Kick.CannotConnectTooltip>Fill in Channel Slug, Client ID and Client Secret first</RICS.Kick.CannotConnectTooltip>
+
+  <RICS.Kick.QuickTip>💡 Get your keys at dev.kick.com — keep Client Secret private!</RICS.Kick.QuickTip>
+
+  <RICS.Kick.ClipboardEmpty>Clipboard is empty!</RICS.Kick.ClipboardEmpty>
+
+  <RICS.Kick.LiveWarning>⚠️ You must be LIVE streaming on Kick.com to connect!</RICS.Kick.LiveWarning>
+  <RICS.Kick.ReqActive>Kick requires an active stream for chatroom access.</RICS.Kick.ReqActive>
+
+</LanguageData>

@@ -195,9 +195,10 @@ namespace CAP_ChatInteractive
         {
             Logger.Debug("InitializeServices started");
 
-            _twitchService = new TwitchService(Settings.TwitchSettings);
-            _youTubeService = new YouTubeChatService(Settings.YouTubeSettings);
-            _kickService = new KickService(Settings.KickSettings);  // NEW (KickService.cs coming next)
+            // Null-guard — protects against the exact crash we just saw (old save / first load)
+            _twitchService = new TwitchService(Settings.TwitchSettings ?? new StreamServiceSettings());
+            _youTubeService = new YouTubeChatService(Settings.YouTubeSettings ?? new StreamServiceSettings());
+            _kickService = new KickService(Settings.KickSettings ?? new StreamServiceSettings());  // now safe
 
             // Auto-connect if configured
             if (Settings.TwitchSettings.AutoConnect && Settings.TwitchSettings.CanConnect)
@@ -226,11 +227,13 @@ namespace CAP_ChatInteractive
 
         public override void DoSettingsWindowContents(Rect inRect)
         {
-            // Close the original mod settings window and open our custom one
-            Find.WindowStack.TryRemove(typeof(Dialog_ModSettings), true);
-            Find.WindowStack.Add(new Dialog_ChatInteractiveSettings());
-
-
+            // Safer pattern: only open custom dialog if not already open
+            // Prevents race conditions and silent failures when a tab (e.g. Kick) fails to register
+            if (Find.WindowStack.WindowOfType<Dialog_ChatInteractiveSettings>() == null)
+            {
+                Find.WindowStack.TryRemove(typeof(Dialog_ModSettings), true);
+                Find.WindowStack.Add(new Dialog_ChatInteractiveSettings());
+            }
         }
 
         public object GetChatService(string platform)
