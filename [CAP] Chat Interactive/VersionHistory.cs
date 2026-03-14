@@ -20,6 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Verse;
+using Verse.Noise;
 
 // Add this class to a new file or within your existing files
 
@@ -655,25 +656,34 @@ Compatibility Notes:
 Translation updates added for Weather, Use Item, moderator coin commands, store toggle, and Store Editor UI.
 "
             },
-            {"1.24",
-                "RICS 1.24 Update Notes" + "\r\n" +
-                "☑️UPDATED:\r\n" +
-                " - Updated the first feature of RICS, the live chat window is updated.  Open with CRTL-V" +
-                " - I bet you didnt know you could see chat ingame"
-                + "\r\n" +
-                "FIXED:" + "\r\n" +
-                " - Har Race Restrictions added for equip and wear." + "\r\n" +
-                "\r\n" +
-                "ADDED:\r\n" +
-                " - 🔒 for locked Traits In !mypawn traits" + "\r\n" +
-                "- Added :no_entry_sign: for Disabled Skills  `!mypawn skills`\r\n" +
-                "- Added `!mypawn skills <skill> `lookup- Added :no_entry_sign: for Disabled Skills  `!mypawn skills`\r\n" +
-                "- Added `!mypawn skills <skill> `lookup\r\n" +
-                "\r\n" +
-                "TRANSLATIONS:" + "\r\n" +
-                " - BuyItemCommandHandler.xml (modified)" + "\r\n" +
-                "\r\n"
+{"1.24",
+                @"===============================================================================
+                         RICS 1.24 - Changelog
+                         Released: March 2026
+===============================================================================
 
+UPDATED
+───────
+• Live Chat Window overhaul (the original core RICS feature!)
+  - Open with CTRL + V (in-game)
+  - Cleaner UI, better scrolling & performance
+
+FIXED
+─────
+• HAR race restrictions now correctly enforced for !equip and !wear
+
+ADDED
+─────
+• 🔒 (lock) indicator for locked traits in !mypawn traits
+• ⛔ (no-entry) indicator for disabled skills in !mypawn skills
+• Targeted lookup: !mypawn skills <skill name>
+
+TRANSLATIONS
+────────────
+• BuyItemCommandHandler.xml (updated)
+
+Thanks Kanburo for new mypawn commands !
+==============================================================================="
             }    
                 
                 
@@ -747,9 +757,9 @@ Translation updates added for Weather, Use Item, moderator coin commands, store 
 
             try
             {
-                string updateNotes = GetUpdateNotesForVersion(newVersion, oldVersion);
-                Find.WindowStack.Add(new Dialog_RICS_Updates(updateNotes));
-                Logger.Message($"[RICS] Updated from version {oldVersion} to {newVersion}. Showing update notes.");
+                // New dialog auto-focuses the latest version (your request)
+                OpenVersionHistory(newVersion);
+                Logger.Message($"[RICS] Updated from version {oldVersion} to {newVersion}. Showing new history dialog.");
             }
             catch (Exception ex)
             {
@@ -778,6 +788,24 @@ Translation updates added for Weather, Use Item, moderator coin commands, store 
             return $"RICS has been updated to version {newVersion}.\n\n" +
                    $"Previous version: {(string.IsNullOrEmpty(oldVersion) ? "First install / unknown" : oldVersion)}\n\n" +
                    "Please check the mod's documentation or Steam Workshop page for the detailed changelog.";
+        }
+
+  
+        /// <summary>
+        /// Opens the new recallable version history dialog.
+        /// Pass a version string to auto-highlight it (e.g. for update notification).
+        /// Streamer can call this anytime via debug console or future settings button.
+        /// </summary>
+        public static void OpenVersionHistory(string highlightVersion = null)
+        {
+            if (Find.WindowStack == null)
+            {
+                Logger.Warning("Cannot open version history — WindowStack not ready yet");
+                return;
+            }
+
+            var dialog = new Dialog_RICS_VersionHistory(highlightVersion);
+            Find.WindowStack.Add(dialog);
         }
     }
 }

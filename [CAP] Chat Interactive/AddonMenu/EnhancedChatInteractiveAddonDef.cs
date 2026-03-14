@@ -87,6 +87,8 @@ namespace CAP_ChatInteractive
                     return null;
                 }
 
+                if (buttonType == ButtonType.Divider) return null;
+
                 // Create appropriate menu based on button type
                 switch (buttonType)
                 {
@@ -102,6 +104,9 @@ namespace CAP_ChatInteractive
                     case ButtonType.ToggleWindowButton:
                         // Return a wrapper that toggles the window
                         return new ToggleWindowMenuWrapper(this);
+
+                    case ButtonType.Divider:
+                        return null;
 
                     default:
                         Logger.Error($"Unknown button type: {buttonType} for {defName}");
@@ -124,6 +129,8 @@ namespace CAP_ChatInteractive
 
             try
             {
+                if (buttonType == ButtonType.Divider) return;   // Dividers have no action
+
                 switch (buttonType)
                 {
                     case ButtonType.DirectDialogButton when dialogClass != null:
@@ -174,7 +181,8 @@ namespace CAP_ChatInteractive
         MenuButton,          // Opens a FloatMenu with options
         DirectDialogButton,  // Opens a dialog window directly
         ToggleWindowButton,  // Toggles a window open/closed
-        SubmenuButton        // Opens another FloatMenu (nested)
+        SubmenuButton,       // Opens another FloatMenu (nested)
+        Divider              // Visual separator bar — non-clickable, zero logic
     }
 
     // --- Wrapper Classes for Different Button Types ---

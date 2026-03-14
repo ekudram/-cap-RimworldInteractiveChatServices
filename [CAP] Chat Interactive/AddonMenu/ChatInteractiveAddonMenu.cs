@@ -1,4 +1,5 @@
-﻿// Copyright (c) Captolamia
+﻿// File Name: ChatInteractiveAddonMenu.cs
+// Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
@@ -15,6 +16,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // This class implements the addon menu for Chat Interactive, providing various options for managing settings, events, economy, and more.
+
 using CAP_ChatInteractive.Interfaces;
 using CAP_ChatInteractive.Windows;
 using RimWorld;
@@ -85,6 +87,11 @@ namespace CAP_ChatInteractive
         new FloatMenuOption("Pawn Queue", () =>
         {
             Find.WindowStack.Add(new Dialog_PawnQueue());
+        }),
+
+        new FloatMenuOption("Version History", () =>
+        {
+            Find.WindowStack.Add(new Dialog_RICS_VersionHistory());
         }),
 
         // Message Log

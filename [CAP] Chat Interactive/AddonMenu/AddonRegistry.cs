@@ -46,6 +46,8 @@ namespace CAP_ChatInteractive
         {
             if (addonDef == null || !addonDef.enabled) return;
 
+            if (addonDef.buttonType == ButtonType.Divider) return;   // Dividers have no action
+
             switch (addonDef.buttonType)
             {
                 case ButtonType.DirectDialogButton when addonDef.dialogClass != null:

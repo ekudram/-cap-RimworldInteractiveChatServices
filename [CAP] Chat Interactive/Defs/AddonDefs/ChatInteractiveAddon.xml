@@ -5,6 +5,7 @@ Button Type Documentation:
 - DirectDialogButton: Quick-access button that opens a dialog directly
 - ToggleWindowButton: Toggles a window open/close
 - SubmenuButton: Opens another FloatMenu submenu
+- Divider: Places a line between Items
 -->
 
 <Defs>
@@ -20,6 +21,17 @@ Button Type Documentation:
     <displayOrder>85</displayOrder>
     <showInToolbar>true</showInToolbar>
     <iconPath>UI/QuickButtons/CommandEditor</iconPath>
+  </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+
+  <!-- Divider (note each Divider must have a custom defName)-->
+  <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+    <defName>Divider_AfterMain</defName>
+    <buttonType>Divider</buttonType>
+    <sourceMod>RICS</sourceMod>
+    <enabled>true</enabled>
+    <displayOrder>86</displayOrder>
+    <showInToolbar>true</showInToolbar>
+    <!-- no label, icon, dialogClass, etc. needed -->
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
   <!-- Quick Access: Command Editor -->
@@ -78,6 +90,31 @@ Button Type Documentation:
     <iconPath>UI/QuickButtons/EventsEditor</iconPath>
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
+  <!-- Quick Access: Weather Editor -->
+  <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+    <defName>Quick_WeatherEditor</defName>
+    <label>Weather Editor</label>
+    <description>Open weather editor</description>
+    <dialogClass>CAP_ChatInteractive.Dialog_WeatherEditor</dialogClass>
+    <buttonType>DirectDialogButton</buttonType>
+    <enabled>true</enabled>
+    <sourceMod>RICS</sourceMod>
+    <displayOrder>94</displayOrder>
+    <showInToolbar>true</showInToolbar>
+    <iconPath>UI/QuickButtons/EventsEditor</iconPath>
+  </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+
+  <!-- Divider (note each Divider must have a custom defName)-->
+  <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+    <defName>Divider_AfterEditors</defName>
+    <buttonType>Divider</buttonType>
+    <sourceMod>RICS</sourceMod>
+    <enabled>true</enabled>
+    <displayOrder>95</displayOrder>
+    <showInToolbar>true</showInToolbar>
+    <!-- no label, icon, dialogClass, etc. needed -->
+  </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+
   <!-- Quick Access: Viewer Manager -->
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
     <defName>Quick_ViewerManager</defName>
@@ -87,9 +124,20 @@ Button Type Documentation:
     <buttonType>DirectDialogButton</buttonType>
     <enabled>true</enabled>
     <sourceMod>RICS</sourceMod>
-    <displayOrder>94</displayOrder>
+    <displayOrder>96</displayOrder>
     <showInToolbar>true</showInToolbar>
     <iconPath>UI/QuickButtons/ViewerManager</iconPath>
+  </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+
+  <!-- Divider (note each Divider must have a custom defName)-->
+  <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+    <defName>Divider_AfterViewerManager</defName>
+    <buttonType>Divider</buttonType>
+    <sourceMod>RICS</sourceMod>
+    <enabled>true</enabled>
+    <displayOrder>97</displayOrder>
+    <showInToolbar>true</showInToolbar>
+    <!-- no label, icon, dialogClass, etc. needed -->
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
   <!-- Quick Access: Pawn Queue Dialog -->
@@ -101,7 +149,7 @@ Button Type Documentation:
     <buttonType>DirectDialogButton</buttonType>
     <enabled>true</enabled>
     <sourceMod>RICS</sourceMod>
-    <displayOrder>92</displayOrder>
+    <displayOrder>98</displayOrder>
     <showInToolbar>true</showInToolbar>
     <iconPath>UI/QuickButtons/PawnQueue</iconPath>
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
@@ -115,7 +163,31 @@ Button Type Documentation:
     <buttonType>DirectDialogButton</buttonType>
     <enabled>true</enabled>
     <sourceMod>RICS</sourceMod>
-    <displayOrder>95</displayOrder>
+    <displayOrder>99</displayOrder>
+    <showInToolbar>true</showInToolbar>
+    <iconPath>UI/QuickButtons/PawnRace</iconPath>
+  </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+
+  <!-- Divider (note each Divider must have a custom defName)-->
+  <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+    <defName>Divider_AfterPawnRace</defName>  
+    <buttonType>Divider</buttonType>
+    <sourceMod>RICS</sourceMod>
+    <enabled>true</enabled>
+    <displayOrder>100</displayOrder>
+    <showInToolbar>true</showInToolbar>
+    <!-- no label, icon, dialogClass, etc. needed -->
+  </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+
+  <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+    <defName>Quick_Version_History</defName>
+    <label>Version History</label>
+    <description>Shows version history</description>
+    <dialogClass>CAP_ChatInteractive.Dialog_RICS_VersionHistory</dialogClass>
+    <buttonType>DirectDialogButton</buttonType>
+    <enabled>true</enabled>
+    <sourceMod>RICS</sourceMod>
+    <displayOrder>101</displayOrder>
     <showInToolbar>true</showInToolbar>
     <iconPath>UI/QuickButtons/PawnRace</iconPath>
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>

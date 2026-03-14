@@ -28,6 +28,7 @@ namespace CAP_ChatInteractive
     {
         private static List<EnhancedChatInteractiveAddonDef> toolbarButtons;
         private static Texture2D defaultButtonIcon;
+        private const float DividerWidth = 12f;
 
         static ToolbarButtonManager()
         {
@@ -61,16 +62,30 @@ namespace CAP_ChatInteractive
                 .ThenBy(g => g.Key) // Then alphabetically
                 .ToList();
 
-            // Calculate total width with separators
+            // Calculate total width cleanly (spacing ONLY between items + safety padding)
             float buttonSize = 32f;
             float spacing = 4f;
-            float separatorWidth = 12f; // Width for separator
-            int totalButtons = toolbarButtons.Count;
-            int totalSeparators = groupedButtons.Count - 1; // Separators between mod groups
+            float separatorWidth = 12f;
+            float dividerWidth = DividerWidth;
 
-            float totalWidth = (buttonSize * totalButtons) +
-                              (spacing * (totalButtons - 1)) +
-                              (separatorWidth * totalSeparators);
+            float totalWidth = 0f;
+            bool firstItem = true;
+
+            foreach (var def in toolbarButtons)
+            {
+                if (!firstItem)
+                    totalWidth += spacing;
+
+                totalWidth += (def.buttonType == ButtonType.Divider) ? dividerWidth : buttonSize;
+                firstItem = false;
+            }
+
+            // Add mod-group separators
+            int totalSeparators = groupedButtons.Count - 1;
+            totalWidth += (separatorWidth * totalSeparators);
+
+            // Safety padding so the final button (Version History) is never clipped
+            totalWidth += 8f;
 
             // Position at top center of screen
             float screenWidth = UI.screenWidth;
@@ -82,22 +97,39 @@ namespace CAP_ChatInteractive
             // Background
             Widgets.DrawMenuSection(toolbarRect);
 
-            // Draw buttons with separators
+            // Draw buttons/dividers with separators
             float currentX = toolbarRect.x;
 
             for (int i = 0; i < groupedButtons.Count; i++)
             {
                 var group = groupedButtons[i];
 
-                // Draw buttons for this mod
-                foreach (var buttonDef in group)
+                foreach (var buttonDef in group.OrderBy(b => b.displayOrder))
                 {
-                    Rect buttonRect = new Rect(currentX, toolbarRect.y, buttonSize, buttonSize);
-                    DrawToolbarButton(buttonRect, buttonDef);
-                    currentX += buttonSize + spacing;
+                    if (buttonDef.buttonType == ButtonType.Divider)
+                    {
+                        // Divider: thin vertical line
+                        Rect dividerRect = new Rect(currentX, toolbarRect.y, dividerWidth, buttonSize);
+                        float lineX = dividerRect.x + dividerWidth / 2f;
+                        Widgets.DrawLineVertical(lineX, dividerRect.y + 6f, dividerRect.height - 12f);
+                        currentX += dividerWidth;
+                        Logger.Debug("Divider Drawn");
+                    }
+                    else
+                    {
+                        // Real button: full size
+                        Rect buttonRect = new Rect(currentX, toolbarRect.y, buttonSize, buttonSize);
+                        DrawToolbarButton(buttonRect, buttonDef);
+                        currentX += buttonSize;
+                        Logger.Debug("Button Drawn");
+                    }
+
+                    // Spacing after every item (except we already calculated it)
+                    if (currentX + spacing < toolbarRect.xMax - 4f)
+                        currentX += spacing;
                 }
 
-                // Draw separator between mod groups (except after last group)
+                // Mod-group separator (between different sourceMods)
                 if (i < groupedButtons.Count - 1)
                 {
                     Rect separatorRect = new Rect(currentX, toolbarRect.y, separatorWidth, buttonSize);
@@ -121,6 +153,8 @@ namespace CAP_ChatInteractive
 
         private static void DrawToolbarButton(Rect rect, EnhancedChatInteractiveAddonDef buttonDef)
         {
+            if (buttonDef.buttonType == ButtonType.Divider) return;   // Safety — never called for dividers
+
             // Button background with hover effect
             if (Mouse.IsOver(rect))
             {
