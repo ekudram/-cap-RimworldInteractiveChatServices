@@ -426,21 +426,21 @@ Window For Quality and Research translation keys complete"
                 },
             {"1.19a",
                 @"
-===============================================================================
+===========================================================
                             RICS 1.19a - Update/Hotfix
-===============================================================================
+===========================================================
 Released: February 15, 2026
 
-===============================================================================
+===========================================================
 HOTFIX:
-===============================================================================
+===========================================================
 - Json persistence files now persist across saves and games,
   • Was not saving properly with 1.19.
 - Fix buy pawn, not finding pawns on quests or caravan.
 
-===============================================================================
+===========================================================
 NEW FEATURES:
-===============================================================================
+===========================================================
 - Json files now persist across all saves and games
   • Data from all mods in any savegame is preserved
   • Settings remain intact when adding/removing mods between playthroughs
@@ -460,25 +460,25 @@ NEW FEATURES:
   • !dye hair {color} or favorite color if left bland and Biotech loaded
   • Add more hair colors to mod.
 
-===============================================================================
+===========================================================
 UPDATES:
-===============================================================================
+===========================================================
 - Store Items Editor enhancements:
   • Can now select from Categories or Mod Sources
   • Added ability to enable/disable items from Mod Sources
 
-===============================================================================
+===========================================================
 FIXES:
-===============================================================================
+===========================================================
 - Consolidated GameComponent Files properly implemented
 - RaceSettings now correctly called with Dictionary as source of truth
 - RaceSettings now correctly shows xenotypes availible for Race
 - Fixed Ownership issues for Possession Mod
 - Rimazon Locker adjusted: occupies 1x1 floor space but extends 2 tiles tall
 
-===============================================================================
+===========================================================
 TRANSLATIONS:
-===============================================================================
+===========================================================
 Added or fixed translation keys for:
 - Store Items Editor
 - Debug Def Window (Store Items Editor)
@@ -580,7 +580,7 @@ Warning: resets all custom store settings to defaults
 =========================================================================="
             },
             {"1.21a",
-                "==========================================================================\r\n" +
+                "===========================================================\r\n" +
                 "RICS 1.21b - Update\r\n" +
                 "Released: February 28, 2026" +
                 "\r\n" +
@@ -657,16 +657,19 @@ Translation updates added for Weather, Use Item, moderator coin commands, store 
 "
             },
 {"1.24",
-                @"===============================================================================
+                @"===========================================================
                          RICS 1.24 - Changelog
                          Released: March 2026
-===============================================================================
+===========================================================
 
 UPDATED
 ───────
 • Live Chat Window overhaul (the original core RICS feature!)
   - Open with CTRL + V (in-game)
   - Cleaner UI, better scrolling & performance
+• !mypawn body show Whole Body first always (important to see things like bloodloss and hypothermia even when full of injuries)
+• !mypawn implants now group identical implants to show count (e.g., ""Bionic arm x2"")
+• Anomaly !study progress uses 2 decimals like in game
 
 FIXED
 ─────
@@ -677,13 +680,19 @@ ADDED
 • 🔒 (lock) indicator for locked traits in !mypawn traits
 • ⛔ (no-entry) indicator for disabled skills in !mypawn skills
 • Targeted lookup: !mypawn skills <skill name>
+• Added !mypawn psycasts Lists psycasts
+• Added  !mypawn job (or activity) Shows pawns active job
 
 TRANSLATIONS
 ────────────
 • BuyItemCommandHandler.xml (updated)
+• MyPawnCommandHandler.xml (updated for new commands)
+• TabDrawer_Kick.xml (added but not used yet)
 
-Thanks Kanburo for new mypawn commands !
-==============================================================================="
+Contributors:
+
+👥 Kanboru (new psycasts list and job/activity for !mypawn and more) 
+==========================================================="
             }    
                 
                 

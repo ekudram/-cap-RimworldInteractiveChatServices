@@ -24,9 +24,15 @@ namespace CAP_ChatInteractive
 
         public override Vector2 InitialSize => new Vector2(1100f, 720f);
 
+        /// <summary>
+        /// Parameterless constructor required for Activator.CreateInstance (XML buttons, toolbar, MainTabWindow, etc.)
+        /// Calls the real constructor with null so it still auto-selects latest version.
+        /// </summary>
+        public Dialog_RICS_VersionHistory() : this(null) { }
+
         public Dialog_RICS_VersionHistory(string autoSelectVersion = null)
         {
-            doCloseButton = true;           // easy close, as requested
+            doCloseButton = false;           // easy close, as requested
             forcePause = true;
             absorbInputAroundWindow = true;
 
@@ -82,7 +88,7 @@ namespace CAP_ChatInteractive
 
             // Export button at bottom (creates the JSON/text file you asked for)
             Rect exportRect = new Rect(rect.x + 10f, rect.yMax - 40f, rect.width - 20f, 32f);
-            if (Widgets.ButtonText(exportRect, "Export to history folder (JSON)"))
+            if (Widgets.ButtonText(exportRect, "Export (JSON)"))
             {
                 ExportToJson();
             }
