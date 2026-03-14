@@ -162,24 +162,30 @@ namespace CAP_ChatInteractive
             }
 
             // 2. Ultra-robust fallback for [FSF] FrozenSnowFox Tweaks "no default storage"
-            // Uses the REAL vanilla method that exists in Verse.ThingFilter (SetAllowAll)
             if (!copied)
             {
                 try
                 {
                     settings.filter = new ThingFilter();
-                    settings.filter.SetAllowAll(null);           // ← correct method (allows every storable item)
-                    settings.filter.ResolveReferences();         // vanilla best practice after manual setup
-                    settings.Priority = StoragePriority.Low;
+                    settings.filter.SetAllowAll(null);
+                    settings.filter.ResolveReferences();
+                    settings.Priority = StoragePriority.Unstored;   // CRITICAL: Unstored so pawns haul OUT (matches vanilla drop-box pattern)
 
                     copied = true;
-                    Logger.Warning($"[RICS Locker] FSF Tweaks / no-default-storage detected — using robust allow-all fallback");
+                    Logger.Warning($"[RICS Locker] FSF Tweaks / no-default-storage detected — using robust Unstored fallback");
                 }
                 catch (Exception ex)
                 {
                     Logger.Error($"[RICS Locker] Even fallback filter creation failed: {ex.Message}");
                     settings.filter = new ThingFilter(); // absolute last resort
                 }
+            }
+
+            // FINAL FORCE — survives every mod interference, save/load, and reload
+            if (settings != null)
+            {
+                settings.Priority = StoragePriority.Unstored;
+                Logger.Debug($"[RICS Locker] Priority locked to Unstored at {Position}");
             }
 
             return settings;
@@ -204,16 +210,13 @@ namespace CAP_ChatInteractive
         public override void PostMake()
         {
             base.PostMake();
-            // Logger.Debug($"ThingOwner: {this.GetDirectlyHeldThings() != null}");
-            // Logger.Debug($"Locker {this} settings after init: {(settings != null ? "exists" : "NULL")} | Parent defaults: {(def.building?.defaultStorageSettings != null ? "exists" : "NULL")}");
-            // Initialize innerContainer if null (shouldn't be, but just in case)
-            //if (innerContainer == null)
-            //{
-            //    innerContainer = new ThingOwner<Thing>(this, LookMode.Deep);
-            //}
 
             // GetStoreSettings will initialize settings if null
             var s = GetStoreSettings();
+
+            // Force Unstored immediately (survives early mod hooks)
+            if (s != null)
+                s.Priority = StoragePriority.Unstored;
         }
 
         // === SpawnSetup
@@ -221,14 +224,17 @@ namespace CAP_ChatInteractive
         {
             base.SpawnSetup(map, respawningAfterReload);
 
-            //if (innerContainer == null)
-            //{
-            //    innerContainer = new ThingOwner<Thing>(this, false, LookMode.Deep);
-            //}
             _ = InnerContainer;
             Logger.Debug($"[RICS] Locker has {innerContainer.Count} items after spawn");
 
             _ = GetStoreSettings();
+
+            // Enforce Unstored priority every spawn (survives mod conflicts & reload)
+            if (settings != null)
+            {
+                settings.Priority = StoragePriority.Unstored;
+                Logger.Debug($"[RICS Locker] Priority forced to Unstored at {Position} | Stacks: {innerContainer.Count}/{MaxStacks}");
+            }
         }
 
         //  === IHaulDestination
@@ -251,6 +257,10 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref customName, "customName");
             Scribe_Deep.Look(ref settings, "settings", this);
             Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
+
+            // Re-apply Unstored priority after loading save (critical for old saves)
+            if (settings != null)
+                settings.Priority = StoragePriority.Unstored;
         }
 
         // === DeSpawn
