@@ -124,5 +124,7 @@
   <RICS.MPCH.NoPsycasts>{0} has no psycasts.</RICS.MPCH.NoPsycasts>
   <RICS.MPCH.PsycastLevelGroup>L{0}: {1}</RICS.MPCH.PsycastLevelGroup>
   <RICS.MPCH.PsycastSeparator> • </RICS.MPCH.PsycastSeparator>
-	
+  <RICS.MPCH.NoPsycastsLazyInit>Pawn abilities not loaded yet (common with mods). Open {0}'s Bio/Abilities tab in-game, then try again.</RICS.MPCH.NoPsycastsLazyInit>
+  <RICS.MPCH.NoPsycastsVPE>Psycasts from Vanilla Psycasts Expanded are not visible in this command (mod incompatibility). Check your pawn's bio/abilities tab in-game.</RICS.MPCH.NoPsycastsVPE>
+  
 </LanguageData>

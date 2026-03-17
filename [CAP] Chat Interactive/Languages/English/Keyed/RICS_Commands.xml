@@ -18,6 +18,8 @@
     Usage: !buy {item} [quality] [material] [quantity], only used for items.  Also !use !equip !wear
   </RICS.CC.Buy.Usage>
 
+  <RICS.CC.Buy.PurchaseLimit>Store purchase limit reached ({0} per {1} days)</RICS.CC.Buy.PurchaseLimit>
+  
   <!-- Use Command-->
   <RICS.CC.use.usage>
     Usage: !use [item]
