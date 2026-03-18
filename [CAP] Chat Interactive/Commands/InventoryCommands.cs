@@ -30,59 +30,91 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
     public class Buy : ChatCommand
     {
         public override string Name => "buy";
-        
+
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
             if (args.Length == 0)
             {
-                // return "Usage: !buy {item} [quality] [material] [quantity], only used for items.  Also !use !equip !wear";
                 return "RICS.CC.Buy.Usage".Translate();
             }
 
-            // Check if this is a pawn purchase
-            if (args[0].ToLower() == "pawn")
+            // Global store kill-switch (respects the setting you already have in CAPGlobalChatSettings)
+            var globalSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (globalSettings != null && !globalSettings.StoreCommandsEnabled)
             {
+                return "RICS.CC.Buy.StoreDisabled".Translate(); // "Store commands are currently disabled."
+            }
+
+            string subCommand = args[0].ToLowerInvariant();
+
+            // Check if this is a pawn purchase
+            if (subCommand == "pawn")
+            {
+                if (!SubCommandEnabled("pawn"))
+                {
+                    return "RICS.CC.Buy.SubCommandDisabled".Translate("pawn");
+                }
                 var pawnArgs = args.Skip(1).ToArray();
                 var pawnCommand = new Pawn();
                 return pawnCommand.Execute(messageWrapper, pawnArgs);
             }
 
-            // Check if this is a event purchase
-            if (args[0].ToLower() == "event")
+            // Check if this is an event purchase
+            if (subCommand == "event")
             {
+                if (!SubCommandEnabled("event"))
+                {
+                    return "RICS.CC.Buy.SubCommandDisabled".Translate("event");
+                }
                 var newArgs = args.Skip(1).ToArray();
                 var newCommand = new Event();
                 return newCommand.Execute(messageWrapper, newArgs);
             }
+
             // check if this is a weather purchase
-            if (args[0].ToLower() == "weather")
+            if (subCommand == "weather")
             {
+                if (!SubCommandEnabled("weather"))
+                {
+                    return "RICS.CC.Buy.SubCommandDisabled".Translate("weather");
+                }
                 var newArgs = args.Skip(1).ToArray();
                 var newCommand = new Weather();
                 return newCommand.Execute(messageWrapper, newArgs);
             }
-            
-            if (args[0].ToLower() == "use")
+
+            if (subCommand == "use")
             {
+                if (!SubCommandEnabled("use"))
+                {
+                    return "RICS.CC.Buy.SubCommandDisabled".Translate("use");
+                }
                 var newArgs = args.Skip(1).ToArray();
                 var newCommand = new Use();
                 return newCommand.Execute(messageWrapper, newArgs);
             }
 
-            if (args[0].ToLower() == "equip")
+            if (subCommand == "equip")
             {
+                if (!SubCommandEnabled("equip"))
+                {
+                    return "RICS.CC.Buy.SubCommandDisabled".Translate("equip");
+                }
                 var newArgs = args.Skip(1).ToArray();
                 var newCommand = new Equip();
                 return newCommand.Execute(messageWrapper, newArgs);
             }
 
-            if (args[0].ToLower() == "wear")
+            if (subCommand == "wear")
             {
+                if (!SubCommandEnabled("wear"))
+                {
+                    return "RICS.CC.Buy.SubCommandDisabled".Translate("wear");
+                }
                 var newArgs = args.Skip(1).ToArray();
                 var newCommand = new Wear();
                 return newCommand.Execute(messageWrapper, newArgs);
             }
-
 
             try
             {
@@ -92,20 +124,33 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                     cooldownManager = new GlobalCooldownManager(Current.Game);
                     Current.Game.components.Add(cooldownManager);
                 }
-                var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
 
                 if (!cooldownManager.CanPurchaseItem())
                 {
-                  // return $"Store purchase limit reached ({globalSettings.MaxItemPurchases} per {globalSettings.EventCooldownDays} days)";
-                  return "RICS.CC.Buy.PurchaseLimit".Translate(globalSettings.MaxItemPurchases, globalSettings.EventCooldownDays);
+                    return "RICS.CC.Buy.PurchaseLimit".Translate(globalSettings.MaxItemPurchases, globalSettings.EventCooldownDays);
                 }
 
-                return BuyItemCommandHandler.HandleBuyItem(messageWrapper, args, false, false,false);
+                return BuyItemCommandHandler.HandleBuyItem(messageWrapper, args, false, false, false);
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in buy command: {ex}");
                 return $"Error purchasing item: {ex.Message}";
+            }
+        }
+        private bool SubCommandEnabled(string commandName)
+        {
+            if (string.IsNullOrEmpty(commandName)) return false;
+
+            try
+            {
+                var cmdSettings = CommandSettingsManager.GetSettings(commandName.ToLowerInvariant());
+                return cmdSettings?.Enabled ?? true; // fail-open if no settings entry (prevents accidental lockout)
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to check enabled status for subcommand '{commandName}': {ex.Message}");
+                return true; // graceful degradation
             }
         }
     }
