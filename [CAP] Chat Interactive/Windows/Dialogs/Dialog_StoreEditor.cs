@@ -1313,7 +1313,7 @@ namespace CAP_ChatInteractive
                 else
                 {
                     // Mixed state drawing
-                    Texture2D partialTex = ContentFinder<Texture2D>.Get("UI/Widgets/CheckBoxPartial", false);
+                    Texture2D partialTex = ContentFinder<Texture2D>.Get("UI/Widgets/CheckPartial", false);
                     if (partialTex != null)
                     {
                         Widgets.DrawTextureFitted(checkRect, partialTex, 1f);
@@ -1483,128 +1483,6 @@ namespace CAP_ChatInteractive
             }
 
             TooltipHandler.TipRegion(iconRect, tooltipKey.Translate());
-        }
-
-        private void DrawBulkQuantityControls(Rect rect)
-        {
-            Widgets.BeginGroup(rect);
-
-            float iconSize = 24f;
-            float spacing = 4f;
-            float centerY = (rect.height - iconSize) / 2f;
-            float x = rect.width / 2f - 150f; // Center the controls
-
-            // Label
-            Rect labelRect = new Rect(x, centerY, 80f, iconSize);
-            Text.Anchor = TextAnchor.MiddleRight;
-            // string labelText = "Set All Qty:";
-            string labelText = "RICS.SE.SetAllQty".Translate();
-            string displayLabel = UIUtilities.Truncate(labelText, labelRect.width);
-            Widgets.Label(labelRect, displayLabel);
-
-            // Add tooltip if truncated
-            if (UIUtilities.WouldTruncate(labelText, labelRect.width))
-            {
-                TooltipHandler.TipRegion(labelRect, labelText);
-            }
-            Text.Anchor = TextAnchor.UpperLeft;
-            x += 85f + spacing;
-
-            // Enable/disable toggle
-            Rect enableRect = new Rect(x, centerY, 24f, iconSize);
-            bool anyHasLimit = filteredItems.Any(item => item.HasQuantityLimit);
-            bool allHaveLimit = filteredItems.All(item => item.HasQuantityLimit);
-
-            // Use mixed state if some have limit and some don't
-            bool? mixedState = anyHasLimit && !allHaveLimit ? null : (bool?)allHaveLimit;
-
-            if (Widgets.ButtonInvisible(enableRect))
-            {
-                // If mixed or any disabled, enable all. If all enabled, disable all.
-                bool newState = !allHaveLimit;
-                EnableQuantityLimitForAllVisible(newState);
-            }
-
-            // Draw appropriate checkbox state
-            if (mixedState.HasValue)
-            {
-                bool state = mixedState.Value;
-                Widgets.Checkbox(enableRect.position, ref state, 24f);
-            }
-            else
-            {
-                // Draw mixed state (partially checked)
-                Texture2D mixedTex = ContentFinder<Texture2D>.Get("UI/Widgets/CheckBoxPartial", false);
-                if (mixedTex != null)
-                {
-                    Widgets.DrawTextureFitted(enableRect, mixedTex, 1f);
-                }
-                else
-                {
-                    // Fallback: draw empty checkbox with different background
-                    Widgets.DrawRectFast(enableRect, new Color(0.5f, 0.5f, 0.5f, 0.3f));
-                    Widgets.DrawBox(enableRect);
-                }
-            }
-
-            // TooltipHandler.TipRegion(enableRect, "Enable/disable quantity limits for all visible items");
-            TooltipHandler.TipRegion(enableRect, "RICS.SE.SetAllQtyTooltip".Translate());
-
-            x += 28f + spacing;
-
-            // Stack preset buttons (only show if there are items with quantity limits)
-            if (anyHasLimit)
-            {
-                //(string icon, string tooltip, int stacks)[] presets =
-                //{
-                //    ("Stack1", "Set all visible items to 1 stack limit", 1),
-                //    ("Stack3", "Set all visible items to 3 stacks limit", 3),
-                //    ("Stack5", "Set all visible items to 5 stacks limit", 5)
-                //};
-
-                (string icon, string tooltipKey, int stacks)[] presets =
-                {
-                    ("Stack1", "RICS.SE.SetAllOneStackTooltip", 1),
-                    ("Stack3", "RICS.SE.SetAllThreeStacksTooltip", 3),
-                    ("Stack5", "RICS.SE.SetAllFiveStacksTooltip", 5)
-                };
-
-                foreach (var preset in presets)
-                {
-                    Texture2D icon = null;
-
-                    // Method 1: Try standard path
-                    icon = ContentFinder<Texture2D>.Get($"UI/Icons/{preset.icon}", false);
-                    Rect iconRect = new Rect(x, centerY, iconSize, iconSize);
-
-                    // Hover highlight
-                    if (Mouse.IsOver(iconRect))
-                        Widgets.DrawHighlight(iconRect);
-
-                    if (icon == null)
-                    {
-                        Log.Warning($"Could not load icon: UI/Icons/{preset.icon}");
-                        // Fallback to text
-                        Widgets.ButtonText(iconRect, $"{preset.stacks}x");
-                    }
-                    else
-                    {
-                        Widgets.DrawTextureFitted(iconRect, icon, 1f);
-                    }
-
-                    TooltipHandler.TipRegion(iconRect, preset.tooltipKey.Translate());
-
-                    // Click handler
-                    if (Widgets.ButtonInvisible(iconRect))
-                    {
-                        SetAllVisibleItemsQuantityLimit(preset.stacks);
-                    }
-
-                    x += iconSize + spacing;
-                }
-            }
-
-            Widgets.EndGroup();
         }
 
         // This method draws the item type checkboxes (Usable, Equippable, Wearable) in the item row.
@@ -2207,58 +2085,7 @@ namespace CAP_ChatInteractive
                 FilterItems(); // Refresh the view
             }
         }
-        // This method enables all items in the specified category.
-        // Deprecated: now we use the toggle method for specific types, but this can still be used for a general "Enable All".
-        private void SetCategoryPrice(int price)
-        {
-            int changedCount = 0;
-            foreach (var item in filteredItems)
-            {
-                if (item.BasePrice != price)
-                {
-                    item.BasePrice = price;
-                    changedCount++;
-                }
-            }
 
-            if (changedCount > 0)
-            {
-                StoreInventory.SaveStoreToJson();
-                Messages.Message($"Set price to {price} for {changedCount} items in '{selectedCategory}' category",
-                    MessageTypeDefOf.PositiveEvent);
-                SoundDefOf.Click.PlayOneShotOnCamera();
-            }
-        }
-        // This method enables all items from the selected mod source.
-        // Deprecated: now we use the toggle method for specific types, but this can still be used for a general "Enable All".
-        private void SetModSourcePrice(int price)
-        {
-            if (price <= 0)
-            {
-                Messages.Message("Price must be positive", MessageTypeDefOf.RejectInput);
-                return;
-            }
-
-            int changedCount = 0;
-
-            foreach (var item in filteredItems)
-            {
-                if (item.BasePrice != price)
-                {
-                    item.BasePrice = price;
-                    changedCount++;
-                }
-            }
-
-            if (changedCount > 0)
-            {
-                StoreInventory.SaveStoreToJson();
-                string modName = GetDisplayModName(selectedModSource);
-                Messages.Message($"Set price to {price} silver for {changedCount} items from mod '{modName}'",
-                    MessageTypeDefOf.PositiveEvent);
-                SoundDefOf.Click.PlayOneShotOnCamera();
-            }
-        }
         // This method resets all item prices in the selected category to their default values based on ThingDef.BaseMarketValue.
         private void ResetCategoryPrices()
         {
