@@ -159,7 +159,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
     {
         public override string Name => "use";
 
-        public override string Execute(ChatMessageWrapper user, string[] args)
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
             if (args.Length == 0)
             {
@@ -178,7 +178,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 // return $"Store purchase limit reached ({globalSettings.MaxItemPurchases} per {globalSettings.EventCooldownDays} days)";
                 return "RICS.CC.common.PurchaseLimit".Translate(globalSettings.MaxItemPurchases, globalSettings.EventCooldownDays);
             }
-            return UseItemCommandHandler.HandleUseItem(user, args);
+            return UseItemCommandHandler.HandleUseItem(messageWrapper, args);
         }
     }
 
@@ -186,7 +186,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
     {
         public override string Name => "equip";
 
-        public override string Execute(ChatMessageWrapper user, string[] args)
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
             if (args.Length == 0)
             {
@@ -206,7 +206,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return "RICS.CC.common.PurchaseLimit".Translate(globalSettings.MaxItemPurchases, globalSettings.EventCooldownDays);
             }
 
-            return BuyItemCommandHandler.HandleBuyItem(user, args, true, false);
+            return BuyItemCommandHandler.HandleBuyItem(messageWrapper, args, true, false);
         }
     }
 
@@ -214,7 +214,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
     {
         public override string Name => "wear";
 
-        public override string Execute(ChatMessageWrapper user, string[] args)
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
             if (args.Length == 0)
             {
@@ -232,7 +232,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             {
                 return "RICS.CC.common.PurchaseLimit".Translate(globalSettings.MaxItemPurchases, globalSettings.EventCooldownDays);
             }
-            return BuyItemCommandHandler.HandleBuyItem(user, args, false, true);
+            return BuyItemCommandHandler.HandleBuyItem(messageWrapper, args, false, true);
         }
     }
 
@@ -240,7 +240,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
     {
         public override string Name => "backpack";
 
-        public override string Execute(ChatMessageWrapper user, string[] args)
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
             if (args.Length == 0)
             {
@@ -257,7 +257,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             {
                 return "RICS.CC.common.PurchaseLimit".Translate(globalSettings.MaxItemPurchases, globalSettings.EventCooldownDays);
             }
-            return BuyItemCommandHandler.HandleBuyItem(user, args, false, false, true);
+            return BuyItemCommandHandler.HandleBuyItem(messageWrapper, args, false, false, true);
         }
     }
 
@@ -265,7 +265,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
     {
         public override string Name => "purchaselist";
 
-        public override string Execute(ChatMessageWrapper user, string[] args)
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
             var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
             // return $"Check out the item prices and purchase list here: {settings.priceListUrl}";
@@ -277,118 +277,10 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
     {
         public override string Name => "pricecheck";
 
-        public override string Execute(ChatMessageWrapper user, string[] args)
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
-            if (args.Length == 0)
-            {
-                return "RICS.CC.pricecheck.usage".Translate();
-            }
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
-            try
-            {
-                // Use the CommandParserUtility for consistent argument parsing
-                var parsed = CommandParserUtility.ParseCommandArguments(
-                    args,
-                    allowQuality: true,
-                    allowMaterial: true,
-                    allowSide: false,  // Side doesn't affect price
-                    allowQuantity: true
-                );
-
-                if (parsed.HasError)
-                {
-                    return $"❌ {parsed.Error}";
-                }
-
-                // Logger.Debug($"PriceCheck parsing - Item: '{parsed.ItemName}', Quality: '{parsed.Quality}', Material: '{parsed.Material}', Quantity: {parsed.Quantity}");
-
-                var storeItem = StoreCommandHelper.GetStoreItemByName(parsed.ItemName);
-                if (storeItem == null)
-                {
-                    // Try to find similar items for helpful suggestions
-                    //var suggestions = CAP_ChatInteractive.Store.StoreItemsDatabase.FindSimilarItems(parsed.ItemName, 3);
-                    //if (suggestions.Any())
-                    //{
-                    //    var suggestionList = string.Join(", ", suggestions.Select(s => s.DisplayName));
-                    //    return $"❌ Item '{parsed.ItemName}' not found. Did you mean: {suggestionList}?";
-                    //}
-                    return $"RICS.CC.pricecheck.notfound".Translate(parsed.ItemName);
-                }
-
-                // Get the ThingDef for price calculation
-                var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
-                if (thingDef == null)
-                {
-                    // return $"❌ Could not find item definition for '{parsed.ItemName}'";
-                    return "RICS.CC.pricecheck.errorthingdef".Translate(parsed.ItemName);
-                }
-
-                // Parse quality using ItemConfigHelper
-                var quality = ItemConfigHelper.ParseQuality(parsed.Quality);
-
-                // Parse material if specified
-                ThingDef material = null;
-                if (parsed.Material != null && !parsed.Material.Equals("random", StringComparison.OrdinalIgnoreCase))
-                {
-                    material = ItemConfigHelper.ParseMaterial(parsed.Material, thingDef);
-                    if (material == null)
-                    {
-                        parsed.Material = "";
-                    }
-                }
-
-                // Check if quality is allowed based on settings
-                if (quality.HasValue && !ItemConfigHelper.IsQualityAllowed(quality))
-                {
-                    if (settings != null)
-                    {
-                        // return $"❌ {quality.Value} quality is not purchasable.";
-                        return "RICS.CC.pricecheck.errorquality".Translate(quality.Value.ToString());
-                    }
-                }
-
-                // Calculate the price using the same logic as the buy command
-                int price = ItemConfigHelper.CalculateFinalPrice(
-                    storeItem,
-                    parsed.Quantity,
-                    quality,
-                    material
-                );
-
-
-                // Build a clear response message
-                string quantityStr = parsed.Quantity > 1 ? $"{parsed.Quantity}x " : "";
-
-                string qualityStr = "";
-                if (quality.HasValue)
-                {
-                    qualityStr = quality.Value.ToString().ToLower();
-                }
-                else if (thingDef.HasComp(typeof(CompQuality)))
-                {
-                    qualityStr = "normal";  // default only when quality is supported
-                }
-
-                // materialStr stays the same
-                string materialStr = material != null ? material.label : "";
-
-                // Optional: trim extra spaces if both quality and material are present
-                string details = string.Join(" ", new[] { qualityStr, materialStr }.Where(s => !string.IsNullOrEmpty(s)));
-                string itemDisplay = $"{quantityStr}{storeItem.CustomName}";
-                if (!string.IsNullOrEmpty(details))
-                {
-                    itemDisplay += $" {details}";
-                }
-
-                // return $"💰 Price Check: {quantityStr}{storeItem.CustomName} {qualityStr} {materialStr} = {price} {currencySymbol}";
-                return "RICS.CC.pricecheck.success".Translate(quantityStr, storeItem.CustomName, qualityStr, materialStr, price, currencySymbol);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error in pricecheck command: {ex}");
-                return $"❌ Error calculating price: {ex.Message}";
-            }
+            // Delegated to handler (maintainability + new armor/weapon stats feature)
+            return CommandHandlerPriceCheck.HandlePriceCheck(messageWrapper, args);
         }
     }
 
@@ -396,7 +288,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
     {
         public override string Name => "surgery";
 
-        public override string Execute(ChatMessageWrapper user, string[] args)
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
             if (args.Length == 0)
             {
@@ -414,7 +306,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             {
                 return "RICS.CC.common.PurchaseLimit".Translate(globalSettings.MaxItemPurchases, globalSettings.EventCooldownDays);
             }
-            return SurgeryItemCommandHandler.HandleSurgery(user, args);
+            return SurgeryItemCommandHandler.HandleSurgery(messageWrapper, args);
         }
     }
 }
