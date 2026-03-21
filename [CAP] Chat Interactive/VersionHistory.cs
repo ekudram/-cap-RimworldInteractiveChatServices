@@ -693,7 +693,19 @@ Contributors:
 
 👥 Kanboru (new psycasts list and job/activity for !mypawn and more) 
 ==========================================================="
-            }    
+            },
+            {"1.25",
+                "** RICS Update 1.25 **\r\n\r\n" +
+                " RICS Update 1.25\r\n\r\n" +
+                "🛠️  Fixed\r\n" +
+                "Proper Icon now used in Store Editor for Checkbox\r\n\r\n" +
+                "✨ Added\r\n" +
+                "Price Check will now show Ratings for Armor and Weapons, accounts for material and Quality.\r\n\r\n" +
+                "🔈 Translations\r\n" +
+                "MyPawnCommandHandler.xml -  Added translation under psycasts, at the bottom\r\n" +
+                "RICS.MPCH.NoPsycastsLazyInit\r\nRICS.MPCH.NoPsycastsVPE\r\nRICS_Commands.xml\r\n" +
+                "RICS.CC.Buy.PurchaseLimit <- Added was missing"
+            }
                 
                 
                 
