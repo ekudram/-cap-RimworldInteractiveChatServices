@@ -470,7 +470,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (skill?.def == null) continue;
                 string prefix = skill.TotallyDisabled ? "🚫 " : "";
                 string passionEmoji = GetPassionEmoji(skill.passion);
-                report.AppendLine($"{prefix}{passionEmoji}{StripTags(skill.def.LabelCap)}: {skill.Level}");
+                report.AppendLine($"| {prefix}{passionEmoji}{StripTags(skill.def.LabelCap)}: {skill.Level}");
             }
 
             return report.ToString();
