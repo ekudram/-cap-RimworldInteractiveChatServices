@@ -1160,6 +1160,54 @@ namespace CAP_ChatInteractive
                     y += 20f;
                 }
 
+                // SHUFFLE CHILDHOOD-SPECIFIC SETTINGS
+                if (selectedCommand != null && selectedCommand.commandText.ToLower() == "shufflechildhood")
+                {
+                    y += 10f; // Extra spacing
+
+                    Rect headerRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
+                    Widgets.Label(headerRect, "CAP.CommandManager.ShuffleChildhoodSettings".Translate().Colorize(ColorLibrary.SubHeader));
+                    y += sectionHeight;
+
+                    Rect ChildhoodlabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(ChildhoodlabelRect, "CAP.CommandManager.ChildhoodWager".Translate());
+
+                    Rect ChildhoodinputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                    string bufferKey = "shuffle_childhood_wager";
+                    if (!numericBuffers.ContainsKey(bufferKey))
+                        numericBuffers[bufferKey] = settingsGlobalChat.ChildhoodWager.ToString();
+
+                    string Childhoodbuffer = numericBuffers[bufferKey];
+                    Widgets.TextFieldNumeric(ChildhoodinputRect, ref settingsGlobalChat.ChildhoodWager, ref Childhoodbuffer, 1, 100000);
+                    numericBuffers[bufferKey] = Childhoodbuffer;
+
+                    y += sectionHeight + 8f; // small padding
+                }
+
+                // SHUFFLE ADULTHOOD-SPECIFIC SETTINGS
+                if (selectedCommand != null && selectedCommand.commandText.ToLower() == "shuffleadulthood")
+                {
+                    y += 10f; // Extra spacing
+
+                    Rect headerRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
+                    Widgets.Label(headerRect, "CAP.CommandManager.ShuffleAdulthoodSettings".Translate().Colorize(ColorLibrary.SubHeader));
+                    y += sectionHeight;
+
+                    Rect AdulthoodlabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                    Widgets.Label(AdulthoodlabelRect, "CAP.CommandManager.AdulthoodWager".Translate());
+
+                    Rect AdulthoodinputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                    string bufferKey = "shuffle_adulthood_wager";
+                    if (!numericBuffers.ContainsKey(bufferKey))
+                        numericBuffers[bufferKey] = settingsGlobalChat.AdulthoodWager.ToString();
+
+                    string Adulthoodbuffer = numericBuffers[bufferKey];
+                    Widgets.TextFieldNumeric(AdulthoodinputRect, ref settingsGlobalChat.AdulthoodWager, ref Adulthoodbuffer, 1, 100000);
+                    numericBuffers[bufferKey] = Adulthoodbuffer;
+
+                    y += sectionHeight + 8f; // small padding
+                }
+
 
             }
             Widgets.EndScrollView();
@@ -1251,6 +1299,22 @@ namespace CAP_ChatInteractive
                 height += 28f; // Transfusion Cost
                 height += 28f; // Misc Biotech Cost
                 height += 28f; // Description (taller than normal)
+            }
+
+            // SHUFFLE CHILDHOOD-SPECIFIC SETTINGS HEIGHT
+            if (selectedCommand != null && selectedCommand.commandText.ToLower() == "shufflechildhood")
+            {
+                height += 10f;  // Extra spacing
+                height += 28f;  // Header
+                height += 28f;  // ChildhoodWager row
+            }
+
+            // SHUFFLE ADULTHOOD-SPECIFIC SETTINGS HEIGHT
+            if (selectedCommand != null && selectedCommand.commandText.ToLower() == "shuffleadulthood")
+            {
+                height += 10f;  // Extra spacing
+                height += 28f;  // Header
+                height += 28f;  // AdulthoodWager row
             }
 
             return height + 40f; // Extra padding for safety
