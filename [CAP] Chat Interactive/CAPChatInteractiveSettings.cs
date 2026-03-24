@@ -219,7 +219,7 @@ namespace CAP_ChatInteractive
         public bool SurgeryAllowMiscBiotech = true;
 
         // Passion Settings
-        public int MinPassionWager = 10;
+        public int MinPassionWager = 500;
         public int MaxPassionWager = 1000;
         public float BasePassionSuccessChance = 15.0f; // 15% base chance
         public float MaxPassionSuccessChance = 60.0f; // 60% max chance
@@ -234,6 +234,11 @@ namespace CAP_ChatInteractive
         public float CritSuccessUpgradeVsNewChance = 0.5f;   // upgrade existing vs gain new on crit success
         public float CritFailLoseVsWrongChance = 0.6f;       // lose passion vs gain useless on crit failure
         public float TargetedCritFailAffectTargetChance = 0.7f; // targeted crit-fail: hit chosen skill vs random
+
+        // Backstory Settings
+
+        public int ChildhoodWager = 1000;
+        public int AdulthoodWager = 1000;
 
 
         // Channel Points settings
@@ -345,6 +350,10 @@ namespace CAP_ChatInteractive
             // Surgery Command
             Scribe_Values.Look(ref SurgeryGenderSwapCost, "surgeryGenderSwapCost", 1000);
             Scribe_Values.Look(ref SurgeryBodyChangeCost, "surgeryBodyChangeCost", 800);
+
+            // Backstory Settings 
+            Scribe_Values.Look(ref ChildhoodWager, "childhoodWager", 1000);
+            Scribe_Values.Look(ref AdulthoodWager, "adulthoodWager", 1000);
 
             // Channel Points settings
             Scribe_Values.Look(ref ChannelPointsEnabled, "channelPointsEnabled", true);
