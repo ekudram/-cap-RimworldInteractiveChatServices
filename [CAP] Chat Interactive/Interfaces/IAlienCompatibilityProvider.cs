@@ -36,6 +36,13 @@ namespace _CAP__Chat_Interactive.Interfaces
 
         // Gender restriction methods
         bool IsGenderAllowed(ThingDef raceDef, Gender gender);
+
+        /// <summary>
+        /// Checks if a backstory is compatible with the pawn (HAR: uses AlienBackstoryDef.Approved(Pawn) for race/gender/age/xenotype restrictions).
+        /// Vanilla backstories always return true (matches RimWorld default behavior).
+        /// </summary>
+        bool IsBackstoryAllowed(BackstoryDef backstory, Pawn pawn);
+
         // HAR race restriction support (prevents "coins taken, item disappears" bug)
         /// <summary>
         /// Delegates to HAR's RaceRestrictionSettings.CanWear (verified from provided decompile).

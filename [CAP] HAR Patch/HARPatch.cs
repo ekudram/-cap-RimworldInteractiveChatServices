@@ -273,6 +273,25 @@ namespace CAP_ChatInteractive.Patch.HAR
             return (maleProb, femaleProb);
         }
 
+        /// <summary>
+        /// HAR-specific backstory compatibility (uses AlienBackstoryDef.Approved(Pawn) from provided BackstoryDef.cs).
+        /// Respects race restrictions, gender commonality, age ranges, and linked backstories.
+        /// Vanilla backstories always allowed (RimWorld default).
+        /// </summary>
+        public bool IsBackstoryAllowed(BackstoryDef backstory, Pawn pawn)
+        {
+            if (backstory == null || pawn == null) return false;
+
+            // HAR extended backstory – use its built-in Approved check (exact match to HAR wiki + provided source)
+            if (backstory is AlienRace.AlienBackstoryDef alienBackstory)
+            {
+                return alienBackstory.Approved(pawn);
+            }
+
+            // Vanilla backstory or non-HAR race – always compatible (RimWorld default behavior)
+            return true;
+        }
+
         // === NEW: HAR race restriction checks (uses exact statics from ThingDef_AlienRace.cs) ===
         // Prevents coin loss + silent item disappearance for !wear / !equip
         public bool CanWear(ThingDef apparel, ThingDef race)

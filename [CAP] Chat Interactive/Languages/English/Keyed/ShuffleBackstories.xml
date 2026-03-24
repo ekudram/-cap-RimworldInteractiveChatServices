@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- ============================================= -->
+  <!-- Childhood Backstory Shuffle Command (CHCH)   -->
+  <!-- ============================================= -->
+  <RICS.CHCH.NoStoryTracker>Pawn has no story component.</RICS.CHCH.NoStoryTracker>
+  <RICS.CHCH.NoChildhood>You have no childhood backstory to shuffle.</RICS.CHCH.NoChildhood>
+  <RICS.CHCH.InsufficientCoins>You need {0} coins to shuffle your childhood backstory.</RICS.CHCH.InsufficientCoins>
+  <RICS.CHCH.ColonistBackstory>Colonist backstories cannot be shuffled (no disabled jobs to remove).</RICS.CHCH.ColonistBackstory>
+  <RICS.CHCH.NoDisabledJobs>Your current backstory has no disabled jobs to remove.</RICS.CHCH.NoDisabledJobs>
+  <RICS.CHCH.NoValidAlternatives>No other valid childhood backstories available for your pawn's race/xenotype.</RICS.CHCH.NoValidAlternatives>
+
+  <!-- ============================================= -->
+  <!-- Adulthood Backstory Shuffle Command (ADCH)   -->
+  <!-- ============================================= -->
+  <RICS.ADCH.NoStoryTracker>Pawn has no story component.</RICS.ADCH.NoStoryTracker>
+  <RICS.ADCH.NoAdulthood>You have no adulthood backstory to shuffle.</RICS.ADCH.NoAdulthood>
+  <RICS.ADCH.InsufficientCoins>You need {0} coins to shuffle your adulthood backstory.</RICS.ADCH.InsufficientCoins>
+  <RICS.ADCH.NoDisabledJobs>Your current backstory has no disabled jobs to remove.</RICS.ADCH.NoDisabledJobs>
+  <RICS.ADCH.NoValidAlternatives>No other valid adulthood backstories available for your pawn's race/xenotype.</RICS.ADCH.NoValidAlternatives>
+
+</LanguageData>

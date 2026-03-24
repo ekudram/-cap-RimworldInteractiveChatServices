@@ -92,7 +92,7 @@
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
-  <!-- Viewer trait Commands -->
+  <!-- Viewer Commands -->
   
   <CAP_ChatInteractive.ChatCommandDef>
     <defName>Trait</defName>
@@ -197,6 +197,32 @@
 		<cooldownSeconds>0</cooldownSeconds>
 		<useCommandCooldown>true</useCommandCooldown>
 	</CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>ShuffleChildhood</defName>
+    <commandText>shufflechildhood</commandText>
+    <label>Shuffle Childhood</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.ShuffleChildhood</commandClass>
+    <requiresMod>true</requiresMod>
+    <commandDescription>Randomly selects a new childhood backstory.</commandDescription>
+    <permissionLevel>everyone</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>ShuffleAdulthood</defName>
+    <commandText>shuffleadulthood</commandText>
+    <label>Shuffle Childhood</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.ShuffleAdulthood</commandClass>
+    <requiresMod>true</requiresMod>
+    <commandDescription>Randomly selects a new adult backstory.</commandDescription>
+    <permissionLevel>everyone</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
   
 
   <!-- Viewer Economy Commands -->

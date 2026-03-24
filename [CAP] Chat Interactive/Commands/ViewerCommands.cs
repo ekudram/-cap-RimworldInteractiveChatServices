@@ -522,7 +522,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             return "RICS.CC.colonists.withViewers".Translate(colonistCount, viewerPawnCount, animalCount);
         }
     }
-
+    // Slated to be moved to its own command handler
     public class Storage : ChatCommand
     {
         public override string Name => "storage";
@@ -558,7 +558,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             }
 
             // Optional: log what was parsed for debugging
-           // Logger.Debug($"Storage command parsed: Item='{searchName}', Quality='{parsed.Quality}', Material='{parsed.Material}'");
+            // Logger.Debug($"Storage command parsed: Item='{searchName}', Quality='{parsed.Quality}', Material='{parsed.Material}'");
 
             // ────────────────────────────────────────────────
             // Collect all things in stockpiles + storage buildings
@@ -620,6 +620,26 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             string resultsStr = results.ToString().TrimEnd(' ', '|');
             return header + " " + resultsStr;
+        }
+    }
+
+    public class ShuffleChildhood : ChatCommand
+    {
+        public override string Name => "shufflechildhood";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            return ShuffleChildhoodCommandHandler.HandleShuffledChildhood(messageWrapper, args);
+        }
+    }
+
+    public class ShuffleAdulthood : ChatCommand
+    {
+        public override string Name => "shufflechildhood";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            return ShuffleChildhoodCommandHandler.HandleShuffledChildhood(messageWrapper, args);
         }
     }
 }
