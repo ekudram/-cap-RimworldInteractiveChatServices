@@ -98,11 +98,10 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             // Build viewer-friendly response (reuses StripTags from MyPawnCommandHandler)
             var report = new StringBuilder();
+            string oldLabel = MyPawnCommandHandler.StripTags(current.label);
             string newLabel = MyPawnCommandHandler.StripTags(newBackstory.label);
             report.AppendLine($"🎒 Childhood backstory shuffled for {cost}{settings.CurrencyName}!");
-            report.AppendLine($"New backstory: {newLabel}");
-            // Optional short description (uncomment if you want more detail in chat)
-            // report.AppendLine(MyPawnCommandHandler.StripTags(newBackstory.FullDescriptionFor(pawn).Substring(0, Math.Min(120, newBackstory.FullDescriptionFor(pawn).Length))));
+            report.AppendLine($"Old: {oldLabel} → New: {newLabel}");  // WHY: viewers love seeing the before/after on stream
 
             return report.ToString();
         }

@@ -20,4 +20,12 @@
   <RICS.ADCH.NoDisabledJobs>Your current backstory has no disabled jobs to remove.</RICS.ADCH.NoDisabledJobs>
   <RICS.ADCH.NoValidAlternatives>No other valid adulthood backstories available for your pawn's race/xenotype.</RICS.ADCH.NoValidAlternatives>
 
+  <!-- ============================================= -->
+  <!-- Command Manager UI - Shuffle Commands        -->
+  <!-- ============================================= -->
+  <CAP.CommandManager.ShuffleChildhoodSettings>Shuffle Childhood Settings</CAP.CommandManager.ShuffleChildhoodSettings>
+  <CAP.CommandManager.ChildhoodWager>Childhood Wager Cost</CAP.CommandManager.ChildhoodWager>
+  <CAP.CommandManager.ShuffleAdulthoodSettings>Shuffle Adulthood Settings</CAP.CommandManager.ShuffleAdulthoodSettings>
+  <CAP.CommandManager.AdulthoodWager>Adulthood Wager Cost</CAP.CommandManager.AdulthoodWager>
+
 </LanguageData>
