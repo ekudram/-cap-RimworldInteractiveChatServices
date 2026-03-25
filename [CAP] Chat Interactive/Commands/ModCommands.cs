@@ -115,8 +115,6 @@ namespace CAP_ChatInteractive.Commands.ModCommands
         }
     }
 
-    // In ToggleStore.cs (full class since it's new/simple)
-
     public class ToggleStore : ChatCommand
     {
         public override string Name => "togglestore";
