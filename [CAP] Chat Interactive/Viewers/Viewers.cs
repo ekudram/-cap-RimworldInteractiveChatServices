@@ -108,6 +108,23 @@ namespace CAP_ChatInteractive
             }
         }
 
+        public static Viewer GetViewerByPlatformIdentifier(string identifier)
+        {
+            if (string.IsNullOrEmpty(identifier)) return null;
+
+            if (identifier.Contains(':'))
+            {
+                var parts = identifier.Split(new[] { ':' }, 2);
+                if (parts.Length == 2)
+                    return GetViewerByPlatformId(parts[0], parts[1]);
+            }
+
+            if (identifier.All(char.IsDigit))
+                return GetViewerByPlatformId("twitch", identifier); // most common case
+
+            return GetViewer(identifier);
+        }
+
         public static Viewer GetViewerNoAdd(string username)
         {
             if (string.IsNullOrEmpty(username))
@@ -146,6 +163,12 @@ namespace CAP_ChatInteractive
         {
             try
             {
+                // === NEW: Clean up any bogus viewers before processing new messages ===
+                if (All.Count > 0 && Find.TickManager.TicksGame % 300 == 0) // every ~5 seconds
+                {
+                    RemoveDuplicateViewers();
+                }
+
                 var viewer = GetViewer(message);
                 if (viewer != null)
                 {
@@ -258,6 +281,8 @@ namespace CAP_ChatInteractive
             {
                 lock (_lock)
                 {
+                    RemoveDuplicateViewers();
+
                     var data = new ViewerData(All);
 
                     // Use Newtonsoft.Json instead of JsonUtility
@@ -323,47 +348,119 @@ namespace CAP_ChatInteractive
             {
                 lock (_lock)
                 {
-                    var uniqueViewers = new Dictionary<string, Viewer>();
-                    var duplicatesRemoved = 0;
-                    var coinsMerged = 0;
+                    var uniqueViewers = new Dictionary<string, Viewer>(StringComparer.OrdinalIgnoreCase);
+                    int duplicatesRemoved = 0;
+                    int coinsMerged = 0;
+                    int karmaMerged = 0;
+                    int bogusMerged = 0;
 
-                    foreach (var viewer in All)
+                    foreach (var viewer in All.ToList())
                     {
                         if (viewer == null) continue;
 
-                        if (uniqueViewers.TryGetValue(viewer.Username, out var existingViewer))
-                        {
-                            // Merge coins from duplicate
-                            coinsMerged += viewer.Coins;
-                            existingViewer.GiveCoins(viewer.Coins);
+                        // === Detect bogus viewers (username is actually a platform ID) ===
+                        bool isBogus = IsBogusViewer(viewer);
+                        string primaryKey = viewer.GetPrimaryPlatformIdentifier();
 
-                            // Merge platform IDs
-                            foreach (var platformId in viewer.PlatformUserIds)
+                        if (isBogus)
+                        {
+                            Logger.Warning($"[Viewer Cleanup] Found bogus viewer with platform-style username: '{viewer.Username}'");
+
+                            // Try to find or create the real viewer using platform ID
+                            Viewer realViewer = ResolveRealViewer(viewer);
+                            if (realViewer != null && realViewer != viewer)
                             {
-                                existingViewer.AddPlatformUserId(platformId.Key, platformId.Value);
+                                // Merge data from bogus → real
+                                coinsMerged += viewer.Coins;
+                                karmaMerged += viewer.Karma;
+                                realViewer.GiveCoins(viewer.Coins);
+                                realViewer.GiveKarma(viewer.Karma);
+
+                                // Transfer any platform IDs
+                                foreach (var plat in viewer.PlatformUserIds)
+                                {
+                                    realViewer.AddPlatformUserId(plat.Key, plat.Value);
+                                }
+
+                                All.Remove(viewer);
+                                bogusMerged++;
+                                Logger.Message($"[Viewer Cleanup] Merged bogus viewer '{viewer.Username}' → real viewer '{realViewer.Username}'");
+                                continue;
+                            }
+                        }
+
+                        // Normal deduplication by primary identifier
+                        if (uniqueViewers.TryGetValue(primaryKey, out var existing))
+                        {
+                            coinsMerged += viewer.Coins;
+                            karmaMerged += viewer.Karma;
+                            existing.GiveCoins(viewer.Coins);
+                            existing.GiveKarma(viewer.Karma);
+
+                            foreach (var plat in viewer.PlatformUserIds)
+                            {
+                                existing.AddPlatformUserId(plat.Key, plat.Value);
                             }
 
                             duplicatesRemoved++;
+                            Logger.Debug($"[Viewer Cleanup] Merged duplicate '{viewer.Username}' into '{existing.Username}'");
                         }
                         else
                         {
-                            uniqueViewers[viewer.Username] = viewer;
+                            uniqueViewers[primaryKey] = viewer;
                         }
                     }
 
                     All = uniqueViewers.Values.ToList();
 
-                    if (duplicatesRemoved > 0)
+                    if (bogusMerged > 0 || duplicatesRemoved > 0)
                     {
-                        Logger.Message($"Removed {duplicatesRemoved} duplicate viewers, merged {coinsMerged} coins");
+                        Logger.Message($"[Viewer Cleanup] Completed: {bogusMerged} bogus viewers merged, {duplicatesRemoved} duplicates removed. " +
+                                       $"+{coinsMerged} coins and +{karmaMerged} karma merged.");
                         SaveViewers();
                     }
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error removing duplicate viewers: {ex.Message}");
+                Logger.Error($"Error in RemoveDuplicateViewers: {ex.Message}");
             }
+        }
+
+        // Helper to detect bogus viewers
+        private static bool IsBogusViewer(Viewer viewer)
+        {
+            if (viewer == null) return false;
+
+            string u = viewer.Username ?? "";
+            return u.Contains(":") ||
+                   (u.All(char.IsDigit) && u.Length >= 5); // Twitch IDs are usually 8+ digits
+        }
+
+        // Helper to resolve the real viewer from a bogus one
+        private static Viewer ResolveRealViewer(Viewer bogusViewer)
+        {
+            // Try platform IDs first
+            foreach (var plat in bogusViewer.PlatformUserIds)
+            {
+                var real = GetViewerByPlatformId(plat.Key, plat.Value);
+                if (real != null) return real;
+            }
+
+            // Try extracting ID from username if it looks like "twitch:12345" or just "12345"
+            string id = bogusViewer.Username;
+            if (id.Contains(":"))
+            {
+                id = id.Split(new[] { ':' }, 2)[1];
+            }
+
+            if (!string.IsNullOrEmpty(id))
+            {
+                var real = GetViewerByPlatformId("twitch", id) ?? GetViewerByPlatformId("youtube", id);
+                if (real != null) return real;
+            }
+
+            return null;
         }
 
         public static void ResetAllCoins()
