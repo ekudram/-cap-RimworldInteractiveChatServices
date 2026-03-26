@@ -67,7 +67,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             // Must have disabled jobs (core purpose of the command – same rule as childhood)
             if (current.workDisables == WorkTags.None)
             {
-                return "RICS.ADCH.NoDisabledJobs".Translate(); // Translation key: RICS.ADCH.NoDisabledJobs – "Your current backstory has no disabled jobs to remove."
+                return "RICS.ADCH.NoDisabledJobs".Translate();
             }
 
             // Get compatible adulthood backstories (race + xenotype restrictions respected via DefDatabase filter + HAR)
@@ -78,10 +78,9 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             if (valid.Count == 0)
             {
-                return "RICS.ADCH.NoValidAlternatives".Translate(); // Translation key: RICS.ADCH.NoValidAlternatives – "No other valid adulthood backstories available for your pawn's race/xenotype."
+                return "RICS.ADCH.NoValidAlternatives".Translate();
             }
 
-            // Shuffle & apply (RimWorld limitation: stats/skills are not retroactively adjusted)
             // Shuffle & apply (RimWorld limitation: stats/skills are not retroactively adjusted)
             BackstoryDef newBackstory = valid.RandomElement();
             pawn.story.Adulthood = newBackstory;
@@ -89,14 +88,15 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             // Deduct cost (viewer data is persisted via GameComponent / Viewers static save)
             viewer.Coins -= cost;
 
-            // Build viewer-friendly response (reuses StripTags from MyPawnCommandHandler)
+            // Build viewer-friendly response with safe StripTags
             var report = new StringBuilder();
-            string oldLabel = MyPawnCommandHandler.StripTags(current.label);
-            string newLabel = MyPawnCommandHandler.StripTags(newBackstory.label);
-            report.AppendLine($"🎒 Adulthood backstory shuffled for {cost}{settings.CurrencyName}!");
-            report.AppendLine($"Old: {oldLabel} → New: {newLabel}");  // WHY: viewers love seeing the before/after on stream
+            string oldLabel = current?.label != null ? MyPawnCommandHandler.StripTags(current.label) : "Unknown";
+            string newLabel = newBackstory?.label != null ? MyPawnCommandHandler.StripTags(newBackstory.label) : "Unknown";
 
-            return report.ToString();
+            report.AppendLine($"🎒 Adulthood backstory shuffled for {cost}{settings.CurrencyName}!");
+            report.AppendLine($"Old: {oldLabel} → New: {newLabel}");
+
+            Logger.Debug($"[ShuffleAdulthood] Success - {oldLabel} → {newLabel} for viewer {viewer?.Username}"); return report.ToString();
         }
 
         // Helper – uses vanilla RimWorld DefDatabase + race/xenotype filtering (HAR-aware)

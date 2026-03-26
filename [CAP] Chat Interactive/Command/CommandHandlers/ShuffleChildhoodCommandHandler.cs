@@ -64,18 +64,18 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             BackstoryDef current = pawn.story.Childhood;
 
-            // Special-case Colonist backstory (born in colony – has no disabled jobs)
+            // Special-case Colonist backstory (born in the colony – has no disabled jobs)
             if (current.defName == "Colonist" ||
-                current.label.ToLowerInvariant().Contains("colonist") ||
-                current.titleShort.ToLowerInvariant().Contains("colonist"))
+                (current.label?.ToLowerInvariant().Contains("colonist") ?? false) ||
+                (current.titleShort?.ToLowerInvariant().Contains("colonist") ?? false))
             {
-                return "RICS.CHCH.ColonistBackstory".Translate(); // Translation key: RICS.CHCH.ColonistBackstory – "Colonist backstories cannot be shuffled (no disabled jobs to remove)."
+                return "RICS.CHCH.ColonistBackstory".Translate();
             }
 
             // Must have disabled jobs (core purpose of the command)
             if (current.workDisables == WorkTags.None)
             {
-                return "RICS.CHCH.NoDisabledJobs".Translate(); // Translation key: RICS.CHCH.NoDisabledJobs – "Your current backstory has no disabled jobs to remove."
+                return "RICS.CHCH.NoDisabledJobs".Translate();
             }
 
             // Get compatible childhood backstories (race + xenotype restrictions respected via DefDatabase filter)
@@ -86,7 +86,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             if (valid.Count == 0)
             {
-                return "RICS.CHCH.NoValidAlternatives".Translate(); // Translation key: RICS.CHCH.NoValidAlternatives – "No other valid childhood backstories available for your pawn's race/xenotype."
+                return "RICS.CHCH.NoValidAlternatives".Translate();
             }
 
             // Shuffle & apply (RimWorld limitation: stats/skills are not retroactively adjusted)
@@ -96,12 +96,15 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             // Deduct cost (viewer data is persisted via GameComponent / Viewers static save)
             viewer.Coins -= cost;
 
-            // Build viewer-friendly response (reuses StripTags from MyPawnCommandHandler)
+            // Build viewer-friendly response with safe StripTags
             var report = new StringBuilder();
-            string oldLabel = MyPawnCommandHandler.StripTags(current.label);
-            string newLabel = MyPawnCommandHandler.StripTags(newBackstory.label);
+            string oldLabel = current?.label != null ? MyPawnCommandHandler.StripTags(current.label) : "Unknown";
+            string newLabel = newBackstory?.label != null ? MyPawnCommandHandler.StripTags(newBackstory.label) : "Unknown";
+
             report.AppendLine($"🎒 Childhood backstory shuffled for {cost}{settings.CurrencyName}!");
-            report.AppendLine($"Old: {oldLabel} → New: {newLabel}");  // WHY: viewers love seeing the before/after on stream
+            report.AppendLine($"Old: {oldLabel} → New: {newLabel}");
+
+            Logger.Debug($"[ShuffleChildhood] Success - {oldLabel} → {newLabel} for viewer {viewer?.Username}");
 
             return report.ToString();
         }
