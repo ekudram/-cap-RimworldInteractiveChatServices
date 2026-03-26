@@ -520,8 +520,8 @@ namespace CAP_ChatInteractive
                     Rect selectRect = new Rect(260f, y, 80f, rowHeight - 4f);
                     if (Widgets.ButtonText(selectRect, "RICS.Button.Select".Translate()))
                     {
-                        selectedUsername = username; // Store username for assignment
-                        selectedUserPlatformID = platformId;
+                        selectedUsername = username;           // ← username (good)
+                        selectedUserPlatformID = platformId;   // ← platform ID (good)
                     }
 
                     Rect removeRect = new Rect(345f, y, 80f, rowHeight - 4f);
@@ -601,9 +601,20 @@ namespace CAP_ChatInteractive
                 return;
             }
 
-            // Select random viewer from queue
-            string randomViewer = queue[Rand.Range(0, queue.Count)];
-            selectedUsername = randomViewer;
+            // Pick random platform identifier (e.g. "twitch:73481379")
+            string randomPlatformId = queue[Rand.Range(0, queue.Count)];
+
+            // RESOLVE to proper Viewer object
+            Viewer viewer = Viewers.GetViewerByPlatformIdentifier(randomPlatformId);  // ← Use the method from previous suggestion
+            if (viewer == null)
+            {
+                Messages.Message("RICS.Message.ViewerNotFound".Translate(randomPlatformId), MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            // Use real human-readable data for UI/assignment
+            selectedUsername = viewer.Username;           // Real username
+            selectedUserPlatformID = randomPlatformId;    // Keep platform ID for security
 
             // Auto-select first available pawn if none selected
             if (selectedPawn == null && filteredPawns.Count > 0)
@@ -611,8 +622,8 @@ namespace CAP_ChatInteractive
                 selectedPawn = filteredPawns[0];
             }
 
-            // Messages.Message($"Selected {randomViewer} from queue", MessageTypeDefOf.NeutralEvent);
-            Messages.Message("RICS.Message.SelectedRandomViewer".Translate(randomViewer), MessageTypeDefOf.NeutralEvent);
+            Messages.Message("RICS.Message.SelectedRandomViewer".Translate(viewer.DisplayName ?? viewer.Username),
+                             MessageTypeDefOf.NeutralEvent);
         }
 
         private void SendPawnOffer(string username, string platformID, Pawn pawn)
@@ -653,6 +664,17 @@ namespace CAP_ChatInteractive
         private void AssignPawnDirectly(string username, string platformID, Pawn pawn)
         {
             var queueManager = GetQueueManager();
+
+            // If platformID is missing but username looks like a platform ID, try to resolve
+            if (string.IsNullOrEmpty(platformID) && !string.IsNullOrEmpty(username))
+            {
+                Viewer viewer = Viewers.GetViewerByPlatformIdentifier(username);
+                if (viewer != null)
+                {
+                    username = viewer.Username;                    // Fix username
+                    platformID = viewer.GetPrimaryPlatformIdentifier(); // Fix platform ID
+                }
+            }
 
             // Validate that we have a valid platform ID
             if (string.IsNullOrEmpty(platformID))
