@@ -7,9 +7,10 @@
   <RICS.CHCH.NoStoryTracker>Pawn has no story component.</RICS.CHCH.NoStoryTracker>
   <RICS.CHCH.NoChildhood>You have no childhood backstory to shuffle.</RICS.CHCH.NoChildhood>
   <RICS.CHCH.InsufficientCoins>You need {0} coins to shuffle your childhood backstory.</RICS.CHCH.InsufficientCoins>
-  <RICS.CHCH.ColonistBackstory>Colonist backstories cannot be shuffled (no disabled jobs to remove).</RICS.CHCH.ColonistBackstory>
+  <RICS.CHCH.ColonistBackstory>Colonist backstories cannot be shuffled. They have no disabled jobs to remove.</RICS.CHCH.ColonistBackstory>
   <RICS.CHCH.NoDisabledJobs>Your current backstory has no disabled jobs to remove.</RICS.CHCH.NoDisabledJobs>
   <RICS.CHCH.NoValidAlternatives>No other valid childhood backstories available for your pawn's race/xenotype.</RICS.CHCH.NoValidAlternatives>
+  <RICS.ADCH.ChildBackstoryShuffled>🎒 Childhood backstory shuffled for {0}!</RICS.ADCH.ChildBackstoryShuffled>
 
   <!-- ============================================= -->
   <!-- Adulthood Backstory Shuffle Command (ADCH)   -->
@@ -19,6 +20,8 @@
   <RICS.ADCH.InsufficientCoins>You need {0} coins to shuffle your adulthood backstory.</RICS.ADCH.InsufficientCoins>
   <RICS.ADCH.NoDisabledJobs>Your current backstory has no disabled jobs to remove.</RICS.ADCH.NoDisabledJobs>
   <RICS.ADCH.NoValidAlternatives>No other valid adulthood backstories available for your pawn's race/xenotype.</RICS.ADCH.NoValidAlternatives>
+  <RICS.ADCH.AdultBackstoryShuffled>🎒 Adulthood backstory shuffled for {0}!</RICS.ADCH.AdultBackstoryShuffled>
+  <RICS.ADCH.OldToNew>Old: {0} → New: {1}</RICS.ADCH.OldToNew> <!--Re-used adult for child as is same-->
 
   <!-- ============================================= -->
   <!-- Command Manager UI - Shuffle Commands        -->
