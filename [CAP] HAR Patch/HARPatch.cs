@@ -282,13 +282,22 @@ namespace CAP_ChatInteractive.Patch.HAR
         {
             if (backstory == null || pawn == null) return false;
 
-            // HAR extended backstory – use its built-in Approved check (exact match to HAR wiki + provided source)
+            // === HAR Alien Backstory Handling ===
             if (backstory is AlienRace.AlienBackstoryDef alienBackstory)
             {
+                // Extra protection: Never allow alien backstories on base humans
+                if (pawn.def == ThingDefOf.Human)
+                {
+                    Logger.Debug($"[HAR Backstory Filter] Blocked alien backstory '{backstory.defName}' for human pawn");
+                    return false;
+                }
+
+                // Use HAR's own approval logic (gender commonality, age ranges, etc.)
                 return alienBackstory.Approved(pawn);
             }
 
-            // Vanilla backstory or non-HAR race – always compatible (RimWorld default behavior)
+            // === Vanilla or other mod backstories ===
+            // Always allow non-alien backstories (this lets other mods that add backstories still work)
             return true;
         }
 

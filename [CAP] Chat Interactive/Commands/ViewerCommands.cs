@@ -639,7 +639,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
-            return ShuffleChildhoodCommandHandler.HandleShuffledChildhood(messageWrapper, args);
+            return ShuffleAdulthoodCommandHandler.HandleShuffledAdulthood(messageWrapper, args);
         }
     }
 }

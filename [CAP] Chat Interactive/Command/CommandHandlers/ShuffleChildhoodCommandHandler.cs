@@ -14,13 +14,15 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-//
-// Commands that viewers can use to interact with the game
+
 using CAP_ChatInteractive.Commands.CommandHandlers;
+using HarmonyLib;
 using RimWorld;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using UnityEngine;
 using Verse;
 
 namespace CAP_ChatInteractive.Commands.ViewerCommands
@@ -64,18 +66,12 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             BackstoryDef current = pawn.story.Childhood;
 
-            // Special-case Colonist backstory (born in the colony – has no disabled jobs)
+            // Special-case Colonist backstory (born in the colony)
             if (current.defName == "Colonist" ||
                 (current.label?.ToLowerInvariant().Contains("colonist") ?? false) ||
                 (current.titleShort?.ToLowerInvariant().Contains("colonist") ?? false))
             {
                 return "RICS.CHCH.ColonistBackstory".Translate();
-            }
-
-            // Must have disabled jobs (core purpose of the command)
-            if (current.workDisables == WorkTags.None)
-            {
-                return "RICS.CHCH.NoDisabledJobs".Translate();
             }
 
             // Get compatible childhood backstories (race + xenotype restrictions respected via DefDatabase filter)
@@ -93,16 +89,31 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             BackstoryDef newBackstory = valid.RandomElement();
             pawn.story.Childhood = newBackstory;
 
+            // Restore any work types that are no longer blocked (fixes firefighting, etc.)
+            BackstoryUtility.RestoreBackstoryEffects(pawn, current, newBackstory);
+
             // Deduct cost (viewer data is persisted via GameComponent / Viewers static save)
             viewer.Coins -= cost;
 
             // Build viewer-friendly response with safe StripTags
             var report = new StringBuilder();
-            string oldLabel = current?.label != null ? MyPawnCommandHandler.StripTags(current.label) : "Unknown";
-            string newLabel = newBackstory?.label != null ? MyPawnCommandHandler.StripTags(newBackstory.label) : "Unknown";
 
-            report.AppendLine($"🎒 Childhood backstory shuffled for {cost}{settings.CurrencyName}!");
-            report.AppendLine($"Old: {oldLabel} → New: {newLabel}");
+            // Use TitleCapFor(pawn.gender) — this is the correct vanilla way (handles gender variants + translation)
+            string oldLabel = current != null
+                            ? MyPawnCommandHandler.StripTags(current.TitleCapFor(pawn.gender) ?? current.title ?? current.defName)
+                            : "Unknown";
+
+            string newLabel = newBackstory != null
+                ? MyPawnCommandHandler.StripTags(newBackstory.TitleCapFor(pawn.gender) ?? newBackstory.title ?? newBackstory.defName)
+                : "Unknown";
+
+            // Add space between cost and currency symbol for readability
+            string coinDisplay = $"{cost} {settings.CurrencyName.Trim()}";
+
+            // report.AppendLine($"🎒 Childhood backstory shuffled for {coinDisplay}!");
+            report.AppendLine("RICS.ADCH.ChildBackstoryShuffled".Translate(coinDisplay));
+            // report.AppendLine($"Old: {oldLabel} → New: {newLabel}");  Re-used adult as is same
+            report.AppendLine("RICS.ADCH.OldToNew".Translate(oldLabel, newLabel));
 
             Logger.Debug($"[ShuffleChildhood] Success - {oldLabel} → {newLabel} for viewer {viewer?.Username}");
 
