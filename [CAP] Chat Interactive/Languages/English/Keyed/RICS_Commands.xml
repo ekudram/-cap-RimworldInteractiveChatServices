@@ -362,6 +362,10 @@
     Gave {0} coins to {1}. {1} now has {2} coins.
   </RICS.CC.givecoins.success>
 
+  <RICS.CC.givecoins>
+    Gave {0} coins to all viewers.
+  </RICS.CC.givecoins>
+
   <!-- ToggleStore -->
   <RICS.CC.togglestore.success>
     Store commands now {0}!
