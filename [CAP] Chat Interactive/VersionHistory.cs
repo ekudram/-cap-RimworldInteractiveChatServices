@@ -696,7 +696,6 @@ Contributors:
             },
             {"1.25",
                 "** RICS Update 1.25 **\r\n\r\n" +
-                " RICS Update 1.25\r\n\r\n" +
                 "🛠️  Fixed\r\n" +
                 "Proper Icon now used in Store Editor for Checkbox\r\n\r\n" +
                 "✨ Added\r\n" +
@@ -705,8 +704,25 @@ Contributors:
                 "MyPawnCommandHandler.xml -  Added translation under psycasts, at the bottom\r\n" +
                 "RICS.MPCH.NoPsycastsLazyInit\r\nRICS.MPCH.NoPsycastsVPE\r\nRICS_Commands.xml\r\n" +
                 "RICS.CC.Buy.PurchaseLimit <- Added was missing"
-            }
-                
+            },
+            {"1.26",
+                "** RICS Update 1.26**\r\n\r\n" +
+                ":ballot_box_with_check:**Updated**}\r\n" +
+                "- Duplicate viewer removal to remove names with ID in them and combine them.\r\n\r\n" +
+                ":tools:  **Fixed**\r\n" +
+                "- !mypawn skills, now has seperator between skills for easier reading\r\n" +
+                "- Pawn que should properly assign as by ID and not name.  Name should now be Correct on pawn.\r\n\r\n" +
+                ":sparkles: **Added**\r\n" +
+                "- !shufflechildhood, Defualt cost is 1000 coins\r\n" +
+                "- !shuffleadulthood, Defualt cost is 1000 coins\r\n\r\n" +
+                "The shuffle commands will only shuffle back stories withen limits:\r\n" +
+                "Must have a backstory to shuffle,\r\n" +
+                "Cannot shuffle if born in colony.\r\n" +
+                "Can only get backstories based on Race and Xenotype restrictions.\r\n\r\n" +
+                ":speaker: **Translations**\r\n" +
+                "- ShuffleBackstories.xml (new file)\r\n" +
+                "- RICS_Commands.xml Added Key RICS.CC.givecoins"
+            }    
                 
                 
             // Add more versions here as they're released
