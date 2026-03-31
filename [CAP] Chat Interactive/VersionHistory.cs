@@ -722,10 +722,19 @@ Contributors:
                 ":speaker: **Translations**\r\n" +
                 "- ShuffleBackstories.xml (new file)\r\n" +
                 "- RICS_Commands.xml Added Key RICS.CC.givecoins"
-            }    
+            },
+            { "1.27",
+                @"===========================================================
+                         RICS 1.27 - Changelog
+                         Released: March 31 2026 
                 
-                
-            // Add more versions here as they're released
+Fixed:
+- !replacetrait exploit where you could replace a trait with a bypass trait to get more traits.  Now checks for bypass traits and blocks them from being used in replacetrait command.
+- !passion command settings now allows for decimals when changing settings.
+- HARPatch Fix. Now properly checks for HAR patch and applies HAR restrictions for backstories."
+            }
+
+            // Add more versions here as they're released+
 
 
         };

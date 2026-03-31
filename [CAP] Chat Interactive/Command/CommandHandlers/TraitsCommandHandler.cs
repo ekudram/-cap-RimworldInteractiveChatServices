@@ -342,6 +342,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.TCH.Replace.NewCannotAdd".Translate(newBuyableTrait.Name);
                 }
 
+                // === ANTI-EXPLOIT: BypassLimit check for replacement ===
+                // If the old trait bypasses the limit, we still enforce MaxTraits when replacing it
+                // (prevents "replace bypass-trait → add any trait" when already at cap).
+                // New trait's BypassLimit is ignored here — the limit is on total count, not per-trait.
+                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                int maxTraits = settings?.MaxTraits ?? 4;
+
+                bool oldBypasses = oldBuyableTrait.BypassLimit;
+                bool newBypasses = newBuyableTrait.BypassLimit;
+
+                int currentCount = pawn.story.traits.allTraits.Count;
+
+                if (oldBypasses && currentCount >= maxTraits)
+                {
+                    // We are removing a bypass trait but pawn is already at (or over) the hard limit
+                    // → do not allow the replacement unless the new trait also bypasses (rare edge case).
+                    // For safety we block if old was bypass and we're at limit.
+                    return "RICS.TCH.Replace.MaxTraitsReached".Translate(maxTraits);
+                }
+
                 TraitDef oldTraitDef = DefDatabase<TraitDef>.GetNamedSilentFail(oldBuyableTrait.DefName);
                 TraitDef newTraitDef = DefDatabase<TraitDef>.GetNamedSilentFail(newBuyableTrait.DefName);
 
@@ -363,11 +383,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.TCH.Replace.DoesNotHaveOld".Translate(oldBuyableTrait.Name);
                 }
 
+
                 if (existingTrait.sourceGene != null || existingTrait.ScenForced)
                 {
                     return "RICS.TCH.Replace.OldTraitForced".Translate(oldBuyableTrait.Name);
                 }
-
+                currentCount = pawn.story.traits.allTraits.Count;
                 // Check if pawn already has the new trait (different from old)
                 if (oldBuyableTrait.DefName != newBuyableTrait.DefName || oldBuyableTrait.Degree != newBuyableTrait.Degree)
                 {
@@ -392,7 +413,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 int totalCost = oldBuyableTrait.RemovePrice + newBuyableTrait.AddPrice;
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
                 if (viewer.Coins < totalCost)

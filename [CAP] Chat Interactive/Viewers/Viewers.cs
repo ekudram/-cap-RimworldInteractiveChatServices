@@ -521,7 +521,7 @@ namespace CAP_ChatInteractive
                     Logger.Debug($"Viewer: {viewer.Username}");
                     foreach (var platformId in viewer.PlatformUserIds)
                     {
-                        Logger.Debug($"  {platformId.Key}: {platformId.Value}");
+                        Logger.Debug($"  Platform ID: {platformId.Key}: {platformId.Value}");
                     }
                     if (viewer.PlatformUserIds.Count == 0)
                     {
