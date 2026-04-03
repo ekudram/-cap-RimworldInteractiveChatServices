@@ -1,6 +1,6 @@
 ﻿// JsonFileManager.cs
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
+// This file is part of CAP Chat Interactive aka RICS (Rimworld Interactive Chat System).
 // 
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
@@ -14,6 +14,7 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+
 // Manages JSON file operations for the CAP Chat Interactive mod.
 // Handles loading, saving, and serialization/deserialization of various mod data types.
 using _CAP__Chat_Interactive.Utilities;
@@ -76,7 +77,12 @@ namespace CAP_ChatInteractive
                 return null;
             }
         }
-
+        /// <summary>
+        /// Saves Json content to a file with error handling. Special case for ActiveMods.json to avoid spamming logs on read-only disks.
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <param name="content"></param>
+        /// <returns></returns>
         public static bool SaveFile(string fileName, string content)
         {
             try
@@ -88,7 +94,15 @@ namespace CAP_ChatInteractive
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error saving file {fileName}: {ex.Message}");
+                // Special handling for ActiveMods.json so it doesn't spam on every startup if disk is read-only
+                if (fileName == "ActiveMods.json")
+                {
+                    Logger.Warning($"Could not save ActiveMods.json (this is non-critical): {ex.Message}");
+                }
+                else
+                {
+                    Logger.Error($"Error saving file {fileName}: {ex.Message}");
+                }
                 return false;
             }
         }

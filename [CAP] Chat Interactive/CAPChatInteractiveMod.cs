@@ -18,6 +18,7 @@
 // Store, Traits, Weather, and other systems will be initialized when the game starts.
 
 using _CAP__Chat_Interactive.Interfaces;
+using CAP_ChatInteractive.Utilities;
 using RimWorld;
 using System;   
 using System.IO;
@@ -53,6 +54,10 @@ namespace CAP_ChatInteractive
                 Settings.GlobalSettings.modVersionSaved = Settings.GlobalSettings.modVersion;
                 Logger.Debug($"Initialized modVersionSaved to {Settings.GlobalSettings.modVersion}");
             }
+
+            // Export active mod list once at startup for external RICS-Pricelist GitHub use
+            // This is fire-and-forget and never reads the file back
+            ActiveModsExporter.ExportActiveMods();
 
             // INITIALIZE ALIEN PROVIDER HERE - AT MOD STARTUP
             Logger.Debug("=== INITIALIZING ALIEN COMPATIBILITY AT MOD STARTUP ===");
