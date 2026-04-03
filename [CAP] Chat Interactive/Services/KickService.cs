@@ -20,19 +20,44 @@
 // FULLY SYNCHRONOUS (.Result) to bypass Mono async state machine crash
 // Matches YouTubeChatService.cs stability exactly. No Disconnect() needed (polling).
 
+using Newtonsoft.Json;
 using RimWorld;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Verse;
 
 namespace CAP_ChatInteractive
 {
+    /// <summary>
+    /// MONO ASYNC CRASH PATTERNS — RICS KICK SERVICE (EXPLANATION FOR MAINTAINERS)
+    /// 
+    /// RimWorld 1.6 uses Mono (Unity 2022.3 + .NET 4.7.2). Async/await state machines are broken in Mono's JIT:
+    ///   • Any .Result / .Wait() inside an async method (or lambda) triggers "System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1:Start"
+    ///   • Mono cannot resume the state machine after the blocking call → hard crash with stack in Mono JIT Code.
+    /// 
+    /// Classic patterns that crash:
+    ///   1. async void / async Task method calling .Result directly
+    ///   2. Task.Run(() => SomeAsyncMethod().Result) without try/catch(AggregateException)
+    ///   3. .Wait() on WebSocket.ConnectAsync / SendAsync inside Connect()
+    /// 
+    /// Our fix (matches YouTubeChatService.cs exactly):
+    ///   • Everything runs inside Task.Run(() => InitializeAndConnectSynchronous())
+    ///   • Split every .Result into separate statements (postTask.Result then readTask.Result)
+    ///   • ALWAYS catch AggregateException + .Flatten() + use LongEventHandler.ExecuteWhenFinished for UI messages
+    ///   • User-Agent header prevents silent Kick API rejection
+    ///   • No Disconnect() needed — polling model like Twitch
+    /// 
+    /// This is why RefreshAccessToken was crashing before and why we hardened GetChatroomId + ConnectPusher.
+    /// DO NOT change back to async/await or single-line .Result — it will crash again.
+    /// </summary>
     public class KickService
     {
         private readonly StreamServiceSettings _settings;
@@ -55,6 +80,7 @@ namespace CAP_ChatInteractive
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
             _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "RICS-RimWorld-Mod/1.6");
             Logger.Debug($"KickService constructor — Channel: {_settings.ChannelName}, HasClientId: {!string.IsNullOrEmpty(_settings.ClientId)}");
         }
 
@@ -118,7 +144,14 @@ namespace CAP_ChatInteractive
 
                 if (!RefreshAccessTokenSynchronous()) return;
 
+                // === NEW TRANSITION LOGS (this is where the old crash happened) ===
+                Logger.Debug("✅ OAuth succeeded — calling GetChatroomIdSynchronous() now...");
+                Logger.Debug($"Token length: {_accessToken?.Length ?? 0}");
+
                 _chatroomId = GetChatroomIdSynchronous();
+
+                Logger.Debug($"GetChatroomIdSynchronous() returned: '{_chatroomId ?? "NULL"}'");
+
                 if (string.IsNullOrEmpty(_chatroomId))
                 {
                     LongEventHandler.ExecuteWhenFinished(() =>
@@ -147,75 +180,82 @@ namespace CAP_ChatInteractive
 
         private bool RefreshAccessTokenSynchronous()
         {
+            Logger.Debug("Kick: Starting OAuth request (HttpClient version)");
+
             try
             {
-                Logger.Debug("Kick: Starting OAuth request to https://id.kick.com/oauth/token");
-
-                // User-Agent required by some Kick endpoints (prevents silent rejection on background threads)
-                if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
+                var form = new FormUrlEncodedContent(new Dictionary<string, string>
                 {
-                    _httpClient.DefaultRequestHeaders.Add("User-Agent", "RICS-RimWorld-Mod/1.6");
-                }
+                    {"grant_type", "client_credentials"},
+                    {"client_id", _settings.ClientId},
+                    {"client_secret", _settings.ClientSecret}
+                });
 
-                var form = new Dictionary<string, string>
-                {
-                    { "grant_type", "client_credentials" },
-                    { "client_id", _settings.ClientId },
-                    { "client_secret", _settings.ClientSecret }
-                    // NO scope parameter — exactly matches Kick's official client_credentials example
-                };
+                var postTask = _httpClient.PostAsync("https://id.kick.com/oauth/token", form);
+                var response = postTask.Result;
 
-                // Split .Result calls + explicit AggregateException handling (Mono state-machine crash fix)
-                var response = _httpClient.PostAsync("https://id.kick.com/oauth/token", new FormUrlEncodedContent(form)).Result;
-                string body = response.Content.ReadAsStringAsync().Result;
+                var readTask = response.Content.ReadAsStringAsync();
+                string body = readTask.Result;
 
-                Logger.Debug($"Kick OAuth response — Status: {response.StatusCode} | Body: {body}");
+                Logger.Debug($"Kick OAuth response — Status: {response.StatusCode} | Body length: {body.Length}");
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    Logger.Error($"Kick OAuth failed — Status: {response.StatusCode} | Body: {body}");
+                    Logger.Error($"OAuth failed: {response.StatusCode} - {body}");
                     return false;
                 }
 
                 var tokenResponse = JsonConvert.DeserializeObject<KickTokenResponse>(body);
-                if (tokenResponse == null || string.IsNullOrEmpty(tokenResponse.AccessToken))
+                _accessToken = tokenResponse?.AccessToken;
+
+                if (string.IsNullOrEmpty(_accessToken))
                 {
                     Logger.Error("Kick OAuth succeeded but returned no token");
                     return false;
                 }
 
-                _accessToken = tokenResponse.AccessToken;
-                _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
-                Logger.Debug("✅ Kick OAuth token acquired");
+                Logger.Debug("✅ Kick OAuth token acquired (HttpClient)");
                 return true;
             }
             catch (AggregateException aex)
             {
                 aex = aex.Flatten();
-                var inner = aex.InnerException ?? aex;
-                Logger.Error($"Kick OAuth AggregateException: {inner.Message}\n{inner.StackTrace}");
-                LongEventHandler.ExecuteWhenFinished(() =>
-                    Messages.Message("Kick: OAuth failed (credentials/network) — check Player.log", MessageTypeDefOf.NegativeEvent));
+                Logger.Error($"OAuth AggregateException: {aex.InnerException?.Message ?? aex.Message}");
                 return false;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Kick OAuth crashed: {ex.Message}\n{ex.StackTrace}");
+                Logger.Error($"Kick OAuth sync crashed: {ex.Message}\n{ex.StackTrace}");
                 LongEventHandler.ExecuteWhenFinished(() =>
-                    Messages.Message("Kick: OAuth unexpected crash — check Player.log", MessageTypeDefOf.NegativeEvent));
+                    Messages.Message("Kick: OAuth failed (credentials/network) — check Player.log", MessageTypeDefOf.NegativeEvent));
                 return false;
             }
         }
 
         private string GetChatroomIdSynchronous()
         {
+            Logger.Debug($"Kick: Fetching chatroom ID for channel '{_settings.ChannelName}' (HttpClient version)");
+
             try
             {
-                var response = _httpClient.GetAsync($"https://api.kick.com/api/v2/channels/{_settings.ChannelName.ToLowerInvariant()}").Result;
+                string url = $"https://api.kick.com/api/v2/channels/{_settings.ChannelName.ToLowerInvariant()}";
+                Logger.Debug($"Kick: GET {url}");
+
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+
+                var sendTask = _httpClient.SendAsync(request);
+                var response = sendTask.Result;
+
                 response.EnsureSuccessStatusCode();
 
-                var json = JsonConvert.DeserializeObject<dynamic>(response.Content.ReadAsStringAsync().Result);
-                string id = json?.data?.chatroom?.id?.ToString();
+                var readTask = response.Content.ReadAsStringAsync();
+                string jsonText = readTask.Result;
+
+                Logger.Debug($"Kick channels API response — Status: {response.StatusCode} | Body length: {jsonText.Length}");
+
+                var channelResp = JsonConvert.DeserializeObject<KickChannelResponse>(jsonText);
+                string id = channelResp?.data?.chatroom?.id?.ToString();
 
                 if (string.IsNullOrEmpty(id))
                 {
@@ -223,13 +263,23 @@ namespace CAP_ChatInteractive
                     LongEventHandler.ExecuteWhenFinished(() =>
                         Messages.Message($"Kick: Channel '{_settings.ChannelName}' not live or chat disabled", MessageTypeDefOf.NegativeEvent));
                 }
+                else
+                {
+                    Logger.Debug($"✅ Kick chatroom ID resolved: {id}");
+                }
                 return id;
+            }
+            catch (AggregateException aex)
+            {
+                aex = aex.Flatten();
+                Logger.Error($"GetChatroomId AggregateException: {aex.InnerException?.Message ?? aex.Message}");
+                return null;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Failed to resolve Kick chatroom ID: {ex.Message}");
+                Logger.Error($"Failed to resolve Kick chatroom ID: {ex.Message}\n{ex.StackTrace}");
                 LongEventHandler.ExecuteWhenFinished(() =>
-                    Messages.Message($"Kick: Channel '{_settings.ChannelName}' not found (404?)", MessageTypeDefOf.NegativeEvent));
+                    Messages.Message($"Kick: Channel '{_settings.ChannelName}' not found or API error — check Player.log", MessageTypeDefOf.NegativeEvent));
                 return null;
             }
         }
@@ -239,6 +289,8 @@ namespace CAP_ChatInteractive
             try
             {
                 _webSocket = new ClientWebSocket();
+
+                // Protect both .Wait() calls with AggregateException handling
                 _webSocket.ConnectAsync(new Uri("wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679"), CancellationToken.None).Wait();
 
                 var subscribe = $@"{{""event"":""pusher:subscribe"",""data"":{{""channel"":""chatrooms.{_chatroomId}.v2""}}}}";
@@ -246,6 +298,13 @@ namespace CAP_ChatInteractive
 
                 _ = Task.Run(() => PusherListenLoopAsync(CancellationToken.None));
                 Logger.Debug("✅ Pusher WebSocket connected and subscribed");
+            }
+            catch (AggregateException aex)
+            {
+                aex = aex.Flatten();
+                Logger.Error($"Pusher connect AggregateException: {aex.InnerException?.Message ?? aex.Message}");
+                LongEventHandler.ExecuteWhenFinished(() =>
+                    Messages.Message("Kick: Pusher WebSocket failed — check Player.log", MessageTypeDefOf.NegativeEvent));
             }
             catch (Exception ex)
             {
@@ -345,6 +404,21 @@ namespace CAP_ChatInteractive
         {
             [JsonProperty("access_token")]
             public string AccessToken { get; set; }
+        }
+
+        private class KickChannelResponse
+        {
+            public KickChannelData data { get; set; }
+        }
+
+        private class KickChannelData
+        {
+            public KickChatroom chatroom { get; set; }
+        }
+
+        private class KickChatroom
+        {
+            public string id { get; set; }
         }
     }
 }
