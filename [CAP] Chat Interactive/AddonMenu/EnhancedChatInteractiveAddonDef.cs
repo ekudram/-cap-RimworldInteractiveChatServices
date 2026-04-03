@@ -1,6 +1,6 @@
 ﻿// EnhancedChatInteractiveAddonDef.cs
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
+// This file is part of CAP Chat Interactive aka RICS (Rimworld Interactive Chat System).
 // 
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
