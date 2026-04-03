@@ -112,44 +112,50 @@ namespace CAP_ChatInteractive
         /// </summary>
         /// <param name="storeItems"></param>
         /// <returns></returns>
+        /// Store item serialization - switched to JsonConvert for better version compatibility
+        /// </summary>
         public static string SerializeStoreItems(Dictionary<string, StoreItem> storeItems)
         {
             try
             {
-                var rootObject = new JObject();
-                var itemsObject = new JObject();
-
-                foreach (var kvp in storeItems)
+                var settings = new JsonSerializerSettings
                 {
-                    var storeItem = kvp.Value;
-                    var itemObject = new JObject();
+                    Formatting = Formatting.Indented,
+                    NullValueHandling = NullValueHandling.Include,
+                    DefaultValueHandling = DefaultValueHandling.Include,
+                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                    // TypeNameHandling = TypeNameHandling.None  // only if you need it elsewhere
+                };
 
-                    // ADD DefName to serialization
-                    itemObject["DefName"] = storeItem.DefName;
-                    itemObject["CustomName"] = storeItem.CustomName ?? null;
-                    itemObject["HasQuantityLimit"] = storeItem.HasQuantityLimit;
-                    // itemObject["IsMelee"] = storeItem.IsMelee; DOES NOT NEED TO BE SAVED
-                    // itemObject["IsRanged"] = storeItem.IsRanged;DOES NOT NEED TO BE SAVED
-                    // itemObject["IsStuffAllowed"] = storeItem.IsStuffAllowed;  NOT USED
-                    // itemObject["IsWeapon"] = storeItem.IsWeapon; 
-                    itemObject["QuantityLimit"] = storeItem.QuantityLimit;
-                    itemObject["LimitMode"] = storeItem.LimitMode.ToString();
-                    // itemObject["ResearchOverrides"] = null; DOES NOT NEED TO BE SAVED
-                    itemObject["IsUsable"] = storeItem.IsUsable;
-                    itemObject["IsEquippable"] = storeItem.IsEquippable;
-                    itemObject["IsWearable"] = storeItem.IsWearable;
-                    itemObject["Mod"] = storeItem.ModSource ?? "RimWorld";
-                    itemObject["BasePrice"] = storeItem.BasePrice;
-                    itemObject["Category"] = storeItem.Category ?? "Misc";
-                    itemObject["Enabled"] = storeItem.Enabled;
-                    itemObject["modactive"] = storeItem.modactive;  // ADD THIS LINE
+                // Wrap in the same structure you currently produce
+                var rootObject = new
+                {
+                    items = storeItems.ToDictionary(
+                        kvp => kvp.Key,
+                        kvp =>
+                        {
+                            var storeItem = kvp.Value;
+                            return new
+                            {
+                                DefName = storeItem.DefName,
+                                CustomName = storeItem.CustomName,
+                                HasQuantityLimit = storeItem.HasQuantityLimit,
+                                QuantityLimit = storeItem.QuantityLimit,
+                                LimitMode = storeItem.LimitMode.ToString(),
+                                IsUsable = storeItem.IsUsable,
+                                IsEquippable = storeItem.IsEquippable,
+                                IsWearable = storeItem.IsWearable,
+                                Mod = storeItem.ModSource ?? "RimWorld",
+                                BasePrice = storeItem.BasePrice,
+                                Category = storeItem.Category ?? "Misc",
+                                Enabled = storeItem.Enabled,
+                                modactive = storeItem.modactive
+                            };
+                        }
+                    )
+                };
 
-                    itemsObject[kvp.Key] = itemObject;
-                }
-
-                rootObject["items"] = itemsObject;
-
-                return rootObject.ToString(Formatting.Indented);
+                return JsonConvert.SerializeObject(rootObject, settings);
             }
             catch (System.Exception ex)
             {
@@ -157,7 +163,6 @@ namespace CAP_ChatInteractive
                 return "{}";
             }
         }
-
         public static Dictionary<string, StoreItem> DeserializeStoreItems(string jsonContent)
         {
             var storeItems = new Dictionary<string, StoreItem>();
