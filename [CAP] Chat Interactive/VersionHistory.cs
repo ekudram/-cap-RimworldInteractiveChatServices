@@ -732,6 +732,32 @@ Fixed:
 - !replacetrait exploit where you could replace a trait with a bypass trait to get more traits.  Now checks for bypass traits and blocks them from being used in replacetrait command.
 - !passion command settings now allows for decimals when changing settings.
 - HARPatch Fix. Now properly checks for HAR patch and applies HAR restrictions for backstories."
+            },
+            { "1.28",
+                @"===========================================================
+                         RICS 1.28 - Changelog
+                         Released: April 4 2026
+🛠️  Fixed
+JSON Serialization Consistancy with StoreItems.JSON.  This does not effect the file itself.  Effects how the file is serialized in the code to prevent mod conflicts with mods that use JSON.
+
+✨ Added
+ActiveMods.Json.   Price list has changed you will have to refork, sync it or manually copy three files into your fork.  ""index.html, rics-store.js""
+Optional CSS tweak (if you want the Steam link to look nicer — add to rics-store.css
+.steam-link {
+    color: #1b88e9;
+    text-decoration: underline;
+}
+.steam-link:hover {
+    color: #66c0f4;
+}
+
+
+NOTE:  If you have a Custom Title in the index.html, you will want to copy that information out of the file and save it.
+
+"
+
+
+
             }
 
             // Add more versions here as they're released+

@@ -87,11 +87,11 @@ namespace CAP_ChatInteractive
             Widgets.EndScrollView();
 
             // Export button at bottom (creates the JSON/text file you asked for)
-            Rect exportRect = new Rect(rect.x + 10f, rect.yMax - 40f, rect.width - 20f, 32f);
-            if (Widgets.ButtonText(exportRect, "Export (JSON)"))
-            {
-                ExportToJson();
-            }
+            //Rect exportRect = new Rect(rect.x + 10f, rect.yMax - 40f, rect.width - 20f, 32f);
+            //if (Widgets.ButtonText(exportRect, "Export (JSON)"))
+            //{
+            //    ExportToJson();
+            //}
         }
 
         private void DrawNotesPanel(Rect rect)
