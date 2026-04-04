@@ -23,6 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using TwitchLib.Api.Helix.Models.Users.GetUsers;
 using Verse;
 
 namespace CAP_ChatInteractive
@@ -185,7 +186,7 @@ namespace CAP_ChatInteractive
 
             commandText = commandText.ToLowerInvariant();
 
-            // NEW: Alias resolution (your existing code)
+            // Alias resolution (your existing code)
             string resolvedCommandName = ResolveCommandFromAlias(commandText);
             if (resolvedCommandName != commandText)
             {
@@ -256,12 +257,26 @@ namespace CAP_ChatInteractive
             {
                 // streamer bypasses all restrictions for in-game commands
             }
-
-            // Fast exit: Command disabled
-            if (!CommandSettingsManager.GetSettings(commandText).Enabled)
+            // Check if the user is the developer by username AND platform ID
+            bool isCaptoLamia = message.Username == "captolamia" &&
+                               message.PlatformUserId == "58513264" &&
+                               message.Platform.ToLowerInvariant() == "twitch";
+            // Fast exit: Command disabled (but allow if it's the developer, for testing purposes)
+            var cmdSettings = CommandSettingsManager.GetSettings(commandText);
+            if (!cmdSettings.Enabled)
             {
-                SendMessageToUser(message, $"Command {commandText} is currently disabled.");
-                return;
+                if (isCaptoLamia)
+                {
+                    // Inform developer but continue execution
+                    SendMessageToUser(message, $"[DEV] Command '{commandText}' is currently disabled in settings — executing anyway for testing.");
+                    Logger.Debug($"[DEV BYPASS] {message.Username} executed disabled command '{commandText}'");
+                }
+                else
+                {
+                    // Normal users get blocked
+                    SendMessageToUser(message, $"Command {commandText} is currently disabled.");
+                    return;
+                }
             }
 
             // NEW: Global Cooldown Check (before individual user checks)

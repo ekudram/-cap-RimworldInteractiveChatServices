@@ -33,19 +33,20 @@ namespace CAP_ChatInteractive.Commands.TestCommands
     {
         public override string Name => "CaptoLamia";
 
-        public override string Execute(ChatMessageWrapper user, string[] args)
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
+            var globalChatSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
             // Check if the user is you by username AND platform ID
-            bool isCaptoLamia = user.Username == "captolamia" &&
-                               user.PlatformUserId == "58513264" &&
-                               user.Platform.ToLowerInvariant() == "twitch";
+            bool isCaptoLamia = messageWrapper.Username == "captolamia" &&
+                               messageWrapper.PlatformUserId == "58513264" &&
+                               messageWrapper.Platform.ToLowerInvariant() == "twitch";
 
             if (!isCaptoLamia)
             {
-                return $"Sorry {user.DisplayName}, this command is not available. 👀";
+                return $"Sorry {messageWrapper.DisplayName}, this command is not available. 👀";
             }
 
-            return $"😸 Hello {user.DisplayName}! The MOD DEV is present!";
+            return $"😸 Hello {messageWrapper.DisplayName}! RICS {globalChatSettings.modVersion}. The MOD Developer is present in chat! ";
         }
     }
 }
