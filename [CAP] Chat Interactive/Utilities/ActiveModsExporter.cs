@@ -1,5 +1,4 @@
-﻿using System;
-// Source/RICS/Utilities/ActiveModsExporter.cs
+﻿// Source/RICS/Utilities/ActiveModsExporter.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive aka RICS (Rimworld Interactive Chat System).
 // 
@@ -17,6 +16,8 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 
 using Newtonsoft.Json;
+using Steamworks;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Verse;
@@ -59,9 +60,10 @@ namespace CAP_ChatInteractive.Utilities
                             ? m.Name
                             : (!string.IsNullOrEmpty(m.PackageId) ? m.PackageId : "Unnamed Mod"),
 
-                        // SteamAppId is uint (never null, 0 means no Steam ID)
-                        steamId = m.SteamAppId > 0
-                            ? m.SteamAppId.ToString()
+                        // === FIXED: Use correct Workshop PublishedFileId (not SteamAppId) ===
+                        // SteamAppId only works for official DLCs. Workshop mods use GetPublishedFileId().
+                        steamId = (m.OnSteamWorkshop && m.GetPublishedFileId() != PublishedFileId_t.Invalid)
+                            ? m.GetPublishedFileId().m_PublishedFileId.ToString()
                             : null,
 
                         // ModVersion is virtual string (can be null or empty)
