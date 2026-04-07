@@ -755,14 +755,20 @@ Optional CSS tweak (if you want the Steam link to look nicer — add to rics-sto
 NOTE:  If you have a Custom Title in the index.html, you will want to copy that information out of the file and save it.
 
 "
+            },
+            { "1.29",
+                    @"===========================================================
+                            RICS 1.29 - Changelog
+                            Released: April 10 2026
 
-
+Fixed:
+- !replacetrait now allows replacing traits with bypass traits.
+Updated:
+- Price list GITHUB structure updated.  Sync your fork to Main/Master branch or copy assets/js/rics-store.js and assets/css/rics-store.css from main.
+"
 
             }
-
             // Add more versions here as they're released+
-
-
         };
 
         public static void CheckForVersionUpdate()
