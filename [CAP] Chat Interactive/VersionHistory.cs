@@ -765,6 +765,8 @@ Fixed:
 - !replacetrait now allows replacing traits with bypass traits.
 Updated:
 - Price list GITHUB structure updated.  Sync your fork to Main/Master branch or copy assets/js/rics-store.js and assets/css/rics-store.css from main.
+- Improved compatibility with Humanoid Alien Races (HAR) xenotype restrictions in the Pawn Race Settings dialog.
+- Human xenotypes now properly show their xenotype restrictions in the Pawn Race Settings dialog.
 "
 
             }
