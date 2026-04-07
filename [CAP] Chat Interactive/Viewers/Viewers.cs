@@ -598,10 +598,10 @@ namespace CAP_ChatInteractive
 
             // DEBUG: Log what's being copied
             // Logger.Debug($"SimpleViewer created for {username} with {platformIds.Count} platform IDs:");
-            foreach (var platformId in platformIds)
-            {
-                Logger.Debug($"  {platformId.Key}: {platformId.Value}");
-            }
+            //foreach (var platformId in platformIds)
+            //{
+            //    Logger.Debug($" SimpleViewer {platformId.Key}: {platformId.Value}");
+            //}
         }
 
         public void UpdateViewer(Viewer viewer)

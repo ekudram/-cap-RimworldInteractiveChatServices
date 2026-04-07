@@ -66,7 +66,7 @@ namespace _CAP__Chat_Interactive.Utilities
         {
             get
             {
-                Logger.Debug($"RaceSettings getter called - _isInitialized: {_isInitialized}");
+                // Logger.Debug($"RaceSettings getter called - _isInitialized: {_isInitialized}");
                 if (!_isInitialized)
                 {
                     Logger.Debug("=== LOADING AND INITIALIZING RACE SETTINGS ===");

@@ -696,6 +696,11 @@ namespace CAP_ChatInteractive
             Widgets.EndScrollView();
         }
 
+        /// <summary>
+        /// Calculates the required scroll height for the details panel.
+        /// Now uses the actual filtered xenotype list (via GetAllowedXenotypes) so the UI
+        /// doesn't have massive empty space or cut-off content when HAR restricts the list.
+        /// </summary>
         private float CalculateDetailsHeight(RaceSettings settings)
         {
             float height = 0f;
@@ -718,43 +723,44 @@ namespace CAP_ChatInteractive
             {
                 height += 32f; // Header
 
-                // Get ALL xenotypes for height calculation, not just allowed ones
-                var allXenotypes = DefDatabase<XenotypeDef>.AllDefs
-                    .Where(x => !string.IsNullOrEmpty(x.defName))
-                    .Select(x => x.defName)
+                // Use the ACTUAL filtered list instead of all xenotypes
+                var allowedXenotypes = GetAllowedXenotypes(selectedRace)
+                    .OrderBy(x => x)
                     .ToList();
 
-                if (allXenotypes.Count > 0)
+                if (allowedXenotypes.Count > 0)
                 {
                     height += 30f; // Column headers
-                    height += 30f * allXenotypes.Count; // Xenotype rows
+                    height += 30f * allowedXenotypes.Count; // One row per allowed xenotype
                 }
                 else
                 {
-                    height += 30f; // No xenotypes message
+                    height += 30f; // "No xenotypes allowed..." message
                 }
             }
 
-            return height + 30f; // Extra padding
+            return height + 30f; // Extra padding at bottom
         }
 
+        /// <summary>
+        /// Returns xenotypes that this race is actually allowed to use, respecting HAR race restrictions.
+        /// For Humans this is critical: we must exclude xenotypes that belong only to alien races.
+        /// </summary>
+        /// <summary>
+        /// Returns xenotypes allowed for the given race, respecting HAR race restrictions.
+        /// For Humans this now correctly excludes xenotypes that belong only to HAR alien races.
+        /// Uses IAlienCompatibilityProvider so we never reference the concrete HARPatch type directly.
+        /// </summary>
         public static List<string> GetAllowedXenotypes(ThingDef raceDef)
         {
             if (!ModsConfig.BiotechActive)
                 return new List<string>();
 
-            if (raceDef == ThingDefOf.Human)
-                return DefDatabase<XenotypeDef>.AllDefs
-                    .Where(x => !string.IsNullOrEmpty(x.defName))
-                    .Select(x => x.defName)
-                    .OrderBy(x => x)
-                    .ToList();
-
-            // Check if HAR is active
+            // Always use the provider for non-Human races (new logic lives in HARPatch)
             const string harModId = "erdelf.HumanoidAlienRaces";
             if (!ModsConfig.IsActive(harModId))
             {
-                // No HAR: allow all
+                // No HAR → everyone gets all xenotypes
                 return DefDatabase<XenotypeDef>.AllDefs
                     .Where(x => !string.IsNullOrEmpty(x.defName))
                     .Select(x => x.defName)
@@ -764,98 +770,22 @@ namespace CAP_ChatInteractive
 
             try
             {
-                // Reflection to get alienRace field (object)
-                var alienRaceField = raceDef.GetType().GetField("alienRace", BindingFlags.Public | BindingFlags.Instance);
-                if (alienRaceField == null)
+                var mod = CAPChatInteractiveMod.Instance;
+                if (mod?.AlienProvider != null)
                 {
-                    Logger.Debug($"[RICS] No alienRace field found for {raceDef.defName} - treating as non-HAR race");
-                    return DefDatabase<XenotypeDef>.AllDefs
-                        .Where(x => !string.IsNullOrEmpty(x.defName))
-                        .Select(x => x.defName)
-                        .OrderBy(x => x)
-                        .ToList();
+                    return mod.AlienProvider.GetAllowedXenotypes(raceDef);
                 }
 
-                var alienRaceObj = alienRaceField.GetValue(raceDef);
-                if (alienRaceObj == null)
-                    return new List<string>(); // No settings: none allowed (edge case)
-
-                // Get raceRestriction
-                var raceRestrictionField = alienRaceObj.GetType().GetField("raceRestriction", BindingFlags.Public | BindingFlags.Instance);
-                if (raceRestrictionField == null)
-                    return new List<string>(); // No restrictions: none? Or all? Adjust to all if preferred
-
-                var restrictionObj = raceRestrictionField.GetValue(alienRaceObj);
-                if (restrictionObj == null)
-                    return DefDatabase<XenotypeDef>.AllDefs
-                        .Where(x => !string.IsNullOrEmpty(x.defName))
-                        .Select(x => x.defName)
-                        .OrderBy(x => x)
-                        .ToList();
-
-                // Extract onlyUseRaceRestrictedXenotypes (bool)
-                var onlyRestrictedField = restrictionObj.GetType().GetField("onlyUseRaceRestrictedXenotypes", BindingFlags.Public | BindingFlags.Instance);
-                Logger.Debug($"[RICS] HAR restriction object for {raceDef.defName}: onlyUseRaceRestrictedXenotypes field found: {onlyRestrictedField != null}");
-                bool onlyRestricted = onlyRestrictedField != null && (bool)onlyRestrictedField.GetValue(restrictionObj);
-
-                // Extract lists (as IEnumerable<object>, then get defNames)
-                var xenoListField = restrictionObj.GetType().GetField("xenotypeList", BindingFlags.Public | BindingFlags.Instance);
-                var whiteListField = restrictionObj.GetType().GetField("whiteXenotypeList", BindingFlags.Public | BindingFlags.Instance);
-                var blackListField = restrictionObj.GetType().GetField("blackXenotypeList", BindingFlags.Public | BindingFlags.Instance);
-
-                var xenoList = (xenoListField?.GetValue(restrictionObj) as IEnumerable<object>)?.Select(x => GetDefName(x)).Where(n => n != null).ToList() ?? new List<string>();
-                var whiteList = (whiteListField?.GetValue(restrictionObj) as IEnumerable<object>)?.Select(x => GetDefName(x)).Where(n => n != null).ToList() ?? new List<string>();
-                var blackList = (blackListField?.GetValue(restrictionObj) as IEnumerable<object>)?.Select(x => GetDefName(x)).Where(n => n != null).ToList() ?? new List<string>();
-
-                Logger.Debug($"[RICS] HAR restrictions for {raceDef.defName}: onlyRestricted={onlyRestricted}, xenoList={xenoList.Count}, white={whiteList.Count}, black={blackList.Count}");
-
-                // Build allowed list per HAR logic
-                var result = new HashSet<string>(); // Use set to avoid dups
-                foreach (var xenDef in DefDatabase<XenotypeDef>.AllDefs)
-                {
-                    string defName = xenDef.defName;
-                    if (string.IsNullOrEmpty(defName)) continue;
-
-                    // Always exclude blacklist
-                    if (blackList.Contains(defName)) continue;
-
-                    // If whitelist present, only allow from whitelist
-                    if (whiteList.Count > 0)
-                    {
-                        if (whiteList.Contains(defName)) result.Add(defName);
-                        continue;
-                    }
-
-                    // If only restricted, only allow from xenotypeList
-                    if (onlyRestricted)
-                    {
-                        if (xenoList.Contains(defName)) result.Add(defName);
-                        continue;
-                    }
-
-                    // If xenotypeList present (without onlyRestricted), prefer it but allow others? Wait, per wiki: xenotypeList is exclusive only if onlyRestricted=true
-                    // But wiki says xenotypeList is for "only members of your race can have" (i.e., race-exclusive), but for allowed, it's combined with white when onlyRestricted.
-                    // To match: If onlyRestricted, allow xenotypeList + whiteList; else allow all except black (but xenotypeList marks race-exclusive, not allowance filter)
-
-                    // Correct per wiki/tool: When onlyRestricted=true, allow only xenotypeList + whiteList; else allow all except black (xenotypeList/white are additives? But wiki says white is for non-exclusive allowance)
-                    // Adjust: Always allow all except black, but if onlyRestricted, restrict to (xenotypeList + whiteList) minus black
-
-                    if (onlyRestricted)
-                    {
-                        if (xenoList.Contains(defName) || whiteList.Contains(defName))
-                            result.Add(defName);
-                    }
-                    else
-                    {
-                        result.Add(defName); // Allow all minus black (already skipped)
-                    }
-                }
-
-                return result.OrderBy(n => n).ToList();
+                Logger.Debug("[RICS] AlienProvider not available, falling back to all xenotypes");
+                return DefDatabase<XenotypeDef>.AllDefs
+                    .Where(x => !string.IsNullOrEmpty(x.defName))
+                    .Select(x => x.defName)
+                    .OrderBy(x => x)
+                    .ToList();
             }
             catch (Exception ex)
             {
-                Logger.Warning($"[RICS] Failed to apply HAR xenotype restrictions for {raceDef.defName}: {ex.Message}");
+                Logger.Warning($"[RICS] Failed to get allowed xenotypes via provider: {ex.Message}");
                 return DefDatabase<XenotypeDef>.AllDefs
                     .Where(x => !string.IsNullOrEmpty(x.defName))
                     .Select(x => x.defName)
@@ -864,7 +794,9 @@ namespace CAP_ChatInteractive
             }
         }
 
-        // Helper method (add this new private method in the class)
+        /// <summary>
+        /// Helper to safely extract defName from HAR's internal lists (xenotypeList etc.)
+        /// </summary>
         private static string GetDefName(object defObj)
         {
             if (defObj == null) return null;
