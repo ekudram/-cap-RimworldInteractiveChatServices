@@ -87,6 +87,8 @@
 
   <RICS.TCH.Error.Replace>An error occurred while replacing traits.</RICS.TCH.Error.Replace>
 
+  <RICS.TCH.Replace.MaxTraitsReached>Pawn already has the maximum {0} traits.</RICS.TCH.Replace.MaxTraitsReached>
+  
   <!-- Parsing error (rare) -->
   <RICS.TCH.Replace.ParseError>Could not parse trait names. Try: !replacetrait "old trait" "new trait"</RICS.TCH.Replace.ParseError>
 

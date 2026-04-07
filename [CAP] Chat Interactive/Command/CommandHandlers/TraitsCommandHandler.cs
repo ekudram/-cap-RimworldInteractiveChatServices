@@ -354,12 +354,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 int currentCount = pawn.story.traits.allTraits.Count;
 
-                if (oldBypasses && currentCount >= maxTraits)
+                if (oldBypasses && !newBypasses)
                 {
-                    // We are removing a bypass trait but pawn is already at (or over) the hard limit
-                    // → do not allow the replacement unless the new trait also bypasses (rare edge case).
-                    // For safety we block if old was bypass and we're at limit.
-                    return "RICS.TCH.Replace.MaxTraitsReached".Translate(maxTraits);
+                    // Replacing a bypass trait with a normal one while at limit = exploit
+                    if (pawn.story.traits.allTraits.Count >= maxTraits)
+                    {
+                        return "RICS.TCH.Replace.MaxTraitsReached".Translate(maxTraits);
+                    }
                 }
 
                 TraitDef oldTraitDef = DefDatabase<TraitDef>.GetNamedSilentFail(oldBuyableTrait.DefName);
@@ -389,6 +390,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.TCH.Replace.OldTraitForced".Translate(oldBuyableTrait.Name);
                 }
                 currentCount = pawn.story.traits.allTraits.Count;
+
+
                 // Check if pawn already has the new trait (different from old)
                 if (oldBuyableTrait.DefName != newBuyableTrait.DefName || oldBuyableTrait.Degree != newBuyableTrait.Degree)
                 {
