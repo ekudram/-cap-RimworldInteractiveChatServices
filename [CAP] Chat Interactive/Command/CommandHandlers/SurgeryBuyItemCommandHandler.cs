@@ -1087,16 +1087,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                     if (!needsBlood && !isHemogenic)
                     {
-                        reason = "RICS.SBCH.NoBenefitTransfusion".Translate();
+                        reason = "RICS.SBCH.NoBloodLoss".Translate();
                         return false;
                     }
                     break;
             }
 
             // Optional: Reuse body surgery adult check
-            if (!IsAdultForBodySurgery(pawn, out _))
+            if (!IsAdultForBodySurgery(pawn, out reason))
             {
-                reason = "RICS.SBCH.NotSuitableProcedure".Translate();
+                // reason = _;
                 return false;
             }
 
