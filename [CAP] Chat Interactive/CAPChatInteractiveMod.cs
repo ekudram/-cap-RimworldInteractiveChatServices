@@ -36,10 +36,10 @@ namespace CAP_ChatInteractive
 
         public IAlienCompatibilityProvider AlienProvider { get; private set; }
 
-        // Service managers (we'll create these later)
+        // Service managers add new chat platforms here as needed, and they will be initialized at mod startup
         private TwitchService _twitchService;
         private YouTubeChatService _youTubeService;
-        private KickService _kickService;  // NEW — will be instantiated in next step
+        private KickService _kickService;  
 
         public CAPChatInteractiveMod(ModContentPack content) : base(content)
         {

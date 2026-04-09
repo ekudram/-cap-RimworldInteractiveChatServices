@@ -411,61 +411,141 @@ namespace CAP_ChatInteractive
             SendMessageToUser(message, $"You don't have permission to use {settings.Prefix}{command.Name}. Required: {command.PermissionLevel}");
         }
 
+        /// <summary>
+        /// Sends a chat message to a user on the specified platform, using the appropriate messaging service and
+        /// format.
+        /// </summary>
+        /// <remarks>The method determines the messaging service to use based on the platform specified in
+        /// the message. If the platform is not recognized or the corresponding service is not connected, the message is
+        /// not sent and a warning is logged. For platforms that do not support private messages, the message is sent
+        /// publicly. Markup tags are removed from the message text before sending.</remarks>
+        /// <param name="message">A wrapper containing information about the user and the chat platform to which the message will be sent.
+        /// Must not be null and must specify a supported platform.</param>
+        /// <param name="text">The message text to send. Leading and trailing whitespace is ignored. If the text is null, empty, or
+        /// contains only markup tags, no message is sent.</param>
         public static void SendMessageToUser(ChatMessageWrapper message, string text)
         {
             try
             {
-                // Check if text is empty or whitespace
-                if (string.IsNullOrWhiteSpace(text))
-                {
-                    Logger.Warning("Attempted to send empty message to user");
-                    return;
-                }
+                if (string.IsNullOrWhiteSpace(text)) return;
 
-                // Remove any markup tags like <color>, <b>, <i>, etc.
                 string cleanText = RemoveMarkupTags(text);
-
-                // Check again if the cleaned text is empty
-                if (string.IsNullOrWhiteSpace(cleanText))
-                {
-                    Logger.Warning("Message contained only markup tags, nothing to send");
-                    return;
-                }
+                if (string.IsNullOrWhiteSpace(cleanText)) return;
 
                 var mod = CAPChatInteractiveMod.Instance;
                 if (mod == null) return;
 
-                var service = mod.GetChatService(message.Platform);
-                if (service is TwitchService twitchService)
+                switch (message.Platform.ToLowerInvariant())
                 {
-                    if (message.IsWhisper)
-                    {
-                        Logger.Debug($"[SEND TO USER] Whisper detected from @{message.Username} → routing to SendWhisperAsync");
-                        _ = twitchService.SendWhisperAsync(message.Username, cleanText); // fire-and-forget (safe on main thread)
-                    }
-                    else
-                    {
-                        Logger.Debug($"[SEND TO USER] Public chat reply to @{message.Username}");
-                        twitchService.SendMessage($"{message.Username} {cleanText}");
-                    }
-                }
-                else if (service is YouTubeChatService youtubeService)
-                {
-                    // YouTube has API limitations, use fallback
-                    if (youtubeService.CanSendMessages)
-                    {
-                        youtubeService.SendMessage(cleanText);
-                    }
-                    else
-                    {
-                        // Fallback to in-game notification for YouTube
-                        Messages.Message($"[YouTube] @{message.Username} {cleanText}", MessageTypeDefOf.NeutralEvent);
-                    }
+                    case "twitch":
+                        if (mod.TwitchService?.IsConnected == true)
+                        {
+                            if (message.IsWhisper)
+                                _ = mod.TwitchService.SendWhisperAsync(message.Username, cleanText);
+                            else
+                                mod.TwitchService.SendMessage($"{message.Username} {cleanText}");
+                        }
+                        break;
+
+                    case "youtube":
+                        if (mod.YouTubeService?.IsConnected == true)
+                        {
+                            if (mod.YouTubeService.CanSendMessages)
+                                mod.YouTubeService.SendMessage(cleanText);
+                            else
+                                Messages.Message($"[YouTube] @{message.Username} {cleanText}", MessageTypeDefOf.NeutralEvent);
+                        }
+                        break;
+
+                    case "kick":
+                        if (mod.KickService?.IsConnected == true)
+                        {
+                            // For Kick we usually reply publicly (no whispers)
+                            mod.KickService.SendMessage($"{message.Username} {cleanText}");   // or "@username " + cleanText if you prefer mention
+                            Logger.Debug($"[Kick Reply] Sent to chat: {cleanText}");
+                        }
+                        else
+                        {
+                            Logger.Warning("KickService not connected - cannot send reply");
+                        }
+                        break;
+
+                    // add new services here as needed, following the same pattern
+                    default:
+                        Logger.Warning($"Unknown platform in SendMessageToUser: {message.Platform}");
+                        break;
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error sending message to user: {ex.Message}");
+                Logger.Error($"Error sending message to user on {message.Platform}: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Sends a chat message to the specified user by username, addressing them directly on their platform if
+        /// possible.
+        /// </summary>
+        /// <remarks>If the user's platform is recognized and the corresponding chat service is connected,
+        /// the message is sent directly to the user on that platform. For YouTube, if direct messaging is not
+        /// available, the message is displayed as an in-game notification. If the platform is unknown or no service is
+        /// connected, the message is sent as a general in-game chat notification. Messages containing only markup tags
+        /// or whitespace are not sent.</remarks>
+        /// <param name="username">The username of the recipient to whom the message will be sent. This should match the user's
+        /// platform-specific identifier.</param>
+        /// <param name="text">The message text to send. Markup tags such as <color>, <b>, and <i> will be removed before sending. Cannot
+        /// be null, empty, or consist only of markup tags.</param>
+        public static void SendMessageToUsername(string username, string text)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(text)) return;
+
+                string cleanText = RemoveMarkupTags(text);
+                if (string.IsNullOrWhiteSpace(cleanText)) return;
+                var viewer = Viewers.GetViewer(username);
+                if (viewer == null) return;
+
+                var mod = CAPChatInteractiveMod.Instance;
+                if (mod == null) return;
+
+                // Try to find the viewer to determine platform
+                string platform = DetermineUserPlatform(viewer);
+                if (platform == null) return;
+
+                switch (platform)
+                {
+                    case "twitch":
+                        if (mod.TwitchService?.IsConnected == true)
+                            mod.TwitchService.SendMessage($"@{username} {cleanText}");
+                        break;
+
+                    case "youtube":
+                        if (mod.YouTubeService?.IsConnected == true)
+                            mod.YouTubeService.SendMessage($"@{username} {cleanText}");
+                        break;
+
+                    case "kick":
+                        if (mod.KickService?.IsConnected == true)
+                        {
+                            // Kick doesn't need @ mention for public replies in most cases
+                            mod.KickService.SendMessage(cleanText);
+                            Logger.Debug($"[Kick Reply to {username}] {cleanText}");
+                        }
+                        break;
+
+                    // add new services here as needed, following the same pattern
+                    case null:
+                         Logger.Warning($"Could not determine platform for user {username}. Message not sent.");
+                         break;
+                    default:
+                        Logger.Warning($"Could not determine platform for user {username}. Message not sent.");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error sending message to username {username}: {ex.Message}");
             }
         }
 
@@ -483,64 +563,7 @@ namespace CAP_ChatInteractive
             return cleaned;
         }
 
-        public static void SendMessageToUsername(string username, string text)
-        {
-            try
-            {
-                // Check if text is empty or whitespace
-                if (string.IsNullOrWhiteSpace(text))
-                {
-                    Logger.Warning($"Attempted to send empty message to user {username}");
-                    return;
-                }
 
-                // Remove any markup tags like <color>, <b>, <i>, etc.
-                string cleanText = RemoveMarkupTags(text);
-
-                // Check again if the cleaned text is empty
-                if (string.IsNullOrWhiteSpace(cleanText))
-                {
-                    Logger.Warning($"Message to {username} contained only markup tags, nothing to send");
-                    return;
-                }
-
-                var viewer = Viewers.GetViewer(username);
-                if (viewer == null) return;
-
-                var mod = CAPChatInteractiveMod.Instance;
-                if (mod == null) return;
-
-                // Determine which platform this user is from
-                string platform = DetermineUserPlatform(viewer);
-
-                if (platform == "twitch" && mod.TwitchService?.IsConnected == true)
-                {
-                    mod.TwitchService.SendMessage($"@{username} {cleanText}");
-                }
-                else if (platform == "youtube" && mod.YouTubeService?.IsConnected == true)
-                {
-                    // YouTube has API limitations
-                    if (mod.YouTubeService.CanSendMessages)
-                    {
-                        mod.YouTubeService.SendMessage($"@{username} {cleanText}");
-                    }
-                    else
-                    {
-                        // Fallback to in-game notification for YouTube
-                        Messages.Message($"[YouTube] @{username} {cleanText}", MessageTypeDefOf.NeutralEvent);
-                    }
-                }
-                else
-                {
-                    // Fallback - user platform unknown or service not connected
-                    Messages.Message($"[Chat] @{username} {cleanText}", MessageTypeDefOf.NeutralEvent);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error sending message to username {username}: {ex.Message}");
-            }
-        }
 
         private static string DetermineUserPlatform(Viewer viewer)
         {
@@ -549,9 +572,11 @@ namespace CAP_ChatInteractive
                 return "twitch";
             if (viewer.PlatformUserIds.ContainsKey("youtube"))
                 return "youtube";
+            if (viewer.PlatformUserIds.ContainsKey("kick"))
+                return "kick";
 
             // Default to Twitch if we can't determine (most common case)
-            return "twitch";
+            return null;
         }
 
         public static void RegisterCommand(ChatCommand command)
