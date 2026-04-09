@@ -234,7 +234,7 @@ namespace CAP_ChatInteractive
 
         private string GetChatroomIdSynchronous()
         {
-            Logger.Debug($"Kick: Fetching chatroom ID for channel '{_settings.ChannelName}' (HttpClient version)");
+            Logger.Debug($"Kick: Fetching chatroom ID for channel '{_settings.ChannelName}' (fully sync)");
 
             try
             {
