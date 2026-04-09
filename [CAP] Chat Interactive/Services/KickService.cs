@@ -232,58 +232,98 @@ namespace CAP_ChatInteractive
             }
         }
 
+        /// <summary>
+        /// Retrieves the chatroom ID for the configured channel using the public v1 Kick API endpoint.
+        /// </summary>
+        /// <remarks>This method performs a synchronous HTTP request to the Kick v1 API and may block the
+        /// calling thread. It returns null if the channel does not exist, the chatroom ID is not available, or if an
+        /// error occurs during the request.
+        /// Mono's JIT hates dynamic + Newtonsoft.Json in certain contexts (especially inside the Task.Run thread).
+        /// That's why it hard-crashes at InitializeAndConnectSynchronous().
+        /// </remarks>
+        /// <returns>A string containing the chatroom ID if found; otherwise, null.</returns>
         private string GetChatroomIdSynchronous()
         {
-            Logger.Debug($"Kick: Fetching chatroom ID for channel '{_settings.ChannelName}' (fully sync)");
+            Logger.Debug($"Kick: Fetching chatroom ID for channel '{_settings.ChannelName}' using v1 endpoint (public, no token)");
+
+            string v1Url = $"https://kick.com/api/v1/channels/{_settings.ChannelName.ToLowerInvariant()}";
 
             try
             {
-                string url = $"https://api.kick.com/api/v2/channels/{_settings.ChannelName.ToLowerInvariant()}";
-                Logger.Debug($"Kick: GET {url}");
+                Logger.Debug($"Kick: GET {v1Url}");
 
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+                using var request = new HttpRequestMessage(HttpMethod.Get, v1Url);
+                // No Authorization header for public v1 endpoint
 
                 var sendTask = _httpClient.SendAsync(request);
                 var response = sendTask.Result;
 
-                response.EnsureSuccessStatusCode();
+                Logger.Debug($"Kick v1 response — Status: {response.StatusCode}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorBodyTask = response.Content.ReadAsStringAsync();
+                    string errorBody = errorBodyTask.Result;
+                    Logger.Warning($"Kick v1 failed: {response.StatusCode} - {errorBody}");
+                    return null;
+                }
 
                 var readTask = response.Content.ReadAsStringAsync();
                 string jsonText = readTask.Result;
 
-                Logger.Debug($"Kick channels API response — Status: {response.StatusCode} | Body length: {jsonText.Length}");
+                Logger.Debug($"Kick v1 success — Body length: {jsonText.Length}");
 
-                var channelResp = JsonConvert.DeserializeObject<KickChannelResponse>(jsonText);
-                string id = channelResp?.data?.chatroom?.id?.ToString();
+                // Strongly-typed parse (matches the JSON you provided exactly)
+                var channelData = JsonConvert.DeserializeObject<KickV1ChannelResponse>(jsonText);
 
-                if (string.IsNullOrEmpty(id))
+                if (channelData?.chatroom?.id > 0)
                 {
-                    Logger.Warning($"Kick channel '{_settings.ChannelName}' found but no chatroom ID (not live?)");
-                    LongEventHandler.ExecuteWhenFinished(() =>
-                        Messages.Message($"Kick: Channel '{_settings.ChannelName}' not live or chat disabled", MessageTypeDefOf.NegativeEvent));
-                }
-                else
-                {
+                    string id = channelData.chatroom.id.ToString();
                     Logger.Debug($"✅ Kick chatroom ID resolved: {id}");
+                    return id;
                 }
-                return id;
+
+                Logger.Warning($"Kick: Channel data received but no chatroom.id found");
             }
             catch (AggregateException aex)
             {
                 aex = aex.Flatten();
                 Logger.Error($"GetChatroomId AggregateException: {aex.InnerException?.Message ?? aex.Message}");
-                return null;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Failed to resolve Kick chatroom ID: {ex.Message}\n{ex.StackTrace}");
-                LongEventHandler.ExecuteWhenFinished(() =>
-                    Messages.Message($"Kick: Channel '{_settings.ChannelName}' not found or API error — check Player.log", MessageTypeDefOf.NegativeEvent));
-                return null;
+                Logger.Error($"Kick v1 channel fetch crashed: {ex.Message}\n{ex.StackTrace}");
             }
+
+            Logger.Error($"Kick: Failed to get chatroom ID for '{_settings.ChannelName}'");
+            LongEventHandler.ExecuteWhenFinished(() =>
+                Messages.Message($"Kick: Could not get chatroom for '{_settings.ChannelName}' — check Player.log", MessageTypeDefOf.NegativeEvent));
+
+            return null;
         }
 
+        // ──────────────────────────────────────────────────────────────
+        // Clean response classes (replace the previous ones)
+        // ──────────────────────────────────────────────────────────────
+
+        private class KickV1ChannelResponse
+        {
+            public KickV1Chatroom chatroom { get; set; }
+        }
+
+        private class KickV1Chatroom
+        {
+            public long id { get; set; }   // 79588321 for your channel
+        }
+        
+        /// <summary>
+        /// Establishes a synchronous WebSocket connection to the Pusher service and subscribes to the specified
+        /// chatroom channel.
+        /// </summary>
+        /// <remarks>This method blocks the calling thread until the connection and subscription are
+        /// complete. If the connection fails, error messages are logged and a notification is displayed to the user.
+        /// This method is intended for internal use and should not be called from performance-sensitive or UI threads,
+        /// as it may block execution.</remarks>
         private void ConnectPusherSynchronous()
         {
             try
@@ -314,6 +354,15 @@ namespace CAP_ChatInteractive
             }
         }
 
+        /// <summary>
+        /// Continuously listens for and processes incoming WebSocket messages from the Pusher service until the
+        /// connection is closed or cancellation is requested.
+        /// </summary>
+        /// <remarks>This method processes incoming messages, including chat messages and subscription
+        /// events, and logs relevant information. The listen loop terminates when the WebSocket connection is closed or
+        /// when cancellation is requested via the provided token.</remarks>
+        /// <param name="token">A cancellation token that can be used to request termination of the listen loop.</param>
+        /// <returns>A task that represents the asynchronous listen operation.</returns>
         private async Task PusherListenLoopAsync(CancellationToken token)
         {
             var buffer = new byte[8192];
@@ -324,10 +373,31 @@ namespace CAP_ChatInteractive
                     var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), token);
                     if (result.MessageType == WebSocketMessageType.Close) break;
 
-                    var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    if (json.Contains("App\\\\Events\\\\ChatMessageSentEvent"))
+                    var json = Encoding.UTF8.GetString(buffer, 0, result.Count).Trim();
+
+                    // === DIAGNOSTIC LOGGING (safe) ===
+                    try
                     {
+                        var obj = Newtonsoft.Json.Linq.JObject.Parse(json);
+                        string eventName = (string)obj["event"] ?? "unknown";
+                        Logger.Debug($"Kick Pusher event: {eventName}");
+
+                        if (eventName.Contains("Chat") || eventName.Contains("message"))
+                        {
+                            Logger.Debug($"Kick Chat Event Data: {obj["data"]}");
+                        }
+                    }
+                    catch { }
+
+                    // Only queue if it looks like a real chat message
+                    if (json.Contains("\"content\"") && json.Contains("\"user\""))
+                    {
+                        Logger.Debug($"Kick: Queuing chat message (length {json.Length})");
                         LongEventHandler.QueueLongEvent(() => ProcessKickMessage(json), null, false, null, showExtraUIInfo: false, forceHideUI: true);
+                    }
+                    else if (json.Contains("pusher:subscription_succeeded"))
+                    {
+                        Logger.Debug("✅ Kick: Pusher subscription succeeded");
                     }
                 }
             }
@@ -341,17 +411,45 @@ namespace CAP_ChatInteractive
         {
             try
             {
-                dynamic msg = JsonConvert.DeserializeObject<dynamic>(json);
-                var chatData = msg.data.message;
+                Logger.Debug($"Kick: Processing message JSON (length {json.Length})");
 
-                string username = chatData?.user?.username ?? "KickViewer";
-                string messageText = chatData?.content ?? "[empty]";
+                var obj = Newtonsoft.Json.Linq.JObject.Parse(json);
+
+                var dataToken = obj["data"];
+                if (dataToken == null || dataToken.Type != Newtonsoft.Json.Linq.JTokenType.Object)
+                {
+                    Logger.Debug("Kick: Skipped - data is not an object");
+                    return;
+                }
+
+                var dataObj = (Newtonsoft.Json.Linq.JObject)dataToken;
+
+                // Try both common structures
+                var messageNode = dataObj["message"] ?? dataObj;
+
+                string username = (string)(
+                    messageNode?["user"]?["username"] ??
+                    messageNode?["sender"]?["username"] ??
+                    "KickViewer");
+
+                string messageText = (string)(
+                    messageNode?["content"] ??
+                    messageNode?["message"] ??
+                    "[empty]");
+
+                if (string.IsNullOrWhiteSpace(messageText) || messageText == "[empty]")
+                {
+                    Logger.Debug("Kick: Skipped - empty message");
+                    return;
+                }
 
                 var wrapper = new ChatMessageWrapper(
                     username: username,
                     message: messageText,
                     platform: "Kick",
-                    platformUserId: chatData?.user?.id?.ToString() ?? "",
+                    platformUserId: (string)(
+                        messageNode?["user"]?["id"] ??
+                        messageNode?["sender"]?["id"] ?? ""),
                     channelId: _settings.ChannelName,
                     platformMessage: null,
                     isWhisper: false
@@ -362,6 +460,8 @@ namespace CAP_ChatInteractive
 
                 if (!_settings.suspendFeedback)
                     ChatCommandProcessor.ProcessMessage(wrapper);
+
+                Logger.Debug($"[Kick] {username}: {messageText}");
             }
             catch (Exception ex)
             {
@@ -404,21 +504,6 @@ namespace CAP_ChatInteractive
         {
             [JsonProperty("access_token")]
             public string AccessToken { get; set; }
-        }
-
-        private class KickChannelResponse
-        {
-            public KickChannelData data { get; set; }
-        }
-
-        private class KickChannelData
-        {
-            public KickChatroom chatroom { get; set; }
-        }
-
-        private class KickChatroom
-        {
-            public string id { get; set; }
         }
     }
 }

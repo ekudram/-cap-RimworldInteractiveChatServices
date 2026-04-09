@@ -68,7 +68,7 @@ namespace CAP_ChatInteractive
                 Tooltip = "RICS.CIS.Twitch.Tooltip".Translate(),
                 ContentDrawer = TabDrawer_YouTube.Draw
             });
-            /*
+            // /*
             // Kick tab — added for full multi-platform support (Discord/Steam-ready pattern)
             _tabWorker.AddTab(new TabItem   // ← uncomment when you're ready to test
             {
@@ -76,7 +76,7 @@ namespace CAP_ChatInteractive
                 Tooltip = "RICS.CIS.Kick.Tooltip".Translate(),
                 ContentDrawer = TabDrawer_Kick.Draw
             });
-            */
+            // */
             //_tabWorker.AddTab(new TabItem
             //{
             //    Label = "OAuth",
