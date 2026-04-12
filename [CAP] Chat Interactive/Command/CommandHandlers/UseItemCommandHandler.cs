@@ -840,7 +840,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 var hediff = hediffs.FirstOrDefault(h => h.def.defName == "MechFormfeederImplant") as Hediff_Level;
                 int currentLevel = hediff?.level ?? 0;
-                int maxAllowed = 3;
+                int maxAllowed = 6;
 
                 if (currentLevel >= maxAllowed)
                 {
