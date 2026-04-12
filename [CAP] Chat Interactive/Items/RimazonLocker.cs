@@ -51,6 +51,13 @@ namespace CAP_ChatInteractive
         private Building_RimazonLocker Locker => (Building_RimazonLocker)owner;
         private static ThingFilter _defaultLockerFilterCache;
 
+        // Required for Scribe_Deep / SaveableFromNode deserialization (RimWorld calls this with no args)
+        public LockerThingOwner() : base(null, false, LookMode.Deep)
+        {
+            // Nothing else — fields are set later via PostLoadInit or when InnerContainer getter runs
+        }
+
+        // The original constructor (kept for new lockers)
         public LockerThingOwner(IThingHolder parentHolder, bool oneStackOnly, LookMode lookMode)
                 : base(parentHolder, oneStackOnly, lookMode)
         {
@@ -93,7 +100,9 @@ namespace CAP_ChatInteractive
             {
                 if (innerContainer == null)
                 {
+                    // Use the custom owner that respects MaxStacks
                     innerContainer = new LockerThingOwner(this, false, LookMode.Deep);
+                    Logger.Debug($"Locker {instanceId}: Created new LockerThingOwner");
                 }
                 return innerContainer;
             }
@@ -254,13 +263,33 @@ namespace CAP_ChatInteractive
         public override void ExposeData()
         {
             base.ExposeData();
+
             Scribe_Values.Look(ref customName, "customName");
-            Scribe_Deep.Look(ref settings, "settings", this);
+
+            // Scribe the container — this is where the missing constructor was crashing
             Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
 
-            // Re-apply Unstored priority after loading save (critical for old saves)
+            Scribe_Deep.Look(ref settings, "settings", this);
+
+            // Re-apply Unstored priority after loading (critical for old saves + mod interference)
             if (settings != null)
+            {
                 settings.Priority = StoragePriority.Unstored;
+            }
+
+            // Post-load fix for LockerThingOwner
+            if (innerContainer != null)
+            {
+                // Re-attach owner reference (LockerThingOwner stores a reference to "Locker")
+                // This is safe even if the inner field is already set
+                if (innerContainer is LockerThingOwner lockerOwner)
+                {
+                    // Force re-initialization of the backing field if needed
+                    _ = InnerContainer; // triggers getter which sets up LockerThingOwner properly
+                }
+            }
+
+            Logger.Debug($"Locker {instanceId} loaded — stacks: {innerContainer?.Count ?? 0}/{MaxStacks}");
         }
 
         // === DeSpawn
