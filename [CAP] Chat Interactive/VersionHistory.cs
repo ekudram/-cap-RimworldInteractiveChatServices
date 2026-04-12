@@ -769,7 +769,19 @@ Updated:
 - Human xenotypes now properly show their xenotype restrictions in the Pawn Race Settings dialog.
 "
 
-            }
+            },
+             { "1.30",
+                    @"===========================================================
+                            RICS 1.30 - Changelog
+                            Released: April 12 2026
+
+Fixed:  
+- Constructor for Rimazon Locker error
+- Fixed Duplicate medicine reporting
+- Fixed Viewer Error on startup when bot/streamer sends connected message
+- Fixed a missing translation in Surgery command
+- Fixed Mech Gestation Processor installs allowed from 3 to 6
+" }
             // Add more versions here as they're released+
         };
 
