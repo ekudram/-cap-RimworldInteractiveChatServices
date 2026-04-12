@@ -45,40 +45,70 @@ namespace CAP_ChatInteractive
         };
     }
 
-    // Add this new class near the top of the file, after the LockerExtension
+    /// <summary>
+    /// LockerThingOwner is a custom ThingOwner that enforces the MaxStacks limit defined in LockerExtension.
+    /// </summary>
     public class LockerThingOwner : ThingOwner<Thing>
     {
-        private Building_RimazonLocker Locker => (Building_RimazonLocker)owner;
-        private static ThingFilter _defaultLockerFilterCache;
-
-        // Required for Scribe_Deep / SaveableFromNode deserialization (RimWorld calls this with no args)
+        // Required empty constructor for Scribe_Deep / SaveableFromNode (called with Activator.CreateInstance, no args)
         public LockerThingOwner() : base(null, false, LookMode.Deep)
         {
-            // Nothing else — fields are set later via PostLoadInit or when InnerContainer getter runs
+            // Do nothing here — RimWorld sets the owner field during deserialization because we pass "this" in Scribe_Deep
         }
 
-        // The original constructor (kept for new lockers)
-        public LockerThingOwner(IThingHolder parentHolder, bool oneStackOnly, LookMode lookMode)
-                : base(parentHolder, oneStackOnly, lookMode)
+        // Constructor used when a parent holder is provided during deserialization
+        public LockerThingOwner(IThingHolder owner) : base(owner, false, LookMode.Deep)
         {
         }
+
+        // Constructor used when spawning a brand-new locker
+        public LockerThingOwner(IThingHolder parentHolder, bool oneStackOnly, LookMode lookMode)
+            : base(parentHolder, oneStackOnly, lookMode)
+        {
+        }
+
+
 
         public override bool TryAdd(Thing thing, bool allowSpecialEffects = false)
         {
-            if (Count >= Locker.MaxStacks)
+            // Safe null check — prevents crashes if called extremely early during load
+            if (Locker == null || Count >= Locker.MaxStacks)
                 return false;
+
             return base.TryAdd(thing, allowSpecialEffects);
         }
 
         public bool CanAcceptAnyOf(Thing thing)
         {
-            if (Count >= Locker.MaxStacks)
+            if (Locker == null || Count >= Locker.MaxStacks)
                 return false;
             return base.CanAcceptAnyOf(thing);
         }
+
+        // Safe property — falls back gracefully during deserialization edge cases
+        private Building_RimazonLocker Locker
+        {
+            get
+            {
+                if (owner is Building_RimazonLocker locker)
+                    return locker;
+
+                // During very early load the owner may still be null — return null instead of crashing
+                return null;
+            }
+        }
     }
+
     // Main Class
     // public class Building_RimazonLocker : v, IThingHolder, IHaulDestination, IStoreSettingsParent
+
+    /// <summary>
+    /// Building_RimazonLocker is a custom building that functions as a locker for chat deliveries.
+    /// It implements IThingHolder to contain items, IHaulDestination to allow pawns to haul items into it,
+    /// and IStoreSettingsParent to provide storage settings.
+    /// The locker has a customizable name and enforces a maximum stack limit defined in the LockerExtension def mod extension.
+    /// It also includes robust handling for mod conflicts and edge cases during loading and item acceptance.
+    /// </summary>
     public class Building_RimazonLocker : Building, IThingHolder, IHaulDestination, IStoreSettingsParent
     {
         public string customName = null;
@@ -133,7 +163,7 @@ namespace CAP_ChatInteractive
             // This is the CORRECT way - ThingOwnerUtility handles the position chain
             ThingOwnerUtility.AppendThingHoldersFromThings(outChildren, GetDirectlyHeldThings());
         }
-        public IThingHolder ParentHolder => null; // As a building on map, we're top-level for our items
+        public new IThingHolder ParentHolder => null; // As a building on map, we're top-level for our items
 
         public IntVec3 GetPositionForHeldItems()
         {
@@ -250,7 +280,7 @@ namespace CAP_ChatInteractive
         public new IntVec3 Position => base.Position;           // Inherited from Thing, but explicit for clarity
         public new Map Map => base.Map;                         // Inherited from Thing
         // Testing Note.  tested as false and was unable to drop stuff into locker, so this must be true
-        public bool HaulDestinationEnabled => true;            
+        public bool HaulDestinationEnabled => true;
 
 
         // === Rename Locker
@@ -260,32 +290,33 @@ namespace CAP_ChatInteractive
         }
 
         // === ExposeData
+        // === ExposeData
+        // === ExposeData
         public override void ExposeData()
         {
             base.ExposeData();
 
             Scribe_Values.Look(ref customName, "customName");
 
-            // Scribe the container — this is where the missing constructor was crashing
+            // Important: pass "this" as the IThingHolder so RimWorld wires the owner correctly on load
             Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
 
             Scribe_Deep.Look(ref settings, "settings", this);
 
-            // Re-apply Unstored priority after loading (critical for old saves + mod interference)
+            // Re-apply Unstored priority after loading (survives old saves and storage tweak mods)
             if (settings != null)
             {
                 settings.Priority = StoragePriority.Unstored;
             }
 
-            // Post-load fix for LockerThingOwner
+            // Post-load safety
             if (innerContainer != null)
             {
-                // Re-attach owner reference (LockerThingOwner stores a reference to "Locker")
-                // This is safe even if the inner field is already set
-                if (innerContainer is LockerThingOwner lockerOwner)
+                // Ensure every item knows its holding owner (vanilla pattern)
+                foreach (Thing t in innerContainer)
                 {
-                    // Force re-initialization of the backing field if needed
-                    _ = InnerContainer; // triggers getter which sets up LockerThingOwner properly
+                    if (t != null && t.holdingOwner == null)
+                        t.holdingOwner = innerContainer;
                 }
             }
 
@@ -492,7 +523,7 @@ namespace CAP_ChatInteractive
             }
             catch (System.Exception ex)
             {
-                // Log.Error($"[Locker CRASH CAUGHT in TryAcceptThing] For {thing?.LabelShort ?? "null"} x{thing?.stackCount ?? 0}:\n{ex.Message}\nStackTrace:\n{ex.StackTrace}");
+                Log.Error($"[Locker CRASH CAUGHT in TryAcceptThing] For {thing?.LabelShort ?? "null"} x{thing?.stackCount ?? 0}:\n{ex.Message}\nStackTrace:\n{ex.StackTrace}");
                 return false;
             }
         }
@@ -597,14 +628,14 @@ namespace CAP_ChatInteractive
                     if (!success)
                     {
                         Logger.Warning("SafeEjectAllContents: TryDropAll failed, trying individual drops");
-                        
+
                         SafeDropItemsIndividually();
                     }
                 }
                 else
                 {
                     Logger.Warning("SafeEjectAllContents: No valid drop cell found near locker, trying individual drops");
-                    
+
                     SafeDropItemsIndividually();
                 }
 
@@ -616,7 +647,7 @@ namespace CAP_ChatInteractive
                 Logger.Error($"Stack trace: {ex.StackTrace}");
 
                 // Emergency fallback: try to save items
-                
+
                 EmergencyEject();
             }
 
@@ -685,14 +716,14 @@ namespace CAP_ChatInteractive
 
                     if (dropCell.IsValid)
                     {
-                        
+
                         // Logger.Debug($"Dropping {thing.LabelCap} at {dropCell}");
                         bool dropped = innerContainer.TryDrop(thing, dropCell, Map, ThingPlaceMode.Direct, out Thing result);
                         // Logger.Debug($"  - Drop result: {dropped}, result: {result?.LabelCap ?? "null"}");
                     }
                     else
                     {
-                        
+
                         Logger.Warning($"No valid drop cell found for {thing.LabelCap}, forcing drop at position");
                         innerContainer.TryDrop(thing, Position, Map, ThingPlaceMode.Near, out Thing result);
                     }
@@ -719,12 +750,12 @@ namespace CAP_ChatInteractive
                         Logger.Error($"Destroying: {thing.LabelCap} x{thing.stackCount}");
                         thing.Destroy();
                     }
-                    
+
                     innerContainer.Remove(thing);
                 }
                 catch
                 {
-                    
+
                     // If even this fails, clear the container forcefully
                     innerContainer.Clear();
                     break;
@@ -852,11 +883,11 @@ namespace CAP_ChatInteractive
 
             Text.Font = GameFont.Small;
             // Widgets.Label(new Rect(0f, 40f, inRect.width, 25f), $"Stack slots: {locker.InnerContainer.Count}/{locker.MaxStacks}");
-            Widgets.Label(new Rect(0f, 40f, inRect.width, 25f), 
+            Widgets.Label(new Rect(0f, 40f, inRect.width, 25f),
                 "RICS.Storage.StackSlots".Translate(locker.InnerContainer.Count, locker.MaxStacks));
 
             //Widgets.Label(new Rect(0f, 60f, inRect.width, 25f), $"Total items: {locker.InnerContainer.TotalStackCount}");
-            Widgets.Label(new Rect(0f, 60f, inRect.width, 25f), 
+            Widgets.Label(new Rect(0f, 60f, inRect.width, 25f),
                 "RICS.Storage.TotalItems".Translate(locker.InnerContainer.TotalStackCount));
 
             Rect viewRect = new Rect(0f, 120f, inRect.width, inRect.height - 120f);
@@ -1025,7 +1056,7 @@ namespace CAP_ChatInteractive
             // Keep Player/Streamer from using the Locker as a storage point
             // prevents pawns from delivering to the box.
             Widgets.Label(rect.LeftHalf(), "RICS.Priority".Translate() + ":");
-            Widgets.Label(rect.RightHalf(), "RICS.Unstored".Translate());  
+            Widgets.Label(rect.RightHalf(), "RICS.Unstored".Translate());
         }
 
         private void DrawFilter(Rect rect, ThingFilter filter, ThingFilter parentFilter)
