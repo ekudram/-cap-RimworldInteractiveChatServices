@@ -468,7 +468,6 @@ namespace CAP_ChatInteractive
                 return;
             }
 
-            // Clean the message
             message = message.Replace("\r\n", "\n").Replace("\n\n", "\n").Trim();
 
             var now = DateTime.Now;
@@ -481,30 +480,32 @@ namespace CAP_ChatInteractive
                 {
                     var payload = new
                     {
-                        // chatroom_id = long.Parse(_chatroomId),
-                        content = message          // ← This is the correct field name
+                        content = message
                     };
 
-                    string url = $"https://kick.com/api/v2/messages/send/{_chatroomId}";
                     var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
+
+                    // Try the old endpoint that sometimes still works
+                    // string url = $"https://kick.com/api/v2/messages/send/{_chatroomId}";
+                    string url = $"https://api.kick.com/api/v2/messages/send/{_chatroomId}";
 
                     using var request = new HttpRequestMessage(HttpMethod.Post, url);
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
                     request.Content = content;
 
-                    Logger.Debug($"Kick: Sending via /api/v1/chat-messages → {message}");
+                    Logger.Debug($"Kick: Sending to {url} → {message}");
 
                     var response = await _httpClient.SendAsync(request);
-                    string responseBody = await response.Content.ReadAsStringAsync();
+                    var responseBody = await response.Content.ReadAsStringAsync();
 
                     if (response.IsSuccessStatusCode)
                     {
                         _lastMessageTime = DateTime.Now;
-                        Logger.Debug($"[Kick] Sent: {message}");
+                        Logger.Debug($"[Kick] Successfully sent: {message}");
                     }
                     else
                     {
-                        Logger.Error($"Kick send failed - {response.StatusCode}: {responseBody}");
+                        Logger.Error($"Kick send failed - Status: {response.StatusCode} | Body: {responseBody}");
                     }
                 }
                 catch (Exception ex)

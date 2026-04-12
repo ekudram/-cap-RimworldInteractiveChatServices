@@ -70,12 +70,12 @@ namespace CAP_ChatInteractive
             });
             // /*
             // Kick tab — added for full multi-platform support (Discord/Steam-ready pattern)
-            _tabWorker.AddTab(new TabItem   // ← uncomment when you're ready to test
-            {
-                Label = "RICS.CIS.Kick".Translate(),
-                Tooltip = "RICS.CIS.Kick.Tooltip".Translate(),
-                ContentDrawer = TabDrawer_Kick.Draw
-            });
+            //_tabWorker.AddTab(new TabItem   // ← uncomment when you're ready to test
+            //{
+            //    Label = "RICS.CIS.Kick".Translate(),
+            //    Tooltip = "RICS.CIS.Kick.Tooltip".Translate(),
+            //    ContentDrawer = TabDrawer_Kick.Draw
+            //});
             // */
             //_tabWorker.AddTab(new TabItem
             //{
