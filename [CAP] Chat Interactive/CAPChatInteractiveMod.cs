@@ -74,8 +74,26 @@ namespace CAP_ChatInteractive
             }
 
             // Force viewer loading by accessing the All property
-            var viewerCount = Viewers.All.Count; // This triggers static constructor
-            Logger.Debug($"Pre-loaded {viewerCount} viewers");
+            try
+            {
+                // Trigger static constructor of Viewers safely
+                _ = Viewers.All;
+
+                // Guarantee GameComponent exists (prevents NRE on first chat message)
+                if (Current.Game != null)
+                {
+                    var gameComp = Current.Game.GetComponent<CAPChatInteractive_GameComponent>();
+                    if (gameComp == null)
+                    {
+                        Current.Game.components.Add(new CAPChatInteractive_GameComponent(Current.Game));
+                        Logger.Debug("GameComponent added proactively in mod constructor");
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Warning($"[RICS] Failed to pre-initialize Viewers/GameComponent: {ex.Message}");
+            }
 
 
             // Then initialize services (which will use the registered commands)

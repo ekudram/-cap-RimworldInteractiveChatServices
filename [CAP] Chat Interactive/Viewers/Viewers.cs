@@ -159,42 +159,69 @@ namespace CAP_ChatInteractive
             }
         }
 
+        /// <summary>
+        /// Updates viewer activity based on a new chat message. This method is called whenever a new message is received and is responsible for:
+        /// - Creating a new viewer if one does not already exist
+        /// - Updating the viewer's message count and platform IDs
+        /// - Saving viewer data periodically
+        /// </summary>
+        /// <param name="message"></param>
         public static void UpdateViewerActivity(ChatMessageWrapper message)
         {
+            // === BULLET-PROOF GUARD (fixes the reported NRE) ===
+            if (message == null || string.IsNullOrEmpty(message.Username))
+            {
+                Logger.Warning("[RICS Viewers] UpdateViewerActivity received null or empty message");
+                return;
+            }
+
+            if (Current.Game == null)
+            {
+                Logger.Debug("[RICS Viewers] UpdateViewerActivity skipped — Current.Game is null (still loading or on main menu)");
+                return;
+            }
+
+            if (Find.TickManager == null)
+            {
+                Logger.Debug("[RICS Viewers] UpdateViewerActivity skipped — TickManager not ready yet");
+                return;
+            }
+
             try
             {
-                // === NEW: Clean up any bogus viewers before processing new messages ===
-                if (All.Count > 0 && Find.TickManager.TicksGame % 300 == 0) // every ~5 seconds
+                // Optional periodic cleanup (safe even if called frequently)
+                if (Find.TickManager.TicksGame % 300 == 0 && All.Count > 0)
                 {
                     RemoveDuplicateViewers();
                 }
 
                 var viewer = GetViewer(message);
-                if (viewer != null)
+                if (viewer == null)
                 {
-                    // Check if this will add a platform ID
-                    bool hadPlatformIdBefore = viewer.HasPlatform(message.Platform);
+                    Logger.Warning($"[RICS Viewers] GetViewer returned null for {message.Username}");
+                    return;
+                }
 
-                    viewer.UpdateFromMessage(message);
+                // Check if this will add a platform ID
+                bool hadPlatformIdBefore = viewer.HasPlatform(message.Platform);
 
-                    // Check if a new platform ID was added
-                    bool hasPlatformIdAfter = viewer.HasPlatform(message.Platform);
+                viewer.UpdateFromMessage(message);
 
-                    // If a new platform ID was added, save immediately
-                    if (!hadPlatformIdBefore && hasPlatformIdAfter)
-                    {
-                        SaveViewers();
-                    }
-                    // Otherwise use periodic saving
-                    else if (viewer.MessageCount % 10 == 0)
-                    {
-                        SaveViewers();
-                    }
+                // Check if a new platform ID was added → immediate save
+                bool hasPlatformIdAfter = viewer.HasPlatform(message.Platform);
+
+                if (!hadPlatformIdBefore && hasPlatformIdAfter)
+                {
+                    SaveViewers();
+                }
+                else if (viewer.MessageCount % 10 == 0)
+                {
+                    SaveViewers();
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error updating viewer activity: {ex.Message}");
+                Logger.Error($"[RICS Viewers] Exception in UpdateViewerActivity for viewer '{message.Username}': {ex.Message}\n{ex.StackTrace}");
             }
         }
 

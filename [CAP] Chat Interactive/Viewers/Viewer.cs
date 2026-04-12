@@ -67,15 +67,36 @@ namespace CAP_ChatInteractive
         public Viewer(string username)
         {
             Username = username?.ToLowerInvariant() ?? "";
-            DisplayName = username ?? ""; // Capitalize this
+            DisplayName = username ?? "";
+
             PlatformUserIds = new Dictionary<string, string>();
             FirstSeen = DateTime.Now;
             LastSeen = DateTime.Now;
 
-            // Initialize with default values from settings
-            var settings = CAPChatInteractiveMod.Instance.Settings;
-            Coins = settings.GlobalSettings.StartingCoins;
-            Karma = settings.GlobalSettings.StartingKarma;
+            // Defensive settings access — fallback to sensible defaults if mod not fully initialized
+            int startingCoins = 100;
+            int startingKarma = 100;
+
+            try
+            {
+                var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (settings != null)
+                {
+                    startingCoins = settings.StartingCoins;
+                    startingKarma = settings.StartingKarma;
+                }
+                else
+                {
+                    Logger.Debug($"[RICS Viewer] CAPChatInteractiveMod.Instance not ready yet for new viewer '{Username}' — using defaults");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[RICS Viewer] Error reading global settings in constructor for '{Username}': {ex.Message}");
+            }
+
+            Coins = startingCoins;
+            Karma = startingKarma;
         }
 
         public void AddPlatformUserId(string platform, string userId)
@@ -322,10 +343,12 @@ namespace CAP_ChatInteractive
 
         // In Viewer.cs
 
+
         /// <summary>
-        /// Updates display name if changed and handles all dependent systems (pawn name, etc.)
+        /// Updates the viewer's display name and propagates the change to any assigned pawn's nickname.
         /// </summary>
-        /// <returns>true if name was actually changed, false if same or no change needed</returns>
+        /// <param name="newDisplayName"></param>
+        /// <returns></returns>
         public bool UpdateDisplayName(string newDisplayName)
         {
             if (string.IsNullOrWhiteSpace(newDisplayName))
@@ -346,24 +369,39 @@ namespace CAP_ChatInteractive
             // ───────────────────────────────────────────────────────
             // 1. Update pawn nickname if this viewer has an assigned pawn
             // ───────────────────────────────────────────────────────
-            var assignmentMgr = Current.Game.GetComponent<GameComponent_PawnAssignmentManager>();
-            if (assignmentMgr != null)
+            try
             {
-                string primaryId = GetPrimaryPlatformIdentifier();
-
-                Pawn assignedPawn = assignmentMgr.GetAssignedPawnIdentifier(primaryId);
-                if (assignedPawn != null && !assignedPawn.Destroyed)
+                var assignmentMgr = Current.Game?.GetComponent<GameComponent_PawnAssignmentManager>();
+                if (assignmentMgr != null)
                 {
-                    UpdatePawnNickname(assignedPawn, normalizedNew);
-                    Logger.Message($"Updated pawn nickname for {Username} → {normalizedNew}");
+                    string primaryId = GetPrimaryPlatformIdentifier();
+
+                    Pawn assignedPawn = assignmentMgr.GetAssignedPawnIdentifier(primaryId);
+                    if (assignedPawn != null && !assignedPawn.Destroyed)
+                    {
+                        UpdatePawnNickname(assignedPawn, normalizedNew);
+                        Logger.Message($"Updated pawn nickname for {Username} → {normalizedNew}");
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[RICS Viewer] Failed to update pawn nickname for '{Username}': {ex.Message}");
+                // Non-fatal — name change on viewer still succeeded
             }
 
             // ───────────────────────────────────────────────────────
-            // 2. (Optional) Future hooks: update UI, rename save data, etc.
+            // 2. Save viewers (safe even if pawn update failed)
             // ───────────────────────────────────────────────────────
+            try
+            {
+                Viewers.SaveViewers();
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[RICS Viewer] Failed to save after name change for '{Username}': {ex.Message}");
+            }
 
-            Viewers.SaveViewers();
             return true;
         }
 
