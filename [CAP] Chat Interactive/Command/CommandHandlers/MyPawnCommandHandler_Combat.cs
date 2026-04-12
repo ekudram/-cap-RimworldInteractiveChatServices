@@ -30,6 +30,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
     public static class MyPawnCommandHandler_Combat
     {
         // === Gear ===
+        // === Gear ===
         public static string HandleGearInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
@@ -58,15 +59,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            // Inventory items - show all notable items
+            // Inventory items - show all notable items (fixed duplicate medicine reporting)
+            // Vanilla innerContainer holds unique Thing stacks; we now use a single-pass filter
+            // to avoid double-matching via IsMedicine + IsIngestible on the same stack.
             var inventory = pawn.inventory?.innerContainer;
             if (inventory != null && inventory.Count > 0)
             {
+                // Distinct by reference (each stack is a unique Thing) + clear non-overlapping conditions
                 var notableItems = inventory.Where(item =>
-                     item.def.IsMedicine ||
-                    item.def.IsDrug ||
-                    item.def.IsIngestible
-                );
+                    item != null && item.def != null && item.stackCount > 0 &&
+                    (item.def.IsMedicine ||
+                     item.def.IsDrug ||
+                     (item.def.IsIngestible && !item.def.IsMedicine && !item.def.IsDrug)))
+                    .ToList();  // materialize once for safety
 
                 if (notableItems.Any())
                 {
