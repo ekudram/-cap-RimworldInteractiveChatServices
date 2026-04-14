@@ -246,4 +246,43 @@ When "Force whisper-only commands" is enabled, this controls how often the remin
     It appears <b>right below your Access Token</b> on the same page.]]>
   </RICS.Twitch.TokenGeneratorClientIdDesc>
 
+  <!-- === TWITCH RAIDS FEATURE === -->
+  <RICS.Twitch.RaidsHeader>Twitch Raids Integration</RICS.Twitch.RaidsHeader>
+
+  <RICS.Twitch.RaidsEnableLabel>Enable Twitch Raids → RimWorld raids</RICS.Twitch.RaidsEnableLabel>
+  <RICS.Twitch.RaidsEnableTooltip>
+    <![CDATA[When a streamer raids your channel on Twitch, RICS will automatically trigger a raid incident in RimWorld after the configured delay.
+
+• The first raider is usually the raiding streamer.
+• Uses TwitchLib raid notification events.
+• Fully optional - can be disabled without affecting other features.]]>
+  </RICS.Twitch.RaidsEnableTooltip>
+
+  <RICS.Twitch.RaidsDelayLabel>Raid trigger delay (minutes):</RICS.Twitch.RaidsDelayLabel>
+  <RICS.Twitch.RaidsDelayTooltip>
+    <![CDATA[How long to wait after detecting a Twitch raid before triggering the in-game raid.
+
+• 0 = trigger immediately (not recommended - may feel too sudden)
+• 1 = 1 minute (default - gives time for raiders to settle in chat)
+• Higher values = more natural timing]]>
+  </RICS.Twitch.RaidsDelayTooltip>
+
+  <RICS.Twitch.RaidsDelayDisabled>Delay: Disabled (raid triggers immediately)</RICS.Twitch.RaidsDelayDisabled>
+  <RICS.Twitch.RaidsDelayEnabled>Delay: {0} minute(s) after raid detected</RICS.Twitch.RaidsDelayEnabled>
+
+  <!-- Twitch Raids - Minimum Raiders (anti-troll) -->
+  <RICS.Twitch.RaidsMinRaidersLabel>Minimum raiders to trigger raid:</RICS.Twitch.RaidsMinRaidersLabel>
+  <RICS.Twitch.RaidsMinRaidersTooltip>
+    <![CDATA[Anti-troll protection: Only trigger an in-game raid if the Twitch raid has at least this many viewers/raiders.
+
+• Default: 5
+• Set to 1 to allow even small raids
+• Higher values help prevent fake/tiny raids from triggering events]]>
+  </RICS.Twitch.RaidsMinRaidersTooltip>
+  <RICS.Twitch.RaidsMinRaidersHelper>Will trigger only if raid has ≥ {0} raiders</RICS.Twitch.RaidsMinRaidersHelper>
+
+  <!-- Twitch Raid Letters -->
+  <RICS.TwitchRaid.LetterLabel>Twitch Raid from @{0} ({1} raiders)!</RICS.TwitchRaid.LetterLabel>
+  <RICS.TwitchRaid.LetterText>A massive raid from Twitch channel @{0} with approximately {1} viewers just hit your colony!\n\nGood luck, streamer!</RICS.TwitchRaid.LetterText>
+  
 </LanguageData>

@@ -31,6 +31,7 @@ namespace _CAP__Chat_Interactive
         public static void Draw(Rect region)
         {
             var settings = CAPChatInteractiveMod.Instance.Settings.TwitchSettings;
+            var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;    
             // var view = new Rect(0f, 0f, region.width - 16f, 1100f); // Increased height
 
             // Calculate dynamic height based on content
@@ -526,16 +527,59 @@ namespace _CAP__Chat_Interactive
             TooltipHandler.TipRegion(whisperNoteRect,
                 "RICS.Twitch.WhisperLimitationTooltip".Translate());
 
-            // === Quick Tips Section ===
+            // === Twitch Raids Settings (new section) ===
             listing.Gap(24f);
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.SubHeader;
-            // listing.Label("Quick Tips");
-            listing.Label("RICS.Twitch.QuickTipsHeader".Translate());
+            listing.Label("RICS.Twitch.RaidsHeader".Translate());
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
             listing.GapLine(6f);
             listing.Gap(4f);
+
+            // Enable Twitch Raids
+            Rect raidsEnabledRect = listing.GetRect(30f);
+            Widgets.CheckboxLabeled(raidsEnabledRect,
+                "RICS.Twitch.RaidsEnableLabel".Translate(),
+                ref globalSettings.TwitchRaidsEnabled);
+            TooltipHandler.TipRegion(raidsEnabledRect,
+                "RICS.Twitch.RaidsEnableTooltip".Translate());
+
+            // Delay in minutes
+            Rect delayLabelRect = listing.GetRect(24f);
+            Widgets.Label(delayLabelRect, "RICS.Twitch.RaidsDelayLabel".Translate());
+            TooltipHandler.TipRegion(delayLabelRect, "RICS.Twitch.RaidsDelayTooltip".Translate());
+
+            Rect delayFieldRect = listing.GetRect(30f);
+            string delayBuffer = globalSettings.TwitchRaidDelayMinutes.ToString();
+            UIUtilities.TextFieldNumericFlexible(delayFieldRect,
+                ref globalSettings.TwitchRaidDelayMinutes,
+                ref delayBuffer, 0, 60);
+
+            Rect delayHelperRect = listing.GetRect(20f);
+            GUI.color = Color.gray;
+            Widgets.Label(delayHelperRect,
+                globalSettings.TwitchRaidDelayMinutes == 0
+                    ? "RICS.Twitch.RaidsDelayDisabled".Translate()
+                    : "RICS.Twitch.RaidsDelayEnabled".Translate().Formatted(globalSettings.TwitchRaidDelayMinutes));
+            GUI.color = Color.white;
+
+            // Minimum raiders (anti-troll)
+            listing.Gap(12f);
+            Rect minRaidersLabelRect = listing.GetRect(24f);
+            Widgets.Label(minRaidersLabelRect, "RICS.Twitch.RaidsMinRaidersLabel".Translate());
+            TooltipHandler.TipRegion(minRaidersLabelRect, "RICS.Twitch.RaidsMinRaidersTooltip".Translate());
+
+            Rect minRaidersFieldRect = listing.GetRect(30f);
+            string minBuffer = globalSettings.TwitchRaidMinRaiders.ToString();
+            UIUtilities.TextFieldNumericFlexible(minRaidersFieldRect,
+                ref globalSettings.TwitchRaidMinRaiders,
+                ref minBuffer, 1, 1000);
+
+            Rect minHelperRect = listing.GetRect(20f);
+            GUI.color = Color.gray;
+            Widgets.Label(minHelperRect, "RICS.Twitch.RaidsMinRaidersHelper".Translate(globalSettings.TwitchRaidMinRaiders));
+            GUI.color = Color.white;
 
             Rect tipsRect = listing.GetRect(85f); // More height for tips
             //string tips =
@@ -586,6 +630,9 @@ namespace _CAP__Chat_Interactive
 
             // Whisper Settings: Header 30 + gap 6 + gap 4 + checkbox 30 + gap 12 + checkbox 30 + gap 12 + label 24 + field 30 + helper 20 + gap 12 + note 40 + gap 24 = 254
             height += 254f;
+
+            // Twitch Raids section: Header 30 + gap 6 + gap 4 + checkbox 30 + label 24 + field 30 + helper 20 + gap 24 = 168
+            height += 168f;
 
             // Quick Tips: Header 30 + gap 6 + gap 4 + content 85 = 125
             height += 125f;

@@ -246,6 +246,11 @@ namespace CAP_ChatInteractive
         public bool ShowChannelPointsDebugMessages = false;
         public List<ChannelPoints_RewardSettings> RewardSettings = new List<ChannelPoints_RewardSettings>();
 
+        // === Twitch Raids feature (Phase 1) ===
+        public bool TwitchRaidsEnabled = true;           // global kill-switch
+        public int TwitchRaidDelayMinutes = 1;            // delay before triggering in-game raid (minutes)
+        public int TwitchRaidMinRaiders = 5;              // anti-troll protection (default 5)
+
         public CAPGlobalChatSettings()
         {
             RewardSettings = new List<ChannelPoints_RewardSettings>();
@@ -359,6 +364,11 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref ChannelPointsEnabled, "channelPointsEnabled", true);
             Scribe_Values.Look(ref ShowChannelPointsDebugMessages, "showChannelPointsDebugMessages", false);
             Scribe_Collections.Look(ref RewardSettings, "rewardSettings", LookMode.Deep);
+
+            // Twitch Raids (new in 1.31+)
+            Scribe_Values.Look(ref TwitchRaidsEnabled, "twitchRaidsEnabled", true);
+            Scribe_Values.Look(ref TwitchRaidDelayMinutes, "twitchRaidDelayMinutes", 1);
+            Scribe_Values.Look(ref TwitchRaidMinRaiders, "twitchRaidMinRaiders", 5);
         }
     }
 

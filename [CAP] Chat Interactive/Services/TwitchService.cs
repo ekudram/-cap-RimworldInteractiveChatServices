@@ -25,6 +25,7 @@
  * - All platform-specific structures follow external constraints
  */
 
+using CAP_ChatInteractive.Incidents;
 using CAP_ChatInteractive.Utilities;
 using RimWorld;
 using System;
@@ -41,7 +42,9 @@ using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Events;
 using TwitchLib.Communication.Models;
+using UnityEngine;
 using Verse;
+
 
 namespace CAP_ChatInteractive
 {
@@ -56,6 +59,11 @@ namespace CAP_ChatInteractive
         private DateTime _lastWhisperReminderTime = DateTime.MinValue;
         private TwitchAPI _helixApi;
         private readonly Dictionary<string, string> _userIdCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        // === Twitch Raids Feature ===
+        private readonly Dictionary<string, DateTime> _recentRaiders = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        private DateTime _lastRaidTriggerTime = DateTime.MinValue;
+        private const int RaidDebounceSeconds = 30; // prevent duplicate triggers from the same raid
 
         public bool IsConnected => _client?.IsConnected == true;
 
@@ -228,6 +236,8 @@ namespace CAP_ChatInteractive
             _client.OnIncorrectLogin += OnIncorrectLogin;
             _client.OnUserJoined += OnUserJoined;
             _client.OnUserLeft += OnUserLeft;
+            // Twitch Raids detection
+            _client.OnRaidNotification += OnRaidNotificationReceived;
         }
 
         private void UnsubscribeFromEvents()
@@ -244,6 +254,8 @@ namespace CAP_ChatInteractive
             _client.OnIncorrectLogin += OnIncorrectLogin;
             _client.OnUserJoined += OnUserJoined;
             _client.OnUserLeft += OnUserLeft;
+            // Twitch Raids
+            _client.OnRaidNotification -= OnRaidNotificationReceived;
         }
 
         #region Twitch Client Event Handlers
@@ -360,7 +372,194 @@ namespace CAP_ChatInteractive
             }, null, false, null, showExtraUIInfo: false, forceHideUI: true);
         }
 
+        private void OnRaidNotificationReceived(object sender, OnRaidNotificationArgs e)
+        {
+            if (!CAPChatInteractiveMod.Instance.Settings.GlobalSettings.TwitchRaidsEnabled)
+            {
+                Logger.Debug("Twitch raid detected but feature disabled in settings.");
+                return;
+            }
 
+            // Correct properties for TwitchLib.Client 3.4.0
+            var raid = e.RaidNotification;
+            string raiderChannel = raid?.MsgParamLogin ?? raid?.Login ?? e.Channel ?? "UnknownRaider";
+
+            // Viewer count comes as string in msg-param-viewerCount
+            int viewerCount = 0;
+            if (int.TryParse(raid?.MsgParamViewerCount, out int parsedCount))
+            {
+                viewerCount = parsedCount;
+            }
+
+            Logger.Twitch($"TWITCH RAID DETECTED! From: {raiderChannel} with ~{viewerCount} viewers");
+
+            // Record the raiding streamer as primary raider
+            _recentRaiders[raiderChannel] = DateTime.Now;
+
+            // Cleanup old entries
+            CleanupOldRaiders();
+
+            // Check delay setting from global settings
+            var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            int delayMinutes = globalSettings.TwitchRaidDelayMinutes;
+
+            if (viewerCount < globalSettings.TwitchRaidMinRaiders)
+            {
+                Logger.Debug($"Raid from {raiderChannel} ignored - only {viewerCount} viewers (minimum required: {globalSettings.TwitchRaidMinRaiders})");
+                return;
+            };
+
+            if (delayMinutes <= 0)
+            {
+                TryTriggerRimWorldRaid(raiderChannel, viewerCount);
+            }
+            else
+            {
+                Logger.Debug($"Scheduling RimWorld raid in {delayMinutes} minute(s) from {raiderChannel}");
+                LongEventHandler.QueueLongEvent(() =>
+                {
+                    Task.Delay(delayMinutes * 60 * 1000).ContinueWith(t =>
+                    {
+                        LongEventHandler.QueueLongEvent(() => TryTriggerRimWorldRaid(raiderChannel, viewerCount), null, false, null);
+                    });
+                }, null, false, null);
+            }
+        }
+
+        private void CleanupOldRaiders()
+        {
+            var now = DateTime.Now;
+            var toRemove = _recentRaiders
+                .Where(kvp => (now - kvp.Value).TotalMinutes > 5)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var key in toRemove)
+                _recentRaiders.Remove(key);
+        }
+
+        private void TryTriggerRimWorldRaid(string raiderName, int viewerCount)
+        {
+            // Final safety checks
+            if (Current.ProgramState != ProgramState.Playing)
+            {
+                Logger.Debug($"Raid from {raiderName} queued - no game loaded yet.");
+                return;
+            }
+
+            Map map = Find.CurrentMap;
+            if (map == null || !map.IsPlayerHome)
+            {
+                Logger.Debug($"Raid from {raiderName} skipped - player not on home map.");
+                SendMessage($"[RICS] Twitch raid from @{raiderName} detected, but colony is traveling - raid postponed!");
+                return;
+            }
+
+            var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+
+            if (viewerCount < globalSettings.TwitchRaidMinRaiders)
+            {
+                Logger.Debug($"Raid from {raiderName} ignored - only {viewerCount} viewers (min required: {globalSettings.TwitchRaidMinRaiders})");
+                return;
+            }
+
+            // Debounce
+            if ((DateTime.Now - _lastRaidTriggerTime).TotalSeconds < RaidDebounceSeconds)
+            {
+                Logger.Debug("Raid debounce active - ignoring duplicate trigger.");
+                return;
+            }
+            _lastRaidTriggerTime = DateTime.Now;
+
+            // === Prepare raider names for injection ===
+            IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
+            IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(_recentRaiders.Keys.Take(12));
+
+            // === Build base parameters ===
+            IncidentParms parms = StorytellerUtility.DefaultParmsNow(IncidentCategoryDefOf.ThreatBig, map);
+            parms.forced = true;
+
+            float basePoints = parms.points;
+            float raidBonus = Mathf.Clamp(viewerCount * 80f, 200f, 4000f);
+            parms.points = Mathf.Min(basePoints + raidBonus, basePoints * 3.5f);
+
+            // === Smart arrival mode with fallback ===
+            parms.raidArrivalMode = PawnsArrivalModeDefOf.EdgeWalkIn;
+
+            // Check if EdgeWalkIn is likely to fail (small map, no valid edge cells, etc.)
+            if (!HasValidEdgeForRaid(map))
+            {
+                Logger.Debug($"No valid map edge for EdgeWalkIn on map {map}. Falling back to drop raid.");
+                parms.raidArrivalMode = Rand.Chance(0.6f)
+                    ? PawnsArrivalModeDefOf.EdgeDrop
+                    : PawnsArrivalModeDefOf.CenterDrop;
+            }
+
+            parms.raidStrategy = RaidStrategyDefOf.ImmediateAttack;
+            parms.generateFightersOnly = false;
+            parms.raidNeverFleeIndividual = false;
+
+            // === Use custom Twitch raid worker ===
+            var twitchRaidWorker = new IncidentWorker_TwitchRaid
+            {
+                def = IncidentDefOf.RaidEnemy
+            };
+
+            bool success = twitchRaidWorker.TryExecute(parms);
+
+            string raidMessage;
+            if (success)
+            {
+                raidMessage = $"[RICS] INCOMING TWITCH RAID! @{raiderName} brought ~{viewerCount} raiders to the colony!";
+                Messages.Message(raidMessage, MessageTypeDefOf.ThreatBig);
+
+                // Nice letter for the streamer
+                Find.LetterStack.ReceiveLetter(
+                    "RICS.TwitchRaid.LetterLabel".Translate(raiderName, viewerCount),
+                    "RICS.TwitchRaid.LetterText".Translate(raiderName, viewerCount),
+                    LetterDefOf.ThreatBig
+                );
+
+                Logger.Twitch($"SUCCESS: Twitch raid triggered with named raiders | Points: {parms.points:F0} | Arrival: {parms.raidArrivalMode}");
+            }
+            else
+            {
+                raidMessage = $"[RICS] Twitch raid from @{raiderName} detected, but storyteller refused the raid.";
+                Messages.Message(raidMessage, MessageTypeDefOf.NegativeEvent);
+                Logger.Warning($"Raid from {raiderName} was blocked by storyteller.");
+            }
+
+            SendMessage(raidMessage);
+        }
+
+        /// <summary>
+        /// Simple check if EdgeWalkIn is likely to work on this map.
+        /// Returns false on very small maps, islands, or certain Anomaly setups with no usable edge cells.
+        /// </summary>
+        private static bool HasValidEdgeForRaid(Map map)
+        {
+            if (map == null) return false;
+
+            // Quick heuristic: if the map is tiny (< 50x50) or has very few edge cells, drop is safer
+            if (map.Size.x < 50 || map.Size.z < 50)
+                return false;
+
+            // More accurate check - see if we can find at least a few valid edge cells
+            int validEdgeCells = 0;
+            foreach (IntVec3 cell in map.AllCells)
+            {
+                if (cell.x == 0 || cell.x == map.Size.x - 1 || cell.z == 0 || cell.z == map.Size.z - 1)
+                {
+                    if (cell.Walkable(map))
+                    {
+                        validEdgeCells++;
+                        if (validEdgeCells >= 8) return true;   // good enough
+                    }
+                }
+            }
+
+            return validEdgeCells >= 4;   // at least a small edge available
+        }
 
         #region Twitch Client Event Handlers
 
