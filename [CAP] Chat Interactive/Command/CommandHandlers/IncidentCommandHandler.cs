@@ -29,9 +29,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class IncidentCommandHandler
     {
-        // Update IncidentCommandHandler.cs
-        // Add the individual incident cooldown check
-
         public static string HandleIncidentCommand(ChatMessageWrapper messageWrapper, string incidentType)
         {
             try
@@ -39,90 +36,52 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
-                // Check if viewer exists
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
-                {
-                    // This should never happen since GetViewer adds them if they don't exist, but just in case
-                    // return "Error: Could not find your viewer data.";  
-                    return "RICS.ICH.RETURN.ErrorFindingViewerData".Translate(); // Use translation key for consistency
-                }
+                    return "RICS.ICH.RETURN.ErrorFindingViewerData".Translate();
 
-                // Find the incident by command input
                 var buyableIncident = FindBuyableIncident(incidentType);
                 if (buyableIncident == null)
                 {
                     var availableTypes = GetAvailableIncidents().Take(5).Select(i => i.Key);
-                    // return $"Unknown incident type: {incidentType}. Try !event list";
                     return "RICS.ICH.RETURN.UnknownIncidentType".Translate(incidentType, string.Join(", ", availableTypes));
                 }
 
-                // Check if incident is enabled
                 if (!buyableIncident.Enabled)
-                {
-                    // MessageHandler.SendFailureLetter("Incident Failed", $"{messageWrapper.Username} tried disabled incident: {buyableIncident.Label}");
-                    // return $"{buyableIncident.Label} is currently disabled.";
-                    //MessageHandler.SendFailureLetter("RICS.ICH.RETURN.IncidentFailed".Translate(), 
-                    //    "RICS.ICH.RETURN.TryingDisabledIncident".Translate(messageWrapper.Username, buyableIncident.Label));
                     return "RICS.ICH.RETURN.IncidentDisabled".Translate(buyableIncident.Label);
-                }
 
-                // DEBUG: Log incident details
+                // === COOLDOWN DEBUG (kept for your testing) ===
                 Logger.Debug($"=== INCIDENT COOLDOWN DEBUG ===");
                 Logger.Debug($"Incident: {buyableIncident.Label}");
                 Logger.Debug($"DefName: {buyableIncident.DefName}");
                 Logger.Debug($"KarmaType: {buyableIncident.KarmaType}");
                 Logger.Debug($"BaseCost: {buyableIncident.BaseCost}");
-                Logger.Debug($"CooldownDays: {buyableIncident.CooldownDays}"); // NEW LOG
+                Logger.Debug($"CooldownDays: {buyableIncident.CooldownDays}");
 
-                // Check global cooldowns using your existing system
                 var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
                 if (cooldownManager != null)
                 {
-                    // NEW: Check individual incident cooldown for this viewer
+                    // Individual incident cooldown (per-def)
                     if (settings.EventCooldownsEnabled && buyableIncident.CooldownDays > 0)
                     {
-                        if (!cooldownManager.CanUseIncident(
-                            buyableIncident.DefName,
-                            buyableIncident.CooldownDays,
-                            settings))
+                        if (!cooldownManager.CanUseIncident(buyableIncident.DefName, buyableIncident.CooldownDays, settings))
                         {
-                            int daysRemaining = GetRemainingCooldownDays(
-                                buyableIncident.DefName,
-                                buyableIncident.CooldownDays,
-                                cooldownManager);
-
-                            string cooldownMessage = GetIndividualCooldownMessage(
-                                buyableIncident.Label,
-                                daysRemaining,
-                                settings.EventCooldownDays);
-
+                            int daysRemaining = GetRemainingCooldownDays(buyableIncident.DefName, buyableIncident.CooldownDays, cooldownManager);
+                            string cooldownMessage = GetIndividualCooldownMessage(buyableIncident.Label, daysRemaining, settings.EventCooldownDays);
                             Logger.Debug($"Individual cooldown blocked: {cooldownMessage}");
                             return cooldownMessage;
                         }
                     }
 
-                    // Get command settings for the "event" command
-                    var commandSettings = CommandSettingsManager.GetSettings("event");
-                    if (commandSettings == null)
-                    {
-                        // Fallback settings if specific command settings aren't found
-                        commandSettings = new CommandSettings
-                        {
-                            useCommandCooldown = true,
-                            MaxUsesPerCooldownPeriod = 0 // Use global event system
-                        };
-                    }
+                    // Global command + event limits
+                    var commandSettings = CommandSettingsManager.GetSettings("event") ?? new CommandSettings { useCommandCooldown = true, MaxUsesPerCooldownPeriod = 0 };
 
-                    // Use the corrected cooldown check
                     if (!cooldownManager.CanUseCommand("event", commandSettings, settings))
                     {
-                        // Provide appropriate feedback based on what failed
                         if (!cooldownManager.CanUseGlobalEvents(settings))
                         {
-                            int totalEvents = cooldownManager.data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
-                            // return $"❌ Global event limit reached! ({totalEvents}/{settings.EventsperCooldown} used this period)";
-                            return "RICS.ICH.RETURN.GlobalEventLimitReached".Translate(totalEvents, settings.EventsperCooldown);    
+                            int total = cooldownManager.data.EventUsage.Values.Sum(r => r.CurrentPeriodUses);
+                            return "RICS.ICH.RETURN.GlobalEventLimitReached".Translate(total, settings.EventsperCooldown);
                         }
 
                         string eventType = GetKarmaTypeForIncident(buyableIncident.KarmaType);
@@ -131,97 +90,71 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             return GetCooldownMessage(eventType, settings, cooldownManager);
                         }
 
-                        // return $"❌ Command cooldown active for {buyableIncident.Label}";
                         return "RICS.ICH.RETURN.CommandCooldownActive".Translate(buyableIncident.Label);
                     }
                 }
 
-                // Check if viewer can afford it
+                // === AFFORDABILITY CHECK ===
                 int cost = buyableIncident.BaseCost;
                 if (viewer.Coins < cost)
-                {
                     return "RICS.WCH.InsufficientFunds".Translate(cost, currencySymbol, buyableIncident.Label);
-                }
 
-                // Try to trigger the incident
+                // === TRY TRIGGER ===
                 bool success = TriggerIncident(buyableIncident, messageWrapper.Username, out string resultMessage);
 
-                // Handle result
                 if (success)
                 {
-                    // Deduct coins and process purchase
+                    // Deduct only on success
                     viewer.TakeCoins(cost);
 
-                    // Award karma based on purchase and event karma type
                     int karmaAmount = cost / 100;
                     if (karmaAmount > 0)
                     {
-                        // Apply karma based on event type
-                        string karmaType = buyableIncident.KarmaType?.ToLower() ?? "neutral";
-                        
-                        switch (karmaType)
+                        string karmaLower = buyableIncident.KarmaType?.ToLowerInvariant() ?? "neutral";
+                        switch (karmaLower)
                         {
                             case "good":
                                 viewer.GiveKarma(karmaAmount);
                                 Logger.Debug($"Awarded {karmaAmount} karma for {cost} coin Good event purchase");
                                 break;
                             case "bad":
+                            case "doom":   // Doom also takes karma (as before)
                                 viewer.TakeKarma(karmaAmount);
-                                Logger.Debug($"Deducted {karmaAmount} karma for {cost} coin Bad event purchase");
+                                Logger.Debug($"Deducted {karmaAmount} karma for {cost} coin {(karmaLower == "doom" ? "Doom" : "Bad")} event purchase");
                                 break;
-                            case "doom":
-                                viewer.TakeKarma(karmaAmount);
-                                Logger.Debug($"Deducted {karmaAmount} karma for {cost} coin Bad event purchase");
-                                break;
-                            case "neutral":
                             default:
-                                // Neutral events don't change karma
                                 Logger.Debug($"No karma change for {cost} coin Neutral event purchase");
                                 break;
                         }
                     }
 
-                    // Record event usage for cooldowns
+                    // Record cooldowns only on success
                     if (cooldownManager != null)
                     {
-                        // NEW: Record individual incident usage for cooldown
                         if (settings.EventCooldownsEnabled && buyableIncident.CooldownDays > 0)
-                        {
                             cooldownManager.RecordIncidentUse(buyableIncident.DefName);
-                            Logger.Debug($"Recorded incident use: {buyableIncident.DefName}");
-                        }
 
-                        // Record global event usage
                         string eventType = GetKarmaTypeForIncident(buyableIncident.KarmaType);
                         cooldownManager.RecordEventUse(eventType);
-                        Logger.Debug($"Recorded event usage for type: {eventType}");
 
-                        // Log current state after recording
                         var record = cooldownManager.data.EventUsage.GetValueOrDefault(eventType);
-                        if (record != null)
-                        {
-                            Logger.Debug($"Current usage for {eventType}: {record.CurrentPeriodUses}");
-                        }
+                        Logger.Debug($"Recorded event usage for type: {eventType} → Current: {record?.CurrentPeriodUses ?? 0}");
                     }
 
-                    if (buyableIncident.KarmaType?.ToLower() == "doom")
-                    {
-                        // Messages.Message("💀 DOOM EVENT PURCHASED: " + buyableIncident.Label + "!", MessageTypeDefOf.ThreatBig);
+                    if (buyableIncident.KarmaType?.ToLowerInvariant() == "doom")
                         Messages.Message("RICS.ICH.RETURN.DoomEventPurchased".Translate(buyableIncident.Label), MessageTypeDefOf.ThreatBig);
-                    }
 
                     return resultMessage;
                 }
                 else
                 {
-                    // return $"{resultMessage} No {currencySymbol} were deducted.";
+                    // Failure path – NO coin/karma deduction
                     return "RICS.ICH.RETURN.IncidentTriggerFailed".Translate(resultMessage, currencySymbol);
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error handling incident command: {ex}");
-                // return "Error triggering incident. Please try again.";
                 return "RICS.ICH.RETURN.ErrorTriggeringIncident".Translate();
             }
         }
@@ -266,14 +199,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        // Helper methods for cooldown integration
-
-        private static string GetKarmaTypeForIncident(string karmaType)
+        private static string GetKarmaTypeForIncident(string karmaTypeFromBuyable)
         {
-            if (string.IsNullOrEmpty(karmaType))
+            if (string.IsNullOrEmpty(karmaTypeFromBuyable))
                 return "neutral";
 
-            return karmaType?.ToLower() switch
+            string lower = karmaTypeFromBuyable.ToLowerInvariant();
+            return lower switch
             {
                 "good" => "good",
                 "bad" => "bad",
@@ -288,16 +220,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 "good" => settings.MaxGoodEvents,
                 "bad" => settings.MaxBadEvents,
-                "doom" => settings.MaxBadEvents,
+                "doom" => settings.MaxBadEvents,   // Doom uses Bad limit
                 "neutral" => settings.MaxNeutralEvents,
                 _ => 10
             };
 
-            var record = cooldownManager.data.EventUsage.GetValueOrDefault(eventType);
+            var record = cooldownManager.data.EventUsage.GetValueOrDefault(eventType) ??
+                         cooldownManager.data.EventUsage.GetValueOrDefault("bad"); // fallback for doom
+
             int currentUses = record?.CurrentPeriodUses ?? 0;
 
-            // return $"❌ {eventType.ToUpper()} event limit reached! ({currentUses}/{maxEvents} used this period)";
-            return "RICS.ICH.RETURN.EventTypeLimitReached".Translate(eventType.ToUpper(), currentUses, maxEvents);  
+            return "RICS.ICH.RETURN.EventTypeLimitReached".Translate(eventType.ToUpper(), currentUses, maxEvents);
         }
 
         private static BuyableIncident FindBuyableIncident(string input)

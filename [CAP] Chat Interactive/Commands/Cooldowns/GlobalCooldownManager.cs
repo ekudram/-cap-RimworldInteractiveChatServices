@@ -120,10 +120,14 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
 
         public bool CanUseEvent(string eventType, CAPGlobalChatSettings settings)
         {
-            // Defensive programming: ensure eventType is valid and consistent
-            eventType = eventType.ToLower();  
+            if (string.IsNullOrEmpty(eventType))
+            {
+                Logger.Error("CanUseEvent called with null/empty eventType");
+                return false;
+            }
 
-            // 0 = infinite
+            eventType = eventType.ToLowerInvariant();
+
             Logger.Debug($"CanUseEvent eventType: {eventType}");
             Logger.Debug($"Max good events: {settings.MaxGoodEvents}");
             Logger.Debug($"Max Bad Events: {settings.MaxBadEvents}");
@@ -131,8 +135,9 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
 
             CleanupOldRecords();
 
+            // 0 = infinite for that type
             if (settings.MaxGoodEvents == 0 && eventType == "good") return true;
-            if (settings.MaxBadEvents == 0 && eventType == "bad") return true;
+            if (settings.MaxBadEvents == 0 && (eventType == "bad" || eventType == "doom")) return true;
             if (settings.MaxNeutralEvents == 0 && eventType == "neutral") return true;
 
             var record = GetOrCreateEventRecord(eventType);
@@ -143,12 +148,21 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
                 "good" => settings.MaxGoodEvents,
                 "bad" => settings.MaxBadEvents,
                 "neutral" => settings.MaxNeutralEvents,
-                "doom" => settings.MaxBadEvents, // Special case
-                _ => 10
+                "doom" => settings.MaxBadEvents,   // Doom counts against Bad limit
+                _ => settings.MaxBadEvents
             };
-            string message = $"Current {eventType} events in cooldown: {record.CurrentPeriodUses}/{maxUses}";
+
+            bool canUse = record.CurrentPeriodUses < maxUses;
+
+            string message = $"Current {eventType} events in cooldown period: {record.CurrentPeriodUses}/{maxUses}";
             Messages.Message(message, MessageTypeDefOf.CautionInput);
-            return record.CurrentPeriodUses < maxUses;
+
+            if (!canUse)
+                Logger.Debug($"[LIMIT REACHED] {eventType} events at {record.CurrentPeriodUses}/{maxUses} - blocking further use");
+
+            Logger.Debug($"CanUseEvent result for {eventType}: {canUse} ({record.CurrentPeriodUses}/{maxUses})");
+
+            return canUse;
         }
 
         public bool CanUseCommand(string commandName, CommandSettings settings, CAPGlobalChatSettings globalSettings)
@@ -192,7 +206,6 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             return true;
         }
 
-        // NEW: Check global event count limit
         public bool CanUseGlobalEvents(CAPGlobalChatSettings settings)
         {
             if (settings.EventsperCooldown == 0) return true; // Unlimited
@@ -203,8 +216,15 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
 
         public void RecordEventUse(string eventType)
         {
+            if (string.IsNullOrEmpty(eventType)) return;
+
+            eventType = eventType.ToLowerInvariant();
+
             var record = GetOrCreateEventRecord(eventType);
             record.UsageDays.Add(CurrentGameDay);
+
+            Logger.Debug($"Recorded event usage for type: {eventType}");
+            Logger.Debug($"Current usage for {eventType}: {record.CurrentPeriodUses}");
         }
 
         public void RecordCommandUse(string commandName)
@@ -265,45 +285,64 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             Logger.Debug($"After cleanup: {record.UsageDays.Count} uses remaining.");
         }
 
-        // Update GlobalCooldownManager.cs - simplify the incident cooldown methods
         public bool CanUseIncident(string incidentDefName, int incidentCooldownDays, CAPGlobalChatSettings settings)
         {
             Logger.Debug($"CanUseIncident: {incidentDefName}, IncidentCooldownDays: {incidentCooldownDays}");
+
             CleanupOldRecords();
-            // If event cooldowns are disabled globally, skip all cooldown checks
+
             if (!settings.EventCooldownsEnabled)
             {
                 Logger.Debug("Event cooldowns disabled globally, allowing incident use");
                 return true;
             }
 
-            // If this specific incident has no cooldown (CooldownDays = 0), skip further checks
             if (incidentCooldownDays <= 0)
             {
                 Logger.Debug($"Incident {incidentDefName} has no cooldown (CooldownDays = {incidentCooldownDays})");
                 return true;
             }
 
-            // Get or create the incident usage record
             var record = GetOrCreateIncidentRecord(incidentDefName);
-
-            // Clean up old records
             CleanupOldIncidentUses(record, incidentCooldownDays);
 
-            // Check if this incident has been used within the cooldown period
-            bool incidentUsedRecently = false;
-            foreach (int usageDay in record.UsageDays)
+            // Specific incident cooldown
+            bool incidentUsedRecently = record.UsageDays.Any(day => (CurrentGameDay - day) < incidentCooldownDays);
+            if (incidentUsedRecently)
             {
-                int daysSinceUse = CurrentGameDay - usageDay;
-                if (daysSinceUse < incidentCooldownDays)  // Changed <= to < for consistency with new cleanup logic
-                {
-                    incidentUsedRecently = true;
-                    Logger.Debug($"Incident {incidentDefName} was used {daysSinceUse} days ago (cooldown: {incidentCooldownDays} days)");
-                    break;
-                }
+                Logger.Debug($"Incident {incidentDefName} was used within the last {incidentCooldownDays} days → blocked");
+                return false;
             }
 
-            return !incidentUsedRecently;
+            // Global + karma-type limits (this was the main bug)
+            string karmaType = GetKarmaTypeForIncident(incidentDefName);   // now safe
+            if (!CanUseEvent(karmaType, settings))
+            {
+                Logger.Debug($"Global {karmaType} event limit reached → blocking {incidentDefName}");
+                return false;
+            }
+
+            Logger.Debug($"Incident {incidentDefName} passed all checks");
+            return true;
+        }
+
+        private string GetKarmaTypeForIncident(string incidentDefNameOrKarma)
+        {
+            if (string.IsNullOrEmpty(incidentDefNameOrKarma))
+                return "neutral";
+
+            string lower = incidentDefNameOrKarma.ToLowerInvariant();
+
+            // Direct karma type passed from BuyableIncident
+            if (lower == "good" || lower == "bad" || lower == "doom" || lower == "neutral")
+                return lower;
+
+            // Fallback defName mapping (keeps old saves safe)
+            if (lower.Contains("insanitymass") || lower.Contains("toxicfallout") || lower.Contains("volcanicwinter") ||
+                lower.Contains("defoliator") || lower.Contains("psychicemanator"))
+                return "doom";
+
+            return "bad";   // most !event purchases are bad
         }
 
         public void RecordIncidentUse(string incidentDefName)
@@ -415,6 +454,4 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             record.PurchaseDays.RemoveAll(day => (GenDate.DaysPassed - day) >= cooldownDays);  // Changed > to >= (note: uses GenDate.DaysPassed directly here)
         }
     }
-
-
 }
