@@ -15,7 +15,7 @@
     </graphicData>
     <size>(1,1)</size>
     <rotatable>False</rotatable>
-    <passability>Impassable</passability>
+    <passability>PassThroughOnly</passability>
     <fillPercent>1</fillPercent>
     <statBases>
       <MaxHitPoints>200</MaxHitPoints>
@@ -45,6 +45,9 @@
     <designationCategory>Misc</designationCategory>
     <uiOrder>2500</uiOrder>
     <selectable>true</selectable>
+    <blockLight>true</blockLight>
+    <coversFloor>true</coversFloor>
+    <isEdifice>true</isEdifice>
 
     <!-- CRITICAL: Proper storage settings based on shelf example -->
     <building>

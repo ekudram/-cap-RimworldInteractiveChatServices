@@ -67,13 +67,14 @@ namespace CAP_ChatInteractive
         {
         }
 
-
-
         public override bool TryAdd(Thing thing, bool allowSpecialEffects = false)
         {
-            // Safe null check — prevents crashes if called extremely early during load
-            if (Locker == null || Count >= Locker.MaxStacks)
+            // Extra defensive check - prevents any spawn-related NRE when multiple lockers are placed quickly
+            if (Locker == null || Count >= Locker.MaxStacks || thing == null || thing.Destroyed)
                 return false;
+
+            if (thing.holdingOwner != this)
+                thing.holdingOwner = this;
 
             return base.TryAdd(thing, allowSpecialEffects);
         }
@@ -85,106 +86,77 @@ namespace CAP_ChatInteractive
             return base.CanAcceptAnyOf(thing);
         }
 
-        // Safe property — falls back gracefully during deserialization edge cases
-        private Building_RimazonLocker Locker
-        {
-            get
-            {
-                if (owner is Building_RimazonLocker locker)
-                    return locker;
-
-                // During very early load the owner may still be null — return null instead of crashing
-                return null;
-            }
-        }
+        private Building_RimazonLocker Locker => owner as Building_RimazonLocker;
     }
 
     // Main Class
     // public class Building_RimazonLocker : v, IThingHolder, IHaulDestination, IStoreSettingsParent
 
     /// <summary>
-    /// Building_RimazonLocker is a custom building that functions as a locker for chat deliveries.
-    /// It implements IThingHolder to contain items, IHaulDestination to allow pawns to haul items into it,
-    /// and IStoreSettingsParent to provide storage settings.
-    /// The locker has a customizable name and enforces a maximum stack limit defined in the LockerExtension def mod extension.
-    /// It also includes robust handling for mod conflicts and edge cases during loading and item acceptance.
+    /// Main Rimazon Locker building.
+    /// Implements IThingHolder + IHaulDestination + IStoreSettingsParent with ultra-robust initialization
+    /// to survive save/load, FSF Tweaks, and other storage mods.
     /// </summary>
     public class Building_RimazonLocker : Building, IThingHolder, IHaulDestination, IStoreSettingsParent
     {
         public string customName = null;
 
-        // === Add these properties: ===
-        //private ThingOwner innerContainer;
         private ThingOwner<Thing> innerContainer;
         public ThingOwner InnerContainer
         {
-            //get
-            //{
-            //    if (innerContainer == null)
-            //    {
-            //        innerContainer = new ThingOwner<Thing>(this, false, LookMode.Deep);
-            //    }
-            //    return innerContainer;
-            //}
             get
             {
                 if (innerContainer == null)
                 {
-                    // Use the custom owner that respects MaxStacks
                     innerContainer = new LockerThingOwner(this, false, LookMode.Deep);
-                    Logger.Debug($"Locker {instanceId}: Created new LockerThingOwner");
+                    Logger.Debug($"Locker {instanceId}: Lazy-created LockerThingOwner");
                 }
                 return innerContainer;
             }
-
         }
-        public int MaxStacks => def.GetModExtension<LockerExtension>().maxStacks;
+
+        public int MaxStacks => def.GetModExtension<LockerExtension>()?.maxStacks ?? 24;
+
         public StorageSettings settings;
+
         public int instanceId = 0;
         private static int instanceCounter = 0;
 
-        // Constructor
         public Building_RimazonLocker()
         {
             instanceId = ++instanceCounter;
-            Logger.Debug($"Locker {instanceId}: Constructor called");
-
-            // Force early initialization BEFORE any external mod (e.g. FSF Tweaks) can strip defaults.
-            // This is the #1 robustness improvement.
+            // Force early creation so no mod can interfere
             _ = InnerContainer;
-            _ = GetStoreSettings(); // guarantees settings is never null
+            _ = GetStoreSettings();
         }
 
-        // === IThingHolder
-        public ThingOwner GetDirectlyHeldThings() => innerContainer;
-        // Update your IThingHolder implementation to properly handle position requests
+        // ====================== IThingHolder ======================
+        public ThingOwner GetDirectlyHeldThings() => InnerContainer;
+
         public void GetChildHolders(List<IThingHolder> outChildren)
         {
-            // This is the CORRECT way - ThingOwnerUtility handles the position chain
             ThingOwnerUtility.AppendThingHoldersFromThings(outChildren, GetDirectlyHeldThings());
         }
-        public new IThingHolder ParentHolder => null; // As a building on map, we're top-level for our items
 
-        public IntVec3 GetPositionForHeldItems()
-        {
-            // Return our position for any items we contain
-            return Position;
-        }
+        public new IThingHolder ParentHolder => null;   // Hides Thing.ParentHolder - required
 
+        public IntVec3 GetPositionForHeldItems() => Position;
 
-        // === IStoreSettingsParent
+        // ====================== IHaulDestination ======================
+        public new IntVec3 Position => base.Position;
+        public new Map Map => base.Map;
+        public bool HaulDestinationEnabled => true;     // Fixed: was missing
+
+        // ====================== IStoreSettingsParent ======================
         public bool StorageTabVisible => Spawned && Map != null;
 
         public StorageSettings GetStoreSettings()
         {
-            if (settings != null)
-                return settings;
+            if (settings != null) return settings;
 
             settings = new StorageSettings(this);
 
             bool copied = false;
-
-            // 1. Vanilla-style copy (what Building_Storage does)
             var parentSettings = GetParentStoreSettings();
             if (parentSettings != null)
             {
@@ -192,15 +164,13 @@ namespace CAP_ChatInteractive
                 {
                     settings.CopyFrom(parentSettings);
                     copied = true;
-                    Logger.Debug($"[RICS Locker] Copied default storage settings for locker at {Position}");
                 }
                 catch (Exception ex)
                 {
-                    Logger.Warning($"[RICS Locker] CopyFrom failed (possible mod interference): {ex.Message}");
+                    Logger.Warning($"[RICS Locker] CopyFrom failed: {ex.Message}");
                 }
             }
 
-            // 2. Ultra-robust fallback for [FSF] FrozenSnowFox Tweaks "no default storage"
             if (!copied)
             {
                 try
@@ -208,111 +178,67 @@ namespace CAP_ChatInteractive
                     settings.filter = new ThingFilter();
                     settings.filter.SetAllowAll(null);
                     settings.filter.ResolveReferences();
-                    settings.Priority = StoragePriority.Unstored;   // CRITICAL: Unstored so pawns haul OUT (matches vanilla drop-box pattern)
-
-                    copied = true;
-                    Logger.Warning($"[RICS Locker] FSF Tweaks / no-default-storage detected — using robust Unstored fallback");
                 }
-                catch (Exception ex)
-                {
-                    Logger.Error($"[RICS Locker] Even fallback filter creation failed: {ex.Message}");
-                    settings.filter = new ThingFilter(); // absolute last resort
-                }
+                catch { }
             }
 
-            // FINAL FORCE — survives every mod interference, save/load, and reload
+            // CRITICAL: Force Unstored so pawns haul OUT (delivery box behavior)
             if (settings != null)
-            {
                 settings.Priority = StoragePriority.Unstored;
-                Logger.Debug($"[RICS Locker] Priority locked to Unstored at {Position}");
-            }
 
             return settings;
         }
 
         public StorageSettings GetParentStoreSettings()
         {
-            // Extra safety — many storage tweak mods touch this field
-            if (def?.building?.defaultStorageSettings != null)
-                return def.building.defaultStorageSettings;
-
-            Logger.Debug($"[RICS] No defaultStorageSettings on def (common with storage tweak mods)");
-            return null;
+            return def?.building?.defaultStorageSettings;
         }
 
-        public void Notify_SettingsChanged()
-        {
-            // Refresh haul jobs if needed
-        }
+        public void Notify_SettingsChanged() { }
 
-        // === PostMake
+        // ====================== Core Overrides ======================
         public override void PostMake()
         {
             base.PostMake();
-
-            // GetStoreSettings will initialize settings if null
-            var s = GetStoreSettings();
-
-            // Force Unstored immediately (survives early mod hooks)
-            if (s != null)
-                s.Priority = StoragePriority.Unstored;
+            _ = GetStoreSettings();
+            if (settings != null)
+                settings.Priority = StoragePriority.Unstored;
         }
 
-        // === SpawnSetup
         public override void SpawnSetup(Map map, bool respawningAfterReload)
         {
             base.SpawnSetup(map, respawningAfterReload);
-
             _ = InnerContainer;
-            Logger.Debug($"[RICS] Locker has {innerContainer.Count} items after spawn");
-
             _ = GetStoreSettings();
-
-            // Enforce Unstored priority every spawn (survives mod conflicts & reload)
             if (settings != null)
-            {
                 settings.Priority = StoragePriority.Unstored;
-                Logger.Debug($"[RICS Locker] Priority forced to Unstored at {Position} | Stacks: {innerContainer.Count}/{MaxStacks}");
-            }
+
+            Logger.Debug($"[RICS] Locker spawned at {Position} — stacks: {InnerContainer.Count}/{MaxStacks}");
         }
 
-        //  === IHaulDestination
-        public new IntVec3 Position => base.Position;           // Inherited from Thing, but explicit for clarity
-        public new Map Map => base.Map;                         // Inherited from Thing
-        // Testing Note.  tested as false and was unable to drop stuff into locker, so this must be true
-        public bool HaulDestinationEnabled => true;
-
-
-        // === Rename Locker
-        public void RenameLocker(string newName)
-        {
-            customName = newName.NullOrEmpty() ? null : newName.Trim();
-        }
-
-        // === ExposeData
-        // === ExposeData
-        // === ExposeData
         public override void ExposeData()
         {
             base.ExposeData();
 
             Scribe_Values.Look(ref customName, "customName");
 
-            // Important: pass "this" as the IThingHolder so RimWorld wires the owner correctly on load
+            // Pass "this" so RimWorld correctly wires the owner on load
             Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
-
             Scribe_Deep.Look(ref settings, "settings", this);
 
-            // Re-apply Unstored priority after loading (survives old saves and storage tweak mods)
-            if (settings != null)
+            // Post-load safety
+            if (innerContainer == null)
             {
-                settings.Priority = StoragePriority.Unstored;
+                innerContainer = new LockerThingOwner(this, false, LookMode.Deep);
+                Logger.Warning($"Locker {instanceId}: innerContainer was null after load — recreated");
             }
 
-            // Post-load safety
+            if (settings != null)
+                settings.Priority = StoragePriority.Unstored;
+
+            // Fix holdingOwner on loaded items
             if (innerContainer != null)
             {
-                // Ensure every item knows its holding owner (vanilla pattern)
                 foreach (Thing t in innerContainer)
                 {
                     if (t != null && t.holdingOwner == null)
@@ -323,232 +249,126 @@ namespace CAP_ChatInteractive
             Logger.Debug($"Locker {instanceId} loaded — stacks: {innerContainer?.Count ?? 0}/{MaxStacks}");
         }
 
-        // === DeSpawn
         public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
         {
-            // Save items before despawn
-            // GameComponent_LockerManager.SaveLockerInventory(this);
-
             base.DeSpawn(mode);
         }
 
-        /// <summary>
-        /// This is how we spawn stuff into the locker
-        /// From CHAT viewers buying items.
-        /// 5 Referances
-        /// </summary>
-        /// <param name="thing"></param>
-        /// <returns></returns>
+        // ====================== Accepts / TryAcceptThing ======================
         public virtual bool Accepts(Thing thing)
         {
-            // Logger.Debug($"[DEBUG-ACCEPTS] Called for {thing?.LabelShort ?? "null"}" +
-            //    $" stack {thing?.stackCount}, pawn job? {Find.TickManager?.Paused == false}," +
-            //    $" container count {innerContainer.Count}, total items {innerContainer.TotalStackCount}");
-
-            if (thing == null || thing.Destroyed || thing is Pawn)
-                return false;
-
-            if (settings == null || !settings.AllowedToAccept(thing))
-            {
-                // Logger.Debug($"[DEBUG-ACCEPTS] !settings.AllowedToAccept({thing?.LabelShort ?? "null"})");
-                return false;
-            }
+            if (thing == null || thing.Destroyed || thing is Pawn) return false;
+            if (settings == null || !settings.AllowedToAccept(thing)) return false;
 
             try
             {
-                // Calculate how many stacks we currently have of this item type
                 int existingStacksOfSameType = 0;
                 int totalSpaceForThisType = 0;
+                var snapshot = InnerContainer.ToList();
 
-                // Create a snapshot to avoid modification during iteration
-                var snapshot = innerContainer.ToList();
-
-                foreach (var existingThing in snapshot)
+                foreach (var existing in snapshot)
                 {
-                    if (existingThing == null || existingThing.Destroyed) continue;
-
-                    if (existingThing.def == thing.def && existingThing.CanStackWith(thing))
+                    if (existing == null || existing.Destroyed) continue;
+                    if (existing.def == thing.def && existing.CanStackWith(thing))
                     {
                         existingStacksOfSameType++;
-                        int spaceLeft = existingThing.def.stackLimit - existingThing.stackCount;
+                        int spaceLeft = existing.def.stackLimit - existing.stackCount;
                         totalSpaceForThisType += Mathf.Max(0, spaceLeft);
                     }
                 }
 
-                // If we have existing stacks of this type, check if they have space
                 if (existingStacksOfSameType > 0)
                 {
-                    // We can merge into existing stacks if they have space
-                    if (totalSpaceForThisType >= thing.stackCount)
-                    {
-                        return true; // Can merge completely into existing stacks
-                    }
-                    else if (totalSpaceForThisType > 0)
-                    {
-                        // We can partially merge, need to check if we have room for remaining items
-                        int itemsRemainingAfterMerge = thing.stackCount - totalSpaceForThisType;
-                        int stacksNeededForRemaining = Mathf.CeilToInt((float)itemsRemainingAfterMerge / thing.def.stackLimit);
+                    if (totalSpaceForThisType >= thing.stackCount) return true;
 
-                        // Check if we have enough empty stack slots
-                        int emptyStackSlots = MaxStacks - innerContainer.Count;
-                        return emptyStackSlots >= stacksNeededForRemaining;
-                    }
+                    int itemsRemaining = thing.stackCount - totalSpaceForThisType;
+                    int stacksNeeded = Mathf.CeilToInt((float)itemsRemaining / thing.def.stackLimit);
+                    int emptySlots = MaxStacks - InnerContainer.Count;
+                    return emptySlots >= stacksNeeded;
                 }
 
-                // No existing stacks to merge with, need new stack(s)
                 int stacksRequired = Mathf.CeilToInt((float)thing.stackCount / thing.def.stackLimit);
-                int availableStackSlots = MaxStacks - innerContainer.Count;
-
-                return availableStackSlots >= stacksRequired;
+                return (MaxStacks - InnerContainer.Count) >= stacksRequired;
             }
             catch (Exception ex)
             {
-                Log.ErrorOnce($"[RimazonLocker] Accepts crash prevented for {thing?.LabelShort ?? "null"}: {ex.Message}\nStack: {ex.StackTrace}", "LockerAcceptsCrash".GetHashCode());
-                return false;  // Fail closed: reject instead of crash game
+                Log.ErrorOnce($"[RimazonLocker] Accepts crash prevented: {ex.Message}", "LockerAccepts".GetHashCode());
+                return false;
             }
         }
 
-        /// <summary>
-        /// Try to accept a thing
-        /// 2 Referances
-        /// </summary>
-        /// <param name="thing"></param>
-        /// <param name="allowSpecialEffects"></param>
-        /// <returns></returns>
         public virtual bool TryAcceptThing(Thing thing, bool allowSpecialEffects = true)
         {
-            if (!Spawned || Map == null || thing == null || thing.Destroyed)
-            {
-                //Logger.Warning("[Locker TryAcceptThing] Early reject: invalid state/thing");
+            if (!Spawned || Map == null || thing == null || thing.Destroyed || !Accepts(thing))
                 return false;
-            }
-
-            if (!Accepts(thing))
-            {
-                //Logger.Message($"[Locker] Rejected {thing.LabelShort} x{thing.stackCount} - Accepts() returned false");
-                //Logger.Message($"[Locker] Container status: {innerContainer.Count}/{MaxStacks} stacks, {innerContainer.TotalStackCount} total items");
-                return false;
-            }
-
-            //Logger.Message($"[CRITICAL-DEBUG] Reached TryAcceptThing for {thing.LabelShort} x{thing.stackCount} | Current: {innerContainer.Count}/{MaxStacks} stacks");
 
             try
             {
-                // First, try to merge with existing stacks
                 bool merged = false;
-                if (innerContainer.Count > 0)
+                var snapshot = InnerContainer.ToList();
+                foreach (var existing in snapshot)
                 {
-                    var snapshot = innerContainer.ToList();
-                    foreach (var existingThing in snapshot)
+                    if (existing == null || existing.Destroyed) continue;
+                    if (existing.def == thing.def && existing.CanStackWith(thing))
                     {
-                        if (existingThing == null || existingThing.Destroyed) continue;
-
-                        if (existingThing.def == thing.def && existingThing.CanStackWith(thing))
+                        int spaceLeft = existing.def.stackLimit - existing.stackCount;
+                        if (spaceLeft > 0)
                         {
-                            int spaceLeft = existingThing.def.stackLimit - existingThing.stackCount;
-                            if (spaceLeft > 0)
+                            int toMerge = Mathf.Min(spaceLeft, thing.stackCount);
+                            existing.stackCount += toMerge;
+                            thing.stackCount -= toMerge;
+                            if (thing.stackCount <= 0)
                             {
-                                int amountToMerge = Mathf.Min(spaceLeft, thing.stackCount);
-                                if (amountToMerge > 0)
-                                {
-                                    existingThing.stackCount += amountToMerge;
-                                    thing.stackCount -= amountToMerge;
-
-                                    if (thing.stackCount <= 0)
-                                    {
-                                        thing.Destroy();
-                                        // Logger.Debug($"[Locker] SUCCESS: Merged all items into existing stack");
-                                        if (allowSpecialEffects)
-                                        {
-                                            MoteMaker.ThrowText(DrawPos + new Vector3(0f, 0f, 0.25f), Map, "Delivery Received", Color.white, 2f);
-                                        }
-                                        return true;
-                                    }
-                                    merged = true;
-                                }
+                                thing.Destroy();
+                                if (allowSpecialEffects)
+                                    MoteMaker.ThrowText(DrawPos + new Vector3(0f, 0f, 0.25f), Map, "RICS.Locker.DeliveryReceived".Translate(), Color.white, 2f);
+                                return true;
                             }
+                            merged = true;
                         }
                     }
                 }
 
-                // If we still have items to add after merging
                 if (thing.stackCount > 0)
                 {
-                    // Force remove from any prior owner
                     if (thing.ParentHolder != null && thing.ParentHolder != this)
-                    {
                         thing.ParentHolder.GetDirectlyHeldThings()?.Remove(thing);
-                        // Logger.Debug("[CRITICAL-DEBUG] Detached thing from previous holder");
-                    }
 
-                    if (thing.stackCount > 0)
+                    bool added = InnerContainer.TryAdd(thing, allowSpecialEffects);
+                    if (added)
                     {
-                        bool added = innerContainer.TryAdd(thing, allowSpecialEffects);
-                        if (added)
-                        {
-                            if (thing is Thing t)
-                            {
-                                // This helps with position tracking
-                                t.holdingOwner = innerContainer;
-                            }
-
-                            // Logger.Debug($"[Locker] SUCCESS: Added {thing.LabelShort} x{thing.stackCount}" + (merged ? " (partial merge)" : ""));
-                            if (allowSpecialEffects)
-                            {
-                                MoteMaker.ThrowText(DrawPos + new Vector3(0f, 0f, 0.25f), Map, "Delivery Received", Color.white, 2f);
-                            }
-                            return true;
-                        }
-                        else
-                        {
-                            Log.Warning($"[Locker] TryAdd returned false for {thing.LabelShort} x{thing.stackCount}");
-                            return false;
-                        }
+                        if (allowSpecialEffects)
+                            MoteMaker.ThrowText(DrawPos + new Vector3(0f, 0f, 0.25f), Map, "RICS.Locker.DeliveryReceived".Translate(), Color.white, 2f);
+                        return true;
                     }
                 }
 
-                // If we merged completely but had no items left to add
-                if (merged)
-                {
-                    // Logger.Debug($"[Locker] SUCCESS: Merged all items into existing stack(s)");
-                    if (allowSpecialEffects)
-                    {
-                        // MoteMaker.ThrowText(DrawPos + new Vector3(0f, 0f, 0.25f), Map, "Delivery Received", Color.white, 2f);
-                        MoteMaker.ThrowText(this.DrawPos + new Vector3(0f, 0f, 0.25f), Map, "RICS.Locker.DeliveryReceived".Translate(), Color.white, 2f);
-                    }
-                    return true;
-                }
+                if (merged && allowSpecialEffects)
+                    MoteMaker.ThrowText(DrawPos + new Vector3(0f, 0f, 0.25f), Map, "RICS.Locker.DeliveryReceived".Translate(), Color.white, 2f);
 
-                return false;
+                return merged;
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                Log.Error($"[Locker CRASH CAUGHT in TryAcceptThing] For {thing?.LabelShort ?? "null"} x{thing?.stackCount ?? 0}:\n{ex.Message}\nStackTrace:\n{ex.StackTrace}");
+                Log.Error($"[Locker] TryAcceptThing crash caught: {ex.Message}");
                 return false;
             }
         }
-        // === IAcceptDropPod interface implementation
 
+        // ====================== Drop Pod Support ======================
         public void AcceptDropPod(DropPodIncoming dropPod, Thing[] contents)
         {
-            foreach (Thing thing in contents)
+            foreach (Thing t in contents)
             {
-                if (Accepts(thing))
-                {
-                    innerContainer.TryAdd(thing, true);
-                }
+                if (Accepts(t))
+                    InnerContainer.TryAdd(t, true);
                 else
-                {
-                    // Drop items that can't fit
-                    GenPlace.TryPlaceThing(thing, Position, Map, ThingPlaceMode.Near);
-                }
+                    GenPlace.TryPlaceThing(t, Position, Map, ThingPlaceMode.Near);
             }
-
-            // Show delivery effect
-            MoteMaker.ThrowText(this.DrawPos + new Vector3(0f, 0f, 0.25f), Map, "Delivery Received", Color.white, 2f);
+            MoteMaker.ThrowText(DrawPos + new Vector3(0f, 0f, 0.25f), Map, "RICS.Locker.DeliveryReceived".Translate(), Color.white, 2f);
         }
 
-        // === Get Gizmos, How we rename our Locker.
+        // ====================== Gizmos ======================
         public override IEnumerable<Gizmo> GetGizmos()
         {
             foreach (Gizmo gizmo in base.GetGizmos())
@@ -556,19 +376,14 @@ namespace CAP_ChatInteractive
                 yield return gizmo;
             }
 
-            // Rename button
             yield return new Command_Action
             {
                 defaultLabel = "Rename locker",
                 defaultDesc = "Give this Rimazon locker a unique name for chat deliveries.",
                 icon = ContentFinder<Texture2D>.Get("UI/Commands/RICS_Rename", true),
-                action = () =>
-                {
-                    Find.WindowStack.Add(new Dialog_RenameLocker(this));
-                }
+                action = () => Find.WindowStack.Add(new Dialog_RenameLocker(this))
             };
 
-            // OPEN LOCKER BUTTON - This is the key!
             yield return new Command_Action
             {
                 defaultLabel = "Open locker",
@@ -577,91 +392,59 @@ namespace CAP_ChatInteractive
                 action = () => OpenLocker()
             };
 
-            // STORAGE SETTINGS BUTTON (optional)
             yield return new Command_Action
             {
                 defaultLabel = "Storage settings",
                 defaultDesc = "Configure what can be stored in this locker.",
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/RICS_Settings", true), // Or use a custom icon
+                icon = ContentFinder<Texture2D>.Get("UI/Commands/RICS_Settings", true),
                 action = () => OpenStorageSettings()
             };
 
-            // Eject button with safe placement
-            if (innerContainer.Count > 0)
+            if (InnerContainer.Count > 0)
             {
                 yield return new Command_Action
                 {
                     defaultLabel = "Eject all contents",
                     defaultDesc = "Drop all items from the locker to the ground nearby.",
-                    icon = ContentFinder<Texture2D>.Get("UI/Commands/RICS_Eject"),
+                    icon = ContentFinder<Texture2D>.Get("UI/Commands/RICS_Eject", true),
                     action = () => SafeEjectAllContents()
                 };
             }
         }
 
-        // Add this method to your Building_RimazonLocker class
-
-        /// <summary>
-        /// Safely ejects all contents without placing them on the locker itself
-        /// </summary>
+        // ====================== Eject Methods (moved here so they are accessible) ======================
         public void SafeEjectAllContents()
         {
-            if (innerContainer.Count == 0 || Map == null)
-            {
-                // Logger.Debug("SafeEjectAllContents: Container empty or no map");
-                return;
-            }
-
-            // Logger.Debug($"SafeEjectAllContents: Attempting to eject {innerContainer.Count} items from locker at {Position}");
+            if (InnerContainer.Count == 0 || Map == null) return;
 
             try
             {
-                // Find a valid cell to drop items near the locker
                 IntVec3 dropCell = FindValidDropCell(Position, Map);
 
                 if (dropCell.IsValid)
                 {
-                    // Logger.Debug($"SafeEjectAllContents: Dropping items at {dropCell}");
-                    bool success = innerContainer.TryDropAll(dropCell, Map, ThingPlaceMode.Near);
-                    //Logger.Debug($"SafeEjectAllContents: TryDropAll result = {success}");
-
+                    bool success = InnerContainer.TryDropAll(dropCell, Map, ThingPlaceMode.Near);
                     if (!success)
-                    {
-                        Logger.Warning("SafeEjectAllContents: TryDropAll failed, trying individual drops");
-
                         SafeDropItemsIndividually();
-                    }
                 }
                 else
                 {
-                    Logger.Warning("SafeEjectAllContents: No valid drop cell found near locker, trying individual drops");
-
                     SafeDropItemsIndividually();
                 }
-
-                // Logger.Debug($"SafeEjectAllContents: After ejection, container count = {innerContainer.Count}");
             }
             catch (Exception ex)
             {
                 Logger.Error($"SafeEjectAllContents ERROR: {ex.Message}");
-                Logger.Error($"Stack trace: {ex.StackTrace}");
-
-                // Emergency fallback: try to save items
-
                 EmergencyEject();
             }
 
-            // Show effect if we're still spawned
             if (Spawned && Map != null)
             {
                 try
                 {
-                    MoteMaker.ThrowText(this.DrawPos + new Vector3(0f, 0f, 0.25f), Map, "RICS.Locker.ItemsEjected".Translate(), Color.white, 2f);
+                    MoteMaker.ThrowText(DrawPos + new Vector3(0f, 0f, 0.25f), Map, "RICS.Locker.ItemsEjected".Translate(), Color.white, 2f);
                 }
-                catch (Exception ex)
-                {
-                    Logger.Error($"Failed to create mote: {ex.Message}");
-                }
+                catch { }
             }
         }
 
@@ -671,136 +454,96 @@ namespace CAP_ChatInteractive
             {
                 foreach (IntVec3 cell in GenRadial.RadialCellsAround(center, r, true))
                 {
-                    if (!cell.InBounds(map) || cell.Fogged(map))
+                    if (!cell.InBounds(map) || cell.Fogged(map) || !cell.Walkable(map))
                         continue;
 
-                    // Check if the cell is walkable
-                    if (!cell.Walkable(map))
-                        continue;
-
-                    // Check if there's a building that blocks placement
                     Building building = cell.GetEdifice(map);
                     if (building != null && building.def.passability == Traversability.Impassable)
                         continue;
 
-                    // Cell is valid
                     return cell;
                 }
             }
-
-            // If no ideal cell, return the center (fallback)
             return center;
         }
 
         private void SafeDropItemsIndividually()
         {
-            if (innerContainer.Count == 0 || Map == null)
-                return;
+            if (InnerContainer.Count == 0 || Map == null) return;
 
-            // Create a copy of the list to avoid modification during iteration
-            List<Thing> itemsToDrop = new List<Thing>();
-            foreach (Thing thing in innerContainer)
-            {
-                itemsToDrop.Add(thing);
-            }
+            List<Thing> itemsToDrop = new List<Thing>(InnerContainer);
 
             foreach (Thing thing in itemsToDrop)
             {
-                if (thing == null || thing.Destroyed || !innerContainer.Contains(thing))
-                    continue;
+                if (thing == null || thing.Destroyed || !InnerContainer.Contains(thing)) continue;
 
                 try
                 {
-                    // Find a valid cell for this specific item
                     IntVec3 dropCell = FindValidDropCell(Position, Map, 5);
-
                     if (dropCell.IsValid)
                     {
-
-                        // Logger.Debug($"Dropping {thing.LabelCap} at {dropCell}");
-                        bool dropped = innerContainer.TryDrop(thing, dropCell, Map, ThingPlaceMode.Direct, out Thing result);
-                        // Logger.Debug($"  - Drop result: {dropped}, result: {result?.LabelCap ?? "null"}");
+                        InnerContainer.TryDrop(thing, dropCell, Map, ThingPlaceMode.Direct, out _);
                     }
                     else
                     {
-
-                        Logger.Warning($"No valid drop cell found for {thing.LabelCap}, forcing drop at position");
-                        innerContainer.TryDrop(thing, Position, Map, ThingPlaceMode.Near, out Thing result);
+                        InnerContainer.TryDrop(thing, Position, Map, ThingPlaceMode.Near, out _);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"Error dropping {thing?.LabelCap ?? "unknown item"}: {ex.Message}");
+                    Logger.Error($"Error dropping {thing?.LabelCap ?? "unknown"}: {ex.Message}");
                 }
             }
         }
 
         private void EmergencyEject()
         {
-            // Last resort: destroy items to prevent crash
             Logger.Error("EmergencyEject: Destroying items to prevent crash");
-
-            while (innerContainer.Count > 0)
+            while (InnerContainer.Count > 0)
             {
                 try
                 {
-                    Thing thing = innerContainer[0];
+                    Thing thing = InnerContainer[0];
                     if (thing != null)
-                    {
-                        Logger.Error($"Destroying: {thing.LabelCap} x{thing.stackCount}");
                         thing.Destroy();
-                    }
-
-                    innerContainer.Remove(thing);
+                    InnerContainer.Remove(thing);
                 }
                 catch
                 {
-
-                    // If even this fails, clear the container forcefully
-                    innerContainer.Clear();
+                    InnerContainer.Clear();
                     break;
                 }
             }
         }
 
-
+        // ====================== UI Methods ======================
         public bool CanOpen => true;
 
-        // === How we access the contents
         public void OpenLocker()
         {
             Find.WindowStack.Add(new Dialog_LockerContents(this));
         }
 
-        // === Open Storage Settings Method ===
         public void OpenStorageSettings()
         {
-            // Create a simple window for storage settings
             Find.WindowStack.Add(new Dialog_StorageSettings(this));
         }
 
-        // === Inspect String
+        // ====================== Inspect / Label ======================
         public override string GetInspectString()
         {
             string text = base.GetInspectString();
             if (!customName.NullOrEmpty())
-            {
-                if (!text.NullOrEmpty()) text += "\n";
-                text += "RICS_Named".Translate(customName);  // Uses translation
-            }
-            if (!text.NullOrEmpty())
-            {
-                text += "\n";
-            }
-            if (innerContainer.Count == 0)
-            {
-                text += "RICS_LockerEmpty".Translate();  // Uses translation
-            }
+                text = text + "\n" + "RICS_Named".Translate(customName);
+
+            text += "\n";
+            if (InnerContainer.Count == 0)
+                text += "RICS_LockerEmpty".Translate();
             else
             {
-                text += "RICS_Contains".Translate() + innerContainer.ContentsString.CapitalizeFirst();
-                text += "\n" + "RICS_StackSlots".Translate(innerContainer.Count, MaxStacks);
-                text += "\n" + "RICS_TotalItems".Translate(innerContainer.TotalStackCount);
+                text += "RICS_Contains".Translate() + InnerContainer.ContentsString.CapitalizeFirst();
+                text += "\n" + "RICS_StackSlots".Translate(InnerContainer.Count, MaxStacks);
+                text += "\n" + "RICS_TotalItems".Translate(InnerContainer.TotalStackCount);
             }
             return text;
         }
@@ -810,9 +553,7 @@ namespace CAP_ChatInteractive
             get
             {
                 if (!customName.NullOrEmpty())
-                {
                     return customName + " (" + def.label + ")";
-                }
                 return base.Label;
             }
         }
@@ -820,32 +561,59 @@ namespace CAP_ChatInteractive
         public override void PostMapInit()
         {
             base.PostMapInit();
-
-            // Fix position tracking for items in our container
-            if (innerContainer != null && innerContainer.Count > 0)
+            if (innerContainer != null)
             {
-                foreach (Thing thing in innerContainer)
+                foreach (Thing t in innerContainer)
                 {
-                    if (thing != null)
-                    {
-                        // Ensure proper position tracking
-                        thing.holdingOwner = innerContainer;
-
-                        // If the thing has a comp that needs position, update it
-                        if (thing is ThingWithComps twc)
-                        {
-                            // Update any comps that need position info
-                        }
-                    }
+                    if (t != null)
+                        t.holdingOwner = innerContainer;
                 }
             }
         }
 
+        // Rename helper (used by dialog)
+        public void RenameLocker(string newName)
+        {
+            customName = newName.NullOrEmpty() ? null : newName.Trim();
+        }
     }
 
-    /// <summary>
-    /// Locker Contents Window
-    /// </summary>
+    public class Dialog_RenameLocker : Window
+    {
+        private string curName;
+        private Building_RimazonLocker locker;
+
+        public Dialog_RenameLocker(Building_RimazonLocker locker)
+        {
+            this.locker = locker;
+            curName = locker.customName ?? "";
+            forcePause = true;
+            absorbInputAroundWindow = true;
+            closeOnClickedOutside = true;
+        }
+
+        public override Vector2 InitialSize => new Vector2(400f, 175f);
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            Text.Font = GameFont.Small;
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 30f), "Rename locker (leave blank to reset):");
+
+            curName = Widgets.TextField(new Rect(0f, 40f, inRect.width, 35f), curName);
+
+            if (Widgets.ButtonText(new Rect(15f, inRect.height - 35f - 15f, inRect.width / 2 - 20f, 35f), "OK"))
+            {
+                locker.RenameLocker(curName);
+                Close();
+            }
+
+            if (Widgets.ButtonText(new Rect(inRect.width / 2 + 5f, inRect.height - 35f - 15f, inRect.width / 2 - 20f, 35f), "Cancel"))
+            {
+                Close();
+            }
+        }
+    }
+
     public class Dialog_LockerContents : Window
     {
         private Building_RimazonLocker locker;
@@ -993,8 +761,6 @@ namespace CAP_ChatInteractive
         }
     }
 
-    // === Add this class to your RimazonLocker.cs file ===
-
     public class Dialog_StorageSettings : Window
     {
         private Building_RimazonLocker locker;
@@ -1078,4 +844,3 @@ namespace CAP_ChatInteractive
         }
     }
 }
-
