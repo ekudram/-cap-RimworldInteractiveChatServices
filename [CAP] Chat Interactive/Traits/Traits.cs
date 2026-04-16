@@ -26,6 +26,7 @@ using LudeonTK;
 using RimWorld;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
 using System.IO;
 using System.Linq;
 using Verse;
@@ -301,7 +302,7 @@ namespace CAP_ChatInteractive.Traits
         {
             var allTraitDefs = DefDatabase<TraitDef>.AllDefs.ToList();
 
-            // Build a set of active trait keys (defName_degree)
+            // Build a set of active trait keys (defName_degree) from currently loaded mods
             var activeTraitKeys = new HashSet<string>();
             foreach (var traitDef in allTraitDefs)
             {
@@ -323,7 +324,7 @@ namespace CAP_ChatInteractive.Traits
             int removedTraits = 0;
             int anomalyTraitsDisabled = 0;
 
-            // Check for NEW traits not in JSON
+            // First pass: handle NEW traits and update existing ones
             foreach (var traitDef in allTraitDefs)
             {
                 bool isAnomalyTrait = IsAnomalyDlcTrait(traitDef);
@@ -351,7 +352,7 @@ namespace CAP_ChatInteractive.Traits
                             AllBuyableTraits[key] = newTrait;
                             addedTraits++;
                         }
-                        else if (_completeTraitData.ContainsKey(key))
+                        else
                         {
                             // Existing trait - preserve user settings but update if needed
                             var existingTrait = _completeTraitData[key];
@@ -382,6 +383,11 @@ namespace CAP_ChatInteractive.Traits
                                 AllBuyableTraits[key] = updatedTrait;
                                 updatedTraits++;
                             }
+                            else
+                            {
+                                // No core data change - just ensure it's in active list
+                                AllBuyableTraits[key] = existingTrait;
+                            }
                         }
                     }
                 }
@@ -406,12 +412,11 @@ namespace CAP_ChatInteractive.Traits
                         AllBuyableTraits[key] = newTrait;
                         addedTraits++;
                     }
-                    else if (_completeTraitData.ContainsKey(key))
+                    else
                     {
                         // Existing trait - preserve user settings but update if needed
                         var existingTrait = _completeTraitData[key];
 
-                        // Store user settings before any updates
                         bool userCanAdd = existingTrait.CanAdd;
                         bool userCanRemove = existingTrait.CanRemove;
                         bool userCustomName = existingTrait.CustomName;
@@ -419,13 +424,10 @@ namespace CAP_ChatInteractive.Traits
                         string userKarmaRemove = existingTrait.KarmaTypeForRemoving;
                         bool userBypassLimit = existingTrait.BypassLimit;
 
-                        // Check if core trait data has changed
                         if (TraitNeedsUpdate(existingTrait, traitDef, null))
                         {
-                            // Create updated version with new game data
                             var updatedTrait = new BuyableTrait(traitDef);
 
-                            // Restore user settings
                             updatedTrait.CanAdd = userCanAdd;
                             updatedTrait.CanRemove = userCanRemove;
                             updatedTrait.CustomName = userCustomName;
@@ -437,7 +439,28 @@ namespace CAP_ChatInteractive.Traits
                             AllBuyableTraits[key] = updatedTrait;
                             updatedTraits++;
                         }
+                        else
+                        {
+                            AllBuyableTraits[key] = existingTrait;
+                        }
                     }
+                }
+            }
+
+            // Second pass: mark ALL active traits as modactive = true
+            // and reset modactive = false for any traits that are no longer active
+            foreach (var trait in AllBuyableTraits.Values)
+            {
+                trait.modactive = true;   // currently loaded mod
+            }
+
+            // Reset modactive for traits that are in complete data but no longer active
+            // (this fixes the original bug)
+            foreach (var kvp in _completeTraitData)
+            {
+                if (!AllBuyableTraits.ContainsKey(kvp.Key))
+                {
+                    kvp.Value.modactive = false;
                 }
             }
 
@@ -449,13 +472,6 @@ namespace CAP_ChatInteractive.Traits
                 removedTraits++;
             }
 
-            // Mark all active traits as modactive = true for online store
-            // Note: You'll need to add a modactive property to BuyableTrait class first
-            foreach (var trait in AllBuyableTraits.Values)
-            {
-                trait.modactive = true; // Add this property to BuyableTrait
-            }
-
             if (anomalyTraitsDisabled > 0)
             {
                 Logger.Message($"[CAP] Anomaly DLC: {anomalyTraitsDisabled} new traits disabled by default");
@@ -464,9 +480,9 @@ namespace CAP_ChatInteractive.Traits
             if (addedTraits > 0 || removedTraits > 0 || updatedTraits > 0)
             {
                 Logger.Message($"Traits updated: +{addedTraits} traits, -{removedTraits} traits, ~{updatedTraits} traits modified");
-
             }
-            SaveTraitsToJson(); // Save changes
+
+            SaveTraitsToJson(); // Save changes (now includes correct modactive flags)
         }
 
         private static bool TraitNeedsUpdate(BuyableTrait existingTrait, TraitDef traitDef, TraitDegreeData degreeData)
