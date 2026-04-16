@@ -249,7 +249,7 @@ namespace CAP_ChatInteractive.Incidents.Weather
             int addedWeather = 0;
             int removedWeather = 0;
 
-            // Check for NEW weather not in JSON
+            // First pass: handle NEW weather and update existing ones (preserve user settings)
             foreach (var weatherDef in allWeatherDefs)
             {
                 string key = GetWeatherKey(weatherDef);
@@ -272,13 +272,36 @@ namespace CAP_ChatInteractive.Incidents.Weather
                     int userPrice = existingWeather.BaseCost;
                     string userKarma = existingWeather.KarmaType;
 
-                    // Could update any game-derived properties here if needed
-                    // For weather, there might not be many dynamic properties
+                    // Could update any game-derived properties here if needed (e.g. label/description changes)
+                    // For weather, there might not be many dynamic properties at the moment
 
                     // CRITICAL: Restore ALL user settings from JSON
                     existingWeather.Enabled = userEnabled;
                     existingWeather.BaseCost = userPrice;
                     existingWeather.KarmaType = userKarma;
+
+                    // Ensure it's in the active runtime dictionary
+                    if (IsWeatherSuitableForStore(weatherDef))
+                    {
+                        AllBuyableWeather[key] = existingWeather;
+                    }
+                }
+            }
+
+            // Second pass: mark ALL active weather as modactive = true
+            // and reset modactive = false for any weather that is no longer active
+            foreach (var weather in AllBuyableWeather.Values)
+            {
+                weather.modactive = true;   // currently loaded mod
+            }
+
+            // Reset modactive for weather that are in complete data but no longer active
+            // (this fixes the original bug - consistent with TraitsManager and StoreInventory)
+            foreach (var kvp in _completeWeatherData)
+            {
+                if (!AllBuyableWeather.ContainsKey(kvp.Key))
+                {
+                    kvp.Value.modactive = false;
                 }
             }
 
@@ -290,22 +313,13 @@ namespace CAP_ChatInteractive.Incidents.Weather
                 removedWeather++;
             }
 
-            // Mark all active weather as modactive = true for online store
-            // Note: You'll need to add a modactive property to BuyableWeather class first
-            foreach (var weather in AllBuyableWeather.Values)
-            {
-                weather.modactive = true; // Add this property to BuyableWeather
-            }
-
             // Log changes
             if (addedWeather > 0 || removedWeather > 0)
             {
                 Logger.Message($"Weather updated: +{addedWeather} new, -{removedWeather} removed");
-
-                // Save changes (new weather added to JSON)
-                
             }
-            SaveWeatherToJson();
+
+            SaveWeatherToJson(); // Save changes (now includes correct modactive flags)
         }
 
         public static void SaveWeatherToJson()

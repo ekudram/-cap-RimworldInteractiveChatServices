@@ -126,9 +126,12 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
                 return false;
             }
 
+            // NORMALIZE DOOM → BAD for limit checking (this is the core fix)
             eventType = eventType.ToLowerInvariant();
+            if (eventType == "doom")
+                eventType = "bad";   // <<< ALL doom events now share the bad counter
 
-            Logger.Debug($"CanUseEvent eventType: {eventType}");
+            Logger.Debug($"CanUseEvent normalized eventType: {eventType} (original was doom if applicable)");
             Logger.Debug($"Max good events: {settings.MaxGoodEvents}");
             Logger.Debug($"Max Bad Events: {settings.MaxBadEvents}");
             Logger.Debug($"Max Neutral Events: {settings.MaxNeutralEvents}");
@@ -137,7 +140,7 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
 
             // 0 = infinite for that type
             if (settings.MaxGoodEvents == 0 && eventType == "good") return true;
-            if (settings.MaxBadEvents == 0 && (eventType == "bad" || eventType == "doom")) return true;
+            if (settings.MaxBadEvents == 0 && eventType == "bad") return true;   // doom already normalized
             if (settings.MaxNeutralEvents == 0 && eventType == "neutral") return true;
 
             var record = GetOrCreateEventRecord(eventType);
@@ -146,9 +149,9 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             int maxUses = eventType switch
             {
                 "good" => settings.MaxGoodEvents,
-                "bad" => settings.MaxBadEvents,
+                "bad" => settings.MaxBadEvents,   // doom now uses this
                 "neutral" => settings.MaxNeutralEvents,
-                "doom" => settings.MaxBadEvents,   // Doom counts against Bad limit
+                "doom" => settings.MaxBadEvents,   // just in case, but should never hit this due to normalization
                 _ => settings.MaxBadEvents
             };
 
@@ -219,11 +222,13 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             if (string.IsNullOrEmpty(eventType)) return;
 
             eventType = eventType.ToLowerInvariant();
+            if (eventType == "doom")
+                eventType = "bad";   // <<< Doom uses the same record as bad
 
             var record = GetOrCreateEventRecord(eventType);
             record.UsageDays.Add(CurrentGameDay);
 
-            Logger.Debug($"Recorded event usage for type: {eventType}");
+            Logger.Debug($"Recorded event usage for type: {eventType} (doom normalized to bad)");
             Logger.Debug($"Current usage for {eventType}: {record.CurrentPeriodUses}");
         }
 

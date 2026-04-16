@@ -47,6 +47,11 @@ namespace CAP_ChatInteractive.Store
         // public List<string> ResearchOverrides { get; set; }// Not needed for store json
         public string Category { get; set; }
         public string ModSource { get; set; }
+        /// <summary>
+        /// Whether this item belongs to a currently active (loaded) mod.
+        /// Used by external RICS-Pricelist GitHub exporter to filter items shown in the online store.
+        /// Reset to false for items whose mod is no longer active.
+        /// </summary>
         public bool modactive { get; set; } = false;
 
 

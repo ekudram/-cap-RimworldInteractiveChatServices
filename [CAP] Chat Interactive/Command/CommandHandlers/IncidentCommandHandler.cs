@@ -1,6 +1,6 @@
 ﻿// IncidentCommandHandler.cs
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
+// This file is part of CAP Chat Interactive.  RICS Rimwold Chat Interactive System
 // 
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
@@ -50,7 +50,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!buyableIncident.Enabled)
                     return "RICS.ICH.RETURN.IncidentDisabled".Translate(buyableIncident.Label);
 
-                // === COOLDOWN DEBUG (kept for your testing) ===
+                // === COOLDOWN DEBUG ===
                 Logger.Debug($"=== INCIDENT COOLDOWN DEBUG ===");
                 Logger.Debug($"Incident: {buyableIncident.Label}");
                 Logger.Debug($"DefName: {buyableIncident.DefName}");
@@ -61,19 +61,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
                 if (cooldownManager != null)
                 {
-                    // Individual incident cooldown (per-def)
-                    if (settings.EventCooldownsEnabled && buyableIncident.CooldownDays > 0)
-                    {
-                        if (!cooldownManager.CanUseIncident(buyableIncident.DefName, buyableIncident.CooldownDays, settings))
-                        {
-                            int daysRemaining = GetRemainingCooldownDays(buyableIncident.DefName, buyableIncident.CooldownDays, cooldownManager);
-                            string cooldownMessage = GetIndividualCooldownMessage(buyableIncident.Label, daysRemaining, settings.EventCooldownDays);
-                            Logger.Debug($"Individual cooldown blocked: {cooldownMessage}");
-                            return cooldownMessage;
-                        }
-                    }
-
-                    // Global command + event limits
+                    // === 1. Global + Karma-type limits FIRST (highest priority for feedback) ===
                     var commandSettings = CommandSettingsManager.GetSettings("event") ?? new CommandSettings { useCommandCooldown = true, MaxUsesPerCooldownPeriod = 0 };
 
                     if (!cooldownManager.CanUseCommand("event", commandSettings, settings))
@@ -84,13 +72,28 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             return "RICS.ICH.RETURN.GlobalEventLimitReached".Translate(total, settings.EventsperCooldown);
                         }
 
-                        string eventType = GetKarmaTypeForIncident(buyableIncident.KarmaType);
-                        if (settings.KarmaTypeLimitsEnabled && !cooldownManager.CanUseEvent(eventType, settings))
+                        if (settings.KarmaTypeLimitsEnabled)
                         {
-                            return GetCooldownMessage(eventType, settings, cooldownManager);
+                            string eventType = GetKarmaTypeForIncident(buyableIncident.KarmaType);
+                            if (!cooldownManager.CanUseEvent(eventType, settings))
+                            {
+                                return GetCooldownMessage(eventType, settings, cooldownManager);
+                            }
                         }
 
                         return "RICS.ICH.RETURN.CommandCooldownActive".Translate(buyableIncident.Label);
+                    }
+
+                    // === 2. Individual incident cooldown (only checked if global limits passed) ===
+                    if (settings.EventCooldownsEnabled && buyableIncident.CooldownDays > 0)
+                    {
+                        if (!cooldownManager.CanUseIncident(buyableIncident.DefName, buyableIncident.CooldownDays, settings))
+                        {
+                            int daysRemaining = GetRemainingCooldownDays(buyableIncident.DefName, buyableIncident.CooldownDays, cooldownManager);
+                            string cooldownMessage = GetIndividualCooldownMessage(buyableIncident.Label, daysRemaining, settings.EventCooldownDays);
+                            Logger.Debug($"Individual cooldown blocked: {cooldownMessage}");
+                            return cooldownMessage;
+                        }
                     }
                 }
 
@@ -104,7 +107,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (success)
                 {
-                    // Deduct only on success
                     viewer.TakeCoins(cost);
 
                     int karmaAmount = cost / 100;
@@ -118,7 +120,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                 Logger.Debug($"Awarded {karmaAmount} karma for {cost} coin Good event purchase");
                                 break;
                             case "bad":
-                            case "doom":   // Doom also takes karma (as before)
+                            case "doom":
                                 viewer.TakeKarma(karmaAmount);
                                 Logger.Debug($"Deducted {karmaAmount} karma for {cost} coin {(karmaLower == "doom" ? "Doom" : "Bad")} event purchase");
                                 break;
@@ -128,7 +130,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         }
                     }
 
-                    // Record cooldowns only on success
                     if (cooldownManager != null)
                     {
                         if (settings.EventCooldownsEnabled && buyableIncident.CooldownDays > 0)
@@ -137,8 +138,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         string eventType = GetKarmaTypeForIncident(buyableIncident.KarmaType);
                         cooldownManager.RecordEventUse(eventType);
 
-                        var record = cooldownManager.data.EventUsage.GetValueOrDefault(eventType);
-                        Logger.Debug($"Recorded event usage for type: {eventType} → Current: {record?.CurrentPeriodUses ?? 0}");
+                        string logKey = (eventType.ToLowerInvariant() == "doom") ? "bad" : eventType.ToLowerInvariant();
+                        var record = cooldownManager.data.EventUsage.GetValueOrDefault(logKey);
+                        Logger.Debug($"Recorded event usage for type: {eventType} (normalized {(eventType.ToLowerInvariant() == "doom" ? "to bad" : "")}) → Current: {record?.CurrentPeriodUses ?? 0}");
                     }
 
                     if (buyableIncident.KarmaType?.ToLowerInvariant() == "doom")
@@ -148,7 +150,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 else
                 {
-                    // Failure path – NO coin/karma deduction
                     return "RICS.ICH.RETURN.IncidentTriggerFailed".Translate(resultMessage, currencySymbol);
                 }
             }
@@ -216,21 +217,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static string GetCooldownMessage(string eventType, CAPGlobalChatSettings settings, GlobalCooldownManager cooldownManager)
         {
-            int maxEvents = eventType switch
+            string displayType = eventType.ToLowerInvariant() == "doom" ? "Bad (Doom)" : eventType.ToUpper();
+
+            int maxEvents = eventType.ToLowerInvariant() switch
             {
                 "good" => settings.MaxGoodEvents,
                 "bad" => settings.MaxBadEvents,
-                "doom" => settings.MaxBadEvents,   // Doom uses Bad limit
+                "doom" => settings.MaxBadEvents,
                 "neutral" => settings.MaxNeutralEvents,
                 _ => 10
             };
 
-            var record = cooldownManager.data.EventUsage.GetValueOrDefault(eventType) ??
-                         cooldownManager.data.EventUsage.GetValueOrDefault("bad"); // fallback for doom
-
+            string lookupKey = (eventType.ToLowerInvariant() == "doom") ? "bad" : eventType.ToLowerInvariant();
+            var record = cooldownManager.data.EventUsage.GetValueOrDefault(lookupKey);
             int currentUses = record?.CurrentPeriodUses ?? 0;
 
-            return "RICS.ICH.RETURN.EventTypeLimitReached".Translate(eventType.ToUpper(), currentUses, maxEvents);
+            return "RICS.ICH.RETURN.EventTypeLimitReached".Translate(displayType, currentUses, maxEvents);
         }
 
         private static BuyableIncident FindBuyableIncident(string input)
@@ -295,32 +297,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 resultMessage = $"No worker for incident {incident.Label}.";
                 return false;
             }
-            /*  Old method
-            var playerMaps = Current.Game.Maps.Where(map => map.IsPlayerHome).ToList();
-            playerMaps.Shuffle();
-
-            foreach (var map in playerMaps)
-            {
-                var parms = new IncidentParms
-                {
-                    target = map,
-                    forced = true,
-                    points = StorytellerUtility.DefaultThreatPointsNow(map),
-                    
-                };
-
-                if (worker.CanFireNow(parms) && !worker.FiredTooRecently(map))
-                {
-                    bool executed = worker.TryExecute(parms);
-                    if (executed)
-                    {
-                        resultMessage = GetIncidentSuccessMessage(incident);
-                        return true;
-                    }
-                }
-            }
-            */
-
             var playerMaps = Current.Game.Maps.Where(map => map.IsPlayerHome).ToList();
             playerMaps.Shuffle();
 

@@ -108,6 +108,12 @@ namespace _CAP__Chat_Interactive.Utilities
                 {
                     // Existing race - mark as active
                     _raceSettings[race.defName].ModActive = true;
+
+                    // SPECIAL CLEANUP: For Human only, remove any xenotypes that are no longer in the game
+                    if (race.defName == "Human")
+                    {
+                        CleanInactiveXenotypesForHuman(_raceSettings[race.defName]);
+                    }
                 }
             }
 
@@ -126,7 +132,7 @@ namespace _CAP__Chat_Interactive.Utilities
 
             _isInitialized = true;
 
-            // Save the cleaned-up and updated settings
+            // Save the cleaned-up and updated settings (now without stale xenotypes)
             SaveSettings();
         }
 
@@ -176,76 +182,59 @@ namespace _CAP__Chat_Interactive.Utilities
         {
             string displayName = !string.IsNullOrEmpty(race.label) ? race.label.CapitalizeFirst() : race.defName;
 
-
-
             var settings = new RaceSettings
             {
                 DisplayName = race.label ?? race.defName,
                 Enabled = true,
                 ModActive = true,
-                BasePrice = CalculateDefaultPrice(race),  // This is race.BaseMarketValue
+                BasePrice = CalculateDefaultPrice(race),
                 MinAge = 16,
                 MaxAge = 65,
                 AllowCustomXenotypes = true,
                 DefaultXenotype = "Baseliner",
                 AllowedGenders = GetAllowedGendersFromRace(race),
-                XenotypePrices = new Dictionary<string, float>(),  // Will store actual prices, not multipliers
+                XenotypePrices = new Dictionary<string, float>(),
                 EnabledXenotypes = new Dictionary<string, bool>()
             };
 
             // Initialize default xenotype settings if Biotech is active
             if (ModsConfig.BiotechActive)
             {
-                // Get ALL xenotypes
+                // Get ONLY currently loaded xenotypes (no stale data)
                 var allXenotypes = DefDatabase<XenotypeDef>.AllDefs
                     .Where(x => !string.IsNullOrEmpty(x.defName))
                     .Select(x => x.defName)
                     .ToList();
 
-                // Get allowed xenotypes from HAR for this specific race
                 var allowedXenotypes = GetAllowedXenotypes(race);
-                Logger.Debug($"HAR allowed xenotypes for {race.defName}: {string.Join(", ", allowedXenotypes)}");
 
-                bool isHuman = race == ThingDefOf.Human;
-                Logger.Debug($"Is human: {isHuman}, Allowed xenotypes count: {allowedXenotypes.Count}");
-                Logger.Debug($"Initializing xenotypes for {race.defName}: {allowedXenotypes.Count} allowed xenotypes");
+                bool isHuman = race.defName == "Human";
 
                 foreach (var xenotype in allXenotypes)
                 {
-                    bool defaultEnabled = false; // Always start with false
-                    Logger.Debug($"Xenotype: {xenotype}");
+                    bool defaultEnabled = false;
 
                     if (isHuman)
                     {
-                        // For humans, only enable base game xenotypes
+                        // For humans, only enable base game xenotypes by default
                         defaultEnabled = IsBaseGameXenotype(xenotype);
                     }
                     else if (allowedXenotypes.Count > 0)
                     {
-                        // For HAR races, use whiteXenotypeList to determine which xenotypes to enable
                         defaultEnabled = allowedXenotypes.Contains(xenotype);
 
-                        Logger.Debug($"Race: {race.defName} Xeno: {xenotype} - AllowedListCount: {allowedXenotypes.Count}, InList: {allowedXenotypes.Contains(xenotype)}, Enabled: {defaultEnabled}");
-
-                        // If this xenotype matches the race name, set it as the default
                         if (defaultEnabled && xenotype.Equals(race.defName, StringComparison.OrdinalIgnoreCase))
                         {
                             settings.DefaultXenotype = xenotype;
-                            Logger.Debug($"Default Xeno: {xenotype}");
                         }
                     }
                     else
                     {
-                        Logger.Debug($"Race: {race.defName} - NO ALLOWED XENOTYPES LIST, defaulting all to TRUE");
                         defaultEnabled = true;
                     }
 
                     settings.EnabledXenotypes[xenotype] = defaultEnabled;
-
-                    // NEW: Calculate actual price instead of multiplier
                     settings.XenotypePrices[xenotype] = GetDefaultXenotypePrice(race, xenotype);
-
-                    Logger.Debug($"  {xenotype}: {defaultEnabled} (allowed: {allowedXenotypes.Contains(xenotype)})");
                 }
             }
 
@@ -373,6 +362,31 @@ namespace _CAP__Chat_Interactive.Utilities
                 Gender.None => settings.AllowedGenders.AllowOther,
                 _ => true
             };
+        }
+
+        /// <summary>
+        /// Removes any xenotypes from the Human race settings that are no longer present in DefDatabase<XenotypeDef>.
+        /// Called during LoadAndInitializeSettings() so stale modded xenotypes are cleaned from JSON.
+        /// </summary>
+        private static void CleanInactiveXenotypesForHuman(RaceSettings humanSettings)
+        {
+            if (humanSettings == null) return;
+
+            var currentXenotypes = new HashSet<string>(
+                DefDatabase<XenotypeDef>.AllDefs.Select(x => x.defName)
+            );
+
+            // Remove any keys that no longer exist in the game
+            var keysToRemove = humanSettings.EnabledXenotypes.Keys
+                .Where(x => !currentXenotypes.Contains(x))
+                .ToList();
+
+            foreach (var key in keysToRemove)
+            {
+                humanSettings.EnabledXenotypes.Remove(key);
+                humanSettings.XenotypePrices.Remove(key);
+                Logger.Debug($"[RaceSettings] Removed stale xenotype from Human: {key}");
+            }
         }
 
         // Eventually move DebugActions to a separate class, but for now it's convenient to have it here since it directly relates

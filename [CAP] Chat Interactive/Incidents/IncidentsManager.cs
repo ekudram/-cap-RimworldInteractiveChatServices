@@ -334,17 +334,22 @@ namespace CAP_ChatInteractive.Incidents
             int updatedGameProperties = 0;
             int removedIncidents = 0;
 
-            // Check for NEW incidents not in JSON
-            foreach (var incidentDef in allIncidentDefs)  // 'incidentDef' is the loop variable
+            // First pass: handle NEW incidents and update existing ones (preserve user settings)
+            foreach (var incidentDef in allIncidentDefs)
             {
                 string key = GetIncidentKey(incidentDef);
 
                 if (!_completeIncidentData.ContainsKey(key) && IsIncidentSuitableForStore(incidentDef))
                 {
-                    // New incident - let constructor handle it (including auto-disable)
+                    // New incident - let constructor handle it (including auto-disable for mod events)
                     var newIncident = new BuyableIncident(incidentDef);
                     _completeIncidentData[key] = newIncident;
-                    AllBuyableIncidents[key] = newIncident;
+
+                    // Add to runtime only if suitable for store
+                    if (newIncident.ShouldBeInStore)
+                    {
+                        AllBuyableIncidents[key] = newIncident;
+                    }
                     addedIncidents++;
                 }
                 else if (_completeIncidentData.ContainsKey(key))
@@ -352,7 +357,6 @@ namespace CAP_ChatInteractive.Incidents
                     // Existing incident - update game properties but preserve user settings
                     var existingIncident = _completeIncidentData[key];
 
-                    // FIX: Rename this variable to avoid conflict with loop variable
                     var currentIncidentDef = allIncidentDefs.FirstOrDefault(d => d.defName == key);
 
                     if (currentIncidentDef != null)
@@ -379,11 +383,31 @@ namespace CAP_ChatInteractive.Incidents
                         existingIncident.BaseCost = userPrice;
                         existingIncident.KarmaType = userKarma;
 
-                        // Don't change EventCap either if user might have customized it
-                        // But if you want to allow EventCap updates, add logic here
+                        // Ensure it's in the active runtime dictionary if still suitable
+                        if (existingIncident.ShouldBeInStore)
+                        {
+                            AllBuyableIncidents[key] = existingIncident;
+                        }
 
                         updatedGameProperties++;
                     }
+                }
+            }
+
+            // Second pass: mark ALL active incidents as modactive = true
+            // and reset modactive = false for any incidents that are no longer active
+            foreach (var incident in AllBuyableIncidents.Values)
+            {
+                incident.modactive = true;   // currently loaded mod
+            }
+
+            // Reset modactive for incidents that are in complete data but no longer active
+            // (this fixes the original bug - consistent with Traits, Store, and Weather)
+            foreach (var kvp in _completeIncidentData)
+            {
+                if (!AllBuyableIncidents.ContainsKey(kvp.Key))
+                {
+                    kvp.Value.modactive = false;
                 }
             }
 
@@ -395,18 +419,13 @@ namespace CAP_ChatInteractive.Incidents
                 removedIncidents++;
             }
 
-            // Mark all active incidents as modactive = true for online store
-            foreach (var incident in AllBuyableIncidents.Values)
-            {
-                incident.modactive = true;
-            }
-
             // Log changes
             if (addedIncidents > 0 || removedIncidents > 0 || updatedGameProperties > 0)
             {
                 Logger.Message($"Incidents updated: +{addedIncidents} new, -{removedIncidents} removed, {updatedGameProperties} game properties refreshed");
             }
-            SaveIncidentsToJson();
+
+            SaveIncidentsToJson(); // Save changes (now includes correct modactive flags)
         }
 
         public static void SaveIncidentsToJson()

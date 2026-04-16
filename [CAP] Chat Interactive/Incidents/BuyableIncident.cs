@@ -44,6 +44,11 @@ namespace CAP_ChatInteractive.Incidents
 
         // Additional data
         public string ModSource { get; set; } = "RimWorld";
+        /// <summary>
+        /// Whether this trait belongs to a currently active (loaded) mod.
+        /// Used by external RICS-Pricelist GitHub exporter to filter traits shown in the online store.
+        /// Reset to false for traits whose mod is no longer active.
+        /// </summary>
         public bool modactive { get; set; } = false;
         public int Version { get; set; } = 1;
 

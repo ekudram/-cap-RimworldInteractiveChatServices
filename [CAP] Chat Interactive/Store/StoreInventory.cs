@@ -268,13 +268,12 @@ namespace CAP_ChatInteractive.Store
             int updatedItems = 0;
             int removedItems = 0;
             int migratedItems = 0;
-            // int removedInvalidItems = 0;
 
             Logger.Message("=== Validating and updating store items... ===");
             Logger.Debug($"Current store items: {AllStoreItems.Count}");
             Logger.Debug($"Tradeable items in game: {tradeableItems.Count}");
 
-            // Check for NEW items not in JSON
+            // First pass: handle NEW items and update existing ones (preserve user settings)
             foreach (var thingDef in tradeableItems)
             {
                 string key = thingDef.defName;
@@ -355,9 +354,9 @@ namespace CAP_ChatInteractive.Store
                     existingItem.HasQuantityLimit = userHasQuantityLimit;
                     existingItem.QuantityLimit = userQuantityLimit;
                     existingItem.LimitMode = userLimitMode;
+
                     // Fixes anything from previous version that was in error.
-                    // If we cant use wear or Equip the item we should not have the Flags for it set to true.
-                    // otherwise keep streamer settings.
+                    // If we cant use/wear/equip the item we should not have the Flags for it set to true.
                     if (!existingItem.CanUse)
                         existingItem.IsUsable = false;
                     else
@@ -378,19 +377,29 @@ namespace CAP_ChatInteractive.Store
                 }
             }
 
+            // Second pass: mark ALL active items as modactive = true
+            // and reset modactive = false for any items that are no longer active
+            foreach (var item in AllStoreItems.Values)
+            {
+                item.modactive = true;   // currently loaded mod
+            }
+
+            // Reset modactive for items that are in complete data but no longer active
+            // (this fixes the original bug - same pattern as TraitsManager)
+            foreach (var kvp in _completeStoreData)
+            {
+                if (!AllStoreItems.ContainsKey(kvp.Key))
+                {
+                    kvp.Value.modactive = false;
+                }
+            }
+
             // Remove items from runtime that are no longer active
             var keysToRemove = AllStoreItems.Keys.Where(k => !activeDefNames.Contains(k)).ToList();
             foreach (var key in keysToRemove)
             {
                 AllStoreItems.Remove(key);
                 removedItems++;
-            }
-
-            // Mark all active items as modactive = true for online store
-            // Note: You'll need to add a modactive property to StoreItem class first
-            foreach (var item in AllStoreItems.Values)
-            {
-                item.modactive = true; // Add this property to StoreItem
             }
 
             // Update logging
@@ -404,7 +413,8 @@ namespace CAP_ChatInteractive.Store
 
                 Logger.Message(changes.ToString());
             }
-            SaveStoreToWithCheck(); // Save changes
+
+            SaveStoreToWithCheck(); // Save changes (now includes correct modactive flags)
         }
 
         private static bool IsItemValidForStore(ThingDef thingDef)
