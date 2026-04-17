@@ -44,7 +44,7 @@ namespace CAP_ChatInteractive
         /// <param name="message"></param>
         public static void ProcessMessage(ChatMessageWrapper message)
         {
-            Logger.Debug($"Processing message from {message.Username} on {message.Platform}: {message.Message}");
+            //Logger.Debug($"Processing message from {message.Username} on {message.Platform}: {message.Message}");
             try
             {
                 // add validate viewer name here
@@ -202,7 +202,7 @@ namespace CAP_ChatInteractive
             else
             {
                 // Command not found → check for legacy $ buy fallback
-                Logger.Debug($"Command '{commandText}' not found. Checking for legacy $ buy fallback.");
+                //Logger.Debug($"Command '{commandText}' not found. Checking for legacy $ buy fallback.");
                 string trimmed = message.Message.TrimStart();
                 if (trimmed.StartsWith("$"))
                 {
@@ -214,14 +214,14 @@ namespace CAP_ChatInteractive
                     args = string.IsNullOrWhiteSpace(rest)
                         ? Array.Empty<string>()
                         : rest.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);  
-                    Logger.Debug($"Legacy $ command detected. Interpreting as 'buy' with args: {string.Join(", ", args)}");
+                    //Logger.Debug($"Legacy $ command detected. Interpreting as 'buy' with args: {string.Join(", ", args)}");
                     // Optional: mild logging so you can see when legacy path is hit
                     // Logger.Debug($"$ buy used by {message.Username}: {message.Message}");
 
                     // Now look up the "buy" command (should exist)
                     if (_commands.TryGetValue("buy", out command))
                     {
-                        Logger.Debug($"'buy' command found for legacy $ command. Proceeding with execution.");
+                        //Logger.Debug($"'buy' command found for legacy $ command. Proceeding with execution.");
                         // → continue to cooldown/permission/execute as normal
                         // The buy command will validate args the same way it does for !buy
                     }
@@ -234,7 +234,7 @@ namespace CAP_ChatInteractive
                 }
                 else
                 {
-                    Logger.Debug($"No command found for '{commandText}' and message does not start with '$'. Ignoring message.");
+                    //Logger.Debug($"No command found for '{commandText}' and message does not start with '$'. Ignoring message.");
                     // Truly unknown, even after $ check
                     // You can optionally send "Unknown command" here if you want
                     return;
@@ -247,7 +247,7 @@ namespace CAP_ChatInteractive
             // Fast exit: Banned viewer
             if (viewer.IsBanned)
             {
-                Logger.Debug($"Banned viewer {message.Username} attempted command: {commandText}");
+                Logger.Warning($"Banned viewer {message.Username} attempted command: {commandText}");
                 return; // Silent fail for banned users
             }
 
@@ -269,7 +269,7 @@ namespace CAP_ChatInteractive
                 {
                     // Inform developer but continue execution
                     SendMessageToUser(message, $"[DEV] Command '{commandText}' is currently disabled in settings — executing anyway for testing.");
-                    Logger.Debug($"[DEV BYPASS] {message.Username} executed disabled command '{commandText}'");
+                    //Logger.Debug($"[DEV BYPASS] {message.Username} executed disabled command '{commandText}'");
                 }
                 else
                 {
@@ -293,7 +293,7 @@ namespace CAP_ChatInteractive
             // 2. Permissions check
             if (!command.CanExecute(message))
             {
-                Logger.Debug($"Permission denied for {message.Username} on command {command.Name}. Required: {command.PermissionLevel}");
+                //Logger.Debug($"Permission denied for {message.Username} on command {command.Name}. Required: {command.PermissionLevel}");
                 SendPermissionDeniedMessage(message, command);
                 return;
             }
@@ -333,7 +333,7 @@ namespace CAP_ChatInteractive
             // Then check aliases
             foreach (var command in _commands.Values.Distinct())
             {
-                Logger.Debug($"Checking alias for command '{command.Name}': Alias='{command.Alias}'");
+                //Logger.Debug($"Checking alias for command '{command.Name}': Alias='{command.Alias}'");
                 if (!string.IsNullOrEmpty(command.Alias) && command.Alias == commandText)
                 {
                     return command.Name;
@@ -623,13 +623,13 @@ namespace CAP_ChatInteractive
                 // Fast exit if channel points are disabled or RewardSettings is null
                 if (!globalSettings.ChannelPointsEnabled)
                 {
-                    Logger.Debug("Channel points processing disabled in settings");
+                    //Logger.Debug("Channel points processing disabled in settings");
                     return;
                 }
 
                 if (globalSettings.RewardSettings == null)
                 {
-                    Logger.Debug("RewardSettings list is null - channel points processing skipped");
+                    Logger.Warning("RewardSettings list is null - channel points processing skipped");
                     return;
                 }
                 string rewardId = message.CustomRewardId;
@@ -647,7 +647,7 @@ namespace CAP_ChatInteractive
 
                         if (globalSettings.ShowChannelPointsDebugMessages)
                         {
-                            Logger.Debug($"Awarded {coins} coins to {message.Username} for reward: {reward.RewardName}");
+                            //Logger.Debug($"Awarded {coins} coins to {message.Username} for reward: {reward.RewardName}");
                         }
 
                         // Optional: Send confirmation message
@@ -659,7 +659,7 @@ namespace CAP_ChatInteractive
                     // Handle unconfigured reward with automatic capture
                     if (globalSettings.ShowChannelPointsDebugMessages)
                     {
-                        Logger.Debug($"Detected a custom reward that wasn't configured: {rewardId}");
+                        Logger.Warning($"Detected a custom reward that wasn't configured: {rewardId}");
                     }
 
                     var autoReward = globalSettings.RewardSettings.FirstOrDefault(r => r.AutomaticallyCaptureUUID && r.Enabled);
@@ -667,7 +667,7 @@ namespace CAP_ChatInteractive
                     {
                         if (globalSettings.ShowChannelPointsDebugMessages)
                         {
-                            Logger.Debug($"A reward with Automatic UUID capture enabled was found. Configuring this reward to use {rewardId}.");
+                            Logger.Message($"A reward with Automatic UUID capture enabled was found. Configuring this reward to use {rewardId}.");
                         }
 
                         autoReward.AutomaticallyCaptureUUID = false;
@@ -680,7 +680,7 @@ namespace CAP_ChatInteractive
                     {
                         if (globalSettings.ShowChannelPointsDebugMessages)
                         {
-                            Logger.Debug("If this is the reward you would like to use, add this UUID to the mod settings.");
+                            Logger.Message("If this is the reward you would like to use, add this UUID to the mod settings.");
                         }
                     }
                 }
@@ -689,24 +689,6 @@ namespace CAP_ChatInteractive
             {
                 Logger.Error($"Error processing channel points reward: {ex.Message}");
             }
-        }
-
-        private static bool IsStoreCommandDisabled(ChatMessageWrapper message, string commandText)
-        {
-            // Early exit if global store is enabled → nothing to block
-            var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            if (globalSettings?.StoreCommandsEnabled ?? true)
-            {
-                return false; // not disabled
-            }
-
-            // Only block if it's one of our managed store commands
-            return ToggleStore.StoreCommands.Contains(commandText);
-        }
-
-        private static string GetStoreDisabledMessage()
-        {
-            return "Store and interaction commands are currently **DISABLED** (streamer emergency mode). Try again later!";
         }
     }
 }
