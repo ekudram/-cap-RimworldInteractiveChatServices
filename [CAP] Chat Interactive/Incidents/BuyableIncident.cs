@@ -58,7 +58,7 @@ namespace CAP_ChatInteractive.Incidents
         public bool IsDiseaseIncident { get; set; }
         public bool IsQuestIncident { get; set; }
         public float BaseChance { get; set; }
-        public string MinTechLevel { get; set; }
+        public int EarliestDay { get; set; }
         public bool PointsScaleable { get; set; }
         public float MinThreatPoints { get; set; }
         public float MaxThreatPoints { get; set; }
@@ -78,7 +78,7 @@ namespace CAP_ChatInteractive.Incidents
             PointsScaleable = incidentDef.pointsScaleable;
             MinThreatPoints = incidentDef.minThreatPoints;
             MaxThreatPoints = incidentDef.maxThreatPoints;
-
+            EarliestDay = incidentDef.earliestDay;
             AnalyzeIncidentType(incidentDef);
             KarmaType = DetermineKarmaType(incidentDef);
             SetDefaultPricing(incidentDef);
