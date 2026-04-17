@@ -118,7 +118,7 @@ namespace CAP_ChatInteractive
                 {
                     // Use the custom owner that respects MaxStacks
                     innerContainer = new LockerThingOwner(this, false, LookMode.Deep);
-                    Logger.Debug($"Locker {instanceId}: Created new LockerThingOwner");
+                    //Logger.Debug($"Locker {instanceId}: Created new LockerThingOwner");
                 }
                 return innerContainer;
             }
@@ -133,7 +133,7 @@ namespace CAP_ChatInteractive
         public Building_RimazonLocker()
         {
             instanceId = ++instanceCounter;
-            Logger.Debug($"Locker {instanceId}: Constructor called");
+            //Logger.Debug($"Locker {instanceId}: Constructor called");
 
             // Force early initialization BEFORE any external mod (e.g. FSF Tweaks) can strip defaults.
             // This is the #1 robustness improvement.
@@ -178,7 +178,7 @@ namespace CAP_ChatInteractive
                 {
                     settings.CopyFrom(parentSettings);
                     copied = true;
-                    Logger.Debug($"[RICS Locker] Copied default storage settings for locker at {Position}");
+                    //Logger.Debug($"[RICS Locker] Copied default storage settings for locker at {Position}");
                 }
                 catch (Exception ex)
                 {
@@ -210,7 +210,7 @@ namespace CAP_ChatInteractive
             if (settings != null)
             {
                 settings.Priority = StoragePriority.Unstored;
-                Logger.Debug($"[RICS Locker] Priority locked to Unstored at {Position}");
+                //Logger.Debug($"[RICS Locker] Priority locked to Unstored at {Position}");
             }
 
             return settings;
@@ -222,7 +222,7 @@ namespace CAP_ChatInteractive
             if (def?.building?.defaultStorageSettings != null)
                 return def.building.defaultStorageSettings;
 
-            Logger.Debug($"[RICS] No defaultStorageSettings on def (common with storage tweak mods)");
+            //Logger.Debug($"[RICS] No defaultStorageSettings on def (common with storage tweak mods)");
             return null;
         }
 
@@ -250,7 +250,7 @@ namespace CAP_ChatInteractive
             base.SpawnSetup(map, respawningAfterReload);
 
             _ = InnerContainer;
-            Logger.Debug($"[RICS] Locker has {innerContainer.Count} items after spawn");
+            //Logger.Debug($"[RICS] Locker has {innerContainer.Count} items after spawn");
 
             _ = GetStoreSettings();
 
@@ -258,7 +258,7 @@ namespace CAP_ChatInteractive
             if (settings != null)
             {
                 settings.Priority = StoragePriority.Unstored;
-                Logger.Debug($"[RICS Locker] Priority forced to Unstored at {Position} | Stacks: {innerContainer.Count}/{MaxStacks}");
+                //Logger.Debug($"[RICS Locker] Priority forced to Unstored at {Position} | Stacks: {innerContainer.Count}/{MaxStacks}");
             }
         }
 
@@ -304,7 +304,7 @@ namespace CAP_ChatInteractive
                 }
             }
 
-            Logger.Debug($"Locker {instanceId} loaded — stacks: {innerContainer?.Count ?? 0}/{MaxStacks}");
+            //Logger.Debug($"Locker {instanceId} loaded — stacks: {innerContainer?.Count ?? 0}/{MaxStacks}");
         }
 
         // === DeSpawn
