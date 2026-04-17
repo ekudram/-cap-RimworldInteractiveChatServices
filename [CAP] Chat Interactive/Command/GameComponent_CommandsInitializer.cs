@@ -121,7 +121,7 @@ namespace CAP_ChatInteractive
                                 useCommandCooldown = def.useCommandCooldown
                             };
                             settingsChanged = true;
-                            Logger.Debug($"FORCE ADDED missing command: '{commandName}'");
+                            Logger.Message($"FORCE ADDED missing command: '{commandName}'");
                         }
                     }
                 }
@@ -143,7 +143,7 @@ namespace CAP_ChatInteractive
         private void RegisterDefCommands()
         {
             var defs = DefDatabase<ChatCommandDef>.AllDefsListForReading;
-            Logger.Debug($"Registering {defs.Count} commands from Defs...");
+            // Logger.Debug($"Registering {defs.Count} commands from Defs...");
 
             foreach (var commandDef in defs)
             {
@@ -192,14 +192,14 @@ namespace CAP_ChatInteractive
                 string jsonContent = JsonFileManager.LoadFile("CommandSettings.json");
                 if (string.IsNullOrEmpty(jsonContent))
                 {
-                    Logger.Debug("No CommandSettings.json found, will be created from XML");
+                    Logger.Warning("No CommandSettings.json found, will be created from XML");
                     return;
                 }
 
                 var currentSettings = JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(jsonContent);
                 if (currentSettings == null)
                 {
-                    Logger.Debug("CommandSettings.json is empty or invalid");
+                    Logger.Error("CommandSettings.json is empty or invalid");
                     return;
                 }
 
@@ -218,7 +218,7 @@ namespace CAP_ChatInteractive
                         // Check if JSON permission matches XML
                         if (settings.PermissionLevel != def.permissionLevel)
                         {
-                            Logger.Debug($"Fixing permission for '{commandKey}': JSON='{settings.PermissionLevel}' -> XML='{def.permissionLevel}'");
+                            // Logger.Debug($"Fixing permission for '{commandKey}': JSON='{settings.PermissionLevel}' -> XML='{def.permissionLevel}'");
                             settings.PermissionLevel = def.permissionLevel;
                             fixedAny = true;
                         }
@@ -241,7 +241,7 @@ namespace CAP_ChatInteractive
                 }
                 else
                 {
-                    Logger.Debug("[CAP] All JSON permissions match XML Defs");
+                    Logger.Message("[CAP] All JSON permissions match XML Defs");
                 }
             }
             catch (Exception ex)
