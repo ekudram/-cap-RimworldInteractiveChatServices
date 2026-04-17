@@ -17,6 +17,17 @@
     <rotatable>False</rotatable>
     <passability>Impassable</passability>
     <fillPercent>1</fillPercent>
+
+    <coversFloor>true</coversFloor>
+    <holdsRoof>true</holdsRoof>
+    <blockWind>true</blockWind>
+
+    <terrainAffordanceNeeded>Medium</terrainAffordanceNeeded>
+    <filthLeaving>Filth_RubbleBuilding</filthLeaving>
+    <staticSunShadowHeight>0.8</staticSunShadowHeight>
+    <!-- or 1.0; tweak to match your graphic height -->
+    <neverMultiSelect>true</neverMultiSelect>
+    
     <statBases>
       <MaxHitPoints>200</MaxHitPoints>
       <WorkToBuild>1000</WorkToBuild>

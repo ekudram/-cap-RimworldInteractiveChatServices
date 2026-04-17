@@ -156,8 +156,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                     if (bestLocker != null)
                     {
-                        Logger.Debug($"Selected BEST MATCH locker for stacking: {bestLocker.Position} " +
-                                     $"(free stacks: {bestLocker.MaxStacks - bestLocker.InnerContainer.TotalStackCount})");
+                        //Logger.Debug($"Selected BEST MATCH locker for stacking: {bestLocker.Position} " +
+                        //             $"(free stacks: {bestLocker.MaxStacks - bestLocker.InnerContainer.TotalStackCount})");
                         return bestLocker;
                     }
                 }
@@ -172,7 +172,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                     if (bestLocker != null)
                     {
-                        Logger.Debug($"No perfect stack match → selected nearest suitable locker anyway: {bestLocker.Position}");
+                        // Logger.Debug($"No perfect stack match → selected nearest suitable locker anyway: {bestLocker.Position}");
                         return bestLocker;
                     }
                 }
@@ -334,21 +334,21 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             float thickNaturalPercentage = (float)naturalThickRoofCount / totalCells;
 
-            Logger.Debug($"Thick natural overhead mountain roof: {thickNaturalPercentage:P2} ({naturalThickRoofCount}/{totalCells})");
+            // Logger.Debug($"Thick natural overhead mountain roof: {thickNaturalPercentage:P2} ({naturalThickRoofCount}/{totalCells})");
 
             // Tune this threshold based on testing — 0.88–0.92 works well for most Anomaly pits
             const float UNDERGROUND_THRESHOLD = 0.92f;
 
             if (thickNaturalPercentage > UNDERGROUND_THRESHOLD)
             {
-                Logger.Debug($"Detected underground map (> {UNDERGROUND_THRESHOLD:P0} thick natural roof)");
+                // Logger.Debug($"Detected underground map (> {UNDERGROUND_THRESHOLD:P0} thick natural roof)");
                 return true;
             }
 
             // Optional extra safety check for very small + very roofed maps
             if (map.Size.z < 220 && thickNaturalPercentage > 0.80f)
             {
-                Logger.Debug("Small map with high thick roof coverage → likely underground");
+                // Logger.Debug("Small map with high thick roof coverage → likely underground");
                 return true;
             }
 
@@ -368,7 +368,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             var locker = FindSuitableLockerFor(thing, map, forPawn);
             if (locker != null && locker.TryAcceptThing(thing))
             {
-                Logger.Debug($"Delivered {thing.def.defName} x{thing.stackCount} to RimazonLocker at {locker.Position}");
+                // Logger.Debug($"Delivered {thing.def.defName} x{thing.stackCount} to RimazonLocker at {locker.Position}");
 
                 // Show delivery effect
                 MoteMaker.ThrowText(locker.DrawPos + new Vector3(0f, 0f, 0.25f), map,
@@ -378,14 +378,14 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             // Fallback to normal drop at trade spot
             IntVec3 dropPos = GetCustomDropSpot(map);
-            Logger.Debug($"Dropping item at trade spot {dropPos} (no suitable locker found)");
+            // Logger.Debug($"Dropping item at trade spot {dropPos} (no suitable locker found)");
 
             // Use proper drop logic
             if (DropCellFinder.TryFindDropSpotNear(dropPos, map, out IntVec3 actualDropPos,
                 allowFogged: false, canRoofPunch: true, maxRadius: 15))
             {
                 GenDrop.TryDropSpawn(thing, actualDropPos, map, ThingPlaceMode.Near, out Thing resultingThing);
-                Logger.Debug($"Dropped at {actualDropPos} (adjusted from {dropPos})");
+                // Logger.Debug($"Dropped at {actualDropPos} (adjusted from {dropPos})");
             }
             else
             {
@@ -433,8 +433,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             try
             {
-                Logger.Debug($"Spawning item: {thingDef.defName}, quantity: {quantity}, for pawn: {pawn?.Name}, " +
-                            $"addToInventory: {addToInventory}, equipItem: {equipItem}, wearItem: {wearItem}");
+                // Logger.Debug($"Spawning item: {thingDef.defName}, quantity: {quantity}, for pawn: {pawn?.Name}, " +
+                //             $"addToInventory: {addToInventory}, equipItem: {equipItem}, wearItem: {wearItem}");
 
                 // Handle special case for pawns (animals)
                 if (IsPawnThingDef(thingDef))
@@ -528,12 +528,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     if (PawnItemHelper.EquipItemOnPawn(item, pawn))
                     {
                         directlyDelivered.Add(item);
-                        Logger.Debug($"Item equipped on pawn");
+                        // Logger.Debug($"Item equipped on pawn");
                     }
                     else
                     {
-                        // Optional: Fallback to inventory or drop if equip fails
-                        Logger.Debug($"Failed to equip {item.def.defName}, falling back to locker");
+                        // Fallback to inventory or drop if equip fails
+                        // Logger.Debug($"Failed to equip {item.def.defName}, falling back to locker");
                         TryDeliverToLocker(item, pawn.Map, pawn, result);
                     }
                 }
@@ -546,12 +546,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     if (PawnItemHelper.WearApparelOnPawn(item, pawn))
                     {
                         directlyDelivered.Add(item);
-                        Logger.Debug($"Item worn by pawn");
+                        // Logger.Debug($"Item worn by pawn");
                     }
                     else
                     {
                         // Optional: Fallback if wear fails
-                        Logger.Debug($"Failed to wear {item.def.defName}, falling back to locker");
+                        // Logger.Debug($"Failed to wear {item.def.defName}, falling back to locker");
                         TryDeliverToLocker(item, pawn.Map, pawn, result);
                     }
                 }
@@ -567,7 +567,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     }
                     else
                     {
-                        Logger.Debug($"Inventory full for item {item.def.defName}");
+                        // Logger.Debug($"Inventory full for item {item.def.defName}");
                         // Fallback to locker delivery for failed inventory items
                         TryDeliverToLocker(item, pawn.Map, pawn, result);
                     }
@@ -592,7 +592,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (thingDef.MadeFromStuff && finalMaterial == null)
             {
                 finalMaterial = GenStuff.RandomStuffFor(thingDef);
-                Logger.Debug($"Item requires stuff, selected random material: {finalMaterial?.defName}");
+                // Logger.Debug($"Item requires stuff, selected random material: {finalMaterial?.defName}");
             }
 
             // Create items
@@ -624,8 +624,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (undeliveredItems.Count > 0)
             {
                 int dropCount = undeliveredItems.Sum(t => t?.stackCount ?? 0);
-                Logger.Debug($"{undeliveredItems.Count} stacks ({dropCount} total units) rejected by lockers → using drop pod");
-                // ... rest unchanged (TryShuttleDelivery etc.)
+                // Logger.Debug($"{undeliveredItems.Count} stacks ({dropCount} total units) rejected by lockers → using drop pod");
                 result.DropPodDeliveredCount += dropCount;
             }
 
@@ -633,7 +632,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (undeliveredItems.Count > 0)
             {
                 int dropCount = undeliveredItems.Sum(t => t?.stackCount ?? 0);  // Null-safe
-                Logger.Debug($"{undeliveredItems.Count} items ({dropCount} total count) couldn't fit in lockers, using drop pod");
+                // Logger.Debug($"{undeliveredItems.Count} items ({dropCount} total count) couldn't fit in lockers, using drop pod");
                 result.DropPodDeliveredItems.AddRange(undeliveredItems);
 
                 IntVec3 dropPos = GetDeliveryPosition(targetMap, pawn);
@@ -641,7 +640,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 {
                     result.DropPodDeliveredCount += dropCount;
                     result.DeliveryPosition = dropPos;
-                    Logger.Debug($"Drop pod delivery successful at {dropPos} with {dropCount} items");
+                    //Logger.Debug($"Drop pod delivery successful at {dropPos} with {dropCount} items");
                 }
                 else
                 {
@@ -676,7 +675,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             var locker = FindSuitableLockerFor(item, map, pawn);
             if (locker == null)
             {
-                Logger.Debug($"No suitable Rimazon locker found for {item.def.defName} x{item.stackCount}");
+                // Logger.Debug($"No suitable Rimazon locker found for {item.def.defName} x{item.stackCount}");
                 return false;
             }
 
@@ -687,7 +686,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (accepted)
             {
                 // Whether merged or new stack — delivery succeeded
-                Logger.Debug($"Successfully delivered/merged {item.def.defName} x{attemptedCount} → locker at {locker.Position}");
+                // Logger.Debug($"Successfully delivered/merged {item.def.defName} x{attemptedCount} → locker at {locker.Position}");
 
                 result.LockerDeliveredCount += attemptedCount;
 
@@ -701,9 +700,9 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
             else
             {
-                Logger.Debug($"Locker {locker.Position} refused {item.def.defName} x{attemptedCount} " +
-                             $"(current: {locker.InnerContainer.TotalStackCount}/{locker.MaxStacks}, " +
-                             $"storage settings allow? {locker.settings?.AllowedToAccept(item) ?? false})");
+                //Logger.Debug($"Locker {locker.Position} refused {item.def.defName} x{attemptedCount} " +
+                //             $"(current: {locker.InnerContainer.TotalStackCount}/{locker.MaxStacks}, " +
+                //             $"storage settings allow? {locker.settings?.AllowedToAccept(item) ?? false})");
                 return false;
             }
         }
@@ -717,7 +716,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 Map surfaceMap = Find.Maps.FirstOrDefault(m => m.IsPlayerHome && !IsUndergroundMap(m));
                 if (surfaceMap != null)
                 {
-                    Logger.Debug($"Underground delivery detected → redirecting to surface map");
+                    //Logger.Debug($"Underground delivery detected → redirecting to surface map");
                     return surfaceMap;
                 }
             }
@@ -734,7 +733,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (DropCellFinder.TryFindDropSpotNear(tradeSpot, map, out deliveryPos,
                 allowFogged: false, canRoofPunch: true, maxRadius: 15))
             {
-                Logger.Debug($"Using drop spot near trade spot: {deliveryPos}");
+                // Logger.Debug($"Using drop spot near trade spot: {deliveryPos}");
                 return deliveryPos;
             }
 
@@ -742,12 +741,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (pawn != null && DropCellFinder.TryFindDropSpotNear(pawn.Position, map, out deliveryPos,
                 allowFogged: false, canRoofPunch: true, maxRadius: 15))
             {
-                Logger.Debug($"Using position near pawn: {deliveryPos}");
+                // Logger.Debug($"Using position near pawn: {deliveryPos}");
                 return deliveryPos;
             }
 
             // Fallback to trade spot
-            Logger.Debug($"Using trade spot directly: {tradeSpot}");
+            // Logger.Debug($"Using trade spot directly: {tradeSpot}");
             return tradeSpot;
         }
 
@@ -784,14 +783,14 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 var locker = FindSuitableLockerFor(firstItem, map, null);
                 if (locker != null)
                 {
-                    Logger.Debug($"Using first locker position as fallback: {locker.Position}");
+                    // Logger.Debug($"Using first locker position as fallback: {locker.Position}");
                     return locker.Position;
                 }
             }
 
             // Otherwise use trade spot
             IntVec3 tradeSpot = GetCustomDropSpot(map);
-            Logger.Debug($"Using trade spot as fallback: {tradeSpot}");
+            // Logger.Debug($"Using trade spot as fallback: {tradeSpot}");
             return tradeSpot;
         }
 
@@ -835,14 +834,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 things.Add(thing);
             }
 
-            Logger.Debug($"Created {things.Count} items (minified: {shouldMinify})");
+            // Logger.Debug($"Created {things.Count} items (minified: {shouldMinify})");
             return things;
-        }
-
-        private static void DeliverItemsInDropPods(List<Thing> thingsToDeliver, IntVec3 dropPos, Map map)
-        {
-            // Just call the shuttle delivery method as a fallback
-            TryShuttleDelivery(thingsToDeliver, dropPos, map);
         }
 
         private static IntVec3 FindPawnSpawnPosition(Map map, IntVec3 preferredPos, Pawn viewerPawn = null)
@@ -854,7 +847,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     (IntVec3 c) => c.Standable(map) && !c.Fogged(map) && c.Walkable(map) && c.GetRoom(map) == viewerPawn.GetRoom(),
                     out IntVec3 spawnPos))
                 {
-                    Logger.Debug($"Found spawn position near viewer pawn: {spawnPos}");
+                    // Logger.Debug($"Found spawn position near viewer pawn: {spawnPos}");
                     return spawnPos;
                 }
 
@@ -863,7 +856,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     (IntVec3 c) => c.Standable(map) && !c.Fogged(map) && c.Walkable(map),
                     out spawnPos))
                 {
-                    Logger.Debug($"Found nearby spawn position: {spawnPos}");
+                    // Logger.Debug($"Found nearby spawn position: {spawnPos}");
                     return spawnPos;
                 }
             }
@@ -873,7 +866,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 (IntVec3 c) => c.Standable(map) && !c.Fogged(map) && c.Walkable(map),
                 out IntVec3 spawnPos2))
             {
-                Logger.Debug($"Found spawn position near preferred position: {spawnPos2}");
+                // Logger.Debug($"Found spawn position near preferred position: {spawnPos2}");
                 return spawnPos2;
             }
 
@@ -882,12 +875,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 (IntVec3 c) => c.Standable(map) && !c.Fogged(map) && c.Walkable(map),
                 map, CellFinder.EdgeRoadChance_Ignore, out spawnPos2))
             {
-                Logger.Debug($"Found edge spawn position: {spawnPos2}");
+                // Logger.Debug($"Found edge spawn position: {spawnPos2}");
                 return spawnPos2;
             }
 
             // Final fallback: use the preferred position
-            Logger.Debug($"Using preferred position as fallback: {preferredPos}");
+            // //LoggerDebug($"Using preferred position as fallback: {preferredPos}");
             return preferredPos;
         }
 
@@ -895,19 +888,19 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         {
             if (map == null)
             {
-                Logger.Debug("Map is null");
+                //LoggerDebug("Map is null");
                 return false;
             }
 
             if (!pos.InBounds(map))
             {
-                Logger.Debug($"Position {pos} is out of map bounds (map size: {map.Size})");
+                //LoggerDebug($"Position {pos} is out of map bounds (map size: {map.Size})");
                 return false;
             }
 
             if (pos.Fogged(map))
             {
-                Logger.Debug($"Position {pos} is fogged");
+                //LoggerDebug($"Position {pos} is fogged");
                 return false;
             }
 
@@ -917,7 +910,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 // Check if we can place on this cell (non-standable but passable)
                 if (!GenGrid.Walkable(pos, map))
                 {
-                    Logger.Debug($"Position {pos} is not walkable or standable");
+                    //LoggerDebug($"Position {pos} is not walkable or standable");
                     return false;
                 }
             }
@@ -926,11 +919,11 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             Building edifice = pos.GetEdifice(map);
             if (edifice != null && edifice.def.passability == Traversability.Impassable && edifice.def.building.isNaturalRock)
             {
-                Logger.Debug($"Position {pos} is in solid rock");
+                //LoggerDebug($"Position {pos} is in solid rock");
                 return false;
             }
 
-            Logger.Debug($"Position {pos} is valid for delivery");
+            //LoggerDebug($"Position {pos} is valid for delivery");
             return true;
         }
 
@@ -1170,8 +1163,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     return false;
                 }
 
-                Logger.Debug($"Calling DropPodUtility.DropThingsNear with {thingsToDeliver.Count} stacks at position {dropPos}");
-                LogDropPodDetails(thingsToDeliver, dropPos, map);
+                //LoggerDebug($"Calling DropPodUtility.DropThingsNear with {thingsToDeliver.Count} stacks at position {dropPos}");
+                // LogDropPodDetails(thingsToDeliver, dropPos, map);
 
                 // Use DropPodUtility which automatically handles both shuttles and drop pods
                 // IMPORTANT: Set instigator to null to prevent automatic letter generation
@@ -1187,7 +1180,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     allowFogged: false
                 );
 
-                Logger.Debug($"Successfully called DropPodUtility for {thingsToDeliver.Count} items at {dropPos}");
+                //LoggerDebug($"Successfully called DropPodUtility for {thingsToDeliver.Count} items at {dropPos}");
                 return true;
             }
             catch (Exception ex)
@@ -1204,11 +1197,11 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             // All minifiable items should be minified for delivery
             if (thingDef.Minifiable)
             {
-                Logger.Debug($"{thingDef.defName} is minifiable - will be minified for delivery");
+                //LoggerDebug($"{thingDef.defName} is minifiable - will be minified for delivery");
                 return true;
             }
 
-            Logger.Debug($"{thingDef.defName} is not minifiable - will be delivered normally");
+            //LoggerDebug($"{thingDef.defName} is not minifiable - will be delivered normally");
             return false;
         }
 
@@ -1233,12 +1226,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                 if (minifiedThing != null)
                 {
-                    Logger.Debug($"Successfully minified {thingDef.defName}");
+                    //LoggerDebug($"Successfully minified {thingDef.defName}");
                     return minifiedThing;
                 }
                 else
                 {
-                    Logger.Debug($"Minification returned null for {thingDef.defName}, returning original");
+                    //LoggerDebug($"Minification returned null for {thingDef.defName}, returning original");
                     return originalThing;
                 }
             }
