@@ -252,6 +252,7 @@ namespace CAP_ChatInteractive.Incidents
                         kvp.Value.PointsScaleable = incidentDef.pointsScaleable;
                         kvp.Value.MinThreatPoints = incidentDef.minThreatPoints;
                         kvp.Value.MaxThreatPoints = incidentDef.maxThreatPoints;
+                        kvp.Value.EarliestDay = incidentDef.earliestDay;
 
                         // Update availability flags based on current game state
                         kvp.Value.ShouldBeInStore = BuyableIncident.DetermineStoreSuitability(incidentDef);
@@ -372,6 +373,7 @@ namespace CAP_ChatInteractive.Incidents
                         existingIncident.PointsScaleable = currentIncidentDef.pointsScaleable;
                         existingIncident.MinThreatPoints = currentIncidentDef.minThreatPoints;
                         existingIncident.MaxThreatPoints = currentIncidentDef.maxThreatPoints;
+                        existingIncident.EarliestDay = currentIncidentDef.earliestDay;
 
                         // Update flags based on current game state
                         existingIncident.ShouldBeInStore = BuyableIncident.DetermineStoreSuitability(currentIncidentDef);
