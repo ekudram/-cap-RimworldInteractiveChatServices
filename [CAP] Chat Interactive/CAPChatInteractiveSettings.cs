@@ -1,6 +1,6 @@
 ﻿// CAPChatInteractiveSettings.cs
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
+// This file is part of CAP Chat Interactive. RICS - RimWorld Interactive Chat System
 // 
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
@@ -117,7 +117,7 @@ namespace CAP_ChatInteractive
     public class CAPGlobalChatSettings : IExposable
     {
         // Existing properties...
-        public string modVersion = "1.30";  // Current mod version WE DONT SAVE THIS! Used in history control
+        public string modVersion = "1.31";  // Current mod version WE DONT SAVE THIS! Used in history control
         public string modVersionSaved = "";
         public string priceListUrl = "https://github.com/ekudram/RICS-Pricelist";
         public bool EnableDebugLogging = false;

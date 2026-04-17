@@ -781,7 +781,21 @@ Fixed:
 - Fixed Viewer Error on startup when bot/streamer sends connected message
 - Fixed a missing translation in Surgery command
 - Fixed Mech Gestation Processor installs allowed from 3 to 6
-" }
+" },
+             { "1.31",
+                    @"===========================================================
+                            RICS 1.31 - Changelog
+                            Released: April 18 2026
+**Fixed**
+- Doom was not limited by Karma cooldowns.  Counts as a bad Karma event now and is limited by cooldowns.
+- Rimazon Locker compatibility issue with Van Psycasts causing Null Check Errors.
+- Rimazon Locker was showing rain inside rooms. No longer should be the case.
+    NOTE:  Replace your Rimazon Lockers if you have a Null Check Error with them.
+- Mod Active status not saving properly in JSON files before 1.31, causing issues with store items showing as available.
+- Mod Active now fixed.  If you have not synced your re-forked on or after April 15 You will need to.
+   NOTE:  JSON files before 1.31 have an error with ModActive that is fixed in this update
+"
+             }
             // Add more versions here as they're released+
         };
 
