@@ -786,6 +786,14 @@ Fixed:
                     @"===========================================================
                             RICS 1.31 - Changelog
                             Released: April 18 2026
+**Added**
+- BETA Testing - Twitch Raids
+  - Streamers Raiding your stream will now trigger a raid event in RimWorld!
+  - Testing looking to see if the Raiders names from the raiding stream 
+will be added as raiders.
+  - Raid difficulity scales as a normal Rimworld raid based on your colony wealth and population.
+  - Settings for Twitch Raids are at the bottom of the Twitch Settings Tab.
+
 **Fixed**
 - Doom was not limited by Karma cooldowns.  Counts as a bad Karma event now and is limited by cooldowns.
 - Rimazon Locker compatibility issue with Van Psycasts causing Null Check Errors.
