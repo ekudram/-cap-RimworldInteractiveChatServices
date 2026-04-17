@@ -74,7 +74,7 @@ namespace CAP_ChatInteractive
                 }
             }
 
-            Logger.Debug($"EnhancedAddonDef resolved: {defName}, Type: {buttonType}, Source: {sourceMod}");
+            //Logger.Debug($"EnhancedAddonDef resolved: {defName}, Type: {buttonType}, Source: {sourceMod}");
         }
 
         public IAddonMenu GetAddonMenu()
@@ -83,7 +83,7 @@ namespace CAP_ChatInteractive
             {
                 if (!enabled)
                 {
-                    Logger.Debug($"AddonDef {defName} is disabled");
+                    //Logger.Debug($"AddonDef {defName} is disabled");
                     return null;
                 }
 
@@ -94,7 +94,7 @@ namespace CAP_ChatInteractive
                 {
                     case ButtonType.MenuButton:
                         var menu = Activator.CreateInstance(menuClass) as IAddonMenu;
-                        Logger.Debug($"MenuButton created: {menu != null}");
+                        //Logger.Debug($"MenuButton created: {menu != null}");
                         return menu;
 
                     case ButtonType.DirectDialogButton:
