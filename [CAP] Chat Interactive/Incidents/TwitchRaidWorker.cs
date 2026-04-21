@@ -16,9 +16,12 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // Source/RICS/Incidents/TwitchRaidWorker.cs
 
+// Source/RICS/Incidents/TwitchRaidWorker.cs
+// Source/RICS/Incidents/TwitchRaidWorker.cs
 using RimWorld;
 using System.Collections.Generic;
 using System.Linq;
+using TwitchLib.Api.Helix.Models.Extensions.ReleasedExtensions;
 using Verse;
 
 namespace CAP_ChatInteractive.Incidents
@@ -33,7 +36,6 @@ namespace CAP_ChatInteractive.Incidents
             if (!baseResult)
                 return false;
 
-            // Delay name injection by a few ticks so all raid pawns are fully spawned
             if (CurrentRaidUsernames != null && CurrentRaidUsernames.Count > 0)
             {
                 LongEventHandler.QueueLongEvent(() =>
@@ -52,42 +54,74 @@ namespace CAP_ChatInteractive.Incidents
             if (parms.target is not Map map)
                 return;
 
-            // Find hostile humanlike pawns with generic names (very reliable after spawn delay)
             var raidPawns = map.mapPawns.AllPawnsSpawned
                 .Where(p => p.Faction != Faction.OfPlayer
                          && p.RaceProps.Humanlike
                          && !p.Dead
-                         && p.Name is NameTriple triple
-                         && (triple.Nick == null || triple.Nick.Length < 6 || triple.Nick == p.kindDef.label))
+                         && !p.IsPrisoner
+                         && !p.IsSlave)
                 .ToList();
 
-            Logger.Twitch($"Name injection (delayed): Found {raidPawns.Count} generic raid pawns.");
+            Logger.Twitch($"Name injection: Found {raidPawns.Count} eligible raid pawns.");
 
             if (raidPawns.Count == 0)
             {
-                Logger.Twitch("WARNING: Still no generic raid pawns found even after delay.");
+                Logger.Twitch("WARNING: No eligible raid pawns found.");
                 return;
             }
 
+            // Guarantee the first username (usually the streamer) is always used first
             var usernames = CurrentRaidUsernames
                 .Where(u => !string.IsNullOrWhiteSpace(u))
-                .OrderBy(_ => Rand.Value)
                 .ToList();
+
+            if (usernames.Count == 0)
+            {
+                CurrentRaidUsernames.Clear();
+                return;
+            }
+
+            // Shuffle only the remaining usernames after the first one
+            var firstUsername = usernames[0];
+            var remainingUsernames = usernames.Skip(1).OrderBy(_ => Rand.Value).ToList();
+
+            // Build final ordered list: streamer first, then shuffled others
+            var finalUsernames = new List<string> { firstUsername };
+            finalUsernames.AddRange(remainingUsernames);
 
             int index = 0;
             int renamed = 0;
 
             foreach (var pawn in raidPawns)
             {
-                if (index >= usernames.Count) break;
+                if (index >= finalUsernames.Count) break;
 
-                string twitchName = usernames[index++];
-                pawn.Name = new NameTriple(twitchName, twitchName, twitchName);
+                string twitchName = finalUsernames[index++];
+
+                // Only change the middle name (nickname) — keep original First and Last
+                if (pawn.Name is NameTriple triple)
+                {
+                    pawn.Name = new NameTriple(triple.First, twitchName, triple.Last);
+                }
+                else
+                {
+                    // Fallback for pawns without a triple name
+                    pawn.Name = new NameSingle(twitchName);
+                }
+
                 renamed++;
 
-                pawn.needs?.mood?.thoughts?.memories?.TryGainMemory(ThoughtDef.Named("RaidFromTwitch"), null);
+                // Optional thought (safely skipped if not defined)
+                if (pawn.needs?.mood?.thoughts?.memories != null)
+                {
+                    var thoughtDef = ThoughtDef.Named("RaidFromTwitch");
+                    if (thoughtDef != null)
+                    {
+                        pawn.needs.mood.thoughts.memories.TryGainMemory(thoughtDef, null);
+                    }
+                }
 
-                Logger.Twitch($"Renamed raid pawn → @{twitchName}");
+                Logger.Twitch($"Renamed raid pawn → @{twitchName} (middle name only)");
             }
 
             Logger.Twitch($"Successfully renamed {renamed} raid pawns with Twitch usernames.");
@@ -137,16 +171,19 @@ namespace CAP_ChatInteractive.Incidents
 
         private static TechLevel GetColonyTechLevel()
         {
-            if (IsResearchFinished("StarflightBasics")) return TechLevel.Ultra;
-            if (IsResearchFinished("Fabrication")) return TechLevel.Spacer;
-            if (IsResearchFinished("Machining")) return TechLevel.Industrial;
-            return TechLevel.Neolithic;
-        }
+            var research = Find.ResearchManager;
+            TechLevel highest = TechLevel.Neolithic;
 
-        private static bool IsResearchFinished(string defName)
-        {
-            var proj = DefDatabase<ResearchProjectDef>.GetNamedSilentFail(defName);
-            return proj != null && proj.IsFinished;
+            foreach (var proj in DefDatabase<ResearchProjectDef>.AllDefs)
+            {
+                if (proj.IsFinished && proj.techLevel > highest)
+                {
+                    highest = proj.techLevel;
+                }
+            }
+
+            Logger.Twitch($"Colony tech level detected: {highest}");
+            return highest;
         }
     }
 }

@@ -438,6 +438,8 @@ namespace CAP_ChatInteractive
                 _recentRaiders.Remove(key);
         }
 
+        // In TwitchService.cs, inside TwitchService class
+        // Replace the entire TryTriggerRimWorldRaid() method with this:
         private void TryTriggerRimWorldRaid(string raiderName, int viewerCount)
         {
             // Final safety checks
@@ -483,10 +485,21 @@ namespace CAP_ChatInteractive
             float raidBonus = Mathf.Clamp(viewerCount * 80f, 200f, 4000f);
             parms.points = Mathf.Min(basePoints + raidBonus, basePoints * 3.5f);
 
+            // === Force humanlike enemy faction only (no Mechanoids / Insects) ===
+            parms.faction = Find.FactionManager.RandomEnemyFaction(
+                allowHidden: false,
+                allowDefeated: false,
+                allowNonHumanlike: false);   // This blocks mechs and insects
+
+            if (parms.faction == null)
+            {
+                Logger.Warning("Could not find a valid human enemy faction for Twitch raid - falling back to default.");
+                parms.faction = Find.FactionManager.RandomEnemyFaction();
+            }
+
             // === Smart arrival mode with fallback ===
             parms.raidArrivalMode = PawnsArrivalModeDefOf.EdgeWalkIn;
 
-            // Check if EdgeWalkIn is likely to fail (small map, no valid edge cells, etc.)
             if (!HasValidEdgeForRaid(map))
             {
                 Logger.Debug($"No valid map edge for EdgeWalkIn on map {map}. Falling back to drop raid.");
@@ -520,7 +533,7 @@ namespace CAP_ChatInteractive
                     LetterDefOf.ThreatBig
                 );
 
-                Logger.Twitch($"SUCCESS: Twitch raid triggered with named raiders | Points: {parms.points:F0} | Arrival: {parms.raidArrivalMode}");
+                Logger.Twitch($"SUCCESS: Twitch raid triggered with named raiders | Points: {parms.points:F0} | Arrival: {parms.raidArrivalMode} | Faction: {parms.faction?.Name}");
             }
             else
             {

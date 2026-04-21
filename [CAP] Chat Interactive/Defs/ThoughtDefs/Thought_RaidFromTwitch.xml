@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- Twitch Raid - Special memory for raiders who got their name injected -->
+  <ThoughtDef>
+    <defName>RaidFromTwitch</defName>
+    <thoughtClass>RimWorld.Thought_Memory</thoughtClass>
+    <durationDays>3</durationDays>
+    <stackLimit>1</stackLimit>
+
+    <stages>
+      <li>
+        <label>raided from Twitch</label>
+        <description>I came from a Twitch raid! My name is known across the stream.</description>
+        <baseMoodEffect>6</baseMoodEffect>
+        <!-- Nice little mood boost for the raiders -->
+      </li>
+    </stages>
+  </ThoughtDef>
+
+</Defs>
