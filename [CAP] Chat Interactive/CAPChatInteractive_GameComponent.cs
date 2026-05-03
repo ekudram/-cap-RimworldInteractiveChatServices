@@ -81,6 +81,7 @@ namespace CAP_ChatInteractive
                 Viewers.AwardActiveViewersCoins();
                 Logger.Debug("2-minute coin reward tick executed");
             }
+            CAPChatInteractiveMod.Instance.TwitchService?.UpdateRaidJoinTimer();
         }
 
         private void InitializeAll()

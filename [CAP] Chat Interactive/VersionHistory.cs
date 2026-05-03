@@ -794,7 +794,7 @@ will be added as raiders.
   - Raid difficulity scales as a normal Rimworld raid based on your colony wealth and population.
   - Settings for Twitch Raids are at the bottom of the Twitch Settings Tab.
 
-**Fixed**
+v
 - Doom was not limited by Karma cooldowns.  Counts as a bad Karma event now and is limited by cooldowns.
 - Rimazon Locker compatibility issue with Van Psycasts causing Null Check Errors.
 - Rimazon Locker was showing rain inside rooms. No longer should be the case.
@@ -803,7 +803,18 @@ will be added as raiders.
 - Mod Active now fixed.  If you have not synced your re-forked on or after April 15 You will need to.
    NOTE:  JSON files before 1.31 have an error with ModActive that is fixed in this update
 "
-             }
+            },
+             {"1.32", @"==========================================================="
++
+                    @"RICS 1.32 - Changelog
+                    Released: April 21 2026
+
+**Fixed**
+- Twitch Raids not nameing pawns properly and spawning mechs as raiders.  Now properly names raiders and does not spawn mechs.
+"
+            }
+
+
             // Add more versions here as they're released+
         };
 

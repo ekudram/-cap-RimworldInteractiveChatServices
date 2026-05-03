@@ -117,7 +117,7 @@ namespace CAP_ChatInteractive
     public class CAPGlobalChatSettings : IExposable
     {
         // Existing properties...
-        public string modVersion = "1.31";  // Current mod version WE DONT SAVE THIS! Used in history control
+        public string modVersion = "1.32";  // Current mod version WE DONT SAVE THIS! Used in history control
         public string modVersionSaved = "";
         public string priceListUrl = "https://github.com/ekudram/RICS-Pricelist";
         public bool EnableDebugLogging = false;
@@ -247,7 +247,8 @@ namespace CAP_ChatInteractive
         public List<ChannelPoints_RewardSettings> RewardSettings = new List<ChannelPoints_RewardSettings>();
 
         // === Twitch Raids feature (Phase 1) ===
-        public bool TwitchRaidsEnabled = true;           // global kill-switch
+        public bool TwitchRaidsEnabled = false;           // global kill-switch
+        public bool TwtichRiadsOnlyRaiders = true;     // only twitch raiders and !joinraid in the raid 
         public int TwitchRaidDelayMinutes = 1;            // delay before triggering in-game raid (minutes)
         public int TwitchRaidMinRaiders = 5;              // anti-troll protection (default 5)
 
@@ -366,7 +367,8 @@ namespace CAP_ChatInteractive
             Scribe_Collections.Look(ref RewardSettings, "rewardSettings", LookMode.Deep);
 
             // Twitch Raids (new in 1.31+)
-            Scribe_Values.Look(ref TwitchRaidsEnabled, "twitchRaidsEnabled", true);
+            Scribe_Values.Look(ref TwitchRaidsEnabled, "twitchRaidsEnabled", false);
+            Scribe_Values.Look(ref TwtichRiadsOnlyRaiders, "twtichRiadsOnlyRaiders", true);
             Scribe_Values.Look(ref TwitchRaidDelayMinutes, "twitchRaidDelayMinutes", 1);
             Scribe_Values.Look(ref TwitchRaidMinRaiders, "twitchRaidMinRaiders", 5);
         }

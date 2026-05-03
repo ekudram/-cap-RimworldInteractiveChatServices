@@ -15,18 +15,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 
+// Source/RICS/Debug/TwitchRaidDebug.cs
 using CAP_ChatInteractive.Incidents;
 using LudeonTK;
 using RimWorld;
-using System.Collections.Generic;
 using Verse;
 
 namespace CAP_ChatInteractive.Debug
 {
     public static class TwitchRaidDebug
     {
-        [DebugAction("CAP", "Trigger Fake Twitch Raid (10 raiders)", allowedGameStates = AllowedGameStates.Playing)]
-        public static void TriggerFakeTwitchRaid()
+        [DebugAction("CAP", "Trigger Fake Twitch Raid (Join Window)", allowedGameStates = AllowedGameStates.Playing)]
+        public static void TriggerFakeTwitchRaidWithJoin()
         {
             if (Current.ProgramState != ProgramState.Playing || Find.CurrentMap == null)
             {
@@ -34,37 +34,22 @@ namespace CAP_ChatInteractive.Debug
                 return;
             }
 
-            // Clear any old list
-            IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
+            var twitchService = CAPChatInteractiveMod.Instance.TwitchService;
+            if (twitchService == null)
+            {
+                Messages.Message("TwitchService not found.", MessageTypeDefOf.NegativeEvent);
+                return;
+            }
 
-            // Add 10 fake usernames (CaptoLamia + Twitch Raider 2-10)
-            IncidentWorker_TwitchRaid.CurrentRaidUsernames.Add("CaptoLamia");
+            // This will open the dialog window and start the 45-second join period
+            twitchService.StartRaidJoinCollection("CaptoLamia", 12);
+
+            // Add 10 fake usernames (Twitch Raider 2-10)
             for (int i = 2; i <= 10; i++)
             {
-                IncidentWorker_TwitchRaid.CurrentRaidUsernames.Add($"TwitchRaider{i}");
+                twitchService.ProcessUserJoined($"TwitchRaider{i}");
             }
-
-            // Trigger the raid using our custom worker
-            var worker = new IncidentWorker_TwitchRaid
-            {
-                def = IncidentDefOf.RaidEnemy
-            };
-
-            IncidentParms parms = StorytellerUtility.DefaultParmsNow(IncidentCategoryDefOf.ThreatBig, Find.CurrentMap);
-            parms.forced = true;
-            parms.points = StorytellerUtility.DefaultThreatPointsNow(Find.CurrentMap) * 1.5f;
-
-            bool success = worker.TryExecute(parms);
-
-            if (success)
-            {
-                Messages.Message("Fake Twitch Raid triggered with 10 named raiders!", MessageTypeDefOf.PositiveEvent);
-                Logger.Twitch("DEBUG: Fake Twitch Raid with 10 named raiders started via debug action.");
-            }
-            else
-            {
-                Messages.Message("Failed to trigger fake Twitch Raid.", MessageTypeDefOf.NegativeEvent);
-            }
+            Messages.Message("Fake Twitch Raid join window opened!\nType !joinraid in chat or click 'START RAID NOW!'", MessageTypeDefOf.PositiveEvent);
         }
 
         [DebugAction("CAP", "Clear Twitch Raider Names", allowedGameStates = AllowedGameStates.Playing)]

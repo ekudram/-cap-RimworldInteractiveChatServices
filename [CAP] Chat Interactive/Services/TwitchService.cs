@@ -27,6 +27,7 @@
 
 using CAP_ChatInteractive.Incidents;
 using CAP_ChatInteractive.Utilities;
+using CAP_ChatInteractive.Windows;
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -34,10 +35,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TwitchLib.Api;
-using TwitchLib.Api.Core.Enums;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
-using TwitchLib.Client.Extensions;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Events;
@@ -64,6 +63,13 @@ namespace CAP_ChatInteractive
         private readonly Dictionary<string, DateTime> _recentRaiders = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
         private DateTime _lastRaidTriggerTime = DateTime.MinValue;
         private const int RaidDebounceSeconds = 30; // prevent duplicate triggers from the same raid
+
+        // === Twitch Raids Feature - Join System ===
+        private readonly List<string> _raidJoinList = new List<string>(20);
+        private DateTime _raidStartTime = DateTime.MinValue;
+        private const int RaidJoinWindowSeconds = 45; // How long viewers have to join
+        private bool _raidJoinWindowActive = false;
+        private DateTime _raidJoinStartTime = DateTime.MinValue;
 
         public bool IsConnected => _client?.IsConnected == true;
 
@@ -380,69 +386,78 @@ namespace CAP_ChatInteractive
                 return;
             }
 
-            // Correct properties for TwitchLib.Client 3.4.0
             var raid = e.RaidNotification;
             string raiderChannel = raid?.MsgParamLogin ?? raid?.Login ?? e.Channel ?? "UnknownRaider";
 
-            // Viewer count comes as string in msg-param-viewerCount
             int viewerCount = 0;
             if (int.TryParse(raid?.MsgParamViewerCount, out int parsedCount))
-            {
                 viewerCount = parsedCount;
-            }
 
             Logger.Twitch($"TWITCH RAID DETECTED! From: {raiderChannel} with ~{viewerCount} viewers");
 
-            // Record the raiding streamer as primary raider
-            _recentRaiders[raiderChannel] = DateTime.Now;
-
-            // Cleanup old entries
-            CleanupOldRaiders();
-
-            // Check delay setting from global settings
-            var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            int delayMinutes = globalSettings.TwitchRaidDelayMinutes;
-
-            if (viewerCount < globalSettings.TwitchRaidMinRaiders)
-            {
-                Logger.Debug($"Raid from {raiderChannel} ignored - only {viewerCount} viewers (minimum required: {globalSettings.TwitchRaidMinRaiders})");
-                return;
-            };
-
-            if (delayMinutes <= 0)
-            {
-                TryTriggerRimWorldRaid(raiderChannel, viewerCount);
-            }
-            else
-            {
-                Logger.Debug($"Scheduling RimWorld raid in {delayMinutes} minute(s) from {raiderChannel}");
-                LongEventHandler.QueueLongEvent(() =>
-                {
-                    Task.Delay(delayMinutes * 60 * 1000).ContinueWith(t =>
-                    {
-                        LongEventHandler.QueueLongEvent(() => TryTriggerRimWorldRaid(raiderChannel, viewerCount), null, false, null);
-                    });
-                }, null, false, null);
-            }
+            StartRaidJoinCollection(raiderChannel, viewerCount);
         }
 
-        private void CleanupOldRaiders()
+        public void StartRaidJoinCollection(string raiderName, int viewerCount)
         {
-            var now = DateTime.Now;
-            var toRemove = _recentRaiders
-                .Where(kvp => (now - kvp.Value).TotalMinutes > 5)
-                .Select(kvp => kvp.Key)
-                .ToList();
+            _raidJoinList.Clear();
+            _raidJoinList.Add(raiderName);                    // Streamer is always first
+            _raidJoinStartTime = DateTime.Now;
+            _raidJoinWindowActive = true;
 
-            foreach (var key in toRemove)
-                _recentRaiders.Remove(key);
+            Logger.Twitch($"[RAID JOIN] Window opened for @{raiderName} | Initial list count: {_raidJoinList.Count} | Window active: {_raidJoinWindowActive}");
+
+            // Show nice countdown dialog
+            Find.WindowStack.Add(new Dialog_TwitchRaidJoin(raiderName, viewerCount));
+
+            SendMessage($"@{raiderName} just raided us! Type !joinraid or just hang out — anyone who joins in the next {RaidJoinWindowSeconds} seconds will be in the raid!");
         }
 
-        // In TwitchService.cs, inside TwitchService class
-        // Replace the entire TryTriggerRimWorldRaid() method with this:
+        public void ProcessJoinRaidCommand(string username)
+        {
+            if (!_raidJoinWindowActive)
+            {
+                SendMessage($"@{username} → No raid join window is currently open.");
+                return;
+            }
+
+            if (_raidJoinList.Contains(username, StringComparer.OrdinalIgnoreCase))
+            {
+                SendMessage($"@{username} → You're already in the raid!");
+                return;
+            }
+
+            _raidJoinList.Add(username);
+            SendMessage($"@{username} joined the raid! ({_raidJoinList.Count} total)");
+        }
+
+        /// <summary>
+        /// Called by Dialog_TwitchRaidJoin when the streamer clicks "START RAID NOW!"
+        /// </summary>
+        public void TriggerRaidNow(string raiderName, int totalRaiders)
+        {
+            if (!_raidJoinWindowActive && _raidJoinList.Count == 0)
+            {
+                _raidJoinList.Add(raiderName);
+                Logger.Twitch($"[RAID JOIN] Fallback - added raider @{raiderName} to empty list");
+            }
+
+            _raidJoinWindowActive = false;
+
+            Logger.Twitch($"[RAID JOIN] TriggerRaidNow called | Final list count BEFORE clear: {_raidJoinList.Count} | Names: {string.Join(", ", _raidJoinList)}");
+
+            // Pass all collected names to the worker
+            IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
+            IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(_raidJoinList);
+
+            Logger.Twitch($"[RAID JOIN] Manual raid start triggered by streamer. Final raiders: {IncidentWorker_TwitchRaid.CurrentRaidUsernames.Count}");
+            Logger.Twitch($"[RAID JOIN] Final names being sent to raid: {string.Join(", ", IncidentWorker_TwitchRaid.CurrentRaidUsernames)}");
+
+            TryTriggerRimWorldRaid(raiderName, totalRaiders);
+        }
+
         private void TryTriggerRimWorldRaid(string raiderName, int viewerCount)
         {
-            // Final safety checks
             if (Current.ProgramState != ProgramState.Playing)
             {
                 Logger.Debug($"Raid from {raiderName} queued - no game loaded yet.");
@@ -473,9 +488,9 @@ namespace CAP_ChatInteractive
             }
             _lastRaidTriggerTime = DateTime.Now;
 
-            // === Prepare raider names for injection ===
+            // === Use the join list (this was the main bug) ===
             IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
-            IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(_recentRaiders.Keys.Take(12));
+            IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(_raidJoinList);
 
             // === Build base parameters ===
             IncidentParms parms = StorytellerUtility.DefaultParmsNow(IncidentCategoryDefOf.ThreatBig, map);
@@ -485,64 +500,41 @@ namespace CAP_ChatInteractive
             float raidBonus = Mathf.Clamp(viewerCount * 80f, 200f, 4000f);
             parms.points = Mathf.Min(basePoints + raidBonus, basePoints * 3.5f);
 
-            // === Force humanlike enemy faction only (no Mechanoids / Insects) ===
-            parms.faction = Find.FactionManager.RandomEnemyFaction(
-                allowHidden: false,
-                allowDefeated: false,
-                allowNonHumanlike: false);   // This blocks mechs and insects
-
+            // Force human faction only
+            parms.faction = Find.FactionManager.RandomEnemyFaction(allowHidden: false, allowDefeated: false, allowNonHumanlike: false);
             if (parms.faction == null)
-            {
-                Logger.Warning("Could not find a valid human enemy faction for Twitch raid - falling back to default.");
                 parms.faction = Find.FactionManager.RandomEnemyFaction();
-            }
 
-            // === Smart arrival mode with fallback ===
+            // Smart arrival mode
             parms.raidArrivalMode = PawnsArrivalModeDefOf.EdgeWalkIn;
-
             if (!HasValidEdgeForRaid(map))
             {
-                Logger.Debug($"No valid map edge for EdgeWalkIn on map {map}. Falling back to drop raid.");
-                parms.raidArrivalMode = Rand.Chance(0.6f)
-                    ? PawnsArrivalModeDefOf.EdgeDrop
-                    : PawnsArrivalModeDefOf.CenterDrop;
+                parms.raidArrivalMode = Rand.Chance(0.6f) ? PawnsArrivalModeDefOf.EdgeDrop : PawnsArrivalModeDefOf.CenterDrop;
             }
 
             parms.raidStrategy = RaidStrategyDefOf.ImmediateAttack;
-            parms.generateFightersOnly = false;
-            parms.raidNeverFleeIndividual = false;
 
-            // === Use custom Twitch raid worker ===
-            var twitchRaidWorker = new IncidentWorker_TwitchRaid
-            {
-                def = IncidentDefOf.RaidEnemy
-            };
+            var twitchRaidWorker = new IncidentWorker_TwitchRaid { def = IncidentDefOf.RaidEnemy };
 
             bool success = twitchRaidWorker.TryExecute(parms);
 
-            string raidMessage;
+            string raidMessage = success
+                ? $"[RICS] INCOMING TWITCH RAID! @{raiderName} brought ~{viewerCount} raiders to the colony!"
+                : $"[RICS] Twitch raid from @{raiderName} detected, but storyteller refused the raid.";
+
+            Messages.Message(raidMessage, success ? MessageTypeDefOf.ThreatBig : MessageTypeDefOf.NegativeEvent);
+            SendMessage(raidMessage);
+
             if (success)
             {
-                raidMessage = $"[RICS] INCOMING TWITCH RAID! @{raiderName} brought ~{viewerCount} raiders to the colony!";
-                Messages.Message(raidMessage, MessageTypeDefOf.ThreatBig);
-
-                // Nice letter for the streamer
                 Find.LetterStack.ReceiveLetter(
                     "RICS.TwitchRaid.LetterLabel".Translate(raiderName, viewerCount),
                     "RICS.TwitchRaid.LetterText".Translate(raiderName, viewerCount),
                     LetterDefOf.ThreatBig
                 );
-
-                Logger.Twitch($"SUCCESS: Twitch raid triggered with named raiders | Points: {parms.points:F0} | Arrival: {parms.raidArrivalMode} | Faction: {parms.faction?.Name}");
-            }
-            else
-            {
-                raidMessage = $"[RICS] Twitch raid from @{raiderName} detected, but storyteller refused the raid.";
-                Messages.Message(raidMessage, MessageTypeDefOf.NegativeEvent);
-                Logger.Warning($"Raid from {raiderName} was blocked by storyteller.");
             }
 
-            SendMessage(raidMessage);
+            Logger.Twitch($"Raid triggered with {IncidentWorker_TwitchRaid.CurrentRaidUsernames.Count} named raiders.");
         }
 
         /// <summary>
@@ -572,6 +564,26 @@ namespace CAP_ChatInteractive
             }
 
             return validEdgeCells >= 4;   // at least a small edge available
+        }
+
+        public void UpdateRaidJoinTimer()
+        {
+            if (!_raidJoinWindowActive) return;
+
+            float secondsLeft = RaidJoinWindowSeconds - (float)(DateTime.Now - _raidJoinStartTime).TotalSeconds;
+            Logger.Twitch($"[RAID JOIN] Timer tick - seconds left: {secondsLeft:F1} | Current list count: {_raidJoinList.Count}");
+
+            if ((DateTime.Now - _raidJoinStartTime).TotalSeconds >= RaidJoinWindowSeconds)
+            {
+                _raidJoinWindowActive = false;
+
+                Logger.Twitch($"[RAID JOIN] Timer expired - final list: {string.Join(", ", _raidJoinList)}");
+
+                IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
+                IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(_raidJoinList);
+
+                TryTriggerRimWorldRaid(_raidJoinList[0], _raidJoinList.Count);
+            }
         }
 
         #region Twitch Client Event Handlers
@@ -688,11 +700,41 @@ namespace CAP_ChatInteractive
 
             Messages.Message(errorMsg, MessageTypeDefOf.NegativeEvent);
         }
+
         public static void OnUserJoined(object sender, OnUserJoinedArgs e)
         {
-            Logger.Message($"User joined: {e.Username}  {sender}");
-            // Additional logic for mods to hook into
+            var service = CAPChatInteractiveMod.Instance.TwitchService;
+            if (service != null)
+            {
+                service.ProcessUserJoined(e.Username);
+            }
         }
+
+        public void ProcessUserJoined(string username)
+        {
+            Logger.Twitch($"[RAID JOIN] OnUserJoined fired for @{username} | Window active: {_raidJoinWindowActive} | Current list count: {_raidJoinList.Count}");
+
+            if (!_raidJoinWindowActive)
+            {
+                Logger.Twitch($"[RAID JOIN] Ignored @{username} - window is no longer active");
+                return;
+            }
+
+            if (_raidJoinList.Contains(username, StringComparer.OrdinalIgnoreCase))
+            {
+                Logger.Twitch($"[RAID JOIN] @{username} already in list - skipping");
+                return;
+            }
+
+            _raidJoinList.Add(username);
+            Logger.Twitch($"[RAID JOIN] SUCCESS - Added @{username} to raid list | New total: {_raidJoinList.Count}");
+        }
+
+        public List<string> GetCurrentRaidJoinList()
+        {
+            return new List<string>(_raidJoinList);
+        }
+
         public static void OnUserLeft(object sender, OnUserLeftArgs e)
         {
             Logger.Message($"User left: {e.Username}  {sender}");
@@ -700,8 +742,6 @@ namespace CAP_ChatInteractive
         }
 
         #endregion
-
-        
 
         public void SendMessage(string message)
         {
@@ -851,4 +891,6 @@ namespace CAP_ChatInteractive
         }
     }
     #endregion
+
+
 }
