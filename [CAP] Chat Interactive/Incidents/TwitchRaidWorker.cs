@@ -59,7 +59,8 @@ namespace CAP_ChatInteractive.Incidents
                          && p.RaceProps.Humanlike
                          && !p.Dead
                          && !p.IsPrisoner
-                         && !p.IsSlave)
+                         && !p.IsSlave
+                         && !p.DeadOrDowned)
                 .ToList();
 
             Logger.Twitch($"Name injection: Found {raidPawns.Count} eligible raid pawns.");

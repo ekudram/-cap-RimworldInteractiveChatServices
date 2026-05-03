@@ -24,22 +24,22 @@
   
   <!-- Use Command-->
   <RICS.CC.use.usage>
-    Usage: !use [item]
+    Usage: !use {item}
   </RICS.CC.use.usage>
   
   <!-- Equip Command-->
   <RICS.CC.equip.usage>
-    Usage: !equip [item] [quality] [material]
+    Usage: !equip {item} [quality] [material]
   </RICS.CC.equip.usage>
   
   <!-- Wear Command-->
   <RICS.CC.wear.usage>
-    Usage: !wear [item] [quality] [material]
+    Usage: !wear {item} [quality] [material]
   </RICS.CC.wear.usage>
   
   <!-- Backpack Command-->
   <RICS.CC.backpack.usage>
-    Usage: !backpack [item] [quality] [material]
+    Usage: !backpack {item} [quality] [material]
   </RICS.CC.backpack.usage>
   
   <!-- Purchase list Command-->
@@ -49,7 +49,7 @@
   
   <!-- Pricecheck Command-->
   <RICS.CC.pricecheck.usage>
-    Usage: !pricecheck [item] [quality] [material] [quantity]
+    Usage: !pricecheck {item} [quality] [material] [quantity]
   </RICS.CC.pricecheck.usage>
 
   <RICS.CC.pricecheck.notfound>
@@ -70,7 +70,7 @@
   
   <!-- Surgery Command-->
   <RICS.CC.surgery.usage>
-    Usage: !surgery [implant/BiotechSurgery] [left/right] [quantity] https://tinyurl.com/SurgeryCmdWiki
+    Usage: !surgery {implant/BiotechSurgery} [left/right] [quantity] https://tinyurl.com/SurgeryCmdWiki
   </RICS.CC.surgery.usage>
   
   <!-- Raid Command-->
@@ -114,7 +114,7 @@
   
   <!-- Pawn Command-->
   <RICS.CC.pawn.usage>
-    Usage: !pawn [race] [xenotype] [gender] [age] OR !pawn list [races|xenotypes] OR !pawn mypawn
+    Usage: !pawn {race} [xenotype] [gender] [age] OR !pawn list [races|xenotypes] OR !pawn mypawn Wiki: https://tinyurl.com/RICSPawnCMD
   </RICS.CC.pawn.usage>
 
   <RICS.CC.pawn.handlist.usage>
@@ -123,7 +123,7 @@
   
   <!-- MyPawn Command-->
   <RICS.CC.mypawn.usage>
-    !mypawn [type]: body, health, implants, gear, kills, needs, relations, skills, stats, story, traits, work
+    !mypawn {type}: body, health, implants, gear, kills, needs, relations, skills, stats, story, traits, work
   </RICS.CC.mypawn.usage>
   
   <!-- Leave Command-->
@@ -370,8 +370,26 @@
   <RICS.CC.togglestore.success>
     Store commands now {0}!
   </RICS.CC.togglestore.success>
+  
+  <!-- JoinRaid (added 1.33)-->
 
-  <!-- Reusable status strings (optional but cleaner if you use them elsewhere) -->
+  <RICS.CC.joinraid.noTwitch>
+    Twitch service is not available.
+  </RICS.CC.joinraid.noTwitch>
+
+  <RICS.CC.joinraid.noRaid>
+    {0} → There is no Twitch Raid right now.
+  </RICS.CC.joinraid.noRaid>
+
+  <RICS.CC.joinraid.alreadyJoined>
+    {0} → You have already joined the Twitch Raid.
+  </RICS.CC.joinraid.alreadyJoined>
+  
+  <RICS.CC.joinraid.success>
+    {0} → You have successfully joined the Twitch Raid!
+  </RICS.CC.joinraid.success>
+
+    <!-- Reusable status strings (optional but cleaner if you use them elsewhere) -->
   <RICS.CC.common.store.enabled>
     **ENABLED**
   </RICS.CC.common.store.enabled>

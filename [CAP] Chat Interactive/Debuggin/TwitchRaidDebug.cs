@@ -42,7 +42,7 @@ namespace CAP_ChatInteractive.Debug
             }
 
             // This will open the dialog window and start the 45-second join period
-            twitchService.StartRaidJoinCollection("CaptoLamia", 12);
+            twitchService.StartRaidJoinCollection("CaptoLamia", 10);
 
             // Add 10 fake usernames (Twitch Raider 2-10)
             for (int i = 2; i <= 10; i++)

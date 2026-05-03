@@ -223,6 +223,20 @@
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>JoinRaid</defName>
+    <commandText>joinraid</commandText>
+    <label>Join Raid</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.JoinRaid</commandClass>
+    <requiresMod>true</requiresMod>
+    <commandDescription>Joins a Twitch raid if one is active.</commandDescription>
+    <permissionLevel>everyone</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
   
 
   <!-- Viewer Economy Commands -->

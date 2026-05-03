@@ -730,6 +730,23 @@ namespace CAP_ChatInteractive
             Logger.Twitch($"[RAID JOIN] SUCCESS - Added @{username} to raid list | New total: {_raidJoinList.Count}");
         }
 
+        public string ProcessUserJoinRaidCommmand(ChatMessageWrapper message)
+            {
+            if (!_raidJoinWindowActive)
+            {
+                return $"RICS.CC.joinraid.noRaid".Translate(message.Username);
+                //return $"@{message.Username} → No raid join window is currently open.";
+            }
+            if (_raidJoinList.Contains(message.Username, StringComparer.OrdinalIgnoreCase))
+            {
+                return $"RICS.CC.joinraid.alreadyJoined".Translate(message.Username);
+                // return $"@{message.Username} → You're already in the raid!";
+            }
+            _raidJoinList.Add(message.Username);
+            return $"RICS.CC.joinraid.success".Translate(message.Username, _raidJoinList.Count);
+            // return $"@{message.Username} joined the raid! ({_raidJoinList.Count} total)";
+        }
+
         public List<string> GetCurrentRaidJoinList()
         {
             return new List<string>(_raidJoinList);

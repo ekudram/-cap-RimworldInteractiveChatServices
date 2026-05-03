@@ -45,6 +45,7 @@ namespace CAP_ChatInteractive.Windows
             this.viewerCount = viewerCount;
             this.startTime = Time.time;
 
+            this.draggable = true;
             this.closeOnClickedOutside = false;
             this.doCloseX = false;
             this.forcePause = false;

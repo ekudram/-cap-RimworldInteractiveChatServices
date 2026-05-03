@@ -16,10 +16,14 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Commands that viewers can use to interact with the game
+//
+// RICS_Commands.xml defines the command metadata and localization keys for these commands.
+
 using _CAP__Chat_Interactive.Utilities;
 using CAP_ChatInteractive;
 using CAP_ChatInteractive.Commands.CommandHandlers;
 using CAP_ChatInteractive.Utilities;
+
 using RimWorld;
 using RimWorld.BaseGen;
 using System;
@@ -640,6 +644,21 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
             return ShuffleAdulthoodCommandHandler.HandleShuffledAdulthood(messageWrapper, args);
+        }
+    }
+
+    public class JoinRaid : ChatCommand
+    {
+        public override string Name => "joinraid";
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            var twitchService = CAPChatInteractiveMod.Instance.TwitchService;
+            if (twitchService == null)
+            {
+                return "RICS.CC.joinraid.noTwitch".Translate();
+                // return "Twitch service is not available.";
+            }
+            return twitchService.ProcessUserJoinRaidCommmand(messageWrapper);
         }
     }
 }
