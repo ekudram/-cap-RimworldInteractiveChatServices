@@ -131,12 +131,12 @@ namespace CAP_ChatInteractive.Windows
 
         private void CloseAndTriggerRaid()
         {
-            Close();
-
             IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
             IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(GetJoinedNames());
 
             CAPChatInteractiveMod.Instance.TwitchService.TriggerRaidNow(raiderName, GetJoinedCount());
+
+            Close();
         }
     }
 }

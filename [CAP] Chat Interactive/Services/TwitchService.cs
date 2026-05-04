@@ -456,8 +456,18 @@ namespace CAP_ChatInteractive
             TryTriggerRimWorldRaid(raiderName, totalRaiders);
         }
 
+        // In File TwitchService.cs, inside class TwitchService
+        // In File TwitchService.cs, inside class TwitchService
+        // In File TwitchService.cs, inside class TwitchService
         private void TryTriggerRimWorldRaid(string raiderName, int viewerCount)
         {
+            // === NEW: One-time guard to prevent timer + button double-fire ===
+            if ((DateTime.Now - _lastRaidTriggerTime).TotalSeconds < 5)
+            {
+                Logger.Debug("Raid already triggered in last 5 seconds - ignoring duplicate call.");
+                return;
+            }
+
             if (Current.ProgramState != ProgramState.Playing)
             {
                 Logger.Debug($"Raid from {raiderName} queued - no game loaded yet.");
@@ -480,38 +490,32 @@ namespace CAP_ChatInteractive
                 return;
             }
 
-            // Debounce
+            // Normal debounce
             if ((DateTime.Now - _lastRaidTriggerTime).TotalSeconds < RaidDebounceSeconds)
             {
                 Logger.Debug("Raid debounce active - ignoring duplicate trigger.");
                 return;
             }
+
             _lastRaidTriggerTime = DateTime.Now;
 
-            // === Use the join list (this was the main bug) ===
-            IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
-            IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(_raidJoinList);
+            Logger.Twitch($"[CUSTOM FACTION RAID] Starting custom faction raid for @{raiderName} | Join list count: {_raidJoinList.Count} | OnlyRaiders setting: {globalSettings.TwtichRaidsOnlyRaiders}");
 
-            // === Build base parameters ===
+            Faction raidFaction = GetOrCreateRaidFaction(raiderName);
+
             IncidentParms parms = StorytellerUtility.DefaultParmsNow(IncidentCategoryDefOf.ThreatBig, map);
             parms.forced = true;
+            parms.faction = raidFaction;
 
             float basePoints = parms.points;
             float raidBonus = Mathf.Clamp(viewerCount * 80f, 200f, 4000f);
-            parms.points = Mathf.Min(basePoints + raidBonus, basePoints * 3.5f);
+            parms.points = Mathf.Min(basePoints + raidBonus, basePoints * 2.5f);
 
-            // Force human faction only
-            parms.faction = Find.FactionManager.RandomEnemyFaction(allowHidden: false, allowDefeated: false, allowNonHumanlike: false);
-            if (parms.faction == null)
-                parms.faction = Find.FactionManager.RandomEnemyFaction();
-
-            // Smart arrival mode
             parms.raidArrivalMode = PawnsArrivalModeDefOf.EdgeWalkIn;
             if (!HasValidEdgeForRaid(map))
             {
                 parms.raidArrivalMode = Rand.Chance(0.6f) ? PawnsArrivalModeDefOf.EdgeDrop : PawnsArrivalModeDefOf.CenterDrop;
             }
-
             parms.raidStrategy = RaidStrategyDefOf.ImmediateAttack;
 
             var twitchRaidWorker = new IncidentWorker_TwitchRaid { def = IncidentDefOf.RaidEnemy };
@@ -519,7 +523,7 @@ namespace CAP_ChatInteractive
             bool success = twitchRaidWorker.TryExecute(parms);
 
             string raidMessage = success
-                ? $"[RICS] INCOMING TWITCH RAID! @{raiderName} brought ~{viewerCount} raiders to the colony!"
+                ? $"[RICS] INCOMING TWITCH RAID! @{raiderName} brought {_raidJoinList.Count} named raiders to the colony!"
                 : $"[RICS] Twitch raid from @{raiderName} detected, but storyteller refused the raid.";
 
             Messages.Message(raidMessage, success ? MessageTypeDefOf.ThreatBig : MessageTypeDefOf.NegativeEvent);
@@ -528,13 +532,66 @@ namespace CAP_ChatInteractive
             if (success)
             {
                 Find.LetterStack.ReceiveLetter(
-                    "RICS.TwitchRaid.LetterLabel".Translate(raiderName, viewerCount),
-                    "RICS.TwitchRaid.LetterText".Translate(raiderName, viewerCount),
+                    "RICS.TwitchRaid.LetterLabel".Translate(raiderName, _raidJoinList.Count),
+                    "RICS.TwitchRaid.LetterText".Translate(raiderName, _raidJoinList.Count),
                     LetterDefOf.ThreatBig
                 );
             }
 
-            Logger.Twitch($"Raid triggered with {IncidentWorker_TwitchRaid.CurrentRaidUsernames.Count} named raiders.");
+            Logger.Twitch($"Custom faction raid completed. Faction: {raidFaction.Name} | Success: {success}");
+        }
+
+        // In File TwitchService.cs, inside class TwitchService
+        private Faction GetOrCreateRaidFaction(string raiderChannel)
+        {
+            // Reuse existing faction if this streamer raided before
+            Faction existing = Find.FactionManager.AllFactionsListForReading
+                .FirstOrDefault(f => f.Name == raiderChannel);
+
+            if (existing != null)
+            {
+                Logger.Twitch($"[CUSTOM FACTION] Reusing existing faction for @{raiderChannel}");
+                return existing;
+            }
+
+            // Clone a real hostile faction (Pirate) so we inherit full pawnGroupMakers + hostility behavior
+            // This also eliminates the 5000+ "null relation" spam messages
+            FactionDef baseDef = DefDatabase<FactionDef>.GetNamedSilentFail("Pirate")
+                              ?? DefDatabase<FactionDef>.GetNamedSilentFail("Outlander")
+                              ?? FactionDefOf.Pirate;
+
+            FactionDef raidDef = new FactionDef
+            {
+                defName = "TwitchRaid_" + raiderChannel,
+                label = raiderChannel,
+                isPlayer = false,
+                permanentEnemy = true,
+                humanlikeFaction = true,
+                techLevel = Faction.OfPlayer.def.techLevel,
+                settlementGenerationWeight = 0f,
+                hidden = true,
+                pawnGroupMakers = baseDef.pawnGroupMakers?.ListFullCopy(),
+                raidLootMaker = baseDef.raidLootMaker
+            };
+
+            Faction newFaction = new Faction
+            {
+                def = raidDef,
+                loadID = Find.UniqueIDsManager.GetNextFactionID(),
+                Name = raiderChannel
+            };
+
+            Find.FactionManager.Add(newFaction);
+
+            // === FORCE HOSTILITY TO PLAYER (both directions) ===
+            newFaction.TryMakeInitialRelationsWith(Faction.OfPlayer);
+            newFaction.SetRelationDirect(Faction.OfPlayer, FactionRelationKind.Hostile, canSendHostilityLetter: false);
+
+            Faction.OfPlayer.TryMakeInitialRelationsWith(newFaction);
+            Faction.OfPlayer.SetRelationDirect(newFaction, FactionRelationKind.Hostile, canSendHostilityLetter: false);
+
+            Logger.Twitch($"[CUSTOM FACTION] Created new hidden raid faction for @{raiderChannel} (based on {baseDef.defName} - FORCED HOSTILE)");
+            return newFaction;
         }
 
         /// <summary>
@@ -571,7 +628,7 @@ namespace CAP_ChatInteractive
             if (!_raidJoinWindowActive) return;
 
             float secondsLeft = RaidJoinWindowSeconds - (float)(DateTime.Now - _raidJoinStartTime).TotalSeconds;
-            Logger.Twitch($"[RAID JOIN] Timer tick - seconds left: {secondsLeft:F1} | Current list count: {_raidJoinList.Count}");
+            // Logger.Twitch($"[RAID JOIN] Timer tick - seconds left: {secondsLeft:F1} | Current list count: {_raidJoinList.Count}");
 
             if ((DateTime.Now - _raidJoinStartTime).TotalSeconds >= RaidJoinWindowSeconds)
             {

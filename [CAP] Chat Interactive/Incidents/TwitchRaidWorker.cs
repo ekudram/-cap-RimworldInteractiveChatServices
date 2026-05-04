@@ -15,14 +15,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // Source/RICS/Incidents/TwitchRaidWorker.cs
-
-// Source/RICS/Incidents/TwitchRaidWorker.cs
-// Source/RICS/Incidents/TwitchRaidWorker.cs
 using RimWorld;
 using System.Collections.Generic;
 using System.Linq;
-using TwitchLib.Api.Helix.Models.Extensions.ReleasedExtensions;
+using UnityEngine;
 using Verse;
+using Verse.AI.Group;
 
 namespace CAP_ChatInteractive.Incidents
 {
@@ -32,159 +30,153 @@ namespace CAP_ChatInteractive.Incidents
 
         protected override bool TryExecuteWorker(IncidentParms parms)
         {
-            bool baseResult = base.TryExecuteWorker(parms);
-            if (!baseResult)
-                return false;
+            Logger.Twitch($"[TWITCH RAID WORKER] Starting custom raid | Names in list: {CurrentRaidUsernames.Count} | Faction: {parms.faction?.Name ?? "null"}");
 
-            if (CurrentRaidUsernames != null && CurrentRaidUsernames.Count > 0)
+            if (parms.target is not Map map)
             {
-                LongEventHandler.QueueLongEvent(() =>
-                {
-                    InjectRaiderNamesIntoRaid(parms);
-                }, "Injecting Twitch raider names", false, null);
+                Logger.Twitch("WARNING: No valid map target for raid.");
+                return false;
             }
 
-            LimitRaiderGearToColonyTech(parms);
+            // Default to edge walk-in first (as you requested)
+            parms.raidArrivalMode = PawnsArrivalModeDefOf.EdgeWalkIn;
+
+            // Resolve spawn center (fixes -1000,-1000 out-of-bounds)
+            if (!parms.raidArrivalMode.Worker.TryResolveRaidSpawnCenter(parms))
+            {
+                Logger.Twitch("EdgeWalkIn spawn failed → falling back to weighted drop mode");
+
+                var dropOptions = new List<(PawnsArrivalModeDef mode, float weight)>
+                {
+                    (PawnsArrivalModeDefOf.CenterDrop, 1.0f),   // High danger - rare
+                    (PawnsArrivalModeDefOf.EdgeDrop,   2.5f),   // Medium danger - common
+                    (PawnsArrivalModeDefOf.RandomDrop, 1.5f)    // Chaos - medium
+                };
+
+                var chosen = dropOptions.RandomElementByWeight(t => t.weight);
+                parms.raidArrivalMode = chosen.mode;
+                parms.raidArrivalMode.Worker.TryResolveRaidSpawnCenter(parms);
+                Logger.Twitch($"Fallback arrival mode: {parms.raidArrivalMode.defName}");
+            }
+
+            // === Generate named raiders ===
+            var raidNames = CurrentRaidUsernames
+                .Where(u => !string.IsNullOrWhiteSpace(u))
+                .ToList();
+
+            if (raidNames.Count == 0)
+            {
+                Logger.Twitch("No raid names → falling back to vanilla raid");
+                return base.TryExecuteWorker(parms);
+            }
+
+            var onlyRaiders = CAPChatInteractiveMod.Instance.Settings.GlobalSettings.TwtichRaidsOnlyRaiders;
+            int maxRaiders = onlyRaiders ? raidNames.Count : 10;
+
+            var spawnedPawns = new List<Pawn>();
+
+            for (int i = 0; i < maxRaiders && i < raidNames.Count; i++)
+            {
+                string viewer = raidNames[i];
+
+                PawnKindDef kind = GetAppropriateRaidKind();
+
+                var request = new PawnGenerationRequest(kind, parms.faction,
+                    forceGenerateNewPawn: true,
+                    forceRedressWorldPawnIfFormerColonist: true);
+
+                Pawn pawn = PawnGenerator.GeneratePawn(request);
+
+                // Name injection - first raider is always the streamer
+                if (pawn.Name is NameTriple triple)
+                {
+                    pawn.Name = new NameTriple(triple.First, viewer, triple.Last);
+                }
+                else
+                {
+                    pawn.Name = new NameSingle(viewer);
+                }
+
+                LimitRaiderGearToColonyTech(pawn);
+
+                spawnedPawns.Add(pawn);
+
+                Logger.Twitch($"Generated pawn → @{viewer} (kind: {kind.defName})");
+            }
+
+            // Let vanilla arrival system spawn them
+            parms.pawnGroups = null;
+            parms.raidArrivalMode.Worker.Arrive(spawnedPawns, parms);
+
+            // === CRITICAL: Create the raid lord so they actually attack the colony ===
+            // This is what was missing — without a Lord they just wander off
+            if (spawnedPawns.Count > 0)
+            {
+                LordMaker.MakeNewLord(parms.faction, new LordJob_AssaultColony(parms.faction, canKidnap: true), map, spawnedPawns);
+                Logger.Twitch($"[TWITCH RAID WORKER] Created AssaultColony lord for {spawnedPawns.Count} named raiders");
+            }
+
+            Logger.Twitch($"[TWITCH RAID WORKER] Successfully spawned {spawnedPawns.Count} named raiders");
+            CurrentRaidUsernames.Clear();
 
             return true;
         }
 
-        private void InjectRaiderNamesIntoRaid(IncidentParms parms)
+        private PawnKindDef GetAppropriateRaidKind()
         {
-            if (parms.target is not Map map)
-                return;
+            // Official, stable way to read colony tech level in RimWorld 1.6
+            TechLevel colonyTech = Faction.OfPlayer.def.techLevel;
 
-            var raidPawns = map.mapPawns.AllPawnsSpawned
-                .Where(p => p.Faction != Faction.OfPlayer
-                         && p.RaceProps.Humanlike
-                         && !p.Dead
-                         && !p.IsPrisoner
-                         && !p.IsSlave
-                         && !p.DeadOrDowned)
-                .ToList();
+            Logger.Twitch($"[TWITCH RAID WORKER] Colony tech level detected: {colonyTech} (using Faction.OfPlayer.def.techLevel)");
 
-            Logger.Twitch($"Name injection: Found {raidPawns.Count} eligible raid pawns.");
+            if (colonyTech >= TechLevel.Spacer)
+                return PawnKindDefOf.SpaceRefugee;
 
-            if (raidPawns.Count == 0)
-            {
-                Logger.Twitch("WARNING: No eligible raid pawns found.");
-                return;
-            }
+            if (colonyTech >= TechLevel.Industrial)
+                return PawnKindDefOf.Pirate;
 
-            // Guarantee the first username (usually the streamer) is always used first
-            var usernames = CurrentRaidUsernames
-                .Where(u => !string.IsNullOrWhiteSpace(u))
-                .ToList();
-
-            if (usernames.Count == 0)
-            {
-                CurrentRaidUsernames.Clear();
-                return;
-            }
-
-            // Shuffle only the remaining usernames after the first one
-            var firstUsername = usernames[0];
-            var remainingUsernames = usernames.Skip(1).OrderBy(_ => Rand.Value).ToList();
-
-            // Build final ordered list: streamer first, then shuffled others
-            var finalUsernames = new List<string> { firstUsername };
-            finalUsernames.AddRange(remainingUsernames);
-
-            int index = 0;
-            int renamed = 0;
-
-            foreach (var pawn in raidPawns)
-            {
-                if (index >= finalUsernames.Count) break;
-
-                string twitchName = finalUsernames[index++];
-
-                // Only change the middle name (nickname) — keep original First and Last
-                if (pawn.Name is NameTriple triple)
-                {
-                    pawn.Name = new NameTriple(triple.First, twitchName, triple.Last);
-                }
-                else
-                {
-                    // Fallback for pawns without a triple name
-                    pawn.Name = new NameSingle(twitchName);
-                }
-
-                renamed++;
-
-                // Optional thought (safely skipped if not defined)
-                if (pawn.needs?.mood?.thoughts?.memories != null)
-                {
-                    var thoughtDef = ThoughtDef.Named("RaidFromTwitch");
-                    if (thoughtDef != null)
-                    {
-                        pawn.needs.mood.thoughts.memories.TryGainMemory(thoughtDef, null);
-                    }
-                }
-
-                Logger.Twitch($"Renamed raid pawn → @{twitchName} (middle name only)");
-            }
-
-            Logger.Twitch($"Successfully renamed {renamed} raid pawns with Twitch usernames.");
-
-            CurrentRaidUsernames.Clear();
+            // Neolithic / Tribal
+            return PawnKindDefOf.Villager;
         }
 
-        private void LimitRaiderGearToColonyTech(IncidentParms parms)
+        private void LimitRaiderGearToColonyTech(Pawn pawn)
         {
-            if (parms.target is not Map map) return;
+            if (pawn == null) return;
 
-            TechLevel colonyTech = GetColonyTechLevel();
-
-            var raidPawns = map.mapPawns.AllPawnsSpawned
-                .Where(p => p.Faction != Faction.OfPlayer && p.RaceProps.Humanlike && !p.Dead)
-                .ToList();
+            // Official, stable colony tech level (same as GetAppropriateRaidKind)
+            TechLevel colonyTech = Faction.OfPlayer.def.techLevel;
 
             int itemsStripped = 0;
 
-            foreach (var pawn in raidPawns)
+            // Strip over-tech apparel
+            if (pawn.apparel != null)
             {
-                if (pawn.apparel != null)
+                foreach (var apparel in pawn.apparel.WornApparel.ToList())
                 {
-                    foreach (var apparel in pawn.apparel.WornApparel.ToList())
+                    if (apparel.def.techLevel > colonyTech)
                     {
-                        if (apparel.def.techLevel > colonyTech)
-                        {
-                            pawn.apparel.Remove(apparel);
-                            apparel.Destroy();
-                            itemsStripped++;
-                        }
-                    }
-                }
-
-                if (pawn.equipment?.Primary != null)
-                {
-                    if (pawn.equipment.Primary.def.techLevel > colonyTech)
-                    {
-                        pawn.equipment.DestroyEquipment(pawn.equipment.Primary);
+                        pawn.apparel.Remove(apparel);
+                        apparel.Destroy();
                         itemsStripped++;
                     }
                 }
             }
 
-            Logger.Twitch($"Gear limited to {colonyTech} | Stripped {itemsStripped} over-tech items");
-        }
-
-        private static TechLevel GetColonyTechLevel()
-        {
-            var research = Find.ResearchManager;
-            TechLevel highest = TechLevel.Neolithic;
-
-            foreach (var proj in DefDatabase<ResearchProjectDef>.AllDefs)
+            // Strip over-tech primary weapon
+            if (pawn.equipment?.Primary != null)
             {
-                if (proj.IsFinished && proj.techLevel > highest)
+                if (pawn.equipment.Primary.def.techLevel > colonyTech)
                 {
-                    highest = proj.techLevel;
+                    pawn.equipment.DestroyEquipment(pawn.equipment.Primary);
+                    itemsStripped++;
                 }
             }
 
-            Logger.Twitch($"Colony tech level detected: {highest}");
-            return highest;
+            if (itemsStripped > 0)
+            {
+                Logger.Twitch($"Gear limited to {colonyTech} | Stripped {itemsStripped} over-tech items from @{pawn.Name}");
+            }
         }
+
     }
 }

@@ -248,7 +248,7 @@ namespace CAP_ChatInteractive
 
         // === Twitch Raids feature (Phase 1) ===
         public bool TwitchRaidsEnabled = false;           // global kill-switch
-        public bool TwtichRiadsOnlyRaiders = true;     // only twitch raiders and !joinraid in the raid 
+        public bool TwtichRaidsOnlyRaiders = true;     // only twitch raiders and !joinraid in the raid 
         public int TwitchRaidDelayMinutes = 1;            // delay before triggering in-game raid (minutes)
         public int TwitchRaidMinRaiders = 5;              // anti-troll protection (default 5)
 
@@ -368,7 +368,7 @@ namespace CAP_ChatInteractive
 
             // Twitch Raids (new in 1.31+)
             Scribe_Values.Look(ref TwitchRaidsEnabled, "twitchRaidsEnabled", false);
-            Scribe_Values.Look(ref TwtichRiadsOnlyRaiders, "twtichRiadsOnlyRaiders", true);
+            Scribe_Values.Look(ref TwtichRaidsOnlyRaiders, "TwtichRaidsOnlyRaiders", true);
             Scribe_Values.Look(ref TwitchRaidDelayMinutes, "twitchRaidDelayMinutes", 1);
             Scribe_Values.Look(ref TwitchRaidMinRaiders, "twitchRaidMinRaiders", 5);
         }
