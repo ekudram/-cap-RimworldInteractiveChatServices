@@ -240,7 +240,7 @@ namespace CAP_ChatInteractive
                         if (viewer.IsBanned) continue;
 
                         int baseCoins = settings.BaseCoinReward;
-                        float karmaMultiplier = (float)viewer.Karma / 100f;
+                        float karmaMultiplier = viewer.Karma / 100f;
 
                         // Apply role multipliers - THIS IS WORKING CORRECTLY
                         if (viewer.IsSubscriber)
@@ -399,7 +399,7 @@ namespace CAP_ChatInteractive
                             {
                                 // Merge data from bogus → real
                                 coinsMerged += viewer.Coins;
-                                karmaMerged += viewer.Karma;
+                                karmaMerged += (int)viewer.Karma;
                                 realViewer.GiveCoins(viewer.Coins);
                                 realViewer.GiveKarma(viewer.Karma);
 
@@ -420,7 +420,7 @@ namespace CAP_ChatInteractive
                         if (uniqueViewers.TryGetValue(primaryKey, out var existing))
                         {
                             coinsMerged += viewer.Coins;
-                            karmaMerged += viewer.Karma;
+                            karmaMerged += (int)viewer.Karma;
                             existing.GiveCoins(viewer.Coins);
                             existing.GiveKarma(viewer.Karma);
 
@@ -605,7 +605,7 @@ namespace CAP_ChatInteractive
     {
         // Remove the sequential 'id' field and use platform IDs instead
         public string username;
-        public int karma;
+        public float karma;
         public int coins;
         public bool isBanned;
         public Dictionary<string, string> platformIds; // Platform -> UserId
@@ -633,7 +633,7 @@ namespace CAP_ChatInteractive
 
         public void UpdateViewer(Viewer viewer)
         {
-            viewer.SetKarma(this.karma);
+            viewer.SetKarma(this.karma);   // float → float, no precision loss
             viewer.SetCoins(this.coins);
 
             // Update platform IDs
@@ -649,6 +649,7 @@ namespace CAP_ChatInteractive
             // Prefer Twitch if available, then YouTube, then first available
             if (platformIds.TryGetValue("twitch", out string twitchId)) return $"twitch:{twitchId}";
             if (platformIds.TryGetValue("youtube", out string youtubeId)) return $"youtube:{youtubeId}";
+            if (platformIds.TryGetValue("kick", out string kickId)) return $"kick:{kickId}";  // Add more platforms as needed
             return platformIds.Values.FirstOrDefault() ?? username;
         }
     }

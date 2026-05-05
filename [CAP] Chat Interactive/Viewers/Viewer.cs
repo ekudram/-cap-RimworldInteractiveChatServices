@@ -32,6 +32,7 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using Verse;
 
 namespace CAP_ChatInteractive
@@ -58,7 +59,7 @@ namespace CAP_ChatInteractive
 
         // Economy
         public int Coins { get; set; }
-        public int Karma { get; set; }
+        public float Karma { get; set; }
         public string AssignedPawnId { get; set; }
 
         // Platform-specific data
@@ -75,7 +76,7 @@ namespace CAP_ChatInteractive
 
             // Defensive settings access — fallback to sensible defaults if mod not fully initialized
             int startingCoins = 100;
-            int startingKarma = 100;
+            float startingKarma = 100;
 
             try
             {
@@ -174,23 +175,32 @@ namespace CAP_ChatInteractive
         }
 
         // Karma management
-        public int GetKarma() => Karma;
+        public float GetKarma() => Karma;
 
-        public void SetKarma(int karma)
+        /// <summary>
+        /// Sets the viewer's karma, clamping it within the configured min/max bounds.
+        /// </summary>
+        /// <param name="karma">The new karma value to set.</param>
+        public void SetKarma(float karma)
         {
-            var settings = CAPChatInteractiveMod.Instance.Settings;
-            Karma = Math.Clamp(karma, settings.GlobalSettings.MinKarma, settings.GlobalSettings.MaxKarma);
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings == null)
+            {
+                Karma = Mathf.Clamp(karma, 0f, 200f); // safe fallback
+                return;
+            }
+            Karma = Mathf.Clamp(karma, settings.MinKarma, settings.MaxKarma);
         }
 
-        public void GiveKarma(int karma)
+        public void GiveKarma(float karma)
         {
-            Logger.Debug($"Giving {karma} karma to viewer '{Username}'");
+            Logger.Debug($"Giving {karma:F2} karma to viewer '{Username}'");
             SetKarma(Karma + karma);
         }
 
-        public void TakeKarma(int karma)
+        public void TakeKarma(float karma)
         {
-            Logger.Debug($"Taking {karma} karma from viewer '{Username}'");
+            Logger.Debug($"Taking {karma:F2} karma from viewer '{Username}'");
             SetKarma(Karma - karma);
         }
 

@@ -430,7 +430,7 @@ namespace CAP_ChatInteractive
                 int minKarma = Mathf.RoundToInt(settings.MinKarma);
                 int maxKarma = Mathf.RoundToInt(settings.MaxKarma);
 
-                DrawEconomyRow(ref y, viewRect.width, "Karma", selectedViewer.Karma,
+                DrawEconomyRow(ref y, viewRect.width, "Karma", Mathf.RoundToInt(selectedViewer.Karma),
                     ref karmaEditAmount, ref karmaEditBuffer,
                     (amount) => {
                         // Enforce karma limits from settings (cast version)
@@ -877,7 +877,7 @@ namespace CAP_ChatInteractive
         {
             var activeViewers = Viewers.GetActiveViewers();
             int totalCoins = Viewers.All.Sum(v => v.Coins);
-            int totalKarma = Viewers.All.Sum(v => v.Karma);
+            float totalKarma = Viewers.All.Sum(v => v.Karma);
             int bannedCount = Viewers.All.Count(v => v.IsBanned);
 
             string stats = $"Total Viewers: {Viewers.All.Count}\n" +
