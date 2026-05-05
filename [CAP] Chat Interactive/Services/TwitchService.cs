@@ -242,7 +242,6 @@ namespace CAP_ChatInteractive
             _client.OnIncorrectLogin += OnIncorrectLogin;
             _client.OnUserJoined += OnUserJoined;
             _client.OnUserLeft += OnUserLeft;
-            // Twitch Raids detection
             _client.OnRaidNotification += OnRaidNotificationReceived;
         }
 
@@ -432,8 +431,10 @@ namespace CAP_ChatInteractive
         }
 
         /// <summary>
-        /// Called by Dialog_TwitchRaidJoin when the streamer clicks "START RAID NOW!"
+        /// Triggers the RimWorld raid immediately with the current list of raiders, bypassing any remaining time on the join window.
         /// </summary>
+        /// <param name="raiderName">The name of the raider who initiated the raid.</param>
+        /// <param name="totalRaiders">The total number of raiders participating in the raid.</param>
         public void TriggerRaidNow(string raiderName, int totalRaiders)
         {
             if (!_raidJoinWindowActive && _raidJoinList.Count == 0)
@@ -456,9 +457,6 @@ namespace CAP_ChatInteractive
             TryTriggerRimWorldRaid(raiderName, totalRaiders);
         }
 
-        // In File TwitchService.cs, inside class TwitchService
-        // In File TwitchService.cs, inside class TwitchService
-        // In File TwitchService.cs, inside class TwitchService
         private void TryTriggerRimWorldRaid(string raiderName, int viewerCount)
         {
             // === NEW: One-time guard to prevent timer + button double-fire ===
@@ -541,7 +539,6 @@ namespace CAP_ChatInteractive
             Logger.Twitch($"Custom faction raid completed. Faction: {raidFaction.Name} | Success: {success}");
         }
 
-        // In File TwitchService.cs, inside class TwitchService
         private Faction GetOrCreateRaidFaction(string raiderChannel)
         {
             // Reuse existing faction if this streamer raided before
@@ -555,7 +552,6 @@ namespace CAP_ChatInteractive
             }
 
             // Clone a real hostile faction (Pirate) so we inherit full pawnGroupMakers + hostility behavior
-            // This also eliminates the 5000+ "null relation" spam messages
             FactionDef baseDef = DefDatabase<FactionDef>.GetNamedSilentFail("Pirate")
                               ?? DefDatabase<FactionDef>.GetNamedSilentFail("Outlander")
                               ?? FactionDefOf.Pirate;
@@ -570,7 +566,10 @@ namespace CAP_ChatInteractive
                 techLevel = Faction.OfPlayer.def.techLevel,
                 settlementGenerationWeight = 0f,
                 hidden = true,
+
+                // === Copy everything needed to stop backstory spam ===
                 pawnGroupMakers = baseDef.pawnGroupMakers?.ListFullCopy(),
+                backstoryFilters = baseDef.backstoryFilters?.ListFullCopy(),   // Correct 1.6 field (from your FactionDef decompile)
                 raidLootMaker = baseDef.raidLootMaker
             };
 
@@ -590,7 +589,17 @@ namespace CAP_ChatInteractive
             Faction.OfPlayer.TryMakeInitialRelationsWith(newFaction);
             Faction.OfPlayer.SetRelationDirect(newFaction, FactionRelationKind.Hostile, canSendHostilityLetter: false);
 
-            Logger.Twitch($"[CUSTOM FACTION] Created new hidden raid faction for @{raiderChannel} (based on {baseDef.defName} - FORCED HOSTILE)");
+            // === CRITICAL: Initialize relations with EVERY other faction in the world ===
+            // This is what stops the 5000+ "null relation" spam messages
+            foreach (Faction other in Find.FactionManager.AllFactionsListForReading)
+            {
+                if (other != newFaction)
+                {
+                    newFaction.TryMakeInitialRelationsWith(other);
+                }
+            }
+
+            Logger.Twitch($"[CUSTOM FACTION] Created new hidden raid faction for @{raiderChannel} (based on {baseDef.defName} - FORCED HOSTILE + full relations + backstoryFilters)");
             return newFaction;
         }
 
