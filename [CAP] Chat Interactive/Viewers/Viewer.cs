@@ -221,8 +221,6 @@ namespace CAP_ChatInteractive
             return GetTimeSinceLastActivity().TotalMinutes <= maxMinutesInactive;
         }
 
-        // Permission checking
-        // Permission checking
         public bool HasPermission(string permissionLevel)
         {
             Logger.Debug($"Checking permission for viewer '{Username}': Current roles - Broadcaster:{IsBroadcaster}, Moderator:{IsModerator}, VIP:{IsVip}, Subscriber:{IsSubscriber}");
@@ -350,9 +348,6 @@ namespace CAP_ChatInteractive
             }
             return Username.Equals(message.Username, StringComparison.OrdinalIgnoreCase);
         }
-
-        // In Viewer.cs
-
 
         /// <summary>
         /// Updates the viewer's display name and propagates the change to any assigned pawn's nickname.

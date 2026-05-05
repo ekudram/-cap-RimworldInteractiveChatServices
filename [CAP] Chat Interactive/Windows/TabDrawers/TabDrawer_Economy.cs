@@ -111,17 +111,34 @@ namespace _CAP__Chat_Interactive
             UIUtilities.NumericField(listing, "RICS.Economy.KarmaMultiplierMin".Translate(), "RICS.Economy.KarmaMultiplierMinDesc".Translate(), ref settings.KarmaMultiplierMin, 0f, 2f);
             UIUtilities.NumericField(listing, "RICS.Economy.KarmaMultiplierMax".Translate(), "RICS.Economy.KarmaMultiplierMaxDesc".Translate(), ref settings.KarmaMultiplierMax, 0f, 5f);
 
-            listing.Gap(12f);            // === Karma Reward Multipliers (used when awarding coins) ===
-            GUI.color = ColorLibrary.SubHeader;
-            listing.Label("Karma Reward Multipliers"); // TODO: add key RICS.Economy.KarmaMultiplierHeader
-            GUI.color = Color.white;
+            listing.Gap(10f);
 
-            UIUtilities.NumericField(listing, "Minimum Karma Multiplier", "Reward multiplier at 0 karma (e.g. 0.3 = 30%)", ref settings.KarmaMultiplierMin, 0f, 2f);
-            UIUtilities.NumericField(listing, "Maximum Karma Multiplier", "Reward multiplier at MaxKarma (e.g. 2.0 = 200%)", ref settings.KarmaMultiplierMax, 0f, 5f);
+            // Reset button for the entire Karma section
+            Rect resetRect = listing.GetRect(28f);
+            if (Widgets.ButtonText(resetRect, "Reset Karma Settings to Defaults"))
+            {
+                // Recommended defaults (matches our design for balanced decay + punishment)
+                settings.StartingKarma = 100f;
+                settings.MinKarma = 0f;
+                settings.MaxKarma = 200f;
+
+                settings.KarmaDecayRate = 0.25f;
+                settings.KarmaDecayIntervalMinutes = 8;
+                settings.KarmaMinDecay = 8f;
+
+                settings.KarmaPerStoreItem = 0.35f;
+                settings.KarmaLossPerBadEvent = 12f;
+                settings.KarmaGainPerGoodEvent = 0.5f;
+                settings.KarmaGainPerNeutralEvent = 0.2f;
+                settings.KarmaLossPerDoomEvent = 25f;
+
+                settings.KarmaMultiplierMin = 0.3f;
+                settings.KarmaMultiplierMax = 2.0f;
+            }
 
             listing.Gap(12f);
-
             // Currency
+
             GUI.color = ColorLibrary.SubHeader;
             listing.Label("RICS.Economy.CurrencyNameHeader".Translate());
             GUI.color = Color.white;

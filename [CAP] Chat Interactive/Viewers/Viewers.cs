@@ -508,6 +508,7 @@ namespace CAP_ChatInteractive
                 SaveViewers();
             }
         }
+
         public static void DebugSaveAndLog()
         {
             lock (_lock)
@@ -520,6 +521,7 @@ namespace CAP_ChatInteractive
                 SaveViewers();
             }
         }
+
         public static void DebugSerialization()
         {
             lock (_lock)
