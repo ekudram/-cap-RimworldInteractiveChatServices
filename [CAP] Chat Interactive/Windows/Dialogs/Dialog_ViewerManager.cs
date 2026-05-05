@@ -424,15 +424,21 @@ namespace CAP_ChatInteractive
 
                 // Karma row
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+
+                // Safe cast from float (settings now use float for decay/rate precision + 1000 cap flexibility)
+                // Viewer karma + editor UI remain int (whole numbers). RoundToInt avoids truncation issues.
+                int minKarma = Mathf.RoundToInt(settings.MinKarma);
+                int maxKarma = Mathf.RoundToInt(settings.MaxKarma);
+
                 DrawEconomyRow(ref y, viewRect.width, "Karma", selectedViewer.Karma,
                     ref karmaEditAmount, ref karmaEditBuffer,
                     (amount) => {
-                        // Enforce karma limits from settings
-                        int clampedAmount = Mathf.Clamp(amount, settings.MinKarma, settings.MaxKarma);
+                        // Enforce karma limits from settings (cast version)
+                        int clampedAmount = Mathf.Clamp(amount, minKarma, maxKarma);
                         selectedViewer.SetKarma(clampedAmount);
                         Viewers.SaveViewers();
                     },
-                    settings.MinKarma, settings.MaxKarma, leftPadding);
+                    minKarma, maxKarma, leftPadding);
 
                 y += 20f;
 
