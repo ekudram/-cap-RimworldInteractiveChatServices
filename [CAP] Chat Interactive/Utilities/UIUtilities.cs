@@ -236,7 +236,6 @@ namespace CAP_ChatInteractive
         }
 
         // Float version commented out as unused (0 references) - keep for future use if needed
-        /*
         public static void NumericField(Listing_Standard listing, string label, string description, ref float value, float min, float max)
         {
             Rect rect = listing.GetRect(Text.LineHeight);
@@ -250,7 +249,6 @@ namespace CAP_ChatInteractive
 
             listing.Gap(2f);
         }
-        */
 
         /// <summary>
         /// Builds a colored header section for tooltips with a header and list of items.
