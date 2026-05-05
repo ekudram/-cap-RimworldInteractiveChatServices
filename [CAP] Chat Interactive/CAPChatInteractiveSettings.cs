@@ -130,16 +130,33 @@ namespace CAP_ChatInteractive
         public float LiveChatWindowWidth = 400f;
         public float LiveChatWindowHeight = 300f;
 
-        // economy properties
-        public bool StoreCommandsEnabled  = true;   // ← global kill-switch for buying/interacting commands
+        // Economy properties
+        // Economy properties
+        public bool StoreCommandsEnabled = true;   // ← global kill-switch for buying/interacting commands
         public int StartingCoins = 100;
-        public int StartingKarma = 100;
+        public float StartingKarma = 100f;   // Now float for precision (affects coin multiplier heavily)
         public int BaseCoinReward = 10;
         public int SubscriberExtraCoins = 5;
         public int VipExtraCoins = 3;
         public int ModExtraCoins = 2;
-        public int MinKarma = 0;
-        public int MaxKarma = 999;
+
+        // === Enhanced Karma System (more tunable + stronger punishment) ===
+        public float MinKarma = 0f;
+        public float MaxKarma = 1000f;           // Default cap (was 999) — players were sitting at 200 forever
+        public float KarmaDecayRate = 0.25f;    // % of CURRENT karma lost per decay tick (was 0.1f)
+        public int KarmaDecayIntervalMinutes = 8; // NEW: how often decay runs (prevents permanent max karma)
+        public float KarmaMinDecay = 8f;        // Minimum absolute loss per decay (was 100f — too punishing on low karma)
+        public float KarmaPerStoreItem = 0.35f; // Slightly reduced gain from store spam
+
+        public float KarmaLossPerBadEvent = 12f;     // MUCH stronger punishment (was 1f)
+        public float KarmaGainPerGoodEvent = 0.5f;
+        public float KarmaGainPerNeutralEvent = 0.2f;
+        public float KarmaLossPerDoomEvent = 25f;    // Stronger doom penalty (was 2f)
+
+        // Multiplier tuning (used by coin award / event logic)
+        public float KarmaMultiplierMin = 0.3f;   // 30% reward at 0 karma
+        public float KarmaMultiplierMax = 2.0f;   // 200% reward at max karma
+
         public int MinutesForActive = 30;
         public int MaxTraits = 4;
         public string CurrencyName = " 💰 ";
@@ -281,13 +298,28 @@ namespace CAP_ChatInteractive
 
             // New economy settings
             Scribe_Values.Look(ref StartingCoins, "startingCoins", 100);
-            Scribe_Values.Look(ref StartingKarma, "startingKarma", 100);
+            Scribe_Values.Look(ref StartingKarma, "startingKarma", 100f);  // float now
             Scribe_Values.Look(ref BaseCoinReward, "baseCoinReward", 10);
             Scribe_Values.Look(ref SubscriberExtraCoins, "subscriberExtraCoins", 5);
             Scribe_Values.Look(ref VipExtraCoins, "vipExtraCoins", 3);
             Scribe_Values.Look(ref ModExtraCoins, "modExtraCoins", 2);
-            Scribe_Values.Look(ref MinKarma, "minKarma", 0);
-            Scribe_Values.Look(ref MaxKarma, "maxKarma", 200);
+
+            // Enhanced Karma System
+            Scribe_Values.Look(ref MinKarma, "minKarma", 0f);
+            Scribe_Values.Look(ref MaxKarma, "maxKarma", 200f);
+            Scribe_Values.Look(ref KarmaDecayRate, "karmaDecayRate", 0.25f);
+            Scribe_Values.Look(ref KarmaDecayIntervalMinutes, "karmaDecayIntervalMinutes", 8);
+            Scribe_Values.Look(ref KarmaMinDecay, "karmaMinDecay", 8f);
+            Scribe_Values.Look(ref KarmaPerStoreItem, "karmaPerStoreItem", 0.35f);
+
+            Scribe_Values.Look(ref KarmaLossPerBadEvent, "karmaLossPerBadEvent", 12f);
+            Scribe_Values.Look(ref KarmaGainPerGoodEvent, "karmaGainPerGoodEvent", 0.5f);
+            Scribe_Values.Look(ref KarmaGainPerNeutralEvent, "karmaGainPerNeutralEvent", 0.2f);
+            Scribe_Values.Look(ref KarmaLossPerDoomEvent, "karmaLossPerDoomEvent", 25f);
+
+            Scribe_Values.Look(ref KarmaMultiplierMin, "karmaMultiplierMin", 0.3f);
+            Scribe_Values.Look(ref KarmaMultiplierMax, "karmaMultiplierMax", 2.0f);
+
             Scribe_Values.Look(ref MinutesForActive, "minutesForActive", 30);
             Scribe_Values.Look(ref MaxTraits, "maxTraits", 4);
             Scribe_Values.Look(ref CurrencyName, "currencyName", " 💰 ");
