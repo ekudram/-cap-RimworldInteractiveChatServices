@@ -32,4 +32,42 @@
   <RICS.Economy.CurrencyNameDesc>Display name for your currency</RICS.Economy.CurrencyNameDesc>
   <RICS.Economy.CurrencyNameExample>e.g., Credits, Points, Coins</RICS.Economy.CurrencyNameExample>
   <RICS.Economy.CurrentCurrencyDisplay>Current: {0}     Default: 💰</RICS.Economy.CurrentCurrencyDisplay>
+
+  <!-- === New Karma System Translations (added for custom karma settings) === -->
+  <RICS.Economy.KarmaDecayHeader>Karma Decay</RICS.Economy.KarmaDecayHeader>
+  <RICS.Economy.KarmaStoreEventHeader>Karma from Store &amp; Events</RICS.Economy.KarmaStoreEventHeader>
+  <RICS.Economy.KarmaMultiplierHeader>Karma Reward Multipliers</RICS.Economy.KarmaMultiplierHeader>
+
+  <!-- Decay settings -->
+  <RICS.Economy.KarmaDecayRate>Decay Rate (% per interval):</RICS.Economy.KarmaDecayRate>
+  <RICS.Economy.KarmaDecayRateDesc>Fraction of current karma lost each decay tick. Higher = faster decay toward minimum.</RICS.Economy.KarmaDecayRateDesc>
+
+  <RICS.Economy.KarmaDecayInterval>Decay Interval (minutes):</RICS.Economy.KarmaDecayInterval>
+  <RICS.Economy.KarmaDecayIntervalDesc>How often the automatic karma decay tick runs (prevents permanent max karma).</RICS.Economy.KarmaDecayIntervalDesc>
+
+  <RICS.Economy.KarmaMinDecay>Minimum Decay Amount:</RICS.Economy.KarmaMinDecay>
+  <RICS.Economy.KarmaMinDecayDesc>Absolute floor of karma lost per decay tick (even at very low karma).</RICS.Economy.KarmaMinDecayDesc>
+
+  <!-- Store &amp; Event karma impact -->
+  <RICS.Economy.KarmaPerStoreItem>Karma per Store Item:</RICS.Economy.KarmaPerStoreItem>
+  <RICS.Economy.KarmaPerStoreItemDesc>Karma gained when a viewer buys something from the store (reduced to limit abuse).</RICS.Economy.KarmaPerStoreItemDesc>
+
+  <RICS.Economy.KarmaLossPerBadEvent>Karma Loss per Bad Event:</RICS.Economy.KarmaLossPerBadEvent>
+  <RICS.Economy.KarmaLossPerBadEventDesc>Stronger karma penalty when a bad event is triggered by chat.</RICS.Economy.KarmaLossPerBadEventDesc>
+
+  <RICS.Economy.KarmaGainPerGoodEvent>Karma Gain per Good Event:</RICS.Economy.KarmaGainPerGoodEvent>
+  <RICS.Economy.KarmaGainPerGoodEventDesc>Karma awarded when a good/neutral event is triggered.</RICS.Economy.KarmaGainPerGoodEventDesc>
+
+  <RICS.Economy.KarmaGainPerNeutralEvent>Karma Gain per Neutral Event:</RICS.Economy.KarmaGainPerNeutralEvent>
+  <RICS.Economy.KarmaGainPerNeutralEventDesc>Small karma gain for neutral events.</RICS.Economy.KarmaGainPerNeutralEventDesc>
+
+  <RICS.Economy.KarmaLossPerDoomEvent>Karma Loss per Doom Event:</RICS.Economy.KarmaLossPerDoomEvent>
+  <RICS.Economy.KarmaLossPerDoomEventDesc>Heavy karma penalty for doom-level events.</RICS.Economy.KarmaLossPerDoomEventDesc>
+
+  <!-- Reward multipliers -->
+  <RICS.Economy.KarmaMultiplierMin>Minimum Karma Multiplier:</RICS.Economy.KarmaMultiplierMin>
+  <RICS.Economy.KarmaMultiplierMinDesc>Coin reward multiplier when karma is at its lowest (e.g. 0.30 = 30% of base reward).</RICS.Economy.KarmaMultiplierMinDesc>
+
+  <RICS.Economy.KarmaMultiplierMax>Maximum Karma Multiplier:</RICS.Economy.KarmaMultiplierMax>
+  <RICS.Economy.KarmaMultiplierMaxDesc>Coin reward multiplier when karma is at its highest (e.g. 2.00 = 200% of base reward).</RICS.Economy.KarmaMultiplierMaxDesc>
 </LanguageData>

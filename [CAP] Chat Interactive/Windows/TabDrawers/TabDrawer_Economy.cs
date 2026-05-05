@@ -53,27 +53,72 @@ namespace _CAP__Chat_Interactive
             GUI.color = ColorLibrary.SubHeader;
             listing.Label("RICS.Economy.KarmaSystemHeader".Translate());
             GUI.color = Color.white;
-            UIUtilities.NumericField(listing, "RICS.Economy.StartingKarma".Translate(), "RICS.Economy.StartingKarmaDesc".Translate(), ref settings.StartingKarma, 0, 200);
 
-            // Min Karma with validation
-            int originalMinKarma = settings.MinKarma;
-            UIUtilities.NumericField(listing, "RICS.Economy.MinimumKarma".Translate(), "RICS.Economy.MinimumKarmaDesc".Translate(), ref settings.MinKarma, 0, 200);
+            // === Basic Karma Bounds (float, 2-decimal via helper) ===
+            UIUtilities.NumericField(listing, "RICS.Economy.StartingKarma".Translate(), "RICS.Economy.StartingKarmaDesc".Translate(), ref settings.StartingKarma, 0f, 1000f);
+            if (settings.StartingKarma < settings.MinKarma) settings.StartingKarma = settings.MinKarma;
+            if (settings.StartingKarma > settings.MaxKarma) settings.StartingKarma = settings.MaxKarma;
+
+            float originalMinKarma = settings.MinKarma;
+            UIUtilities.NumericField(listing, "RICS.Economy.MinimumKarma".Translate(), "RICS.Economy.MinimumKarmaDesc".Translate(), ref settings.MinKarma, 0f, 1000f);
             if (settings.MinKarma != originalMinKarma && settings.MinKarma > settings.MaxKarma)
             {
                 settings.MinKarma = settings.MaxKarma;
             }
 
-            // Max Karma with validation  
-            int originalMaxKarma = settings.MaxKarma;
-            UIUtilities.NumericField(listing, "RICS.Economy.MaximumKarma".Translate(), "RICS.Economy.MaximumKarmaDesc".Translate(), ref settings.MaxKarma, 0, 1000);
+            float originalMaxKarma = settings.MaxKarma;
+            UIUtilities.NumericField(listing, "RICS.Economy.MaximumKarma".Translate(), "RICS.Economy.MaximumKarmaDesc".Translate(), ref settings.MaxKarma, 0f, 1000f);
             if (settings.MaxKarma != originalMaxKarma && settings.MaxKarma < settings.MinKarma)
             {
                 settings.MaxKarma = settings.MinKarma;
             }
 
-            listing.Gap(12f);
+            // Re-clamp Starting after possible Min/Max change
+            if (settings.StartingKarma < settings.MinKarma) settings.StartingKarma = settings.MinKarma;
+            if (settings.StartingKarma > settings.MaxKarma) settings.StartingKarma = settings.MaxKarma;
 
-            UIUtilities.NumericField(listing, "RICS.Economy.ActiveViewerMinutes".Translate(), "RICS.Economy.ActiveViewerMinutesDesc".Translate(), ref settings.MinutesForActive, 1, 1440);
+            listing.Gap(8f);
+
+            // === Karma Decay System (prevents permanent 200 karma + store abuse) ===
+            GUI.color = ColorLibrary.SubHeader;
+            listing.Label("RICS.Economy.KarmaDecayHeader".Translate());
+            GUI.color = Color.white;
+
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaDecayRate".Translate(), "RICS.Economy.KarmaDecayRateDesc".Translate(), ref settings.KarmaDecayRate, 0f, 1f);
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaDecayInterval".Translate(), "RICS.Economy.KarmaDecayIntervalDesc".Translate(), ref settings.KarmaDecayIntervalMinutes, 1, 60);
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaMinDecay".Translate(), "RICS.Economy.KarmaMinDecayDesc".Translate(), ref settings.KarmaMinDecay, 0f, 50f);
+
+            listing.Gap(8f);
+
+            // === Karma from Store Purchases & Events ===
+            GUI.color = ColorLibrary.SubHeader;
+            listing.Label("RICS.Economy.KarmaStoreEventHeader".Translate());
+            GUI.color = Color.white;
+
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaPerStoreItem".Translate(), "RICS.Economy.KarmaPerStoreItemDesc".Translate(), ref settings.KarmaPerStoreItem, 0f, 5f);
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaLossPerBadEvent".Translate(), "RICS.Economy.KarmaLossPerBadEventDesc".Translate(), ref settings.KarmaLossPerBadEvent, 0f, 100f);
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaGainPerGoodEvent".Translate(), "RICS.Economy.KarmaGainPerGoodEventDesc".Translate(), ref settings.KarmaGainPerGoodEvent, 0f, 10f);
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaGainPerNeutralEvent".Translate(), "RICS.Economy.KarmaGainPerNeutralEventDesc".Translate(), ref settings.KarmaGainPerNeutralEvent, 0f, 5f);
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaLossPerDoomEvent".Translate(), "RICS.Economy.KarmaLossPerDoomEventDesc".Translate(), ref settings.KarmaLossPerDoomEvent, 0f, 100f);
+
+            listing.Gap(8f);
+
+            // === Karma Reward Multipliers (used when awarding coins) ===
+            GUI.color = ColorLibrary.SubHeader;
+            listing.Label("RICS.Economy.KarmaMultiplierHeader".Translate());
+            GUI.color = Color.white;
+
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaMultiplierMin".Translate(), "RICS.Economy.KarmaMultiplierMinDesc".Translate(), ref settings.KarmaMultiplierMin, 0f, 2f);
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaMultiplierMax".Translate(), "RICS.Economy.KarmaMultiplierMaxDesc".Translate(), ref settings.KarmaMultiplierMax, 0f, 5f);
+
+            listing.Gap(12f);            // === Karma Reward Multipliers (used when awarding coins) ===
+            GUI.color = ColorLibrary.SubHeader;
+            listing.Label("Karma Reward Multipliers"); // TODO: add key RICS.Economy.KarmaMultiplierHeader
+            GUI.color = Color.white;
+
+            UIUtilities.NumericField(listing, "Minimum Karma Multiplier", "Reward multiplier at 0 karma (e.g. 0.3 = 30%)", ref settings.KarmaMultiplierMin, 0f, 2f);
+            UIUtilities.NumericField(listing, "Maximum Karma Multiplier", "Reward multiplier at MaxKarma (e.g. 2.0 = 200%)", ref settings.KarmaMultiplierMax, 0f, 5f);
+
             listing.Gap(12f);
 
             // Currency
