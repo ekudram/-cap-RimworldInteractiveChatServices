@@ -274,9 +274,9 @@
     | Event cooldowns: OFF ❌
   </RICS.CC.modsettings.eventoff>
 
-  <RICS.CC.modsettings.maxtaits>
+  <RICS.CC.modsettings.maxtraits>
     | 🎭Trait Max: {0}
-  </RICS.CC.modsettings.maxtaits>
+  </RICS.CC.modsettings.maxtraits>
 
   <!-- ModInfo -->
   <RICS.CC.modinfo>
