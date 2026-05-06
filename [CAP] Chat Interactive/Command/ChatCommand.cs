@@ -101,9 +101,9 @@ namespace CAP_ChatInteractive
         }
 
         // Public method to get karma emoji - can be used anywhere
-        public static string GetKarmaEmoji(int karma)
+        public static string GetKarmaEmoji(float karma)
         {
-            if (karma >= 200) return "🦄"; // Legendary good - Unicorn
+            if (karma >= 199) return "🦄"; // Legendary good - Unicorn
             if (karma >= 150) return "😇"; // Very high karma - Angel
             if (karma >= 120) return "😊"; // High karma - Happy
             if (karma >= 90) return "🙂";  // Good karma - Smiley

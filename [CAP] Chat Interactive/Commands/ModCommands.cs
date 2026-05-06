@@ -103,7 +103,7 @@ namespace CAP_ChatInteractive.Commands.ModCommands
             }
 
             // Get current karma for the message
-            int oldKarma = target.GetKarma();
+            float oldKarma = target.GetKarma();
 
             // Set karma (it will automatically clamp to min/max)
             target.SetKarma(karmaAmount);

@@ -109,25 +109,46 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     viewer.TakeCoins(cost);
 
-                    int karmaAmount = cost / 100;
-                    if (karmaAmount > 0)
+                    string karmaLower = buyableIncident.KarmaType?.ToLowerInvariant() ?? "neutral";
+                    float karmaAmount = 0f;
+
+                    switch (karmaLower)
                     {
-                        string karmaLower = buyableIncident.KarmaType?.ToLowerInvariant() ?? "neutral";
-                        switch (karmaLower)
-                        {
-                            case "good":
+                        case "good":
+                            karmaAmount = settings.KarmaGainPerGoodEvent;
+                            if (karmaAmount > 0f)
+                            {
                                 viewer.GiveKarma(karmaAmount);
-                                Logger.Debug($"Awarded {karmaAmount} karma for {cost} coin Good event purchase");
-                                break;
-                            case "bad":
-                            case "doom":
+                                Logger.Debug($"Awarded {karmaAmount:F2} karma (settings.KarmaGainPerGoodEvent) for Good event purchase");
+                            }
+                            break;
+
+                        case "bad":
+                            karmaAmount = settings.KarmaLossPerBadEvent;
+                            if (karmaAmount > 0f)
+                            {
                                 viewer.TakeKarma(karmaAmount);
-                                Logger.Debug($"Deducted {karmaAmount} karma for {cost} coin {(karmaLower == "doom" ? "Doom" : "Bad")} event purchase");
-                                break;
-                            default:
-                                Logger.Debug($"No karma change for {cost} coin Neutral event purchase");
-                                break;
-                        }
+                                Logger.Debug($"Deducted {karmaAmount:F2} karma (settings.KarmaLossPerBadEvent) for Bad event purchase");
+                            }
+                            break;
+
+                        case "doom":
+                            karmaAmount = settings.KarmaLossPerDoomEvent;
+                            if (karmaAmount > 0f)
+                            {
+                                viewer.TakeKarma(karmaAmount);
+                                Logger.Debug($"Deducted {karmaAmount:F2} karma (settings.KarmaLossPerDoomEvent) for Doom event purchase");
+                            }
+                            break;
+
+                        default: // neutral
+                            karmaAmount = settings.KarmaGainPerNeutralEvent;
+                            if (karmaAmount > 0f)
+                            {
+                                viewer.GiveKarma(karmaAmount);
+                                Logger.Debug($"Awarded {karmaAmount:F2} karma (settings.KarmaGainPerNeutralEvent) for Neutral event purchase");
+                            }
+                            break;
                     }
 
                     if (cooldownManager != null)

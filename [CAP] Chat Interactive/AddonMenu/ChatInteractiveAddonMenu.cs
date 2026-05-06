@@ -315,7 +315,7 @@ namespace CAP_ChatInteractive
             {
                 var activeViewers = Viewers.GetActiveViewers();
                 var totalCoins = 0;
-                var totalKarma = 0;
+                float totalKarma = 0;
 
                 foreach (var viewer in Viewers.All)
                 {
