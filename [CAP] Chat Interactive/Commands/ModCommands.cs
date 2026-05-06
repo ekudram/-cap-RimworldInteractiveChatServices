@@ -39,7 +39,7 @@ namespace CAP_ChatInteractive.Commands.ModCommands
             string target = args[0].ToLowerInvariant();
 
             // Parse the coin amount
-            if (!int.TryParse(args[1], out int coinAmount) || coinAmount <= 0)
+            if (!int.TryParse(args[1], out int coinAmount))
             {
                 // return "Please specify a valid positive number of coins to give.";
                 return "RICS.CC.givecoins.errorcoin".Translate();

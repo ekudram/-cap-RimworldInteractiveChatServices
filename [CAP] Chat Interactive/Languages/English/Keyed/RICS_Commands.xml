@@ -217,7 +217,7 @@
   </RICS.CC.giftcoins.usage>
 
   <RICS.CC.giftcoins.invalidAmount>
-    Please specify a valid positive number of coins.
+    Please specify a valid number of coins.
   </RICS.CC.giftcoins.invalidAmount>
 
   <RICS.CC.giftcoins.selfGift>
