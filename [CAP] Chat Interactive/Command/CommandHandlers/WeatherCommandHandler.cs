@@ -160,11 +160,48 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (success)
                 {
                     viewer.TakeCoins(cost);
-                    // Add Karma for successful weather change 1.0.15
-                    if (buyableWeather.KarmaType == "good")
-                        viewer.GiveKarma(buyableWeather.BaseCost/100);
-                    else if (buyableWeather.KarmaType == "bad" || buyableWeather.KarmaType == "doom")
-                        viewer.TakeKarma(buyableWeather.BaseCost / 100);
+                    // Karma handling for weather purchases - now uses the new dedicated settings
+                    string karmaType = buyableWeather.KarmaType?.ToLowerInvariant() ?? "neutral";
+                    float karmaAmount = 0f;
+
+                    switch (karmaType)
+                    {
+                        case "good":
+                            karmaAmount = settings.KarmaGainPerGoodEvent;
+                            if (karmaAmount > 0f)
+                            {
+                                viewer.GiveKarma(karmaAmount);
+                                Logger.Debug($"Awarded {karmaAmount:F2} karma (settings.KarmaGainPerGoodEvent) for Good weather purchase");
+                            }
+                            break;
+
+                        case "bad":
+                            karmaAmount = settings.KarmaLossPerBadEvent;
+                            if (karmaAmount > 0f)
+                            {
+                                viewer.TakeKarma(karmaAmount);
+                                Logger.Debug($"Deducted {karmaAmount:F2} karma (settings.KarmaLossPerBadEvent) for Bad weather purchase");
+                            }
+                            break;
+
+                        case "doom":
+                            karmaAmount = settings.KarmaLossPerDoomEvent;
+                            if (karmaAmount > 0f)
+                            {
+                                viewer.TakeKarma(karmaAmount);
+                                Logger.Debug($"Deducted {karmaAmount:F2} karma (settings.KarmaLossPerDoomEvent) for Doom weather purchase");
+                            }
+                            break;
+
+                        default: // neutral (including most weather events)
+                            karmaAmount = settings.KarmaGainPerNeutralEvent;
+                            if (karmaAmount > 0f)
+                            {
+                                viewer.GiveKarma(karmaAmount);
+                                Logger.Debug($"Awarded {karmaAmount:F2} karma (settings.KarmaGainPerNeutralEvent) for Neutral weather purchase");
+                            }
+                            break;
+                    }
 
                     // Record weather usage for cooldowns ONLY ON SUCCESS
                     if (success && cooldownManager != null)
