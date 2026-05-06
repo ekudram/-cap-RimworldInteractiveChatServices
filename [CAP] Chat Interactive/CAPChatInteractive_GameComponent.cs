@@ -36,6 +36,8 @@ namespace CAP_ChatInteractive
         private int tickCounter = 0;
         private const int TICKS_PER_REWARD = 120 * 60;
 
+        private int karmaDecayTickCounter = 0;
+
         private bool versionCheckDone = false;
         private bool raceSettingsInitialized = false;
         private bool storeInitialized = false;
@@ -81,6 +83,23 @@ namespace CAP_ChatInteractive
                 Viewers.AwardActiveViewersCoins();
                 Logger.Debug("2-minute coin reward tick executed");
             }
+
+            // === KARMA DECAY TIMER ===
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings != null && settings.KarmaDecayRate > 0f && settings.KarmaDecayIntervalMinutes > 0)
+            {
+                karmaDecayTickCounter++;
+
+                int ticksPerDecayInterval = settings.KarmaDecayIntervalMinutes * 2500; // 1 in-game minute ≈ 2500 ticks
+
+                if (karmaDecayTickCounter >= ticksPerDecayInterval)
+                {
+                    karmaDecayTickCounter = 0;
+                    Viewers.ApplyKarmaDecayToAll(settings);
+                    Logger.Debug($"Karma decay tick executed (interval: {settings.KarmaDecayIntervalMinutes} min, rate: {settings.KarmaDecayRate})");
+                }
+            }
+
             CAPChatInteractiveMod.Instance.TwitchService?.UpdateRaidJoinTimer();
         }
 

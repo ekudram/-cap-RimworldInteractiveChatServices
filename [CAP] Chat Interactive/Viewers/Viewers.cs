@@ -559,6 +559,61 @@ namespace CAP_ChatInteractive
                 }
             }
         }
+
+        /// <summary>
+        /// Applies karma decay to all viewers based on the current settings.
+        /// Called periodically by CAPChatInteractive_GameComponent.
+        /// Prevents players from sitting at max karma forever by slowly draining it over time.
+        /// </summary>
+        public static void ApplyKarmaDecayToAll(CAPGlobalChatSettings settings)
+        {
+            if (settings == null || settings.KarmaDecayRate <= 0f || settings.KarmaDecayIntervalMinutes <= 0)
+                return;
+
+            lock (_lock)
+            {
+                int viewersAffected = 0;
+                float totalKarmaLost = 0f;
+
+                foreach (var viewer in All)
+                {
+                    if (viewer == null || viewer.IsBanned)
+                        continue;
+
+                    if (viewer.Karma <= settings.MinKarma)
+                        continue; // Already at minimum — nothing to decay
+
+                    // Calculate how much to lose this tick
+                    float decayAmount = viewer.Karma * settings.KarmaDecayRate;
+
+                    // Enforce minimum decay per interval (prevents tiny decay on high-karma players)
+                    if (decayAmount < settings.KarmaMinDecay)
+                        decayAmount = settings.KarmaMinDecay;
+
+                    // Apply decay but never go below MinKarma
+                    float newKarma = viewer.Karma - decayAmount;
+                    if (newKarma < settings.MinKarma)
+                        newKarma = settings.MinKarma;
+
+                    float actuallyLost = viewer.Karma - newKarma;
+
+                    if (actuallyLost > 0f)
+                    {
+                        viewer.SetKarma(newKarma);
+                        viewersAffected++;
+                        totalKarmaLost += actuallyLost;
+                    }
+                }
+
+                if (viewersAffected > 0)
+                {
+                    Logger.Message($"[Karma Decay] Applied to {viewersAffected} viewers. " +
+                                   $"Total lost: {totalKarmaLost:F1} karma " +
+                                   $"(rate: {settings.KarmaDecayRate}, min: {settings.KarmaMinDecay})");
+                    SaveViewers();
+                }
+            }
+        }
     }
 
     [Serializable]
