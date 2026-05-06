@@ -132,10 +132,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 viewer.TakeCoins(finalPrice);
 
-                int karmaEarned = finalPrice / 100;
-                if (karmaEarned > 0)
+                float karmaEarned = finalPrice * settings.KarmaPerStoreItem / 100f;
+                if (karmaEarned > 0f)
                 {
                     viewer.GiveKarma(karmaEarned);
+                    Logger.Debug($"Awarded {karmaEarned:F2} karma for {finalPrice} coin item use");
                 }
 
                 if (isResurrectorSerum && viewerPawn.Dead)

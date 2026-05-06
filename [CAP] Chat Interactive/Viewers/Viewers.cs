@@ -430,7 +430,7 @@ namespace CAP_ChatInteractive
                             }
 
                             duplicatesRemoved++;
-                            Logger.Debug($"[Viewer Cleanup] Merged duplicate '{viewer.Username}' into '{existing.Username}'");
+                            Logger.Message($"[Viewer Cleanup] Merged duplicate '{viewer.Username}' into '{existing.Username}'");
                         }
                         else
                         {

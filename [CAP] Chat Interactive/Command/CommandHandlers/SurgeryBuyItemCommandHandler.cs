@@ -185,12 +185,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Deduct coins
                 viewer.TakeCoins(finalPrice);
 
-                int karmaEarned = finalPrice / 100;
-                if (karmaEarned > 0)
-                {
-                    viewer.GiveKarma(karmaEarned);
-                    // Logger.Debug($"Awarded {karmaEarned} karma for {finalPrice} coin surgery");
-                }
+                AwardSurgeryKarma(viewer, finalPrice, "implant surgery");
 
                 // Track delivery results
                 List<DeliveryResult> surgeryDeliveryResults = new List<DeliveryResult>();
@@ -386,12 +381,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             viewer.TakeCoins(finalPrice);
 
-            int karmaEarned = finalPrice / 100; // Needs to be a configurable setting.
-            if (karmaEarned > 0)
-            {
-                viewer.GiveKarma(karmaEarned);
-                // Logger.Debug($"Awarded {karmaEarned} karma for {displayName} surgery");
-            }
+            AwardSurgeryKarma(viewer, finalPrice, "body change surgery");
 
             ScheduleSurgeries(pawn, recipe, new List<BodyPartRecord> { corePart });
 
@@ -460,13 +450,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             viewer.TakeCoins(finalPrice);
 
-            // Optional: smaller or no karma
-            int karmaEarned = finalPrice / 200; // ← more conservative, or set to 0 / small fixed value
-            if (karmaEarned > 0)
-            {
-                viewer.GiveKarma(karmaEarned);
-                // Logger.Debug($"Awarded {karmaEarned} karma for gender swap purchase");
-            }
+            AwardSurgeryKarma(viewer, finalPrice, "gender swap surgery");
 
             ScheduleSurgeries(pawn, recipe, new List<BodyPartRecord> { corePart });
 
@@ -540,10 +524,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Spawn required ingredients (medicine + any fixed like HemogenPack)
             SpawnSurgeryIngredients(pawn, recipe);
 
-            // Deduct coins & give karma
-            viewer.TakeCoins(finalPrice);
-            int karmaEarned = finalPrice / 200;
-            if (karmaEarned > 0) viewer.GiveKarma(karmaEarned);
+            AwardSurgeryKarma(viewer, finalPrice, "biotech surgery");
 
             // Body parts: most misc surgeries don't target parts → empty list
             List<BodyPartRecord> bodyParts = recipe.targetsBodyPart
@@ -1101,6 +1082,24 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             return true;
+        }
+        /// <summary>
+        /// Awards karma for any surgery purchase using the unified KarmaPerStoreItem setting.
+        /// </summary>
+        private static void AwardSurgeryKarma(Viewer viewer, int totalCost, string surgeryType = "surgery")
+        {
+            if (viewer == null || totalCost <= 0) return;
+
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            float karmaPerItem = settings?.KarmaPerStoreItem ?? 0.35f;
+
+            float karmaEarned = totalCost * karmaPerItem / 100f;
+
+            if (karmaEarned > 0f)
+            {
+                viewer.GiveKarma(karmaEarned);
+                Logger.Debug($"Awarded {karmaEarned:F2} karma for {totalCost} coin {surgeryType}");
+            }
         }
     }
 }
