@@ -5,8 +5,8 @@
   <RICS.PASSION.ViewerNotFound>❌ Viewer not found.</RICS.PASSION.ViewerNotFound>
   <RICS.PASSION.NoAssignedPawn>❌ You need an assigned pawn to use !passion. Use !join to get in the queue.</RICS.PASSION.NoAssignedPawn>
   <RICS.PASSION.PawnDead>❌ Your pawn is dead! Wait for resurrection or get a new pawn.</RICS.PASSION.PawnDead>
-  <RICS.PASSION.Usage>💡 Usage: !passion &lt;skill&gt; &lt;coins&gt; OR !passion &lt;coins&gt; OR !passion list</RICS.PASSION.Usage>
-  <RICS.PASSION.UsageTargeted>💡 Usage: !passion &lt;skill&gt; &lt;coins&gt; - Wager coins to upgrade a specific skill's passion</RICS.PASSION.UsageTargeted>
+  <RICS.PASSION.Usage>💡 Usage: !passion [skill] [coins] OR !passion [coins] OR !passion list</RICS.PASSION.Usage>
+  <RICS.PASSION.UsageTargeted>💡 Usage: !passion [skill]; &lt;coins&gt; - Wager coins to upgrade a specific skill's passion</RICS.PASSION.UsageTargeted>
   <RICS.PASSION.UsageRandom>💡 Usage: !passion &lt;coins&gt; - Wager coins to upgrade a random skill's passion</RICS.PASSION.UsageRandom>
   <RICS.PASSION.NoSkill>❌ Your pawn doesn't have the {0} skill.</RICS.PASSION.NoSkill>
   <RICS.PASSION.AlreadyMajorTargeted>❌ Your pawn already has major passion in {0}.</RICS.PASSION.AlreadyMajorTargeted>
