@@ -211,9 +211,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                    Current.Game.Maps.Any(map => map.IsPlayerHome);
         }
 
-        private static int CalculateKarmaChange(int wager)
+        private static float CalculateKarmaChange(int wager, CAPGlobalChatSettings settings)
         {
-            return (int)(wager / 1500f * 5);
+            if (settings == null)
+                return wager / 300f; // safe fallback
+
+            // Military aid is always a "good" action — use the dedicated good event setting
+            float baseKarma = settings.KarmaGainPerGoodEvent;
+
+            // Scale by wager (bigger wager = more reinforcements arrive = more karma reward)
+            float scale = wager / 1500f; // 1500 wager ≈ 1.0x base
+
+            return baseKarma * scale;
         }
 
         [DebugAction("CAP", "Test Military Aid", allowedGameStates = AllowedGameStates.Playing)]

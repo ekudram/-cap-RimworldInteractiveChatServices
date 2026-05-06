@@ -91,11 +91,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             viewer.TakeCoins(price);
             UseItemCommandHandler.ResurrectPawn(viewerPawn);
 
-            int karma = price / 100;
-            if (karma > 0)
-            {
-                viewer.GiveKarma(karma);
-            }
+            AwardReviveKarma(viewer, price);
 
             var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
             cooldownManager?.RecordItemPurchase("revive");
@@ -136,8 +132,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             viewer.TakeCoins(price);
             UseItemCommandHandler.ResurrectPawn(targetPawn);
 
-            int karma = price / 100;
-            if (karma > 0) viewer.GiveKarma(karma);
+            AwardReviveKarma(viewer, price);
 
             var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
             cooldownManager?.RecordItemPurchase("revive");
@@ -195,8 +190,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             viewer.TakeCoins(totalCost);
 
-            int karma = pricePerRevive / 100;
-            if (karma > 0) viewer.GiveKarma(karma);
+            AwardReviveKarma(viewer, totalCost);
 
             var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
             cooldownManager?.RecordItemPurchase("revive");
@@ -252,6 +246,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             sb.AppendLine("RICS.RPCH.InvoiceFooter".Translate());
             sb.AppendLine("RICS.RPCH.InvoiceMassThanks".Translate(count));
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Awards karma for revive purchases using KarmaPerStoreItem.
+        /// Reviving a pawn is always considered a good action for the colony.
+        /// </summary>
+        private static void AwardReviveKarma(Viewer viewer, int totalCost)
+        {
+            if (viewer == null || totalCost <= 0) return;
+
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            float karmaPerItem = settings?.KarmaPerStoreItem ?? 0.35f;
+
+            float karmaEarned = totalCost * karmaPerItem / 100f;
+
+            if (karmaEarned > 0f)
+            {
+                viewer.GiveKarma(karmaEarned);
+                Logger.Debug($"Awarded {karmaEarned:F2} karma for {totalCost} coin revive service");
+            }
         }
     }
 }

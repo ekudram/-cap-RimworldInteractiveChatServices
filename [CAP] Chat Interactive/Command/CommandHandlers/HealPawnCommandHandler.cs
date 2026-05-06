@@ -142,12 +142,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             viewer.TakeCoins(totalCost);
             int injuriesHealed = ApplyCompleteHealing(viewerPawn);
 
-            int karmaEarned = totalCost / 100;
-            if (karmaEarned > 0)
-            {
-                viewer.GiveKarma(karmaEarned);
-                Logger.Debug($"Awarded {karmaEarned} karma for {totalCost} coin purchase");
-            }
+            AwardPurchaseKarma(viewer, totalCost, "healing");
 
             // Record the purchase for cooldown tracking
             var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
@@ -213,13 +208,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Deduct coins and heal
             viewer.TakeCoins(totalCost);
             int injuriesHealed = ApplyHealing(viewerPawn, quantity);
+            // Award karma for the purchase
+            AwardPurchaseKarma(viewer, totalCost, "healing");
 
-            int karmaEarned = totalCost / 100;
-            if (karmaEarned > 0)
-            {
-                viewer.GiveKarma(karmaEarned);
-                Logger.Debug($"Awarded {karmaEarned} karma for {totalCost} coin purchase");
-            }
+
+
 
             // Record the purchase for cooldown tracking
             var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
@@ -227,6 +220,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 cooldownManager.RecordItemPurchase("heal"); // or "heal" for healpawn
             }
+            
 
             // Send healing invoice
             string invoiceLabel = $"💚 Rimazon Healing - {messageWrapper.Username}";
@@ -277,12 +271,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             viewer.TakeCoins(totalCost);
             int injuriesHealed = ApplyHealing(targetPawn, quantity);
 
-            int karmaEarned = totalCost / 100;
-            if (karmaEarned > 0)
-            {
-                viewer.GiveKarma(karmaEarned);
-                Logger.Debug($"Awarded {karmaEarned} karma for {totalCost} coin purchase");
-            }
+
+            // Award karma for the purchase
+            AwardPurchaseKarma(viewer, totalCost, "healing");
 
             // Record the purchase for cooldown tracking
             var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
@@ -352,12 +343,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Deduct total cost
             viewer.TakeCoins(totalCost);
 
-            int karmaEarned = totalCost / 100;
-            if (karmaEarned > 0)
-            {
-                viewer.GiveKarma(karmaEarned);
-                Logger.Debug($"Awarded {karmaEarned} karma for {totalCost} coin purchase");
-            }
+            // Award karma for the purchase
+            AwardPurchaseKarma(viewer, totalCost, "mass healing");
 
             // Record the purchase for cooldown tracking
             var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
@@ -542,6 +529,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         "====================".Translate() + "\n" +
         "RICS.HPCH.Invoice.ThankYouMass".Translate() + "\n" +
         "RICS.HPCH.Invoice.ColonyThanks".Translate(totalInjuriesHealed, pawnsHealed); ;
+        }
+
+        /// <summary>
+        /// Awards karma for any store/healing purchase using the unified KarmaPerStoreItem setting.
+        /// Call this after every successful paid action (heal, buy, etc.).
+        /// </summary>
+        private static void AwardPurchaseKarma(Viewer viewer, int totalCost, string actionType = "purchase")
+        {
+            if (viewer == null || totalCost <= 0) return;
+
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            float karmaPerItem = settings?.KarmaPerStoreItem ?? 0.35f;
+
+            float karmaEarned = totalCost * karmaPerItem / 100f;
+
+            if (karmaEarned > 0f)
+            {
+                viewer.GiveKarma(karmaEarned);
+                Logger.Debug($"Awarded {karmaEarned:F2} karma for {totalCost} coin {actionType}");
+            }
         }
     }
 }
