@@ -129,7 +129,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (result.Success)
                 {
                     viewer.TakeCoins(wager);
-                    viewer.TakeKarma(CalculateKarmaChange(wager, raidType, strategy));
+                    viewer.TakeKarma(CalculateKarmaChange(wager, raidType, strategy, settings));
 
                     if (cooldownManager != null)
                     {
@@ -571,23 +571,39 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                    Current.Game.Maps.Any(map => map.IsPlayerHome);
         }
 
-        private static int CalculateKarmaChange(int wager, string raidType, string strategy)
+        private static float CalculateKarmaChange(int wager, string raidType, string strategy, CAPGlobalChatSettings settings)
         {
-            // Negative karma for hostile actions, scaled by raid severity
-            int baseKarma = (int)(wager / 100f);
+            if (settings == null)
+                return -(wager / 200f); // safe fallback (negative)
 
-            // More negative karma for more destructive raid types
-            switch (raidType.ToLower())
+            // Base loss comes from the new settings (tunable in Economy tab)
+            float baseLoss = settings.KarmaLossPerBadEvent;
+
+            // For the worst raid types we can use the Doom penalty or a multiplier
+            string type = raidType.ToLowerInvariant();
+            if (type == "mechcluster")
             {
-                case "mechcluster":
-                    return baseKarma - 8; // Most destructive
-                case "siege":
-                    return baseKarma - 6;
-                case "mech":
-                    return baseKarma - 5;
-                default:
-                    return baseKarma - 2;
+                baseLoss = Mathf.Max(baseLoss, settings.KarmaLossPerDoomEvent * 0.7f);
             }
+            else if (type == "siege" || type == "mech")
+            {
+                baseLoss = Mathf.Max(baseLoss, settings.KarmaLossPerDoomEvent * 0.5f);
+            }
+
+            // Scale by wager so bigger bets = bigger karma hit (viewer is "paying" with karma too)
+            float wagerScale = wager / 2000f;           // 2000 wager ≈ 1.0x base
+            float karmaLoss = baseLoss * wagerScale;
+
+            // Optional extra penalty for aggressive strategies (you can expand this)
+            if (!string.IsNullOrEmpty(strategy))
+            {
+                string strat = strategy.ToLowerInvariant();
+                if (strat == "siege" || strat == "breach" || strat == "breachsmart")
+                    karmaLoss *= 1.25f;
+            }
+
+            // Always return a negative value
+            return -Mathf.Abs(karmaLoss);
         }
 
         private static string BuildRaidDetails(RaidResult result, int wager, string currencySymbol)
