@@ -100,7 +100,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (result.Success)
                 {
                     viewer.TakeCoins(wager);
-                    viewer.GiveKarma(CalculateKarmaChange(wager));
+                    viewer.GiveKarma(CalculateKarmaChange(wager, settings));
 
                     // Record military aid usage for cooldowns ONLY ON SUCCESS
                     if (cooldownManager != null)
