@@ -131,7 +131,6 @@ namespace CAP_ChatInteractive
         public float LiveChatWindowHeight = 300f;
 
         // Economy properties
-        // Economy properties
         public bool StoreCommandsEnabled = true;   // ← global kill-switch for buying/interacting commands
         public int StartingCoins = 100;
         public float StartingKarma = 100f;   // Now float for precision (affects coin multiplier heavily)

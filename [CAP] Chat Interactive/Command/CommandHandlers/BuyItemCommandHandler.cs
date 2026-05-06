@@ -226,11 +226,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Deduct coins and process purchase
                 viewer.TakeCoins(finalPrice);
 
-                int karmaEarned = finalPrice / 100;
-                if (karmaEarned > 0)
+                // Use the new dedicated store karma setting (per item purchased)
+                float karmaEarned = finalPrice * settings.KarmaPerStoreItem;
+                if (karmaEarned > 0f)
                 {
                     viewer.GiveKarma(karmaEarned);
-                    Logger.Debug($"Awarded {karmaEarned} karma for {finalPrice} coin purchase");
+                    Logger.Debug($"Awarded {karmaEarned:F2} karma ({finalPrice} × settings.KarmaPerStoreItem) for store purchase");
                 }
 
                 // Spawn the item

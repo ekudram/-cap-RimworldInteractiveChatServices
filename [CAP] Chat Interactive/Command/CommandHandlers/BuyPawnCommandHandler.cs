@@ -166,7 +166,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     // Deduct coins and update karma
                     viewer.TakeCoins(finalPrice);
-                    viewer.GiveKarma(CalculateKarmaChange(finalPrice));
+                    // Use the new store karma setting (pawns are expensive, so they naturally give more karma)
+                    float karmaEarned = finalPrice * settings.KarmaPerStoreItem / 100f;
+                    if (karmaEarned > 0f)
+                    {
+                        viewer.GiveKarma(karmaEarned);
+                        Logger.Debug($"Awarded {karmaEarned:F2} karma for pawn purchase (price × KarmaPerStoreItem / 100)");
+                    }
 
                     // Save pawn assignment to viewer
                     if (result.Pawn != null && assignmentManager != null)
@@ -608,11 +614,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return Current.Game != null &&
                    Current.ProgramState == ProgramState.Playing &&
                    Current.Game.Maps.Any(map => map.IsPlayerHome);
-        }
-
-        private static int CalculateKarmaChange(int price)
-        {
-            return (int)(price / 1000f * 2); // Scale karma with price
         }
 
         private static int ParseAge(string ageString, RaceSettings raceSettings)
