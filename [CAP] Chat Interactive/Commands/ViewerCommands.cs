@@ -39,7 +39,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
-            var viewer = Viewers.GetViewer(messageWrapper.Username);
+            var viewer = Viewers.GetViewer(messageWrapper);
             if (viewer != null)
             {
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
@@ -68,10 +68,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 // Calculate coins per hour (30 cycles per hour)
                 int coinsPerHour = coinsPerAward * 30;
 
-                // Calculate remaining active time
-                string activeTimeInfo = GetRemainingActiveTimeInfo(viewer, settings);
-
-
                 string line1 = "RICS.CC.bal.line1".Translate(viewer.Coins.ToString("N0"), currencySymbol);
                 string line2 = "RICS.CC.bal.line2".Translate(viewer.Karma, karmaEmoji);
 
@@ -80,40 +76,9 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
                 // Change to (with dividers; assumes you want to keep activeTimeInfo commented):
 
-                return $"{line1} | {line2} | {line3} | {line4}"; // + (string.IsNullOrEmpty(activeTimeInfo) ? "" : $" | {activeTimeInfo}");
-                //return $"💰 Balance: {formattedCoins} {currencySymbol}\n" +
-                //       $"📊 Karma: {viewer.Karma} {karmaEmoji}\n" +
-                //       $"💸 Earnings: {coinsPerAward} {currencySymbol} every 2 minutes\n" +
-                //       $"⏱️ Rate: ~{coinsPerHour} {currencySymbol}/hour"; // +
-                //                                                          //activeTimeInfo;
+                return $"{line1} | {line2} | {line3} | {line4}";
             }
             return "RICS.CC.bal.notfound".Translate();
-        }
-
-        private string GetRemainingActiveTimeInfo(Viewer viewer, CAPGlobalChatSettings settings)
-        {
-            try
-            {
-
-                // Use LastSeen instead of LastActivityTime
-                var timeSinceLastActivity = DateTime.UtcNow - viewer.LastSeen;
-                int minutesActive = (int)timeSinceLastActivity.TotalMinutes;
-                int minutesRemaining = Math.Max(0, settings.MinutesForActive - minutesActive);
-
-                if (minutesRemaining > 0)
-                {
-                    return "RICS.CC.bal.activeRemaining".Translate(minutesRemaining);
-                }
-                else
-                {
-                    return "RICS.CC.bal.notActive".Translate();
-                }
-            }
-            catch
-            {
-                // If we can't calculate it, that's okay
-                return "";
-            }
         }
     }
 
