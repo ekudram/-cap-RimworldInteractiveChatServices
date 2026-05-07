@@ -126,7 +126,7 @@ namespace CAP_ChatInteractive
             }
             else
             {
-                // Logger.Warning($"Cannot add platform ID - platform: '{platform}', userId: '{userId}'");
+                Logger.Warning($"Cannot add platform ID - platform: '{platform}', userId: '{userId}'");
             }
         }
 
