@@ -22,6 +22,8 @@ using Verse;
 
 /// <summary>
 /// ChatMessageWrapper serves as a unified representation of chat messages from various platforms (Twitch, YouTube, etc.).
+/// It provides a consistent interface for accessing common properties such as username, display name, message content,
+/// platform, and additional metadata like bits, custom rewards, and timestamps.    
 /// </summary>
 public class ChatMessageWrapper
 {
