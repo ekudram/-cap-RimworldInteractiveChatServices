@@ -812,6 +812,76 @@ v
 **Fixed**
 - Twitch Raids not nameing pawns properly and spawning mechs as raiders.  Now properly names raiders and does not spawn mechs.
 "
+            },
+                {"1.33", @"===========================================================" +
+                    @"RICS 1.33 - Changelog
+                    Released: May 7 2026
+
+****************************
+Updated
+
+- Fixed a bug with name changes. If someone changed their Twitch name, sometimes the balance command would show the wrong balance (it was looking at a new/empty account). Purchases were usually still working correctly, but balances could get confused. This is now fixed. RICS tracks viewers by their permanent account ID instead of just their username, so name changes should no longer break balances, history, or purchases.
+  More reliable viewer tracking. We made some behind-the-scenes improvements so RICS handles name changes much more smoothly going forward.
+- General stability. A few other small fixes and cleanups to make everything run smoother.
+- Textbook, Novel and Tome Fix: all purchases without Quality set will now default to Normal so there is always a usable book.
+
+****************************
+Added
+
+Twitch Raids Feature Complete!
+
+Major Highlights:
+
+- Interactive Raid Join Window — 45-second countdown + !joinraid command + auto-collects anyone who joins the channel (forced conscription for joiners)
+- ""Start Raid Now!"" Button — Streamer can force the raid instantly (timer still works as backup)
+- Named Raiders — All joiners (including random viewers) get injected as real pawns with their Twitch names (streamer always first)
+- Smart Hostile Faction — Proper hidden Pirate-based faction, full hostility, no more friendly raiders or log spam
+- Tech-Scaled Raids — Pawn kinds + gear automatically match your colony’s tech level (Industrial → Pirate, Spacer → Space Refugee, etc.)
+- Reliable Spawning — Edge walk-in default + weighted drop fallback + proper Assault Colony lord so they actually attack
+- Limits raids to 2x number of colonists
+- Pawns are not assigned to viewers — they are only named after them
+
+Tested & Clean — Debug action works perfectly, real raids are live and working with zero errors in the player log
+Twitch Raids are now fully production-ready!
+
+
+RICS – Karma System Update Notes
+
+What’s New:
+
+- Karma now decays over time. Viewers slowly lose karma if they sit at high amounts for too long. You control how fast it decays in the mod settings.
+- More control in the Economy tab. You can now set:
+  - Starting karma
+  - Minimum & Maximum karma
+  - How much karma is lost on bad events / raids
+  - How much karma is gained on good actions (healing, reviving, buying stuff for the colony, etc.)
+  - Decay speed and minimum decay amount
+
+Bad events & raids feel more meaningful. Triggering bad stuff now costs more karma, so it is not so easy to stay at max karma forever by spamming bad events and buying store items.
+Good actions are properly rewarded. Healing, reviving, military aid, and other helpful purchases now give karma based on your settings.
+Max Karma can go up to 1000. If you have one viewer who really wants to sit at a high number, you can raise the cap (default is still 200).
+
+Why we did this:
+Viewers were reaching max karma too easily and staying there. The new system gives you much more control over the economy and makes karma feel like it actually matters during streams.
+Everything is configurable in the mod settings under the Economy tab. You can turn decay off completely if you want by setting the decay rate to 0.
+Translations
+
+There is a new Wiki page for the Economy system with more details on how it works and how to configure it.
+
+****************************
+Updated Translations:
+
+Updated: RICS_Commands.xml (look for Join Raid near the bottom)
+Also updated (removed the word ""positive""):
+RICS.CC.giftcoins.invalidAmount
+Please specify a valid number of coins.
+
+Updated: TabDrawer_Economy.xml
+Multiple additions to the file for Karma and Currency.
+
+
+
+"
             }
 
 
