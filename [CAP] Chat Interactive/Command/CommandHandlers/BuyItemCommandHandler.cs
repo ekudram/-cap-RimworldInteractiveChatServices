@@ -107,6 +107,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var quality = ItemConfigHelper.ParseQuality(qualityStr);
                 Logger.Debug($"Parsed quality: {qualityStr} -> {quality}");
 
+
+
                 if (!ItemConfigHelper.IsQualityAllowed(quality))
                 {
                     Logger.Debug($"Quality {qualityStr} is not allowed for purchases");
@@ -114,6 +116,27 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.BICH.Return.QualityNotAllowed".Translate(qualityStr);
                 }
                 Logger.Debug($"Quality {qualityStr} is allowed");
+
+                // === CONTENT ITEM QUALITY FIX (TextBook, Novel, Schematic, Tome) ===
+                // These specific items (TextBook + reading/content items from mods + Anomaly DLC)
+                // use the quality value to seed their internal data (pages, text, schematics,
+                // ritual knowledge, etc.). When the buyer omits a quality argument,
+                // ParseQuality returns null and the item spawns blank/empty.
+                // We force Normal ONLY for these exact DefNames and ONLY when no quality
+                // was supplied by the user. Explicit quality from the buyer is always respected.
+                // Map-type items (AncientMap, etc.) are deliberately excluded because they
+                // do not use quality at all. This runs before price calc and SpawnItemForPawn
+                // so both cost and final item are correct. Normal is forced even if the
+                // player has disabled it in settings — blank content is worse UX.
+                if (!quality.HasValue &&
+                    (storeItem.DefName.Equals("TextBook", StringComparison.OrdinalIgnoreCase) ||
+                     storeItem.DefName.Equals("Novel", StringComparison.OrdinalIgnoreCase) ||
+                     storeItem.DefName.Equals("Schematic", StringComparison.OrdinalIgnoreCase) ||
+                     storeItem.DefName.Equals("Tome", StringComparison.OrdinalIgnoreCase)))
+                {
+                    quality = QualityCategory.Normal;
+                    Logger.Debug($"Forced Normal quality for {storeItem.DefName} (user did not specify quality) — prevents blank/empty content spawn");
+                }
 
                 // Get thing def
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
