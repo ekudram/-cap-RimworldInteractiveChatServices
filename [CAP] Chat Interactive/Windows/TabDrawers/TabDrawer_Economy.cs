@@ -24,11 +24,19 @@ namespace _CAP__Chat_Interactive
 {
     public static class TabDrawer_Economy
     {
+
+        private static Vector2 _scrollPosition = Vector2.zero;
+
         public static void Draw(Rect rect)
         {
             var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+
+            // Tall virtual view for full scrolling support
+            var view = new Rect(0f, 0f, rect.width - 16f, 1450f);
+            Widgets.BeginScrollView(rect, ref _scrollPosition, view);
+
             var listing = new Listing_Standard();
-            listing.Begin(rect);
+            listing.Begin(view);
 
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.HeaderAccent;
@@ -103,16 +111,6 @@ namespace _CAP__Chat_Interactive
 
             listing.Gap(8f);
 
-            // === Karma Reward Multipliers (used when awarding coins) ===
-            GUI.color = ColorLibrary.SubHeader;
-            listing.Label("RICS.Economy.KarmaMultiplierHeader".Translate());
-            GUI.color = Color.white;
-
-            UIUtilities.NumericField(listing, "RICS.Economy.KarmaMultiplierMin".Translate(), "RICS.Economy.KarmaMultiplierMinDesc".Translate(), ref settings.KarmaMultiplierMin, 0f, 2f);
-            UIUtilities.NumericField(listing, "RICS.Economy.KarmaMultiplierMax".Translate(), "RICS.Economy.KarmaMultiplierMaxDesc".Translate(), ref settings.KarmaMultiplierMax, 0f, 5f);
-
-            listing.Gap(10f);
-
             // Reset button for the entire Karma section
             Rect resetRect = listing.GetRect(28f);
             if (Widgets.ButtonText(resetRect, "Reset Karma Settings to Defaults"))
@@ -122,18 +120,15 @@ namespace _CAP__Chat_Interactive
                 settings.MinKarma = 0f;
                 settings.MaxKarma = 200f;
 
-                settings.KarmaDecayRate = 0.25f;
-                settings.KarmaDecayIntervalMinutes = 8;
-                settings.KarmaMinDecay = 8f;
+                settings.KarmaDecayRate = 0.05f;
+                settings.KarmaDecayIntervalMinutes = 30;
+                settings.KarmaMinDecay = 0f;
 
                 settings.KarmaPerStoreItem = 0.35f;
                 settings.KarmaLossPerBadEvent = 12f;
-                settings.KarmaGainPerGoodEvent = 0.5f;
-                settings.KarmaGainPerNeutralEvent = 0.2f;
+                settings.KarmaGainPerGoodEvent = 5f;
+                settings.KarmaGainPerNeutralEvent = 1f;
                 settings.KarmaLossPerDoomEvent = 25f;
-
-                settings.KarmaMultiplierMin = 0.3f;
-                settings.KarmaMultiplierMax = 2.0f;
             }
 
             listing.Gap(12f);
@@ -149,13 +144,15 @@ namespace _CAP__Chat_Interactive
             // Current value 
             listing.Gap(6f);
             listing.Label(string.Format("RICS.Economy.CurrentCurrencyDisplay".Translate(), settings.CurrencyName));
-
+            listing.Label(string.Format("RICS.Economy.CurrencyRawString".Translate(), settings.CurrencyName));
+            listing.Label(string.Format("RICS.Economy.CurrencyEmojiSupport".Translate(), settings.CurrencyName));
 
             // Text entry field
             settings.CurrencyName = listing.TextEntry(settings.CurrencyName).Trim();
             listing.Gap(6f);
 
             listing.End();
+            Widgets.EndScrollView();
         }
     }
 }

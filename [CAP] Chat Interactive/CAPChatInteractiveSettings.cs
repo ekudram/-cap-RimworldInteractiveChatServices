@@ -142,19 +142,15 @@ namespace CAP_ChatInteractive
         // === Enhanced Karma System (more tunable + stronger punishment) ===
         public float MinKarma = 0f;
         public float MaxKarma = 1000f;           // Default cap (was 999) — players were sitting at 200 forever
-        public float KarmaDecayRate = 0.25f;    // % of CURRENT karma lost per decay tick (was 0.1f)
-        public int KarmaDecayIntervalMinutes = 8; // NEW: how often decay runs (prevents permanent max karma)
-        public float KarmaMinDecay = 8f;        // Minimum absolute loss per decay (was 100f — too punishing on low karma)
+        public float KarmaDecayRate = 0.05f;    // % of CURRENT karma lost per decay tick 
+        public int KarmaDecayIntervalMinutes = 30; // NEW: how often decay runs (prevents permanent max karma)
+        public float KarmaMinDecay = 0f;        // Minimum absolute loss per decay 
         public float KarmaPerStoreItem = 0.35f; // Slightly reduced gain from store spam
 
         public float KarmaLossPerBadEvent = 12f;     // MUCH stronger punishment (was 1f)
-        public float KarmaGainPerGoodEvent = 0.5f;
-        public float KarmaGainPerNeutralEvent = 0.2f;
+        public float KarmaGainPerGoodEvent = 5f;
+        public float KarmaGainPerNeutralEvent = 1f;
         public float KarmaLossPerDoomEvent = 25f;    // Stronger doom penalty (was 2f)
-
-        // Multiplier tuning (used by coin award / event logic)
-        public float KarmaMultiplierMin = 0.3f;   // 30% reward at 0 karma
-        public float KarmaMultiplierMax = 2.0f;   // 200% reward at max karma
 
         public int MinutesForActive = 30;
         public int MaxTraits = 4;
@@ -306,18 +302,15 @@ namespace CAP_ChatInteractive
             // Enhanced Karma System
             Scribe_Values.Look(ref MinKarma, "minKarma", 0f);
             Scribe_Values.Look(ref MaxKarma, "maxKarma", 200f);
-            Scribe_Values.Look(ref KarmaDecayRate, "karmaDecayRate", 0.25f);
-            Scribe_Values.Look(ref KarmaDecayIntervalMinutes, "karmaDecayIntervalMinutes", 8);
-            Scribe_Values.Look(ref KarmaMinDecay, "karmaMinDecay", 8f);
+            Scribe_Values.Look(ref KarmaDecayRate, "karmaDecayRate", 0.05f);
+            Scribe_Values.Look(ref KarmaDecayIntervalMinutes, "karmaDecayIntervalMinutes", 30);
+            Scribe_Values.Look(ref KarmaMinDecay, "karmaMinDecay", 0f);
             Scribe_Values.Look(ref KarmaPerStoreItem, "karmaPerStoreItem", 0.35f);
 
             Scribe_Values.Look(ref KarmaLossPerBadEvent, "karmaLossPerBadEvent", 12f);
-            Scribe_Values.Look(ref KarmaGainPerGoodEvent, "karmaGainPerGoodEvent", 0.5f);
-            Scribe_Values.Look(ref KarmaGainPerNeutralEvent, "karmaGainPerNeutralEvent", 0.2f);
+            Scribe_Values.Look(ref KarmaGainPerGoodEvent, "karmaGainPerGoodEvent", 5f);
+            Scribe_Values.Look(ref KarmaGainPerNeutralEvent, "karmaGainPerNeutralEvent", 1f);
             Scribe_Values.Look(ref KarmaLossPerDoomEvent, "karmaLossPerDoomEvent", 25f);
-
-            Scribe_Values.Look(ref KarmaMultiplierMin, "karmaMultiplierMin", 0.3f);
-            Scribe_Values.Look(ref KarmaMultiplierMax, "karmaMultiplierMax", 2.0f);
 
             Scribe_Values.Look(ref MinutesForActive, "minutesForActive", 30);
             Scribe_Values.Look(ref MaxTraits, "maxTraits", 4);
