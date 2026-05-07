@@ -2,9 +2,9 @@
 <Defs>
 
   <!-- Base template (matching RimWorld's style) -->
-  <ColorDef Name="HairColorDefBase" Abstract="True">
+  <!--<ColorDef Name="HairColorDefBase" Abstract="True">
     <colorType>Hair</colorType>
-  </ColorDef>
+  </ColorDef>-->
 
   <!-- ====== NATURAL HAIR COLORS ====== -->
   <!-- Brown Variations (1000-1060) -->
