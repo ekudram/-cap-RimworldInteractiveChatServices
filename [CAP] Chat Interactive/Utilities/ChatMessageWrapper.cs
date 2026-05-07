@@ -15,9 +15,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // A unified wrapper for chat messages from different platforms (Twitch, YouTube)
+using CAP_ChatInteractive;
 using System;
 using System.Linq;
 using Verse;
+
+/// <summary>
+/// ChatMessageWrapper serves as a unified representation of chat messages from various platforms (Twitch, YouTube, etc.).
+/// </summary>
 public class ChatMessageWrapper
 {
     public string Username { get; }
@@ -38,20 +43,32 @@ public class ChatMessageWrapper
                                 string platformUserId = null, string channelId = null,
                                 object platformMessage = null, bool isWhisper = false,
                                 string customRewardId = null, int bits = 0,
-                                bool shouldIgnoreForCommands = false)  // NEW parameter
+                                bool shouldIgnoreForCommands = false)
     {
         Username = username?.ToLowerInvariant() ?? "";
         DisplayName = username ?? "";
-        Message = CleanInput(message) ?? "";  // strips garbage + trims – now every command/arg is clean
+        Message = CleanInput(message) ?? "";
         Platform = platform;
         PlatformUserId = platformUserId;
         ChannelId = channelId;
         PlatformMessage = platformMessage;
         IsWhisper = isWhisper;
-        ShouldIgnoreForCommands = shouldIgnoreForCommands;  // Initialize
+        ShouldIgnoreForCommands = shouldIgnoreForCommands;
         CustomRewardId = customRewardId;
         Bits = bits;
         Timestamp = DateTime.Now;
+
+        // === Name-change / ID-authority diagnostic (catches the exact reported edge) ===
+        // If Twitch or YouTube message arrives without PlatformUserId, log it.
+        // This should almost never happen (TwitchLib always provides user-id even on name change).
+        // Presence of this log + "NO PLATFORM IDs" in UI = upstream wrapper construction bug or very first message after rename before ID was attached.
+        if (string.IsNullOrEmpty(platformUserId) &&
+            (platform.Equals("twitch", StringComparison.OrdinalIgnoreCase) ||
+             platform.Equals("youtube", StringComparison.OrdinalIgnoreCase) ||
+             platform.Equals("kick", StringComparison.OrdinalIgnoreCase)))
+        {
+            Logger.Warning($"[RICS ChatMessageWrapper] PlatformUserId missing for {platform} user '{username}' — ID is authoritative. Possible name-change edge or upstream message parsing issue.");
+        }
     }
 
     // Copy constructor needs to copy the new property

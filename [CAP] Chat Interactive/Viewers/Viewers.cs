@@ -381,60 +381,88 @@ namespace CAP_ChatInteractive
                     int karmaMerged = 0;
                     int bogusMerged = 0;
 
+                    // === Edge cases explicitly handled in this pass (reviewed 2026-05-06) ===
+                    // 1. Null entries in All → skipped immediately
+                    // 2. Null/empty Username → safe via GetPrimary guard + local fallback below
+                    // 3. Bogus viewer (digit-only or ":" in username) with no platform IDs → Resolve tries ID extraction + GetViewerByPlatformId lookup
+                    // 4. ResolveRealViewer returns self → prevented by explicit != check
+                    // 5. Multiple bogus → same real viewer → coins/karma accumulate via Give* (order-independent, object mutation + ref in dict)
+                    // 6. Real processed before or after bogus → both work (merge mutates live object already in uniqueViewers)
+                    // 7. Nested lock (this method → GetViewerByPlatformId) → safe (Monitor is reentrant)
+                    // 8. Viewer with only future platforms (Kick etc.) or no platforms → username: fallback key (acceptable collision risk on username only)
+                    // 9. One bad viewer in list → isolated by per-viewer try-catch (graceful degradation, no whole-cleanup abort)
+                    // 10. No changes at all → still rebuilds All (removes nulls), SaveViewers skipped
+
                     foreach (var viewer in All.ToList())
                     {
                         if (viewer == null) continue;
 
-                        // === Detect bogus viewers (username is actually a platform ID) ===
-                        bool isBogus = IsBogusViewer(viewer);
-                        string primaryKey = viewer.GetPrimaryPlatformIdentifier();
-
-                        if (isBogus)
+                        try // NEW: per-viewer isolation so one corrupt entry cannot crash the entire cleanup or mod
                         {
-                            Logger.Warning($"[Viewer Cleanup] Found bogus viewer with platform-style username: '{viewer.Username}'");
+                            bool isBogus = IsBogusViewer(viewer);
 
-                            // Try to find or create the real viewer using platform ID
-                            Viewer realViewer = ResolveRealViewer(viewer);
-                            if (realViewer != null && realViewer != viewer)
+                            string primaryKey;
+                            try
                             {
-                                // Merge data from bogus → real
+                                primaryKey = viewer.GetPrimaryPlatformIdentifier();
+                            }
+                            catch (Exception exKey)
+                            {
+                                Logger.Warning($"[Viewer Cleanup] Failed to compute primary key for viewer '{viewer.Username}': {exKey.Message} — using safe username fallback");
+                                primaryKey = $"username:{(viewer.Username ?? "unknown").ToLowerInvariant()}";
+                            }
+
+                            if (isBogus)
+                            {
+                                Logger.Warning($"[Viewer Cleanup] Found bogus viewer with platform-style username: '{viewer.Username}'");
+
+                                Viewer realViewer = ResolveRealViewer(viewer);
+                                if (realViewer != null && realViewer != viewer)
+                                {
+                                    // Merge economy + platform IDs from bogus into the real one
+                                    coinsMerged += viewer.Coins;
+                                    karmaMerged += (int)viewer.Karma;
+                                    realViewer.GiveCoins(viewer.Coins);
+                                    realViewer.GiveKarma(viewer.Karma);
+
+                                    foreach (var plat in viewer.PlatformUserIds)
+                                    {
+                                        realViewer.AddPlatformUserId(plat.Key, plat.Value);
+                                    }
+
+                                    All.Remove(viewer);
+                                    bogusMerged++;
+                                    Logger.Message($"[Viewer Cleanup] Merged bogus viewer '{viewer.Username}' → real viewer '{realViewer.Username}'");
+                                    continue; // skip normal dedup path
+                                }
+                                // No real viewer found → fall through to normal dedup using primaryKey (usually username: style)
+                            }
+
+                            // Normal deduplication by primary platform identifier
+                            if (uniqueViewers.TryGetValue(primaryKey, out var existing))
+                            {
                                 coinsMerged += viewer.Coins;
                                 karmaMerged += (int)viewer.Karma;
-                                realViewer.GiveCoins(viewer.Coins);
-                                realViewer.GiveKarma(viewer.Karma);
+                                existing.GiveCoins(viewer.Coins);
+                                existing.GiveKarma(viewer.Karma);
 
-                                // Transfer any platform IDs
                                 foreach (var plat in viewer.PlatformUserIds)
                                 {
-                                    realViewer.AddPlatformUserId(plat.Key, plat.Value);
+                                    existing.AddPlatformUserId(plat.Key, plat.Value);
                                 }
 
-                                All.Remove(viewer);
-                                bogusMerged++;
-                                Logger.Message($"[Viewer Cleanup] Merged bogus viewer '{viewer.Username}' → real viewer '{realViewer.Username}'");
-                                continue;
+                                duplicatesRemoved++;
+                                Logger.Debug($"[Viewer Cleanup] Merged duplicate '{viewer.Username}' into '{existing.Username}'");
                             }
-                        }
-
-                        // Normal deduplication by primary identifier
-                        if (uniqueViewers.TryGetValue(primaryKey, out var existing))
-                        {
-                            coinsMerged += viewer.Coins;
-                            karmaMerged += (int)viewer.Karma;
-                            existing.GiveCoins(viewer.Coins);
-                            existing.GiveKarma(viewer.Karma);
-
-                            foreach (var plat in viewer.PlatformUserIds)
+                            else
                             {
-                                existing.AddPlatformUserId(plat.Key, plat.Value);
+                                uniqueViewers[primaryKey] = viewer;
                             }
-
-                            duplicatesRemoved++;
-                            Logger.Message($"[Viewer Cleanup] Merged duplicate '{viewer.Username}' into '{existing.Username}'");
                         }
-                        else
+                        catch (Exception exViewer)
                         {
-                            uniqueViewers[primaryKey] = viewer;
+                            // Graceful degradation: log and drop only the bad entry
+                            Logger.Error($"[Viewer Cleanup] Error processing viewer '{viewer?.Username}': {exViewer.Message} — skipping this entry (non-fatal)");
                         }
                     }
 
