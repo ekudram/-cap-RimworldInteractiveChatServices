@@ -19,6 +19,7 @@
 // including per-streaming-service settings and global chat settings.
 
 
+using RimWorld;
 using System.Collections.Generic;
 using Verse;
 
@@ -141,7 +142,7 @@ namespace CAP_ChatInteractive
 
         // === Enhanced Karma System (more tunable + stronger punishment) ===
         public float MinKarma = 0f;
-        public float MaxKarma = 1000f;           // Default cap (was 999) — players were sitting at 200 forever
+        public float MaxKarma = 200f;           // Default cap (was 999) — players were sitting at 200 forever
         public float KarmaDecayRate = 0.05f;    // % of CURRENT karma lost per decay tick 
         public int KarmaDecayIntervalMinutes = 30; // NEW: how often decay runs (prevents permanent max karma)
         public float KarmaMinDecay = 0f;        // Minimum absolute loss per decay 
@@ -277,6 +278,7 @@ namespace CAP_ChatInteractive
             ));
         }
 
+        // In CAPChatInteractiveSettings.cs, inside CAPGlobalChatSettings.ExposeData()
         public void ExposeData()
         {
             Scribe_Values.Look(ref modVersionSaved, "modVersionSaved", "");
@@ -301,7 +303,7 @@ namespace CAP_ChatInteractive
 
             // Enhanced Karma System
             Scribe_Values.Look(ref MinKarma, "minKarma", 0f);
-            Scribe_Values.Look(ref MaxKarma, "maxKarma", 200f);
+            Scribe_Values.Look(ref MaxKarma, "maxKarma", 200f);           // FIXED default to match field initializer (was 200f)
             Scribe_Values.Look(ref KarmaDecayRate, "karmaDecayRate", 0.05f);
             Scribe_Values.Look(ref KarmaDecayIntervalMinutes, "karmaDecayIntervalMinutes", 30);
             Scribe_Values.Look(ref KarmaMinDecay, "karmaMinDecay", 0f);
@@ -358,10 +360,10 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref LegendaryQuality, "legendaryQuality", 5.0f);
 
             // Research settings
-            Scribe_Values.Look(ref RequireResearch, "requireResearch", false);
+            Scribe_Values.Look(ref RequireResearch, "requireResearch", true);  // FIXED: now matches field initializer (was false)
 
             // Passion Command
-            Scribe_Values.Look(ref MinPassionWager, "minPassionWager", 10);
+            Scribe_Values.Look(ref MinPassionWager, "minPassionWager", 500);  // FIXED: now matches field initializer (was 10)
             Scribe_Values.Look(ref MaxPassionWager, "maxPassionWager", 1000);
             Scribe_Values.Look(ref BasePassionSuccessChance, "basePassionSuccessChance", 15.0f);
             Scribe_Values.Look(ref MaxPassionSuccessChance, "maxPassionSuccessChance", 60.0f);
@@ -377,9 +379,30 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref CritFailLoseVsWrongChance, "critFailLoseVsWrongChance", 0.6f);
             Scribe_Values.Look(ref TargetedCritFailAffectTargetChance, "targetedCritFailAffectTargetChance", 0.7f);
 
-            // Surgery Command
+            // === Surgery Command Settings — now fully persisted ===
+            // Previously only the first two costs had Scribe lines. The remaining 7 costs + all 9 Allow* flags
+            // were declared with proper defaults but never saved/loaded. This caused them to reset on every
+            // world load or mod settings reload. All lines below use the exact field initializer values
+            // so old saves and new installs behave identically.
             Scribe_Values.Look(ref SurgeryGenderSwapCost, "surgeryGenderSwapCost", 1000);
             Scribe_Values.Look(ref SurgeryBodyChangeCost, "surgeryBodyChangeCost", 800);
+            Scribe_Values.Look(ref SurgerySterilizeCost, "surgerySterilizeCost", 400);
+            Scribe_Values.Look(ref SurgeryIUDCost, "surgeryIUDCost", 250);
+            Scribe_Values.Look(ref SurgeryVasReverseCost, "surgeryVasReverseCost", 500);
+            Scribe_Values.Look(ref SurgeryTerminateCost, "surgeryTerminateCost", 300);
+            Scribe_Values.Look(ref SurgeryHemogenCost, "surgeryHemogenCost", -100);
+            Scribe_Values.Look(ref SurgeryTransfusionCost, "surgeryTransfusionCost", 200);
+            Scribe_Values.Look(ref SurgeryMiscBiotechCost, "surgeryMiscBiotechCost", 350);
+
+            Scribe_Values.Look(ref SurgeryAllowGenderSwap, "surgeryAllowGenderSwap", true);
+            Scribe_Values.Look(ref SurgeryAllowBodyChange, "surgeryAllowBodyChange", true);
+            Scribe_Values.Look(ref SurgeryAllowSterilize, "surgeryAllowSterilize", true);
+            Scribe_Values.Look(ref SurgeryAllowIUD, "surgeryAllowIUD", true);
+            Scribe_Values.Look(ref SurgeryAllowVasReverse, "surgeryAllowVasReverse", true);
+            Scribe_Values.Look(ref SurgeryAllowTerminate, "surgeryAllowTerminate", true);
+            Scribe_Values.Look(ref SurgeryAllowHemogen, "surgeryAllowHemogen", true);
+            Scribe_Values.Look(ref SurgeryAllowTransfusion, "surgeryAllowTransfusion", true);
+            Scribe_Values.Look(ref SurgeryAllowMiscBiotech, "surgeryAllowMiscBiotech", true);
 
             // Backstory Settings 
             Scribe_Values.Look(ref ChildhoodWager, "childhoodWager", 1000);
