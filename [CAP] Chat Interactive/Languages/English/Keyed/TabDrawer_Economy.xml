@@ -9,6 +9,7 @@
   <!-- Field Labels -->
   <RICS.Economy.StartingCoins>Starting Coins:</RICS.Economy.StartingCoins>
   <RICS.Economy.BaseCoinReward>Base Coin Reward:</RICS.Economy.BaseCoinReward>
+  <RICS.Economy.ActiveViewerMinutes>Active Viewer Minutes:</RICS.Economy.ActiveViewerMinutes>
   <RICS.Economy.SubscriberExtraCoins>Subscriber Extra Coins:</RICS.Economy.SubscriberExtraCoins>
   <RICS.Economy.VIPExtraCoins>VIP Extra Coins:</RICS.Economy.VIPExtraCoins>
   <RICS.Economy.ModExtraCoins>Mod Extra Coins:</RICS.Economy.ModExtraCoins>
@@ -20,15 +21,14 @@
   <!-- Field Descriptions -->
   <RICS.Economy.StartingCoinsDesc>Initial coins for new viewers</RICS.Economy.StartingCoinsDesc>
   <RICS.Economy.BaseCoinRewardDesc>Base coins earned every 2 minutes if active</RICS.Economy.BaseCoinRewardDesc>
+  <RICS.Economy.ActiveViewerMinutesDesc>Max minutes a viewer can be inactive and still count as "active" for coin rewards</RICS.Economy.ActiveViewerMinutesDesc>
   <RICS.Economy.SubscriberExtraCoinsDesc>Bonus coins for subscribers</RICS.Economy.SubscriberExtraCoinsDesc>
   <RICS.Economy.VIPExtraCoinsDesc>Bonus coins for VIPs</RICS.Economy.VIPExtraCoinsDesc>
   <RICS.Economy.ModExtraCoinsDesc>Bonus coins for moderators</RICS.Economy.ModExtraCoinsDesc>
   <RICS.Economy.StartingKarmaDesc>Initial karma for new viewers</RICS.Economy.StartingKarmaDesc>
   <RICS.Economy.MinimumKarmaDesc>Lowest possible karma value</RICS.Economy.MinimumKarmaDesc>
   <RICS.Economy.MaximumKarmaDesc>Highest possible karma value</RICS.Economy.MaximumKarmaDesc>
-  <RICS.Economy.ActiveViewerMinutesDesc>Max minutes a viewer is counted as active for earning coins</RICS.Economy.ActiveViewerMinutesDesc>
-
-  <!-- Currency Section -->
+  <RICS.Economy.ActiveViewerMinutesDesc>Max minutes a viewer can be inactive and still earn coin rewards</RICS.Economy.ActiveViewerMinutesDesc>  <!-- Currency Section -->
   <RICS.Economy.CurrencyNameDesc>Display name for your currency</RICS.Economy.CurrencyNameDesc>
   <RICS.Economy.CurrencyNameExample>e.g., Credits, Points, Coins</RICS.Economy.CurrencyNameExample>
   <RICS.Economy.CurrentCurrencyDisplay>Current: {0}     Default: :moneybag:</RICS.Economy.CurrentCurrencyDisplay>
@@ -43,13 +43,16 @@
 
   <!-- Decay settings -->
   <RICS.Economy.KarmaDecayRate>Decay Rate (% per interval):</RICS.Economy.KarmaDecayRate>
-  <RICS.Economy.KarmaDecayRateDesc>Higher = faster decay toward minimum.</RICS.Economy.KarmaDecayRateDesc>
+  <RICS.Economy.KarmaDecayRateDesc>Higher = faster decay toward baseline.</RICS.Economy.KarmaDecayRateDesc>
 
   <RICS.Economy.KarmaDecayInterval>Decay Interval (minutes):</RICS.Economy.KarmaDecayInterval>
-  <RICS.Economy.KarmaDecayIntervalDesc>How often the automatic karma decay tick runs.</RICS.Economy.KarmaDecayIntervalDesc>
+  <RICS.Economy.KarmaDecayIntervalDesc>How often karma decay runs.</RICS.Economy.KarmaDecayIntervalDesc>
 
   <RICS.Economy.KarmaMinDecay>Minimum Decay Amount:</RICS.Economy.KarmaMinDecay>
-  <RICS.Economy.KarmaMinDecayDesc>Absolute floor of karma lost per decay tick.</RICS.Economy.KarmaMinDecayDesc>
+  <RICS.Economy.KarmaMinDecayDesc>Smallest amount lost per decay tick.</RICS.Economy.KarmaMinDecayDesc>
+
+  <RICS.Economy.MinDecayKarma>Min Decay Karma:</RICS.Economy.MinDecayKarma>
+  <RICS.Economy.MinDecayKarmaDesc>Karma decay stops when viewers reach this value.</RICS.Economy.MinDecayKarmaDesc>
 
   <!-- Store &amp; Event karma impact -->
   <RICS.Economy.KarmaPerStoreItem>Karma per Store purchases of 100 Coins:</RICS.Economy.KarmaPerStoreItem>

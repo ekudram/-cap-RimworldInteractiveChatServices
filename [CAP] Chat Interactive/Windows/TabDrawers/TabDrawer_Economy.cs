@@ -51,6 +51,7 @@ namespace _CAP__Chat_Interactive
             GUI.color = Color.white;
             UIUtilities.NumericField(listing, "RICS.Economy.StartingCoins".Translate(), "RICS.Economy.StartingCoinsDesc".Translate(), ref settings.StartingCoins, 0, 10000);
             UIUtilities.NumericField(listing, "RICS.Economy.BaseCoinReward".Translate(), "RICS.Economy.BaseCoinRewardDesc".Translate(), ref settings.BaseCoinReward, 1, 100);
+            UIUtilities.NumericField(listing, "RICS.Economy.ActiveViewerMinutes".Translate(), "RICS.Economy.ActiveViewerMinutesDesc".Translate(), ref settings.MinutesForActive, 1, 480);
             UIUtilities.NumericField(listing, "RICS.Economy.SubscriberExtraCoins".Translate(), "RICS.Economy.SubscriberExtraCoinsDesc".Translate(), ref settings.SubscriberExtraCoins, 0, 50);
             UIUtilities.NumericField(listing, "RICS.Economy.VIPExtraCoins".Translate(), "RICS.Economy.VIPExtraCoinsDesc".Translate(), ref settings.VipExtraCoins, 0, 50);
             UIUtilities.NumericField(listing, "RICS.Economy.ModExtraCoins".Translate(), "RICS.Economy.ModExtraCoinsDesc".Translate(), ref settings.ModExtraCoins, 0, 50);
@@ -95,6 +96,7 @@ namespace _CAP__Chat_Interactive
             UIUtilities.NumericField(listing, "RICS.Economy.KarmaDecayRate".Translate(), "RICS.Economy.KarmaDecayRateDesc".Translate(), ref settings.KarmaDecayRate, 0f, 1f);
             UIUtilities.NumericField(listing, "RICS.Economy.KarmaDecayInterval".Translate(), "RICS.Economy.KarmaDecayIntervalDesc".Translate(), ref settings.KarmaDecayIntervalMinutes, 1, 60);
             UIUtilities.NumericField(listing, "RICS.Economy.KarmaMinDecay".Translate(), "RICS.Economy.KarmaMinDecayDesc".Translate(), ref settings.KarmaMinDecay, 0f, 50f);
+            UIUtilities.NumericField(listing, "RICS.Economy.MinDecayKarma".Translate(), "RICS.Economy.MinDecayKarmaDesc".Translate(), ref settings.KarmaMinDecayFloor, 0f, 1000f);
 
             listing.Gap(8f);
 
@@ -120,9 +122,10 @@ namespace _CAP__Chat_Interactive
                 settings.MinKarma = 0f;
                 settings.MaxKarma = 200f;
 
-                settings.KarmaDecayRate = 0.05f;
+                settings.KarmaDecayRate = 0.01f;
                 settings.KarmaDecayIntervalMinutes = 30;
                 settings.KarmaMinDecay = 0f;
+                settings.KarmaMinDecayFloor = 100f;
 
                 settings.KarmaPerStoreItem = 0.35f;
                 settings.KarmaLossPerBadEvent = 12f;

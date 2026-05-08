@@ -610,7 +610,7 @@ namespace CAP_ChatInteractive
                         continue;
 
                     // Only decay viewers who are above the configured decay floor
-                    if (viewer.Karma <= settings.minDecayKarma)
+                    if (viewer.Karma <= settings.KarmaMinDecayFloor)
                         continue;
 
                     // Calculate how much to lose this tick
@@ -622,8 +622,8 @@ namespace CAP_ChatInteractive
 
                     // Apply decay but never go below minDecayKarma
                     float newKarma = viewer.Karma - decayAmount;
-                    if (newKarma < settings.minDecayKarma)
-                        newKarma = settings.minDecayKarma;
+                    if (newKarma < settings.KarmaMinDecayFloor)
+                        newKarma = settings.KarmaMinDecayFloor;
 
                     float actuallyLost = viewer.Karma - newKarma;
 

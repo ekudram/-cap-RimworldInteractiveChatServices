@@ -813,9 +813,15 @@ v
 - Twitch Raids not nameing pawns properly and spawning mechs as raiders.  Now properly names raiders and does not spawn mechs.
 "
             },
-                {"1.33", @"===========================================================" +
-                    @"RICS 1.33 - Changelog
+                {"1.33a", @"===========================================================" +
+                    @"RICS 1.33a - Changelog
                     Released: May 7 2026
+****************************
+**HOT Fixed**
+Not able to put decimals in Karma settings.  Now you can. Put in the . first and then the number.  So for example if you want .5 you would put in .5 or 0.5
+Settings missing for Active Minutes for viewers.  Now you can set how many minutes a viwer is considered active in the Economy tab of the settings.
+New Defaults for Karma Settings.  Karma settings have been rebalanced with new defaults.  If you have not changed your karma settings, they will update to the new defaults.  If you have changed your karma settings, they will not be changed by this update.
+
 
 ****************************
 Updated

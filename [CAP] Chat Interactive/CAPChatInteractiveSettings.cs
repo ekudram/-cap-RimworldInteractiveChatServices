@@ -118,7 +118,7 @@ namespace CAP_ChatInteractive
     public class CAPGlobalChatSettings : IExposable
     {
         // Existing properties...
-        public string modVersion = "1.33";  // Current mod version WE DONT SAVE THIS! Used in history control
+        public string modVersion = "1.33a";  // Current mod version WE DONT SAVE THIS! Used in history control
         public string modVersionSaved = "";
         public string priceListUrl = "https://github.com/ekudram/RICS-Pricelist";
         public bool EnableDebugLogging = false;
@@ -147,7 +147,7 @@ namespace CAP_ChatInteractive
         public int KarmaDecayIntervalMinutes = 30; // NEW: how often decay runs (prevents permanent max karma)
         public float KarmaMinDecay = 0f;        // Minimum absolute loss per decay 
         public float KarmaPerStoreItem = 0.35f; // Slightly reduced gain from store spam
-        public float minDecayKarma = 100f;     // Minium Karma that will decay too
+        public float KarmaMinDecayFloor = 100f;     // Minium Karma that will decay too
 
         public float KarmaLossPerBadEvent = 12f;     // MUCH stronger punishment (was 1f)
         public float KarmaGainPerGoodEvent = 5f;
@@ -309,7 +309,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref KarmaDecayIntervalMinutes, "karmaDecayIntervalMinutes", 30);
             Scribe_Values.Look(ref KarmaMinDecay, "karmaMinDecay", 0f);
             Scribe_Values.Look(ref KarmaPerStoreItem, "karmaPerStoreItem", 0.35f);
-            Scribe_Values.Look(ref minDecayKarma, "minDecayKarma", 100f);
+            Scribe_Values.Look(ref KarmaMinDecayFloor, "minDecayKarma", 100f);
 
             Scribe_Values.Look(ref KarmaLossPerBadEvent, "karmaLossPerBadEvent", 12f);
             Scribe_Values.Look(ref KarmaGainPerGoodEvent, "karmaGainPerGoodEvent", 5f);

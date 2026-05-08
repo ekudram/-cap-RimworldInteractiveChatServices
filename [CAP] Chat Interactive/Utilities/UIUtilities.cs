@@ -244,8 +244,13 @@ namespace CAP_ChatInteractive
 
             LabelWithDescription(leftRect, label, description);
 
+            // Initialize buffer with "0.##" so decimals (0.05, 0.35, etc.) parse correctly
             string buffer = value.ToString("0.##");
+
             Widgets.TextFieldNumeric(rightRect, ref value, ref buffer, min, max);
+
+            // Always clamp after editing (TextFieldNumeric does not return success/failure)
+            value = Mathf.Clamp(value, min, max);
 
             listing.Gap(2f);
         }
