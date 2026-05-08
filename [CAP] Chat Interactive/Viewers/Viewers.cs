@@ -591,7 +591,8 @@ namespace CAP_ChatInteractive
         /// <summary>
         /// Applies karma decay to all viewers based on the current settings.
         /// Called periodically by CAPChatInteractive_GameComponent.
-        /// Prevents players from sitting at max karma forever by slowly draining it over time.
+        /// Decay gently pulls high-karma viewers back toward minDecayKarma over time
+        /// (prevents permanent max karma bonus for pure lurkers) but never goes below it.
         /// </summary>
         public static void ApplyKarmaDecayToAll(CAPGlobalChatSettings settings)
         {
@@ -608,20 +609,21 @@ namespace CAP_ChatInteractive
                     if (viewer == null || viewer.IsBanned)
                         continue;
 
-                    if (viewer.Karma <= settings.MinKarma)
-                        continue; // Already at minimum — nothing to decay
+                    // Only decay viewers who are above the configured decay floor
+                    if (viewer.Karma <= settings.minDecayKarma)
+                        continue;
 
                     // Calculate how much to lose this tick
                     float decayAmount = viewer.Karma * settings.KarmaDecayRate;
 
-                    // Enforce minimum decay per interval (prevents tiny decay on high-karma players)
+                    // Enforce a minimum decay floor so it never becomes meaningless on low-karma viewers
                     if (decayAmount < settings.KarmaMinDecay)
                         decayAmount = settings.KarmaMinDecay;
 
-                    // Apply decay but never go below MinKarma
+                    // Apply decay but never go below minDecayKarma
                     float newKarma = viewer.Karma - decayAmount;
-                    if (newKarma < settings.MinKarma)
-                        newKarma = settings.MinKarma;
+                    if (newKarma < settings.minDecayKarma)
+                        newKarma = settings.minDecayKarma;
 
                     float actuallyLost = viewer.Karma - newKarma;
 
