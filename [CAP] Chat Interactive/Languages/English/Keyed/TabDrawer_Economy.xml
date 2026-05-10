@@ -21,14 +21,13 @@
   <!-- Field Descriptions -->
   <RICS.Economy.StartingCoinsDesc>Initial coins for new viewers</RICS.Economy.StartingCoinsDesc>
   <RICS.Economy.BaseCoinRewardDesc>Base coins earned every 2 minutes if active</RICS.Economy.BaseCoinRewardDesc>
-  <RICS.Economy.ActiveViewerMinutesDesc>Max minutes a viewer can be inactive and still count as "active" for coin rewards</RICS.Economy.ActiveViewerMinutesDesc>
+  <RICS.Economy.ActiveViewerMinutesDesc>How long in minutes a viewer is considered active.</RICS.Economy.ActiveViewerMinutesDesc>
   <RICS.Economy.SubscriberExtraCoinsDesc>Bonus coins for subscribers</RICS.Economy.SubscriberExtraCoinsDesc>
   <RICS.Economy.VIPExtraCoinsDesc>Bonus coins for VIPs</RICS.Economy.VIPExtraCoinsDesc>
   <RICS.Economy.ModExtraCoinsDesc>Bonus coins for moderators</RICS.Economy.ModExtraCoinsDesc>
   <RICS.Economy.StartingKarmaDesc>Initial karma for new viewers</RICS.Economy.StartingKarmaDesc>
   <RICS.Economy.MinimumKarmaDesc>Lowest possible karma value</RICS.Economy.MinimumKarmaDesc>
   <RICS.Economy.MaximumKarmaDesc>Highest possible karma value</RICS.Economy.MaximumKarmaDesc>
-  <RICS.Economy.ActiveViewerMinutesDesc>Max minutes a viewer can be inactive and still earn coin rewards</RICS.Economy.ActiveViewerMinutesDesc>  <!-- Currency Section -->
   <RICS.Economy.CurrencyNameDesc>Display name for your currency</RICS.Economy.CurrencyNameDesc>
   <RICS.Economy.CurrencyNameExample>e.g., Credits, Points, Coins</RICS.Economy.CurrencyNameExample>
   <RICS.Economy.CurrentCurrencyDisplay>Current: {0}     Default: :moneybag:</RICS.Economy.CurrentCurrencyDisplay>

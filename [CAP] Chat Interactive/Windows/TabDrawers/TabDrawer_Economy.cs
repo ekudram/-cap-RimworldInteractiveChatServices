@@ -43,7 +43,7 @@ namespace _CAP__Chat_Interactive
             listing.Label("RICS.Economy.EconomySettingsHeader".Translate());
             GUI.color = Color.white;
             Text.Font = GameFont.Small;
-            listing.GapLine(6f);
+            listing.GapLine(12f);
 
             // Coin Settings
             GUI.color = ColorLibrary.SubHeader;
@@ -56,7 +56,7 @@ namespace _CAP__Chat_Interactive
             UIUtilities.NumericField(listing, "RICS.Economy.VIPExtraCoins".Translate(), "RICS.Economy.VIPExtraCoinsDesc".Translate(), ref settings.VipExtraCoins, 0, 50);
             UIUtilities.NumericField(listing, "RICS.Economy.ModExtraCoins".Translate(), "RICS.Economy.ModExtraCoinsDesc".Translate(), ref settings.ModExtraCoins, 0, 50);
 
-            listing.Gap(12f);
+            listing.Gap(20f);
 
             // Karma Settings
             GUI.color = ColorLibrary.SubHeader;
@@ -86,7 +86,7 @@ namespace _CAP__Chat_Interactive
             if (settings.StartingKarma < settings.MinKarma) settings.StartingKarma = settings.MinKarma;
             if (settings.StartingKarma > settings.MaxKarma) settings.StartingKarma = settings.MaxKarma;
 
-            listing.Gap(8f);
+            listing.Gap(20f);
 
             // === Karma Decay System (prevents permanent 200 karma + store abuse) ===
             GUI.color = ColorLibrary.SubHeader;
@@ -98,7 +98,7 @@ namespace _CAP__Chat_Interactive
             UIUtilities.NumericField(listing, "RICS.Economy.KarmaMinDecay".Translate(), "RICS.Economy.KarmaMinDecayDesc".Translate(), ref settings.KarmaMinDecay, 0f, 50f);
             UIUtilities.NumericField(listing, "RICS.Economy.MinDecayKarma".Translate(), "RICS.Economy.MinDecayKarmaDesc".Translate(), ref settings.KarmaMinDecayFloor, 0f, 1000f);
 
-            listing.Gap(8f);
+            listing.Gap(20f);
 
             // === Karma from Store Purchases & Events ===
             GUI.color = ColorLibrary.SubHeader;
@@ -106,12 +106,12 @@ namespace _CAP__Chat_Interactive
             GUI.color = Color.white;
 
             UIUtilities.NumericField(listing, "RICS.Economy.KarmaPerStoreItem".Translate(), "RICS.Economy.KarmaPerStoreItemDesc".Translate(), ref settings.KarmaPerStoreItem, 0f, 5f);
-            UIUtilities.NumericField(listing, "RICS.Economy.KarmaLossPerBadEvent".Translate(), "RICS.Economy.KarmaLossPerBadEventDesc".Translate(), ref settings.KarmaLossPerBadEvent, 0f, 100f);
-            UIUtilities.NumericField(listing, "RICS.Economy.KarmaGainPerGoodEvent".Translate(), "RICS.Economy.KarmaGainPerGoodEventDesc".Translate(), ref settings.KarmaGainPerGoodEvent, 0f, 10f);
-            UIUtilities.NumericField(listing, "RICS.Economy.KarmaGainPerNeutralEvent".Translate(), "RICS.Economy.KarmaGainPerNeutralEventDesc".Translate(), ref settings.KarmaGainPerNeutralEvent, 0f, 5f);
-            UIUtilities.NumericField(listing, "RICS.Economy.KarmaLossPerDoomEvent".Translate(), "RICS.Economy.KarmaLossPerDoomEventDesc".Translate(), ref settings.KarmaLossPerDoomEvent, 0f, 100f);
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaGainPerGoodEvent".Translate(), "RICS.Economy.KarmaGainPerGoodEventDesc".Translate(), ref settings.KarmaGainPerGoodEvent, 0f, 200f);
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaGainPerNeutralEvent".Translate(), "RICS.Economy.KarmaGainPerNeutralEventDesc".Translate(), ref settings.KarmaGainPerNeutralEvent, 0f, 200f);
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaLossPerBadEvent".Translate(), "RICS.Economy.KarmaLossPerBadEventDesc".Translate(), ref settings.KarmaLossPerBadEvent, 0f, 200f);
+            UIUtilities.NumericField(listing, "RICS.Economy.KarmaLossPerDoomEvent".Translate(), "RICS.Economy.KarmaLossPerDoomEventDesc".Translate(), ref settings.KarmaLossPerDoomEvent, 0f, 200f);
 
-            listing.Gap(8f);
+            listing.Gap(20f);
 
             // Reset button for the entire Karma section
             Rect resetRect = listing.GetRect(28f);
@@ -134,13 +134,13 @@ namespace _CAP__Chat_Interactive
                 settings.KarmaLossPerDoomEvent = 25f;
             }
 
-            listing.Gap(12f);
+            listing.Gap(20f);
             // Currency
 
             GUI.color = ColorLibrary.SubHeader;
             listing.Label("RICS.Economy.CurrencyNameHeader".Translate());
             GUI.color = Color.white;
-            listing.Gap(6f);
+            listing.Gap(12f);
 
             Rect currencyLabelRect = listing.GetRect(Text.LineHeight);
             UIUtilities.LabelWithDescription(currencyLabelRect, "RICS.Economy.CurrencyNameDesc".Translate(), "RICS.Economy.CurrencyNameExample".Translate());
@@ -152,7 +152,7 @@ namespace _CAP__Chat_Interactive
 
             // Text entry field
             settings.CurrencyName = listing.TextEntry(settings.CurrencyName).Trim();
-            listing.Gap(6f);
+            listing.Gap(12f);
 
             listing.End();
             Widgets.EndScrollView();
