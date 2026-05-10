@@ -23,6 +23,7 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using Verse;
 
 namespace CAP_ChatInteractive.Commands.CommandHandlers
@@ -211,18 +212,36 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                    Current.Game.Maps.Any(map => map.IsPlayerHome);
         }
 
+        /// <summary>
+        /// Calculates how much karma to GIVE to the viewer when they buy military aid (good event).
+        /// Returns a POSITIVE number so that viewer.GiveKarma(...) correctly adds it.
+        /// Now includes the new KarmaEventPriceMultiplier for price-based scaling
+        /// (exactly symmetric to the bad-event logic in RaidCommandHandler).
+        /// </summary>
         private static float CalculateKarmaChange(int wager, CAPGlobalChatSettings settings)
         {
             if (settings == null)
-                return wager / 300f; // safe fallback
+            {
+                // Safe fallback — still a positive gain
+                return Mathf.Max(3f, wager / 300f);
+            }
 
-            // Military aid is always a "good" action — use the dedicated good event setting
-            float baseKarma = settings.KarmaGainPerGoodEvent;
+            // Base gain comes from the tunable Economy settings (KarmaGainPerGoodEvent)
+            float baseGain = settings.KarmaGainPerGoodEvent;
 
-            // Scale by wager (bigger wager = more reinforcements arrive = more karma reward)
-            float scale = wager / 1500f; // 1500 wager ≈ 1.0x base
+            // NEW: price-based karma scaling (Good/Neutral add, Bad/Doom subtract)
+            // Default 0.05f = +5 karma per 100 coins spent (balanced default)
+            float priceBasedGain = wager * settings.KarmaEventPriceMultiplier;
 
-            return baseKarma * scale;
+            // Combine base + price scaling
+            float totalGain = baseGain + priceBasedGain;
+
+            // Scale by wager (bigger wager = more reinforcements = more karma reward)
+            float wagerScale = Mathf.Clamp(wager / 1500f, 0.5f, 3.0f);
+            totalGain *= wagerScale;
+
+            // Never return a negative or zero value for a good event
+            return Mathf.Max(totalGain, 1f);
         }
 
         [DebugAction("CAP", "Test Military Aid", allowedGameStates = AllowedGameStates.Playing)]

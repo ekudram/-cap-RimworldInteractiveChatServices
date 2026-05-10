@@ -118,7 +118,7 @@ namespace CAP_ChatInteractive
     public class CAPGlobalChatSettings : IExposable
     {
         // Existing properties...
-        public string modVersion = "1.33a";  // Current mod version WE DONT SAVE THIS! Used in history control
+        public string modVersion = "1.34";  // Current mod version WE DONT SAVE THIS! Used in history control
         public string modVersionSaved = "";
         public string priceListUrl = "https://github.com/ekudram/RICS-Pricelist";
         public bool EnableDebugLogging = false;
@@ -149,10 +149,20 @@ namespace CAP_ChatInteractive
         public float KarmaPerStoreItem = 0.35f; // Slightly reduced gain from store spam
         public float KarmaMinDecayFloor = 100f;     // Minium Karma that will decay too
 
-        public float KarmaLossPerBadEvent = 12f;     // MUCH stronger punishment (was 1f)
         public float KarmaGainPerGoodEvent = 5f;
         public float KarmaGainPerNeutralEvent = 1f;
+        public float KarmaLossPerBadEvent = 12f;     // MUCH stronger punishment (was 1f)
         public float KarmaLossPerDoomEvent = 25f;    // Stronger doom penalty (was 2f)
+
+        /// <summary>
+        /// Multiplier applied to the event's price (in coins) to calculate additional karma.
+        /// Good/Neutral → + (price * multiplier)
+        /// Bad/Doom     → - (price * multiplier)
+        /// Default 0.05f = +5 karma per 100 coins of event price (balanced default).
+        /// Set to 0 to disable price-based karma entirely.
+        /// This is capped at 0f and 5f in the UI to prevent extreme values, but can be set higher via config for fun or testing (e.g. 0.1f = +10 karma per 100 coins, 1.0f = +100 karma per 100 coins, etc.).
+        /// </summary>
+        public float KarmaEventPriceMultiplier = 0.05f; // Multiplier for how much karma gain/loss you get per event based on its price (default 1.0 = no change, 0.5 = half karma, 2.0 = double karma, etc.) as a percentage.
 
         public int MinutesForActive = 30;
         public int MaxTraits = 4;
@@ -315,6 +325,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref KarmaGainPerGoodEvent, "karmaGainPerGoodEvent", 5f);
             Scribe_Values.Look(ref KarmaGainPerNeutralEvent, "karmaGainPerNeutralEvent", 1f);
             Scribe_Values.Look(ref KarmaLossPerDoomEvent, "karmaLossPerDoomEvent", 25f);
+            Scribe_Values.Look(ref KarmaEventPriceMultiplier, "karmaEventPriceMultiplier", 0.05f);
 
             Scribe_Values.Look(ref MinutesForActive, "minutesForActive", 30);
             Scribe_Values.Look(ref MaxTraits, "maxTraits", 4);

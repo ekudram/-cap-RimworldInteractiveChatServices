@@ -885,10 +885,37 @@ Please specify a valid number of coins.
 Updated: TabDrawer_Economy.xml
 Multiple additions to the file for Karma and Currency.
 
-
-
 "
-            }
+            },
+             {"1.34", @"===========================================================" +
+                    @"RICS 1.34a - Changelog
+                    Released: May 15 2026
+
+Updated:
+
+- Rimazon Locker now has line item eject buttons. Ejection by stack now allowed.
+- Twitch Raids system has 3 min timer to solve twitch users joining from a raid not being detected.
+ - This is a twitch issue with users not joining from a raid for up to 3 minutes.
+- Twitch Raids system now has a compact view you click on and return from.  Smaller window you can move out of the way while the timer ticks down
+- Twitch Raids are off by default.  Turn them on at the bottom of the Twitch Settings tab.
+- Karma system has new setting to allow to adjust Karma gain or loss based on price of Event or weather purchased.
+ - Effects the `!raid `command based on the wager giving for the loss of Karma
+ - Effects the `!militaryaid` based on the wager for gain of Karma
+
+
+Fixed:
+
+- `!raid` command improperly applying Karma
+
+
+Translations:
+
+- `TabDrawer_Economy.xml `updated new keys
+-  `RICSGeneral.xml` updated new keys
+
+" }
+
+
 
 
             // Add more versions here as they're released+

@@ -25,6 +25,7 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using Verse;
 using Verse.Noise;
 
@@ -160,47 +161,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (success)
                 {
                     viewer.TakeCoins(cost);
-                    // Karma handling for weather purchases - now uses the new dedicated settings
+                    // NEW: unified karma calculation that includes price-based scaling
+                    // (exactly symmetric to RaidCommandHandler + MilitaryAidCommandHandler + IncidentCommandHandler)
+                    float karmaChange = CalculateEventKarmaChange(
+                        buyableWeather.KarmaType,
+                        buyableWeather.BaseCost,
+                        settings);
+
                     string karmaType = buyableWeather.KarmaType?.ToLowerInvariant() ?? "neutral";
-                    float karmaAmount = 0f;
-
-                    switch (karmaType)
+                    if (karmaChange > 0f)
                     {
-                        case "good":
-                            karmaAmount = settings.KarmaGainPerGoodEvent;
-                            if (karmaAmount > 0f)
-                            {
-                                viewer.GiveKarma(karmaAmount);
-                                Logger.Debug($"Awarded {karmaAmount:F2} karma (settings.KarmaGainPerGoodEvent) for Good weather purchase");
-                            }
-                            break;
-
-                        case "bad":
-                            karmaAmount = settings.KarmaLossPerBadEvent;
-                            if (karmaAmount > 0f)
-                            {
-                                viewer.TakeKarma(karmaAmount);
-                                Logger.Debug($"Deducted {karmaAmount:F2} karma (settings.KarmaLossPerBadEvent) for Bad weather purchase");
-                            }
-                            break;
-
-                        case "doom":
-                            karmaAmount = settings.KarmaLossPerDoomEvent;
-                            if (karmaAmount > 0f)
-                            {
-                                viewer.TakeKarma(karmaAmount);
-                                Logger.Debug($"Deducted {karmaAmount:F2} karma (settings.KarmaLossPerDoomEvent) for Doom weather purchase");
-                            }
-                            break;
-
-                        default: // neutral (including most weather events)
-                            karmaAmount = settings.KarmaGainPerNeutralEvent;
-                            if (karmaAmount > 0f)
-                            {
-                                viewer.GiveKarma(karmaAmount);
-                                Logger.Debug($"Awarded {karmaAmount:F2} karma (settings.KarmaGainPerNeutralEvent) for Neutral weather purchase");
-                            }
-                            break;
+                        if (karmaType == "good" || karmaType == "neutral")
+                        {
+                            viewer.GiveKarma(karmaChange);
+                            Logger.Debug($"Awarded {karmaChange:F2} karma (base + price multiplier) for {karmaType} weather '{buyableWeather.Label}'");
+                        }
+                        else // bad or doom
+                        {
+                            viewer.TakeKarma(karmaChange);
+                            Logger.Debug($"Deducted {karmaChange:F2} karma (base + price multiplier) for {karmaType} weather '{buyableWeather.Label}'");
+                        }
                     }
 
                     // Record weather usage for cooldowns ONLY ON SUCCESS
@@ -243,6 +223,49 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
+        /// <summary>
+        /// Unified karma calculator for ANY buyable weather (good/neutral/bad/doom).
+        /// Returns a POSITIVE number:
+        ///   • Good/Neutral → pass to GiveKarma()
+        ///   • Bad/Doom     → pass to TakeKarma()
+        /// Now includes price-based scaling via KarmaEventPriceMultiplier
+        /// (default 0.05f = ±5 karma per 100 coins of BaseCost).
+        /// </summary>
+        private static float CalculateEventKarmaChange(string karmaType, int baseCost, CAPGlobalChatSettings settings)
+        {
+            if (settings == null)
+            {
+                // Safe fallback based on karma type
+                return karmaType?.ToLowerInvariant() switch
+                {
+                    "good" or "neutral" => Mathf.Max(3f, baseCost / 300f),
+                    "bad" or "doom" => Mathf.Max(8f, baseCost / 200f),
+                    _ => 3f
+                };
+            }
+
+            string typeLower = karmaType?.ToLowerInvariant() ?? "neutral";
+
+            // Base value from Economy settings
+            float baseValue = typeLower switch
+            {
+                "good" => settings.KarmaGainPerGoodEvent,
+                "bad" => settings.KarmaLossPerBadEvent,
+                "doom" => settings.KarmaLossPerDoomEvent,
+                _ => settings.KarmaGainPerNeutralEvent  // neutral or unknown
+            };
+
+            // NEW: price-based karma scaling (same formula used everywhere)
+            float priceBased = baseCost * settings.KarmaEventPriceMultiplier;
+
+            float total = baseValue + priceBased;
+
+            // Never return zero or negative for a good/neutral event
+            // (bad/doom events are always positive loss amounts)
+            return typeLower == "good" || typeLower == "neutral"
+                ? Mathf.Max(total, 1f)
+                : Mathf.Max(total, 1f);
+        }
         private static string GetKarmaTypeForWeather(string karmaType)
         {
             if (string.IsNullOrEmpty(karmaType))

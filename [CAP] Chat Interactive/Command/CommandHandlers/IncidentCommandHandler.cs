@@ -23,6 +23,7 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using Verse;
 
 namespace CAP_ChatInteractive.Commands.CommandHandlers
@@ -109,46 +110,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     viewer.TakeCoins(cost);
 
+                    // NEW: unified karma calculation that includes price-based scaling
+                    // (exactly symmetric to RaidCommandHandler + MilitaryAidCommandHandler)
+                    float karmaChange = CalculateEventKarmaChange(
+                        buyableIncident.KarmaType,
+                        buyableIncident.BaseCost,
+                        settings);
+
                     string karmaLower = buyableIncident.KarmaType?.ToLowerInvariant() ?? "neutral";
-                    float karmaAmount = 0f;
-
-                    switch (karmaLower)
+                    if (karmaChange > 0f)
                     {
-                        case "good":
-                            karmaAmount = settings.KarmaGainPerGoodEvent;
-                            if (karmaAmount > 0f)
-                            {
-                                viewer.GiveKarma(karmaAmount);
-                                Logger.Debug($"Awarded {karmaAmount:F2} karma (settings.KarmaGainPerGoodEvent) for Good event purchase");
-                            }
-                            break;
-
-                        case "bad":
-                            karmaAmount = settings.KarmaLossPerBadEvent;
-                            if (karmaAmount > 0f)
-                            {
-                                viewer.TakeKarma(karmaAmount);
-                                Logger.Debug($"Deducted {karmaAmount:F2} karma (settings.KarmaLossPerBadEvent) for Bad event purchase");
-                            }
-                            break;
-
-                        case "doom":
-                            karmaAmount = settings.KarmaLossPerDoomEvent;
-                            if (karmaAmount > 0f)
-                            {
-                                viewer.TakeKarma(karmaAmount);
-                                Logger.Debug($"Deducted {karmaAmount:F2} karma (settings.KarmaLossPerDoomEvent) for Doom event purchase");
-                            }
-                            break;
-
-                        default: // neutral
-                            karmaAmount = settings.KarmaGainPerNeutralEvent;
-                            if (karmaAmount > 0f)
-                            {
-                                viewer.GiveKarma(karmaAmount);
-                                Logger.Debug($"Awarded {karmaAmount:F2} karma (settings.KarmaGainPerNeutralEvent) for Neutral event purchase");
-                            }
-                            break;
+                        if (karmaLower == "good" || karmaLower == "neutral")
+                        {
+                            viewer.GiveKarma(karmaChange);
+                            Logger.Debug($"Awarded {karmaChange:F2} karma (base + price multiplier) for {karmaLower} event '{buyableIncident.Label}'");
+                        }
+                        else // bad or doom
+                        {
+                            viewer.TakeKarma(karmaChange);
+                            Logger.Debug($"Deducted {karmaChange:F2} karma (base + price multiplier) for {karmaLower} event '{buyableIncident.Label}'");
+                        }
                     }
 
                     if (cooldownManager != null)
@@ -181,7 +162,50 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        // NEW: Helper method to get remaining cooldown days
+        /// <summary>
+        /// Unified karma calculator for ANY buyable incident (good/neutral/bad/doom).
+        /// Returns a POSITIVE number:
+        ///   • Good/Neutral → pass to GiveKarma()
+        ///   • Bad/Doom     → pass to TakeKarma()
+        /// Now includes price-based scaling via KarmaEventPriceMultiplier
+        /// (default 0.05f = ±5 karma per 100 coins of BaseCost).
+        /// </summary>
+        private static float CalculateEventKarmaChange(string karmaType, int baseCost, CAPGlobalChatSettings settings)
+        {
+            if (settings == null)
+            {
+                // Safe fallback based on karma type
+                return karmaType?.ToLowerInvariant() switch
+                {
+                    "good" or "neutral" => Mathf.Max(3f, baseCost / 300f),
+                    "bad" or "doom" => Mathf.Max(8f, baseCost / 200f),
+                    _ => 3f
+                };
+            }
+
+            string typeLower = karmaType?.ToLowerInvariant() ?? "neutral";
+
+            // Base value from Economy settings
+            float baseValue = typeLower switch
+            {
+                "good" => settings.KarmaGainPerGoodEvent,
+                "bad" => settings.KarmaLossPerBadEvent,
+                "doom" => settings.KarmaLossPerDoomEvent,
+                _ => settings.KarmaGainPerNeutralEvent  // neutral or unknown
+            };
+
+            // NEW: price-based karma scaling (same formula used everywhere)
+            float priceBased = baseCost * settings.KarmaEventPriceMultiplier;
+
+            float total = baseValue + priceBased;
+
+            // Never return zero or negative for a good/neutral event
+            // (bad/doom events are always positive loss amounts)
+            return typeLower == "good" || typeLower == "neutral"
+                ? Mathf.Max(total, 1f)
+                : Mathf.Max(total, 1f);
+        }
+
         private static int GetRemainingCooldownDays(string incidentDefName, int incidentCooldownDays, GlobalCooldownManager cooldownManager)
         {
             if (cooldownManager.data.IncidentUsage == null ||
@@ -202,7 +226,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return Math.Max(0, daysRemaining);
         }
 
-        // NEW: Helper method for individual cooldown messages
         private static string GetIndividualCooldownMessage(string incidentLabel, int daysRemaining, int globalCooldownDays)
         {
             if (daysRemaining > 0)

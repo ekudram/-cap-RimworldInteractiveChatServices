@@ -571,39 +571,57 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                    Current.Game.Maps.Any(map => map.IsPlayerHome);
         }
 
+        /// <summary>
+        /// Calculates how much karma to REMOVE from the viewer when they buy a raid (bad event).
+        /// Returns a POSITIVE number so that viewer.TakeKarma(...) correctly subtracts it.
+        /// Now includes the new KarmaEventPriceMultiplier for price-based scaling.
+        /// </summary>
         private static float CalculateKarmaChange(int wager, string raidType, string strategy, CAPGlobalChatSettings settings)
         {
             if (settings == null)
-                return -(wager / 200f); // safe fallback (negative)
+            {
+                // Safe fallback — still a positive loss
+                return Mathf.Max(5f, wager / 200f);
+            }
 
-            // Base loss comes from the new settings (tunable in Economy tab)
+            // Base loss comes from the tunable Economy settings (KarmaLossPerBadEvent)
             float baseLoss = settings.KarmaLossPerBadEvent;
 
-            // For the worst raid types we can use the Doom penalty or a multiplier
-            string type = raidType.ToLowerInvariant();
-            if (type == "mechcluster")
+            // Extra penalty for the nastiest raid types
+            string typeLower = raidType.ToLowerInvariant();
+            if (typeLower == "mechcluster")
             {
                 baseLoss = Mathf.Max(baseLoss, settings.KarmaLossPerDoomEvent * 0.7f);
             }
-            else if (type == "siege" || type == "mech")
+            else if (typeLower == "siege" || typeLower == "mech")
             {
                 baseLoss = Mathf.Max(baseLoss, settings.KarmaLossPerDoomEvent * 0.5f);
             }
 
-            // Scale by wager so bigger bets = bigger karma hit (viewer is "paying" with karma too)
-            float wagerScale = wager / 2000f;           // 2000 wager ≈ 1.0x base
-            float karmaLoss = baseLoss * wagerScale;
+            // NEW: price-based karma scaling (Good/Neutral would add, Bad/Doom subtracts)
+            // We use multiplication because it produces sane, balanced numbers
+            // (e.g. default 0.05f = +5 karma loss per 100 coins spent)
+            float priceBasedLoss = wager * settings.KarmaEventPriceMultiplier;
 
-            // Optional extra penalty for aggressive strategies (you can expand this)
+            // Combine base + price scaling
+            float totalLoss = baseLoss + priceBasedLoss;
+
+            // Optional extra penalty for aggressive strategies
             if (!string.IsNullOrEmpty(strategy))
             {
-                string strat = strategy.ToLowerInvariant();
-                if (strat == "siege" || strat == "breach" || strat == "breachsmart")
-                    karmaLoss *= 1.25f;
+                string stratLower = strategy.ToLowerInvariant();
+                if (stratLower == "siege" || stratLower == "breach" || stratLower == "breachsmart")
+                {
+                    totalLoss *= 1.25f;
+                }
             }
 
-            // Always return a negative value
-            return -Mathf.Abs(karmaLoss);
+            // Scale with wager size (bigger bets = bigger karma punishment)
+            float wagerScale = Mathf.Clamp(wager / 2000f, 0.5f, 3.0f);
+            totalLoss *= wagerScale;
+
+            // Never return a negative or zero value for a bad event
+            return Mathf.Max(totalLoss, 1f);
         }
 
         private static string BuildRaidDetails(RaidResult result, int wager, string currencySymbol)

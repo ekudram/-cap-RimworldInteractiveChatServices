@@ -53,6 +53,8 @@
   <RICS.Economy.MinDecayKarma>Min Decay Karma:</RICS.Economy.MinDecayKarma>
   <RICS.Economy.MinDecayKarmaDesc>Karma decay stops when viewers reach this value.</RICS.Economy.MinDecayKarmaDesc>
 
+
+
   <!-- Store &amp; Event karma impact -->
   <RICS.Economy.KarmaPerStoreItem>Karma per Store purchases percent of Coins:</RICS.Economy.KarmaPerStoreItem>
   <RICS.Economy.KarmaPerStoreItemDesc>Awarded when a viewer buys items.</RICS.Economy.KarmaPerStoreItemDesc>
@@ -68,5 +70,8 @@
 
   <RICS.Economy.KarmaLossPerDoomEvent>Karma Loss per Doom Event:</RICS.Economy.KarmaLossPerDoomEvent>
   <RICS.Economy.KarmaLossPerDoomEventDesc>Penalty when a doom event is purchased.</RICS.Economy.KarmaLossPerDoomEventDesc>
+
+  <RICS.Economy.KarmaPerEventPriceMultiplier>Karma per Event Price Multiplier:</RICS.Economy.KarmaPerEventPriceMultiplier>
+  <RICS.Economy.KarmaPerEventPriceMultiplierDesc>Multiplier applied as a % to the event's price.</RICS.Economy.KarmaPerEventPriceMultiplierDesc>
 
 </LanguageData>
