@@ -17,6 +17,7 @@
 using Verse;
 // Deprecated game component intended for initializing
 // Functionality has been moved to CAPChatInteractive_GameComponent for better organization and to avoid multiple game components.
+// This component is left in place for now to avoid breaking saves that may have it, but it no longer does anything.
 public class GameComponent_RaceSettingsInitializer : GameComponent
 {
     public GameComponent_RaceSettingsInitializer(Game game) { }
