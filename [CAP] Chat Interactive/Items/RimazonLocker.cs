@@ -28,6 +28,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Verse;
+using Verse.Sound;
 namespace CAP_ChatInteractive
 {
     /// <summary>
@@ -706,6 +707,42 @@ namespace CAP_ChatInteractive
             }
         }
 
+        /// <summary>
+        /// Ejects ONE specific item from the locker to a nearby valid cell.
+        /// Called from the new per-item eject button in Dialog_LockerContents.
+        /// Reuses the exact same FindValidDropCell + TryDrop pattern already used by
+        /// SafeEjectAllContents / SafeDropItemsIndividually so placement rules stay consistent
+        /// with vanilla (and with your existing Unstored priority + haul-destination behavior).
+        /// WHY this change: Viewers/streamers requested the ability to remove individual
+        /// purchased items instead of being forced to eject everything.
+        /// Edge cases: null thing, thing no longer in container, no Map/spawned, invalid drop cell
+        /// (falls back to Position), exceptions logged via Logger (graceful degradation, no crash).
+        /// </summary>
+        public void EjectSingleItem(Thing thing)
+        {
+            if (thing == null || innerContainer == null || !innerContainer.Contains(thing) || Map == null || !Spawned)
+                return;
+
+            try
+            {
+                IntVec3 dropCell = FindValidDropCell(Position, Map, 3);
+                if (!dropCell.IsValid)
+                {
+                    dropCell = Position; // same fallback used in SafeDropItemsIndividually
+                }
+
+                bool dropped = innerContainer.TryDrop(thing, dropCell, Map, ThingPlaceMode.Near, out Thing _);
+
+                if (dropped && Spawned && Map != null)
+                {
+                    MoteMaker.ThrowText(this.DrawPos + new Vector3(0f, 0f, 0.25f), Map, "Ejected", Color.white, 1.5f);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"EjectSingleItem ERROR for {thing?.LabelShort ?? "null"}: {ex.Message}");
+            }
+        }
 
         public bool CanOpen => true;
 
@@ -862,40 +899,51 @@ namespace CAP_ChatInteractive
             Widgets.Label(new Rect(0f, 40f, inRect.width, 25f),
                 "RICS.Storage.StackSlots".Translate(locker.InnerContainer.Count, locker.MaxStacks));
 
+            // We add a 28px left margin for the eject widget button.
+            // All existing column x-offsets are shifted +28px so nothing overlaps.
+            // Icon column now starts at ~28f, name at 58f, etc.
+            // The eject button uses Widgets.ButtonImage + ContentFinder exactly like your
+            // existing "Eject all" / rename gizmos. You will add the RICS_EjectItem asset.
+
             //Widgets.Label(new Rect(0f, 60f, inRect.width, 25f), $"Total items: {locker.InnerContainer.TotalStackCount}");
             Widgets.Label(new Rect(0f, 60f, inRect.width, 25f),
-                "RICS.Storage.TotalItems".Translate(locker.InnerContainer.TotalStackCount));
+                            "RICS.Storage.TotalItems".Translate(locker.InnerContainer.TotalStackCount));
 
-            Rect viewRect = new Rect(0f, 120f, inRect.width, inRect.height - 120f);
-            Rect listRect = new Rect(0f, 0f, viewRect.width - 20f, cachedContents.Count * 35f);
-
-            // Draw column headers - FOUR-COLUMN LAYOUT with Quantity
+            // === COLUMN HEADERS (fixed position) ===
+            // These must be drawn *before* BeginScrollView and at a fixed y,
+            // NOT using viewRect.y. Otherwise the scroll content starts at the
+            // same y and overlaps the headers.
+            // Header block ends at y ≈ 144f (120f + 25f height + line).
+            Rect headerRect = new Rect(0f, 120f, inRect.width, 25f);
             if (cachedContents.Count > 0)
             {
-                Rect headerRect = new Rect(viewRect.x, viewRect.y, viewRect.width, 25f);
                 GUI.color = Color.gray;
                 Widgets.DrawLineHorizontal(headerRect.x, headerRect.y + 24f, headerRect.width);
                 GUI.color = Color.white;
 
                 Text.Anchor = TextAnchor.MiddleLeft;
-                // Item column
-                // Widgets.Label(new Rect(headerRect.x + 30f, headerRect.y, 180f, 25f), "Item");
-                Widgets.Label(new Rect(headerRect.x + 30f, headerRect.y, 180f, 25f), "RICS.Storage.Item".Translate());
-                // Quantity column
-                // Widgets.Label(new Rect(headerRect.x + 220f, headerRect.y, 70f, 25f), "Qty");
-                Widgets.Label(new Rect(headerRect.x + 220f, headerRect.y, 70f, 25f), "RICS.Storage.Quantity".Translate());
-                // Individual item value
-                // Widgets.Label(new Rect(headerRect.x + 300f, headerRect.y, 90f, 25f), "Each Value");
-                // Total value (item value × quantity)
-                Widgets.Label(new Rect(headerRect.x + 300f, headerRect.y, 90f, 25f), "RICS.Storage.EachValue".Translate());
-
-                // Widgets.Label(new Rect(headerRect.x + 400f, headerRect.y, 120f, 25f), "Total Value");
-                Widgets.Label(new Rect(headerRect.x + 400f, headerRect.y, 120f, 25f), "RICS.Storage.TotalValue".Translate());
+                // Eject column has no text header (icon-only)
+                Widgets.Label(new Rect(headerRect.x + 58f, headerRect.y, 180f, 25f), "RICS.Storage.Item".Translate());
+                Widgets.Label(new Rect(headerRect.x + 250f, headerRect.y, 70f, 25f), "RICS.Storage.Quantity".Translate());
+                Widgets.Label(new Rect(headerRect.x + 330f, headerRect.y, 90f, 25f), "RICS.Storage.EachValue".Translate());
+                Widgets.Label(new Rect(headerRect.x + 430f, headerRect.y, 120f, 25f), "RICS.Storage.TotalValue".Translate());
                 Text.Anchor = TextAnchor.UpperLeft;
             }
 
-            Widgets.BeginScrollView(viewRect, ref scrollPosition, listRect);
-            float y = 25f; // Start below header
+            // === SCROLL VIEW SETUP (now correctly below headers) ===
+            // Widgets.BeginScrollView(viewRect, ref scrollPosition, listRect)
+            // - viewRect  = the visible viewport rectangle (what the player sees)
+            // - listRect  = the full content size (height = all rows * 35f)
+            // - scrollPosition = RimWorld automatically updates when you scroll
+            //
+            // We start the viewport at 155f (10f gap after header line) and leave
+            // 40f at the bottom for the Eject All + Close buttons.
+            float scrollStartY = 155f;
+            float buttonAreaHeight = 40f;
+            Rect viewRect = new Rect(0f, scrollStartY, inRect.width, inRect.height - scrollStartY - buttonAreaHeight);
+            Rect listRect = new Rect(0f, 0f, viewRect.width - 20f, cachedContents.Count * 35f);
+
+            Widgets.BeginScrollView(viewRect, ref scrollPosition, listRect); float y = 25f; // Start below header
 
             for (int i = 0; i < cachedContents.Count; i++)
             {
@@ -908,43 +956,61 @@ namespace CAP_ChatInteractive
                     Widgets.DrawLightHighlight(rowRect);
                 }
 
-                // Icon
-                Widgets.ThingIcon(new Rect(0f, y + 2f, 28f, 28f), thing);
+                // === NEW: Eject single item button (left side, caravan-menu widget style) ===
+                // 24x24 icon button. Uses same ContentFinder pattern as your other RICS commands.
+                // "UI/Commands/RICS_Eject" is a custom "eject" icon included in the mod's content.
+                // "UI/Buttons/Abandon" is the vanilla "abandon item" icon used in caravans/
+                Rect ejectRect = new Rect(2f, y + 4f, 24f, 24f);
+                Texture2D ejectIcon = ContentFinder<Texture2D>.Get("UI/Commands/RICS_Eject", true);
+                if (Widgets.ButtonImage(ejectRect, ejectIcon))
+                {
+                    if (thing != null && locker.InnerContainer != null && locker.InnerContainer.Contains(thing))
+                    {
+                        SoundDefOf.Click.PlayOneShotOnCamera();
+                        locker.EjectSingleItem(thing);
+                        CacheContents(); // refresh list immediately so the item disappears from UI
+                    }
+                }
+                if (Mouse.IsOver(ejectRect))
+                {
+                    TooltipHandler.TipRegion(ejectRect, "RICS.Locker.EjectThisItem".Translate());
+                }
 
-                // Name - Manually include stack count since we're not using Building_Storage
+                // Icon — shifted right by 28px to make room for eject button (was 0f)
+                Widgets.ThingIcon(new Rect(28f, y + 2f, 28f, 28f), thing);
+
+                // Name — shifted (was 30f, now 58f)
                 Text.Anchor = TextAnchor.MiddleLeft;
                 string itemName = thing.LabelCapNoCount ?? thing.def?.label ?? "RICS.Unknown".Translate();
-                Widgets.Label(new Rect(30f, y, 190f, 32f), itemName);
+                Widgets.Label(new Rect(58f, y, 190f, 32f), itemName);
 
-                // Quantity
+                // Quantity — shifted (was 220f, now 250f)
                 string quantityText = thing.stackCount.ToString();
-                Widgets.Label(new Rect(220f, y, 80f, 32f), quantityText);
+                Widgets.Label(new Rect(250f, y, 80f, 32f), quantityText);
 
-                // Individual item value (per unit)
+                // Individual item value (per unit) — shifted (was 300f, now 330f)
                 string eachValue = thing.MarketValue.ToStringMoney();
-                Widgets.Label(new Rect(300f, y, 100f, 32f), eachValue);
+                Widgets.Label(new Rect(330f, y, 100f, 32f), eachValue);
 
-                // Total value (item value × quantity)
+                // Total value (item value × quantity) — shifted (was 400f, now 430f)
                 float totalValue = thing.MarketValue * thing.stackCount;
                 string totalValueText = totalValue.ToStringMoney();
-                Widgets.Label(new Rect(400f, y, 130f, 32f), totalValueText);
+                Widgets.Label(new Rect(430f, y, 130f, 32f), totalValueText);
 
-                // Info button
+                // Info button (right side, unchanged)
                 if (Widgets.ButtonImage(new Rect(listRect.width - 24f, y + 4f, 24f, 24f), TexButton.Info))
                 {
                     if (thing?.def != null)
                     {
-                        // Prefer this version — much less likely to crash
                         Find.WindowStack.Add(new Dialog_InfoCard(thing.def, thing.Stuff));
                     }
                     else
                     {
-                        // Messages.Message("Cannot show info for this item", MessageTypeDefOf.RejectInput);
                         Messages.Message("RICS.CannotShowInfo".Translate(), MessageTypeDefOf.RejectInput);
                     }
                 }
 
-                // Tooltip - shows detailed info including stack count
+                // Tooltip — shows detailed info including stack count
                 string tooltip = thing.GetInspectString();
                 if (!string.IsNullOrEmpty(tooltip))
                 {
@@ -957,17 +1023,29 @@ namespace CAP_ChatInteractive
             Widgets.EndScrollView();
             Text.Anchor = TextAnchor.UpperLeft;
 
-            // Bottom buttons
-            Rect buttonRect = new Rect(0f, inRect.height - 30f, inRect.width, 30f);
-            // if (Widgets.ButtonText(new Rect(buttonRect.x, buttonRect.y, 150f, 30f), "Eject All"))
-            if (Widgets.ButtonText(new Rect(buttonRect.x, buttonRect.y, 150f, 30f), "RICS.EjectAll".Translate()))
+            Rect buttonArea = new Rect(10f, inRect.height - 35f, inRect.width - 20f, 30f);
+            float ejectAllWidth = 150f;
+            float closeWidth = 110f;
+            Rect ejectAllRect = new Rect(buttonArea.x, buttonArea.y, ejectAllWidth, 30f);
+            Rect closeRect = new Rect(buttonArea.xMax - closeWidth, buttonArea.y, closeWidth, 30f);
+
+            if (cachedContents.Count > 0)
             {
-                // With this:
-                locker.SafeEjectAllContents();
-                CacheContents(); // Refresh
+                if (Widgets.ButtonText(ejectAllRect, "RICS.EjectAll".Translate()))
+                {
+                    SoundDefOf.Click.PlayOneShotOnCamera();
+                    locker.SafeEjectAllContents();
+                    CacheContents(); // keep list fresh for rapid successive actions
+                }
+            }
+
+            if (Widgets.ButtonText(closeRect, "Close".Translate()))
+            {
+                Close();
             }
         }
     }
+    
 
     public class Dialog_StorageSettings : Window
     {
