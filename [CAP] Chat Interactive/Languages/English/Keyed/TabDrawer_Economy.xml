@@ -54,7 +54,7 @@
   <RICS.Economy.MinDecayKarmaDesc>Karma decay stops when viewers reach this value.</RICS.Economy.MinDecayKarmaDesc>
 
   <!-- Store &amp; Event karma impact -->
-  <RICS.Economy.KarmaPerStoreItem>Karma per Store purchases of 100 Coins:</RICS.Economy.KarmaPerStoreItem>
+  <RICS.Economy.KarmaPerStoreItem>Karma per Store purchases percent of Coins:</RICS.Economy.KarmaPerStoreItem>
   <RICS.Economy.KarmaPerStoreItemDesc>Awarded when a viewer buys items.</RICS.Economy.KarmaPerStoreItemDesc>
 
   <RICS.Economy.KarmaLossPerBadEvent>Karma Loss per Bad Event:</RICS.Economy.KarmaLossPerBadEvent>

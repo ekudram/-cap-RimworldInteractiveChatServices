@@ -55,8 +55,7 @@ namespace CAP_ChatInteractive.Windows
 
         public override void DoWindowContents(Rect inRect)
         {
-            float elapsed = Time.time - startTime;
-            float timeLeft = WindowDuration - elapsed;
+            float timeLeft = CAPChatInteractiveMod.Instance.TwitchService.GetRaidJoinTimeLeft();
 
             if (timeLeft <= 0f)
             {
@@ -64,10 +63,20 @@ namespace CAP_ChatInteractive.Windows
                 return;
             }
 
-            // Title
+            // Title - leave space for Compact button on the right
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.HeaderAccent;
-            Widgets.Label(new Rect(0f, 10f, inRect.width, 35f), "TWITCH RAID INCOMING!");
+            Widgets.Label(new Rect(0f, 10f, inRect.width - 125f, 35f), "TWITCH RAID INCOMING!");
+
+            // Compact View button (top-right)
+
+            GUI.color = Color.white;
+            Rect compactRect = new Rect(inRect.width - 150f, 8f, 150f, 30f);
+            if (Widgets.ButtonText(compactRect, "Compact View"))
+            {
+                Find.WindowStack.Add(new Dialog_TwitchRaidJoinMini(raiderName, viewerCount));
+                Close();
+            }
 
             // Subtitle
             Text.Font = GameFont.Small;
@@ -76,18 +85,24 @@ namespace CAP_ChatInteractive.Windows
 
             // Countdown
             Text.Font = GameFont.Medium;
-            GUI.color = timeLeft > 15f ? ColorLibrary.Success : ColorLibrary.Danger;
+            GUI.color = timeLeft > 60f ? ColorLibrary.Success : ColorLibrary.Danger;
             Widgets.Label(new Rect(0f, 78f, inRect.width, 32f), $"!JoinRaid in the next {timeLeft:F0} seconds!");
 
-            // Live list header
             var currentRaiders = GetJoinedNames();
 
+            // Note about Twitch delay (brief, readable, normal size)
+            Text.Font = GameFont.Small;
+            GUI.color = Color.gray;
+            Widgets.Label(new Rect(0f, 110f, inRect.width, 18f), "Note: Twitch can take up to 3 minutes for all raiders to join.");
+            GUI.color = Color.white;
+
+            // Live list header (shifted down for note)
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
-            Widgets.Label(new Rect(12f, 120f, inRect.width - 24f, 25f), $"Raiders so far ({currentRaiders.Count}):");
+            Widgets.Label(new Rect(12f, 130f, inRect.width - 24f, 25f), $"Raiders so far ({currentRaiders.Count}):");
 
-            // === SCROLLABLE LIST ===
-            Rect listRect = new Rect(12f, 148f, inRect.width - 24f, 170f);
+            // === SCROLLABLE LIST (height reduced to fit note) ===
+            Rect listRect = new Rect(12f, 156f, inRect.width - 24f, 155f);
             Rect viewRect = new Rect(0f, 0f, listRect.width - 16f, currentRaiders.Count * 24f + 8f);
 
             Widgets.BeginScrollView(listRect, ref _scrollPosition, viewRect);
@@ -105,6 +120,7 @@ namespace CAP_ChatInteractive.Windows
             Widgets.EndScrollView();
 
             // Start Raid Now button
+            float elapsed = 180f - timeLeft;
             bool buttonEnabled = elapsed >= ButtonDelay;
             GUI.color = buttonEnabled ? ColorLibrary.Danger : Color.gray;
 

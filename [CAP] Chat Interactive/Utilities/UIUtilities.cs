@@ -355,6 +355,7 @@ namespace CAP_ChatInteractive
         public static readonly Color Success = new Color(0.2f, 0.8f, 0.2f);
         public static readonly Color Warning = new Color(1.0f, 0.75f, 0.2f);  // Yellow-Orange  Maybe more yellow?
         public static readonly Color Danger = new Color(0.9f, 0.1f, 0.1f);
+        public static readonly Color Info = new Color(0.3f, 0.65f, 0.95f); // Informational / neutral blue for status messages, tips, secondary labels and info sections. Distinct from PrimaryAction (darker action blue) and SubHeader (lighter sky blue) while staying readable on RimWorld dark UI.
 
         // Text variants
         public static readonly Color MutedText = new Color(0.7f, 0.7f, 0.7f);   // Secondary / descriptions

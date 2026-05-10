@@ -67,7 +67,7 @@ namespace CAP_ChatInteractive
         // === Twitch Raids Feature - Join System ===
         private readonly List<string> _raidJoinList = new List<string>(20);
         private DateTime _raidStartTime = DateTime.MinValue;
-        private const int RaidJoinWindowSeconds = 45; // How long viewers have to join
+        private const int RaidJoinWindowSeconds = 180; // 3 minutes - Twitch can take up to ~3min to register all raiders joining the channel
         private bool _raidJoinWindowActive = false;
         private DateTime _raidJoinStartTime = DateTime.MinValue;
 
@@ -816,6 +816,19 @@ namespace CAP_ChatInteractive
         public List<string> GetCurrentRaidJoinList()
         {
             return new List<string>(_raidJoinList);
+        }
+
+        /// <summary>
+        /// Returns remaining seconds in the raid join window (single source of truth).
+        /// Used by both full and compact dialogs so countdown stays accurate even
+        /// if the mini dialog is opened later or after view switches.
+        /// </summary>
+        public float GetRaidJoinTimeLeft()
+        {
+            if (!_raidJoinWindowActive || _raidJoinStartTime == DateTime.MinValue)
+                return 0f;
+            float elapsed = (float)(DateTime.Now - _raidJoinStartTime).TotalSeconds;
+            return Mathf.Max(0f, RaidJoinWindowSeconds - elapsed);
         }
 
         public static void OnUserLeft(object sender, OnUserLeftArgs e)
