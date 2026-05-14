@@ -335,6 +335,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.TCH.Replace.NewTraitNotFound".Translate(newTraitName);
                 }
 
+                // NEW ANTI-EXPLOIT: Reject replacement of any BypassLimit trait (as requested)
+                // (prevents replacing bypass → normal when at limit)
+                if (oldBuyableTrait.BypassLimit)
+                {
+                    return "RICS.TCH.Replace.OldCannotRemove".Translate(oldBuyableTrait.Name);
+                }
+
                 if (!oldBuyableTrait.CanRemove)
                 {
                     return "RICS.TCH.Replace.OldCannotRemove".Translate(oldBuyableTrait.Name);
@@ -345,22 +352,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.TCH.Replace.NewCannotAdd".Translate(newBuyableTrait.Name);
                 }
 
-                // === ANTI-EXPLOIT: BypassLimit check for replacement ===
-                // If the old trait bypasses the limit, we still enforce MaxTraits when replacing it
-                // (prevents "replace bypass-trait → add any trait" when already at cap).
-                // New trait's BypassLimit is ignored here — the limit is on total count, not per-trait.
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 int maxTraits = settings?.MaxTraits ?? 4;
 
-                bool oldBypasses = oldBuyableTrait.BypassLimit;
+                bool oldBypasses = oldBuyableTrait.BypassLimit; // now always false due to rejection above
                 bool newBypasses = newBuyableTrait.BypassLimit;
 
-                int currentCount = pawn.story.traits.allTraits.Count;
-
+                // FIXED: Use effective count for anti-exploit check
                 if (oldBypasses && !newBypasses)
                 {
-                    // Replacing a bypass trait with a normal one while at limit = exploit
-                    if (pawn.story.traits.allTraits.Count >= maxTraits)
+                    int effectiveCount = GetEffectiveTraitCount(pawn);
+                    if (effectiveCount >= maxTraits)
                     {
                         return "RICS.TCH.Replace.MaxTraitsReached".Translate(maxTraits);
                     }
@@ -387,13 +389,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.TCH.Replace.DoesNotHaveOld".Translate(oldBuyableTrait.Name);
                 }
 
-
                 if (existingTrait.sourceGene != null || existingTrait.ScenForced)
                 {
                     return "RICS.TCH.Replace.OldTraitForced".Translate(oldBuyableTrait.Name);
                 }
-                currentCount = pawn.story.traits.allTraits.Count;
-
 
                 // Check if pawn already has the new trait (different from old)
                 if (oldBuyableTrait.DefName != newBuyableTrait.DefName || oldBuyableTrait.Degree != newBuyableTrait.Degree)
