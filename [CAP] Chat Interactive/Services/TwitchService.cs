@@ -497,7 +497,7 @@ namespace CAP_ChatInteractive
 
             _lastRaidTriggerTime = DateTime.Now;
 
-            Logger.Twitch($"[CUSTOM FACTION RAID] Starting custom faction raid for @{raiderName} | Join list count: {_raidJoinList.Count} | OnlyRaiders setting: {globalSettings.TwtichRaidsOnlyRaiders}");
+            Logger.Twitch($"[CUSTOM FACTION RAID] Starting custom faction raid for @{raiderName} | Join list count: {_raidJoinList.Count} | OnlyRaiders setting: {globalSettings.TwitchRaidsOnlyRaiders}");
 
             Faction raidFaction = GetOrCreateRaidFaction(raiderName);
 

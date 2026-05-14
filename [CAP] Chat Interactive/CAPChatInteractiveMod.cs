@@ -53,6 +53,7 @@ namespace CAP_ChatInteractive
             {
                 Settings.GlobalSettings.modVersionSaved = Settings.GlobalSettings.modVersion;
                 Logger.Debug($"Initialized modVersionSaved to {Settings.GlobalSettings.modVersion}");
+                WriteSettings();
             }
 
             // Export active mod list once at startup for external RICS-Pricelist GitHub use

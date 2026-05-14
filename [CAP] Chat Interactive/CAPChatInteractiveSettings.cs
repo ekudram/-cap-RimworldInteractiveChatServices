@@ -44,16 +44,19 @@ namespace CAP_ChatInteractive
 
         public override void ExposeData()
         {
-            Scribe_Deep.Look(ref TwitchSettings, "twitchSettings");
-            Scribe_Deep.Look(ref YouTubeSettings, "youtubeSettings");
-            Scribe_Deep.Look(ref KickSettings, "kickSettings");
-            Scribe_Deep.Look(ref GlobalSettings, "globalSettings");
 
-            // Extra safety — RimWorld sometimes skips field initializers on nested objects
+            base.ExposeData();
+            // Ensure settings objects are not null before loading/saving to prevent errors on first load or with old config.xml
             TwitchSettings ??= new StreamServiceSettings();
             YouTubeSettings ??= new StreamServiceSettings();
             KickSettings ??= new StreamServiceSettings();
             GlobalSettings ??= new CAPGlobalChatSettings();
+            // Now we can safely call Scribe_Deep.Look on each settings object
+            Scribe_Deep.Look(ref TwitchSettings, "twitchSettings");
+            Scribe_Deep.Look(ref YouTubeSettings, "youtubeSettings");
+            Scribe_Deep.Look(ref KickSettings, "kickSettings");
+            Scribe_Deep.Look(ref GlobalSettings, "globalSettings");
+            
         }
     }
 
@@ -191,7 +194,7 @@ namespace CAP_ChatInteractive
 
         // Command settings could be added here in the future
         public string Prefix = "!";
-        public string BuyPrefix = "#";
+        public string BuyPrefix = "$";
 
         // Lootbox settings
         public IntRange LootBoxRandomCoinRange = new IntRange(250, 750);
@@ -272,21 +275,15 @@ namespace CAP_ChatInteractive
 
         // === Twitch Raids feature (Phase 1) ===
         public bool TwitchRaidsEnabled = false;           // global kill-switch
-        public bool TwtichRaidsOnlyRaiders = true;     // only twitch raiders and !joinraid in the raid 
+        public bool TwitchRaidsOnlyRaiders = true;     // only twitch raiders and !joinraid in the raid 
         public int TwitchRaidDelayMinutes = 1;            // delay before triggering in-game raid (minutes)
         public int TwitchRaidMinRaiders = 5;              // anti-troll protection (default 5)
 
         public CAPGlobalChatSettings()
         {
-            RewardSettings = new List<ChannelPoints_RewardSettings>();
-            // Optionally add a default reward
-            RewardSettings.Add(new ChannelPoints_RewardSettings(
-                "Example Reward",
-                "",
-                "300",
-                false,
-                true
-            ));
+            // List is already initialized by the field initializer above.
+            // Do NOT add the example reward here anymore.
+            // The PostLoadInit logic below will add it only for brand new configs.
         }
 
         // In CAPChatInteractiveSettings.cs, inside CAPGlobalChatSettings.ExposeData()
@@ -424,13 +421,35 @@ namespace CAP_ChatInteractive
             // Channel Points settings
             Scribe_Values.Look(ref ChannelPointsEnabled, "channelPointsEnabled", true);
             Scribe_Values.Look(ref ShowChannelPointsDebugMessages, "showChannelPointsDebugMessages", false);
+            // === Channel Points Reward Settings ===
+            // Special handling so the "Example Reward" only appears for new users
+            // and never duplicates or disappears on existing saves.
+            if (Scribe.mode == LoadSaveMode.LoadingVars)
+            {
+                RewardSettings.Clear();
+            }
+
             Scribe_Collections.Look(ref RewardSettings, "rewardSettings", LookMode.Deep);
+
+            // Only add the example reward for completely new configs (first install or empty list)
+            if (Scribe.mode == LoadSaveMode.PostLoadInit && (RewardSettings == null || RewardSettings.Count == 0))
+            {
+                RewardSettings ??= new List<ChannelPoints_RewardSettings>();
+                RewardSettings.Add(new ChannelPoints_RewardSettings(
+                    "Example Reward",
+                    "",
+                    "300",
+                    false,
+                    true
+                ));
+            }
 
             // Twitch Raids (new in 1.31+)
             Scribe_Values.Look(ref TwitchRaidsEnabled, "twitchRaidsEnabled", false);
-            Scribe_Values.Look(ref TwtichRaidsOnlyRaiders, "TwtichRaidsOnlyRaiders", true);
+            Scribe_Values.Look(ref TwitchRaidsOnlyRaiders, "twitchRaidsOnlyRaiders", true);
             Scribe_Values.Look(ref TwitchRaidDelayMinutes, "twitchRaidDelayMinutes", 1);
             Scribe_Values.Look(ref TwitchRaidMinRaiders, "twitchRaidMinRaiders", 5);
+
         }
     }
 
