@@ -65,9 +65,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.UICH.NotUsable".Translate(itemName);
                 }
 
-                if (!StoreCommandHelper.HasRequiredResearch(storeItem))
+                var researchResult = StoreCommandHelper.HasRequiredResearch(storeItem);
+                if (!researchResult.Allowed)
                 {
-                    return "RICS.UICH.ResearchRequired".Translate(itemName);
+                    string researchInfo = string.IsNullOrEmpty(researchResult.BlockingResearchLabel)
+                        ? ""
+                        : $" (research needed: {researchResult.BlockingResearchLabel})";
+                    return "RICS.UICH.ResearchRequired".Translate(itemName) + researchInfo;
                 }
 
                 if (!int.TryParse(quantityStr, out int quantity) || quantity < 1)

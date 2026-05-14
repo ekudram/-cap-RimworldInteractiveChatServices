@@ -29,7 +29,7 @@ using Logger = CAP_ChatInteractive.Logger;
 
 namespace _CAP__Chat_Interactive.Command.CommandHelpers
 {
-    public static class StoreCommandHelper 
+    public static class StoreCommandHelper
     {
         public static StoreItem GetStoreItemByName(string itemName)
         {
@@ -105,6 +105,18 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return null;
         }
 
+        public struct ResearchGateResult
+        {
+            public readonly bool Allowed;
+            public readonly string BlockingResearchLabel; // LabelCap of the first missing research (or joined list if multiple)
+
+            public ResearchGateResult(bool allowed, string blockingLabel = null)
+            {
+                Allowed = allowed;
+                BlockingResearchLabel = blockingLabel;
+            }
+        }
+
         public static bool CanUserAfford(ChatMessageWrapper user, int price)
         {
             var viewer = Viewers.GetViewer(user);
@@ -130,7 +142,9 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         /// - Vanilla only blocks an item if EVERY possible recipe + bench path is gated.
         ///   (Confirmed via wiki: crafting spot produces tribalwear with no gate; other benches do not block it.)
         /// </summary>
-        public static bool HasRequiredResearch(StoreItem storeItem)
+        // In StoreCommandHelper.cs, inside StoreCommandHelper class
+        // Replace the entire HasRequiredResearch() function with this:
+        public static ResearchGateResult HasRequiredResearch(StoreItem storeItem)
         {
             Logger.Debug($"=== RESEARCH GATE CHECK ===");
             Logger.Debug($"Checking research requirements for '{storeItem.DefName}'");
@@ -139,14 +153,14 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (settings == null || !settings.RequireResearch)
             {
                 Logger.Debug($"HasRequiredResearch: Settings allow purchase without research check");
-                return true;
+                return new ResearchGateResult(true);
             }
 
             var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
             if (thingDef == null)
             {
                 Logger.Debug($"HasRequiredResearch: ThingDef '{storeItem.DefName}' not found → allowing purchase");
-                return true;
+                return new ResearchGateResult(true);
             }
 
             // 1. Direct ThingDef prereqs (buildings, turrets, etc.)
@@ -157,29 +171,30 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     if (research != null && !research.IsFinished)
                     {
                         Logger.Debug($"Direct ThingDef prereq '{research.defName}' unfinished for '{storeItem.DefName}'");
-                        return false;
+                        return new ResearchGateResult(false, research.LabelCap);
                     }
                 }
                 Logger.Debug($"All ThingDef prereqs met for '{storeItem.DefName}'");
-                return true;
+                return new ResearchGateResult(true);
             }
 
             // 2. Craftables: recipeMaker prereq
             if (thingDef.recipeMaker != null && thingDef.recipeMaker.researchPrerequisite != null)
             {
-                if (!thingDef.recipeMaker.researchPrerequisite.IsFinished)
+                var req = thingDef.recipeMaker.researchPrerequisite;
+                if (!req.IsFinished)
                 {
-                    Logger.Debug($"RecipeMaker prereq '{thingDef.recipeMaker.researchPrerequisite.defName}' unfinished for '{storeItem.DefName}'");
-                    return false;
+                    Logger.Debug($"RecipeMaker prereq '{req.defName}' unfinished for '{storeItem.DefName}'");
+                    return new ResearchGateResult(false, req.LabelCap);
                 }
                 Logger.Debug($"RecipeMaker prereq met for '{storeItem.DefName}'");
-                return true;
+                return new ResearchGateResult(true);
             }
 
             // 3. Fallback: scan recipes for at least one valid crafting path
             Logger.Debug($"No direct gates for '{storeItem.DefName}' → scanning recipes (stop at first valid path)");
             bool foundAnyProducingRecipe = false;
-            bool hasValidPath = false;
+            string firstBlockingResearch = null;
 
             foreach (var recipe in DefDatabase<RecipeDef>.AllDefsListForReading)
             {
@@ -191,9 +206,13 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                 // Recipe prereqs must be met
                 bool recipePrereqsMet = true;
+                string thisRecipeBlocking = null;
 
                 if (recipe.researchPrerequisite != null && !recipe.researchPrerequisite.IsFinished)
+                {
                     recipePrereqsMet = false;
+                    thisRecipeBlocking = recipe.researchPrerequisite.LabelCap;
+                }
 
                 if (recipePrereqsMet && recipe.researchPrerequisites != null)
                 {
@@ -202,6 +221,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                         if (prereq != null && !prereq.IsFinished)
                         {
                             recipePrereqsMet = false;
+                            thisRecipeBlocking = prereq.LabelCap;
                             break;
                         }
                     }
@@ -209,6 +229,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                 if (!recipePrereqsMet)
                 {
+                    if (firstBlockingResearch == null)
+                        firstBlockingResearch = thisRecipeBlocking;
                     Logger.Debug($"Recipe '{recipe.defName}' prereqs not met → skipping path");
                     continue;
                 }
@@ -217,7 +239,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 bool hasValidBench = false;
                 if (recipe.recipeUsers == null || recipe.recipeUsers.Count == 0)
                 {
-                    hasValidBench = true; // rare case, no bench required
+                    hasValidBench = true;
                     Logger.Debug($"Recipe '{recipe.defName}' has no recipeUsers → valid");
                 }
                 else
@@ -234,6 +256,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                                 if (benchPrereq != null && !benchPrereq.IsFinished)
                                 {
                                     benchPrereqsMet = false;
+                                    if (firstBlockingResearch == null)
+                                        firstBlockingResearch = benchPrereq.LabelCap;
                                     break;
                                 }
                             }
@@ -250,28 +274,24 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                 if (hasValidBench)
                 {
-                    hasValidPath = true;
                     Logger.Debug($"Valid crafting path confirmed for '{storeItem.DefName}'");
-                    break; // stop at first valid recipe
+                    return new ResearchGateResult(true);
                 }
             }
 
             if (foundAnyProducingRecipe)
             {
-                if (hasValidPath)
+                if (firstBlockingResearch != null)
                 {
-                    Logger.Debug($"At least one valid path met → allowing purchase");
-                    return true;
+                    Logger.Debug($"All paths gated (e.g. electricity required) → blocking purchase. Blocking research: {firstBlockingResearch}");
+                    return new ResearchGateResult(false, firstBlockingResearch);
                 }
-                else
-                {
-                    Logger.Debug($"All paths gated (e.g. electricity required) → blocking purchase");
-                    return false;
-                }
+                Logger.Debug($"All paths gated → blocking purchase (no specific research label found)");
+                return new ResearchGateResult(false);
             }
 
             Logger.Debug($"No producing recipes → allowing purchase (raw item etc.)");
-            return true;
+            return new ResearchGateResult(true);
         }
 
         // Helper: Check if a ResearchProjectDef is fully unlocked (including study requirements)

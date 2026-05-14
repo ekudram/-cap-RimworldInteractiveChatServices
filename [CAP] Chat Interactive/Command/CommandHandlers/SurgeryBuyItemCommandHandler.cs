@@ -148,8 +148,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!IsValidSurgeryItem(thingDef))
                     return "RICS.SBCH.NotValidSurgeryItem".Translate(itemName);
 
-                if (!StoreCommandHelper.HasRequiredResearch(storeItem))
-                    return "RICS.SBCH.ResearchNotCompleted".Translate(itemName);
+                var researchResult = StoreCommandHelper.HasRequiredResearch(storeItem);
+                if (!researchResult.Allowed)
+                {
+                    string researchInfo = string.IsNullOrEmpty(researchResult.BlockingResearchLabel)
+                        ? ""
+                        : $" (research needed: {researchResult.BlockingResearchLabel})";
+                    return "RICS.SBCH.ResearchNotCompleted".Translate(itemName) + researchInfo;
+                }
 
                 Verse.Pawn viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
                 if (viewerPawn == null) return "RICS.SBCH.NoPawn".Translate();

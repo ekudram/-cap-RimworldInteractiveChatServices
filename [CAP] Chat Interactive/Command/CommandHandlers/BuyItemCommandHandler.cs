@@ -95,11 +95,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 // Check research requirements
                 Logger.Debug($"Checking research requirements for {itemName}");
-                if (!StoreCommandHelper.HasRequiredResearch(storeItem))
+                var researchResult = StoreCommandHelper.HasRequiredResearch(storeItem);
+                if (!researchResult.Allowed)
                 {
                     Logger.Debug($"Research requirement failed for {itemName}");
+                    string researchInfo = string.IsNullOrEmpty(researchResult.BlockingResearchLabel)
+                        ? ""
+                        : $" (research needed: {researchResult.BlockingResearchLabel})";
                     // return $"{itemName} requires research that hasn't been completed yet.";
-                    return "RICS.BICH.Return.ResearchRequired".Translate(itemName);
+                    return "RICS.BICH.Return.ResearchRequired".Translate(itemName) + researchInfo;
                 }
                 Logger.Debug($"Research requirements met for {itemName}");
 
