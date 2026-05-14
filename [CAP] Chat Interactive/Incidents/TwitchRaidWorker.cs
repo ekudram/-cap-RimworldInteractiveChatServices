@@ -70,7 +70,7 @@ namespace CAP_ChatInteractive.Incidents
                 return base.TryExecuteWorker(parms);
             }
 
-            var onlyRaiders = CAPChatInteractiveMod.Instance.Settings.GlobalSettings.TwtichRaidsOnlyRaiders;
+            var onlyRaiders = CAPChatInteractiveMod.Instance.Settings.GlobalSettings.TwitchRaidsOnlyRaiders;
             int maxRaiders = onlyRaiders ? raidNames.Count : 10;
 
             var spawnedPawns = new List<Pawn>();

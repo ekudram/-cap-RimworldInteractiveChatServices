@@ -76,7 +76,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
             catch (Exception ex)
             {
-                // Logger.Error($"Error calculating final price for {storeItem.DefName}: {ex}");
+                Logger.Error($"Error calculating final price for {storeItem.DefName}: {ex}");
                 // Fallback to simple calculation
                 return storeItem.BasePrice * quantity;
             }

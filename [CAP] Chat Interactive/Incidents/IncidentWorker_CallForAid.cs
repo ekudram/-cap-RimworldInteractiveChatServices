@@ -27,7 +27,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public class IncidentWorker_CallForAid : IncidentWorker_RaidFriendly
     {
-        private bool _letterSent = false;
+        //private bool _letterSent = false;
 
         protected override bool CanFireNowSub(IncidentParms parms)
         {
@@ -76,7 +76,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             // Prevent the base class from sending its standard letter
             // We'll handle the letter in our command handler
-            _letterSent = false;
+            //_letterSent = false;
 
             bool success = base.TryExecuteWorker(parms);
 
