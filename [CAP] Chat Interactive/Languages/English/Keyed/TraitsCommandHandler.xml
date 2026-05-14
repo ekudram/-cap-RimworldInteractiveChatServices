@@ -68,6 +68,7 @@
   <RICS.TCH.Replace.NewTraitNotFound>Trait '{0}' (new) not found. Use !traits to see available traits.</RICS.TCH.Replace.NewTraitNotFound>
 
   <RICS.TCH.Replace.OldCannotRemove>The trait '{0}' cannot be removed from pawns.</RICS.TCH.Replace.OldCannotRemove>
+  <RICS.TCH.Replace.OldCannotRemovebypass>❌ The trait '{0}' cannot be removed or replaced (bypass-limit traits are protected).</RICS.TCH.Replace.OldCannotRemovebypass>
   <RICS.TCH.Replace.NewCannotAdd>The trait '{0}' cannot be added to pawns.</RICS.TCH.Replace.NewCannotAdd>
 
   <RICS.TCH.Replace.OldTraitDefMissing>Error: Trait definition for '{0}' (old) not found.</RICS.TCH.Replace.OldTraitDefMissing>

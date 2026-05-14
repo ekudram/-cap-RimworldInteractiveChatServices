@@ -339,7 +339,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // (prevents replacing bypass → normal when at limit)
                 if (oldBuyableTrait.BypassLimit)
                 {
-                    return "RICS.TCH.Replace.OldCannotRemove".Translate(oldBuyableTrait.Name);
+                    return "RICS.TCH.Replace.OldCannotRemovebypass".Translate(oldBuyableTrait.Name);
                 }
 
                 if (!oldBuyableTrait.CanRemove)
