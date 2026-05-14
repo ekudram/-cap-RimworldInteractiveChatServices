@@ -88,7 +88,18 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            return "RICS.CC.whatiskarma".Translate();
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings == null)
+            {
+                // Graceful fallback – protects against first-load / main-menu chat spam
+                return "RICS.CC.whatiskarma";
+            }
+
+            // Dynamic summary of ALL key karma settings (exactly 218 chars with default values)
+            // Uses live settings so admins can tune without touching code or translations
+            return $"Karma ({settings.MinKarma:F0}-{settings.MaxKarma:F0}): Decay {settings.KarmaDecayRate:P0} every {settings.KarmaDecayIntervalMinutes}min (floor {settings.KarmaMinDecayFloor}). " +
+                   $"Good+{settings.KarmaGainPerGoodEvent} Neut+{settings.KarmaGainPerNeutralEvent} Bad-{settings.KarmaLossPerBadEvent} Doom-{settings.KarmaLossPerDoomEvent}. " +
+                   $"Store +{settings.KarmaPerStoreItem:0.##}/item | Event×{settings.KarmaEventPriceMultiplier:0.##}. Higher = better coin rewards!";
         }
     }
 
