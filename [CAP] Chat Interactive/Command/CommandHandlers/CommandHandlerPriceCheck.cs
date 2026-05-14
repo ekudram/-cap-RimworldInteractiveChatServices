@@ -70,6 +70,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.CC.pricecheck.errorthingdef".Translate(parsed.ItemName);
                 }
 
+                var researchResult = StoreCommandHelper.HasRequiredResearch(storeItem);
+                string researchEmoji = researchResult.Allowed ? "🔬✅" : "🔬🔒";
+
                 var quality = ItemConfigHelper.ParseQuality(parsed.Quality);
 
                 ThingDef material = null;
@@ -93,7 +96,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     quality,
                     material
                 );
-
                 // Build core response (unchanged translation)
                 string quantityStr = parsed.Quantity > 1 ? $"{parsed.Quantity}x " : "";
                 string qualityStr = quality.HasValue
@@ -102,6 +104,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 string materialStr = material != null ? material.label : "";
 
                 string response = "RICS.CC.pricecheck.success".Translate(quantityStr, storeItem.CustomName, qualityStr, materialStr, price, currencySymbol);
+
+                // Prepend research emoji at the very start of the response (maximum visibility, same style as lookup)
+                response = researchEmoji + " " + response;
 
                 // NEW: Append base stats (apparel armor or weapon damage)
                 string statsSummary = GetItemStatsSummary(thingDef, material, quality);
