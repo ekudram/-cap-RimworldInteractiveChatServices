@@ -16,6 +16,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Handles the !lookup command to search across items, events, and weather
+using _CAP__Chat_Interactive.Command.CommandHelpers;
 using _CAP__Chat_Interactive.Utilities;
 using CAP_ChatInteractive.Incidents;
 using CAP_ChatInteractive.Incidents.Weather;
@@ -84,18 +85,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // var response = $"🔍 {searchType.ToUpper()} results for '{searchTerm}': ";
                 // In HandleLookupCommand – replace the response-building block
                 string displayCategory = searchType == "all"
-                    ? "RICS.LCH.All".Translate()
-                    : $"RICS.LCH.{searchType.CapitalizeFirst()}".Translate();
+                                    ? "RICS.LCH.All".Translate()
+                                    : $"RICS.LCH.{searchType.CapitalizeFirst()}".Translate();
 
                 var response = $"🔍 {"RICS.LCH.ResultsFor".Translate(displayCategory, searchTerm)}: ";
+
                 response += string.Join(" | ", results.Select(r =>
                 {
-                    // For xenotypes: skip the redundant "(Xenotype)" type label
+                    // For xenotypes we already skip the type label (existing behavior)
                     string displayType = r.Type == "RICS.LCH.Xenotype"
-                        ? ""  // empty → no type shown
+                        ? ""
                         : $" ({r.Type.Translate()})";
 
-                    return $"{TextUtilities.StripTags(r.Name)}{displayType}: {r.Cost} {currencySymbol}";
+                    // Prepend research emoji for items only (other categories unchanged)
+                    string emojiPrefix = r.ResearchStatusEmoji ?? "";
+
+                    return $"{emojiPrefix}{TextUtilities.StripTags(r.Name)}{displayType}: {r.Cost} {currencySymbol}";
                 }));
 
                 return response;
@@ -109,6 +114,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
+        // In LookupCommandHandler.cs, inside LookupCommandHandler class
+        // Replace the entire SearchItems() method with this:
         private static IEnumerable<LookupResult> SearchItems(string searchTerm, int maxResults)
         {
             var normalizedSearchTerm = searchTerm.ToLower();
@@ -124,13 +131,24 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                            defName.Contains(normalizedSearchTerm);
                 })
                 .Take(maxResults)
-                .Select(item => new LookupResult
+                .Select(item =>
                 {
-                    Name = item.CustomName ?? GetItemDisplayName(item) ?? item.DefName,
-                    // Type = "Item",
-                    Type = "RICS.LCH.Item",
-                    Cost = item.BasePrice,
-                    DefName = item.DefName
+                    // Reuse the exact ResearchGateResult struct we added previously
+                    // (only .Allowed matters for lookup — we ignore the blocking label to keep output short)
+                    var researchResult = StoreCommandHelper.HasRequiredResearch(item);
+
+                    string researchEmoji = researchResult.Allowed
+                        ? "🔬✅"   // research-ready (or no research required)
+                        : "🔬🔒";  // research-locked
+
+                    return new LookupResult
+                    {
+                        Name = item.CustomName ?? GetItemDisplayName(item) ?? item.DefName,
+                        Type = "RICS.LCH.Item",
+                        Cost = item.BasePrice,
+                        DefName = item.DefName,
+                        ResearchStatusEmoji = researchEmoji   // new field
+                    };
                 });
         }
 
@@ -504,21 +522,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return thingDef?.label ?? storeItem.DefName;
         }
 
-        private static XenotypeDef ResolveXenotype(string input)
-        {
-            if (string.IsNullOrWhiteSpace(input))
-                return null;
-
-            input = input.Trim();
-
-            // Fast path: exact defName match (case-insensitive)
-            var byDefName = DefDatabase<XenotypeDef>.GetNamedSilentFail(input);
-            if (byDefName != null) return byDefName;
-
-            // Label match (supports multi-word like "vampire nyaron")
-            return DefDatabase<XenotypeDef>.AllDefs
-                .FirstOrDefault(x => x.label.Equals(input, StringComparison.OrdinalIgnoreCase));
-        }
     }
 
     public class LookupResult
@@ -527,6 +530,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         public string Type { get; set; }
         public int Cost { get; set; }
         public string DefName { get; set; }
+
+        // NEW: Research status emoji for items (🔬🔒 = locked, 🔬✅ = ready)
+        // Empty string for non-item results (events, weather, traits, races, xenotypes)
+        public string ResearchStatusEmoji { get; set; } = "";
     }
 
     // Add this static class for text utilities
