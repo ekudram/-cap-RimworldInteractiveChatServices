@@ -38,7 +38,7 @@ namespace CAP_ChatInteractive.Traits
         public bool CanRemove { get; set; } = true;
         public int AddPrice { get; set; } = 3500;
         public int RemovePrice { get; set; } = 5500;
-        public bool BypassLimit { get; set; } = false;
+        public bool BypassLimit { get; set; } = false;  // If true, this trait can be added even if the pawn already has the maximum number of traits. And it is not counted towards the trait limit.
 
         // Additional data
         public bool CustomName { get; set; } = false;

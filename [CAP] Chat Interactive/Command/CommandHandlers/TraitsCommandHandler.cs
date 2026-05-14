@@ -142,7 +142,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 int maxTraits = settings?.MaxTraits ?? 4;
-                if (pawn.story.traits.allTraits.Count >= maxTraits && !buyableTrait.BypassLimit)
+
+                // FIXED: Use effective count (excludes BypassLimit traits) — bisexual / trigger-happy now work correctly
+                int effectiveCount = GetEffectiveTraitCount(pawn);
+                if (effectiveCount >= maxTraits && !buyableTrait.BypassLimit)
                 {
                     return "RICS.TCH.Add.MaxTraitsReached".Translate(maxTraits);
                 }
@@ -156,7 +159,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 string conflictCheck = CheckTraitConflicts(pawn, buyableTrait);
                 if (!string.IsNullOrEmpty(conflictCheck))
                 {
-                    return conflictCheck;  // ← assumes CheckTraitConflicts already returns translated string
+                    return conflictCheck;
                 }
 
                 int traitCost = buyableTrait.AddPrice;
@@ -804,6 +807,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             return null;
+        }
+
+        private static int GetEffectiveTraitCount(Pawn pawn)
+        {
+            if (pawn?.story?.traits?.allTraits == null) return 0;
+
+            int counted = 0;
+            foreach (var trait in pawn.story.traits.allTraits)
+            {
+                // Lookup BuyableTrait (null = unknown vanilla trait → counts toward limit)
+                var buyable = TraitsManager.AllBuyableTraits.Values
+                    .FirstOrDefault(bt => bt.DefName == trait.def.defName && bt.Degree == trait.Degree);
+
+                if (buyable == null || !buyable.BypassLimit)
+                {
+                    counted++;
+                }
+            }
+            Logger.Debug($"Effective trait count for {pawn.Name}: {counted} (total: {pawn.story.traits.allTraits.Count})");
+            return counted;
         }
     }
 }
