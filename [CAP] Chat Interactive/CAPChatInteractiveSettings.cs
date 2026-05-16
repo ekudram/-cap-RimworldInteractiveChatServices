@@ -149,7 +149,7 @@ namespace CAP_ChatInteractive
         public float KarmaDecayRate = 0.01f;    // % of CURRENT karma lost per decay tick 
         public int KarmaDecayIntervalMinutes = 30; // NEW: how often decay runs (prevents permanent max karma)
         public float KarmaMinDecay = 0f;        // Minimum absolute loss per decay 
-        public float KarmaPerStoreItem = 0.35f; // Slightly reduced gain from store spam
+        public float KarmaPerStoreItem = 0.01f; // Slightly reduced gain from store spam
         public float KarmaMinDecayFloor = 100f;     // Minium Karma that will decay too
 
         public float KarmaGainPerGoodEvent = 5f;
@@ -315,7 +315,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref KarmaDecayRate, "karmaDecayRate", 0.01f);
             Scribe_Values.Look(ref KarmaDecayIntervalMinutes, "karmaDecayIntervalMinutes", 30);
             Scribe_Values.Look(ref KarmaMinDecay, "karmaMinDecay", 0f);
-            Scribe_Values.Look(ref KarmaPerStoreItem, "karmaPerStoreItem", 0.35f);
+            Scribe_Values.Look(ref KarmaPerStoreItem, "karmaPerStoreItem", 0.01f);
             Scribe_Values.Look(ref KarmaMinDecayFloor, "minDecayKarma", 100f);
 
             Scribe_Values.Look(ref KarmaLossPerBadEvent, "karmaLossPerBadEvent", 12f);

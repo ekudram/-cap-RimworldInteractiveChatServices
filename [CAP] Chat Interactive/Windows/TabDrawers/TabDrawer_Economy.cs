@@ -130,7 +130,7 @@ namespace _CAP__Chat_Interactive
                 settings.KarmaMinDecay = 0f;
                 settings.KarmaMinDecayFloor = 100f;
 
-                settings.KarmaPerStoreItem = 0.35f;
+                settings.KarmaPerStoreItem = 0.01f;
                 settings.KarmaLossPerBadEvent = 12f;
                 settings.KarmaGainPerGoodEvent = 5f;
                 settings.KarmaGainPerNeutralEvent = 1f;
