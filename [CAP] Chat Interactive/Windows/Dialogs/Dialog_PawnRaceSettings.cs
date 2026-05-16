@@ -720,7 +720,9 @@ namespace CAP_ChatInteractive
 
         /// <summary>
         /// Calculates the required scroll height for the details panel.
-        /// Now uses the actual filtered xenotype list (via GetAllowedXenotypes) so the UI
+        /// Now includes the bulk "Set All Xenotypes To Base Price" button (sectionHeight + 8f)
+        /// that was added after the xenotype foreach loop in DrawRaceDetailsContent.
+        /// Uses the actual filtered xenotype list (via GetAllowedXenotypes) so the UI
         /// doesn't have massive empty space or cut-off content when HAR restricts the list.
         /// </summary>
         private float CalculateDetailsHeight(RaceSettings settings)
@@ -754,6 +756,10 @@ namespace CAP_ChatInteractive
                 {
                     height += 30f; // Column headers
                     height += 30f * allowedXenotypes.Count; // One row per allowed xenotype
+
+                    // NEW: Account for the bulk "Set All Xenotypes To Base Price" button
+                    // that was added after the foreach loop + y += sectionHeight + 8f;
+                    height += 32f + 8f; // Bulk button (sectionHeight) + extra spacing
                 }
                 else
                 {
