@@ -962,16 +962,16 @@ Translations:
 <b>FIXED</b>
 ─────
 - Mod settings now save and load reliably — no more random resets when reloading the game or restarting
-- BypassLimit traits (bisexual, trigger-happy, etc.) now correctly excluded from Max Traits limit
+- Traits with BypassLimitset now correctly excluded from Max Traits limit
 - !replacetrait blocks replacing bypass-limit traits (anti-exploit)
-- Baseliner xenotype no longer disappears from Human race xenotype prices list (HAR compatibility fix + always visible & checkbox permanently disabled to prevent pawn generation errors)
+- Baseliner xenotype no longer disappears from Human race xenotype prices list (HAR compatibility fix + Disabling Baseliner for human does nothing as it is always available per Rimworld)
 - Xenotype prices now correctly reflect bad genes (negative marketValueFactor makes them cheaper than base race price)
 - GeneUtils pricing logic improved: uses true RimWorld baseline (race.BaseMarketValue) + hard floor of 1 silver
 
 <b>ADDED</b>
 ──────
 - Research status indicators in !lookup item and !pricecheck commands
-- (Microscope with Lock Emoji) — shows that it is research-gated and lists required research
+- (Microscope with Lock Emoji) — shows that it is research-gated and has missing research
 - (Microscope with Checkmark Emoji) — shows that it is research-gated but all required research is complete
 - !whatiskarma now shows live karma settings (range/decay/gains/losses/multipliers)
 - 'Set All Xenotype Prices to Base Price' bulk button in Pawn Race Settings dialog (Xenotype Prices section — Biotech only). One-click uniform pricing for every xenotype of a race.
