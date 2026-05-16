@@ -48,7 +48,9 @@ namespace CAP_ChatInteractive
 
         public override void DoWindowContents(Rect inRect)
         {
-            Rect leftRect = new Rect(inRect.x, inRect.y, 280f, inRect.height);
+            // Thinned left panel (was 280f) — still wide enough for "Version History" header + 5f side padding.
+            // Freed ~60px transferred to right notes panel for better changelog readability.
+            Rect leftRect = new Rect(inRect.x, inRect.y, 220f, inRect.height);
             Rect rightRect = new Rect(leftRect.xMax + 10f, inRect.y, inRect.width - leftRect.width - 10f, inRect.height);
 
             DrawVersionList(leftRect);
@@ -62,7 +64,9 @@ namespace CAP_ChatInteractive
             // Header (matches your WeatherEditor style)
             Rect headerRect = new Rect(rect.x + 5f, rect.y + 5f, rect.width - 10f, 35f);
             Text.Font = GameFont.Medium;
+            GUI.color = ColorLibrary.SubHeader;
             Widgets.Label(headerRect, "Version History");
+            GUI.color = Color.white;    
 
             // Version list (exactly like your mod sources column)
             Rect listRect = new Rect(rect.x + 5f, rect.y + 45f, rect.width - 10f, rect.height - 85f);
@@ -85,13 +89,6 @@ namespace CAP_ChatInteractive
                 y += 36f;
             }
             Widgets.EndScrollView();
-
-            // Export button at bottom (creates the JSON/text file you asked for)
-            //Rect exportRect = new Rect(rect.x + 10f, rect.yMax - 40f, rect.width - 20f, 32f);
-            //if (Widgets.ButtonText(exportRect, "Export (JSON)"))
-            //{
-            //    ExportToJson();
-            //}
         }
 
         private void DrawNotesPanel(Rect rect)
@@ -117,28 +114,6 @@ namespace CAP_ChatInteractive
                 Widgets.BeginScrollView(textArea, ref rightScroll, new Rect(0, 0, textArea.width - 20f, height));  // ← NO assignment (void method, exactly like your WeatherEditor)
                 Widgets.Label(new Rect(0, 0, textArea.width - 20f, height), notes);
                 Widgets.EndScrollView();
-            }
-        }
-
-        private void ExportToJson()
-        {
-            string folderPath = Path.Combine(GenFilePaths.ConfigFolderPath, "CAP_ChatInteractive", "history");
-            Directory.CreateDirectory(folderPath);
-            string filePath = Path.Combine(folderPath, "VersionHistory.json");
-
-            try
-            {
-                var data = new Dictionary<string, string>(VersionHistory.UpdateNotes);
-                string json = JsonConvert.SerializeObject(data, Formatting.Indented);
-                File.WriteAllText(filePath, json);
-
-                Messages.Message($"Version history exported to:\n{filePath}\n(You can edit this file manually if desired)", MessageTypeDefOf.TaskCompletion);
-                Logger.Message($"Exported version history to {filePath}");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Export failed: {ex.Message}");
-                Messages.Message("Export failed — check log", MessageTypeDefOf.NegativeEvent);
             }
         }
     }

@@ -16,11 +16,35 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 
 
+using _CAP__Chat_Interactive.Utilities;
+using CAP_ChatInteractive.CAP_ChatInteractive;
+using CAP_ChatInteractive.Commands.CommandHandlers;
+using CAP_ChatInteractive.Commands.ViewerCommands;
+using NAudio.CoreAudioApi;
+using NAudio.SoundFont;
+using RimWorld;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Composition.Primitives;
+using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using TwitchLib.Api.Core.RateLimiter;
+using TwitchLib.Api.Helix;
+using TwitchLib.Api.Helix.Models.EventSub.Conduits.Shards.UpdateConduitShards;
+using Unity.Burst.Intrinsics;
+using UnityEngine;
+using UnityEngine.PlayerLoop;
+using UnityEngine.Rendering;
+using UnityEngine.UIElements;
 using Verse;
+using Verse.AI.Group;
 using Verse.Noise;
+using static HarmonyLib.Code;
+using static RimWorld.IdeoFoundation_Deity;
+using static System.Collections.Specialized.BitVector32;
+using static System.Net.WebRequestMethods;
 
 // Add this class to a new file or within your existing files
 
@@ -913,7 +937,56 @@ Translations:
 - `TabDrawer_Economy.xml `updated new keys
 -  `RICSGeneral.xml` updated new keys
 
-" }
+"
+            },
+             {"1.35",
+@"===========================================================
+                         RICS 1.35 - Changelog
+                         Released: May 16, 2026
+===========================================================
+
+<b>MEMORANDUM</b>
+──────────
+- Discord for RICS now updated
+- Take the Role 'Rimworld Cat' to see RICS information
+- Take the Role 'Streamer Cat' to have your stream promoted in the self-promotion channel automatically
+- https://discord.gg/dvpY3YYS
+
+<b>UPDATED</b>
+───────
+- Research feedback now shows exact required research in !buy / !use / !surgery commands
+- Karma per purchase was wrongly set to 35% (0.35) for default
+  - Has been changed to default 1% (0.01) — this was the old default
+  - Will not change your current setting, but if you reset to defaults it will
+
+<b>FIXED</b>
+─────
+- Mod settings now save and load reliably — no more random resets when reloading the game or restarting
+- BypassLimit traits (bisexual, trigger-happy, etc.) now correctly excluded from Max Traits limit
+- !replacetrait blocks replacing bypass-limit traits (anti-exploit)
+- Baseliner xenotype no longer disappears from Human race xenotype prices list (HAR compatibility fix + always visible & checkbox permanently disabled to prevent pawn generation errors)
+- Xenotype prices now correctly reflect bad genes (negative marketValueFactor makes them cheaper than base race price)
+- GeneUtils pricing logic improved: uses true RimWorld baseline (race.BaseMarketValue) + hard floor of 1 silver
+
+<b>ADDED</b>
+──────
+- Research status indicators in !lookup item and !pricecheck commands
+- (Microscope with Lock Emoji) — shows that it is research-gated and lists required research
+- (Microscope with Checkmark Emoji) — shows that it is research-gated but all required research is complete
+- !whatiskarma now shows live karma settings (range/decay/gains/losses/multipliers)
+- 'Set All Xenotype Prices to Base Price' bulk button in Pawn Race Settings dialog (Xenotype Prices section — Biotech only). One-click uniform pricing for every xenotype of a race.
+
+<b>TRANSLATIONS</b>
+────────────
+- Added <RICS.TCH.Replace.OldCannotRemovebypass>The trait '{0}' cannot be removed from pawns.</RICS.TCH.Replace.OldCannotRemovebypass> in TraitsCommandHandler.xml
+- Dialog_PawnRaceSettings.xml — 3 new translation keys at bottom of Xenotype Prices section:
+  - RICS.Button.SetAllXenotypesToBasePrice
+  - RICS.Message.AllXenotypePricesSetToBase
+  - RICS.Tooltip.SetAllXenotypesToBasePrice
+- Note that full translations for Dialog_PawnRaceSettings are not complete
+==========================================================="
+            }
+
 
 
 
@@ -995,21 +1068,6 @@ Translations:
             }
         }
 
-        private static string GetUpdateNotesForVersion(string newVersion, string oldVersion)
-        {
-            if (!UpdateNotes.TryGetValue(newVersion, out string notes))
-            {
-                return FallbackUpdateMessage(newVersion, oldVersion);
-            }
-
-            // Optional: you could append migration note here if desired
-            if (string.IsNullOrEmpty(oldVersion))
-            {
-                notes += "\n\nNOTE: This appears to be your first time using RICS with this save file.";
-            }
-
-            return notes;
-        }
 
         private static string FallbackUpdateMessage(string newVersion, string oldVersion)
         {
