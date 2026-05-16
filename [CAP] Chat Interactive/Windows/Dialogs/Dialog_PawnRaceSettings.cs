@@ -604,6 +604,8 @@ namespace CAP_ChatInteractive
                         y += sectionHeight;
 
                         // Xenotype rows - now only allowed/spawnable ones
+                        // Xenotype rows - now only allowed/spawnable ones
+                        // Xenotype rows - now only allowed/spawnable ones
                         foreach (var xenotype in allowedXenotypes)
                         {
                             // Initialize if not exists
@@ -683,6 +685,26 @@ namespace CAP_ChatInteractive
 
                             y += sectionHeight;
                         }
+
+                        // NEW: Bulk action button requested by community
+                        // Placed at the very bottom of the Xenotype Prices section (still inside Biotech block)
+                        // Sets EVERY xenotype price for this race to the race's BasePrice in one click.
+                        // Useful for players who want uniform pricing across all xenotypes.
+                        Rect bulkButtonRect = new Rect(leftPadding, y, 280f, sectionHeight);
+                        if (Widgets.ButtonText(bulkButtonRect, "RICS.Button.SetAllXenotypesToBasePrice".Translate()))
+                        {
+                            int count = 0;
+                            foreach (var xenotypeKey in settings.XenotypePrices.Keys.ToList())
+                            {
+                                settings.XenotypePrices[xenotypeKey] = settings.BasePrice;
+                                count++;
+                            }
+                            SaveRaceSettings();
+                            Messages.Message("RICS.Message.AllXenotypePricesSetToBase".Translate(count, selectedRace.LabelCap, settings.BasePrice), MessageTypeDefOf.PositiveEvent);
+                            Logger.Debug($"Bulk-set {count} xenotype prices to base price {settings.BasePrice} for race {selectedRace.defName}");
+                        }
+                        TooltipHandler.TipRegion(bulkButtonRect, "RICS.Tooltip.SetAllXenotypesToBasePrice".Translate());
+                        y += sectionHeight + 8f; // extra spacing before next section
                     }
                     else
                     {

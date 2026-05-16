@@ -14,35 +14,42 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-using CAP_ChatInteractive;
 using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 using Verse;
 
 namespace _CAP__Chat_Interactive.Utilities
 {
     // Simplified GeneUtils.cs - uses Rimworld's built-in market value calculations
+    /// <summary>
+    /// Utility class for calculating gene and xenotype market values.
+    /// </summary>
     public static class GeneUtils
     {
-        // Calculate the total market value of a xenotype (including race base value)
+        /// <summary>
+        /// Calculates the total market value of a xenotype, including the base value of the race.
+        /// </summary>
+        /// <param name="race">The race definition.</param>
+        /// <param name="xenotypeName">The name of the xenotype.</param>
+        /// <returns>The total market value of the xenotype.</returns>
         public static float CalculateXenotypeMarketValue(ThingDef race, string xenotypeName)
         {
-            if (!ModsConfig.BiotechActive) return race.BaseMarketValue;
+            if (!ModsConfig.BiotechActive)
+                return Mathf.Max(race.BaseMarketValue, 1f);
 
             var xenotypeDef = DefDatabase<XenotypeDef>.AllDefs.FirstOrDefault(x =>
                 x.defName.Equals(xenotypeName, StringComparison.OrdinalIgnoreCase));
 
-            if (xenotypeDef == null) return race.BaseMarketValue;
+            if (xenotypeDef == null)
+                return Mathf.Max(race.BaseMarketValue, 1f);
 
-            // Start with the race's base market value
+            // Start with the race's base market value (RimWorld's canonical baseline)
             float totalValue = race.BaseMarketValue;
 
-            // Add value from each gene
+            // Add (or subtract) value from each gene
             if (xenotypeDef.genes != null)
             {
                 foreach (var geneDef in xenotypeDef.genes)
@@ -51,22 +58,35 @@ namespace _CAP__Chat_Interactive.Utilities
                 }
             }
 
-            return Mathf.Max(totalValue, race.BaseMarketValue);
+            // NEW: Allow bad genes to make the xenotype cheaper than base price
+            // Hard floor of 1 silver (never negative or zero)
+            return Mathf.Max(totalValue, 1f);
         }
 
-        // Calculate the market value contribution of a single gene
+        /// <summary>
+        /// Calculate the market value contribution of a single gene.
+        /// </summary>
+        /// <param name="geneDef">The gene definition.</param>
+        /// <param name="baseRaceValue">The base market value of the race.</param>
+        /// <returns>The market value contribution of the gene.</returns>
         public static float GetGeneMarketValue(GeneDef geneDef, float baseRaceValue)
         {
-            // Rimworld's marketValueFactor is a multiplier on the pawn's base value
-            // Example: marketValueFactor = 1.1 means the pawn is worth 10% more
-            // So the gene's value contribution is (factor - 1) * base value
+            // RimWorld's marketValueFactor is a multiplier on the pawn's base value.
+            // Example: marketValueFactor = 1.1  → +10% value
+            //          marketValueFactor = 0.8  → -20% value (bad genes = cheaper xenotype)
+            // So the gene's contribution is (factor - 1) * base value.
             float geneValue = (geneDef.marketValueFactor - 1.0f) * baseRaceValue;
 
-            // Ensure minimum value (some genes might have factor < 1, which reduces value)
             return geneValue;
         }
 
-        // Get just the gene portion value (for display purposes)
+
+        /// <summary>
+        /// Calculates the total market value contribution of all genes in a xenotype.
+        /// </summary>
+        /// <param name="xenotypeName">The name of the xenotype.</param>
+        /// <param name="baseRaceValue">The base market value of the race.</param>
+        /// <returns>The total market value contribution of all genes in the xenotype.</returns>
         public static float GetXenotypeGeneValueOnly(string xenotypeName, float baseRaceValue)
         {
             if (!ModsConfig.BiotechActive) return 0f;
@@ -85,6 +105,11 @@ namespace _CAP__Chat_Interactive.Utilities
             return totalGeneValue;
         }
 
+        /// <summary>
+        /// Retrieves the list of genes for a given xenotype.
+        /// </summary>
+        /// <param name="xenotypeName">The name of the xenotype.</param>
+        /// <returns>A list of gene definitions for the xenotype.</returns>
         public static List<GeneDef> GetXenotypeGenes(string xenotypeName)
         {
             var genes = new List<GeneDef>();
@@ -102,6 +127,11 @@ namespace _CAP__Chat_Interactive.Utilities
             return genes;
         }
 
+        /// <summary>
+        /// Generates a summary of the genes for a given xenotype.
+        /// </summary>
+        /// <param name="xenotypeName">The name of the xenotype.</param>
+        /// <returns>A summary string of the genes in the xenotype.</returns>
         public static string GetXenotypeGeneSummary(string xenotypeName)
         {
             var genes = GetXenotypeGenes(xenotypeName);
@@ -119,7 +149,12 @@ namespace _CAP__Chat_Interactive.Utilities
             return string.Join(", ", summary);
         }
 
-        // New method to get detailed gene information with market values
+        /// <summary>
+        /// Retrieves detailed gene information for a given xenotype, including market values.
+        /// </summary>
+        /// <param name="race">The race definition.</param>
+        /// <param name="xenotypeName">The name of the xenotype.</param>
+        /// <returns>A list of strings containing detailed gene information.</returns>
         public static List<string> GetXenotypeGeneDetails(ThingDef race, string xenotypeName)
         {
             var details = new List<string>();
@@ -150,221 +185,3 @@ namespace _CAP__Chat_Interactive.Utilities
         }
     }
 }
-
-
-
-//namespace _CAP__Chat_Interactive.Utilities
-//{
-//    // Updated GeneUtils.cs with correct field names
-//    public static class GeneUtils
-//    {
-//        public static float CalculateXenotypeGeneCost(string xenotypeName)
-//        {
-//            if (!ModsConfig.BiotechActive) return 1.0f;
-
-//            var xenotypeDef = DefDatabase<XenotypeDef>.AllDefs.FirstOrDefault(x =>
-//                x.defName.Equals(xenotypeName, StringComparison.OrdinalIgnoreCase));
-
-//            if (xenotypeDef == null) return 1.0f;
-
-//            float totalCost = 0f;
-//            int geneCount = 0;
-
-//            // Calculate cost from genes - CORRECTED FIELD NAME
-//            if (xenotypeDef.genes != null)
-//            {
-//                foreach (var geneDef in xenotypeDef.genes)
-//                {
-//                    totalCost += GetGeneMarketValue(geneDef);
-//                    geneCount++;
-//                }
-//            }
-
-//            // If no genes found, return base multiplier
-//            if (geneCount == 0) return 1.0f;
-
-//            // Calculate average gene value and scale to reasonable multiplier
-//            float averageGeneValue = totalCost / geneCount;
-//            float baseMultiplier = Mathf.Clamp(averageGeneValue / 1000f, 0.5f, 5.0f);
-
-//            // Apply xenotype-specific adjustments
-//            return ApplyXenotypeScalingFactors(xenotypeDef, baseMultiplier);
-//        }
-
-//        private static float GetGeneMarketValue(GeneDef geneDef)
-//        {
-//            // Genes have marketValueFactor, biostatCpx, and other properties
-//            float baseValue = geneDef.marketValueFactor * 1000f; // marketValueFactor is a multiplier
-
-//            // If no direct market value factor, calculate based on complexity and impact
-//            if (geneDef.marketValueFactor <= 1.0f) // Default is 1.0
-//            {
-//                baseValue = geneDef.biostatCpx * 150f; // Complexity contributes to value
-//                baseValue += Mathf.Abs(geneDef.biostatMet) * 75f; // Metabolic impact
-//                baseValue += Mathf.Abs(geneDef.biostatArc) * 200f; // Archite requirement (very valuable)
-//            }
-
-//            // Adjust for gene category
-//            if (geneDef.displayCategory != null)
-//            {
-//                switch (geneDef.displayCategory.defName)
-//                {
-//                    case "Archite": baseValue *= 2.5f; break;
-//                    case "Metabolic": baseValue *= 1.3f; break;
-//                    case "Special": baseValue *= 1.8f; break;
-//                    default: baseValue *= 1.0f; break;
-//                }
-//            }
-
-//            // Adjust for specific high-value genes
-//            if (geneDef.defName.Contains("Deathless") || geneDef.defName.Contains("Ageless"))
-//                baseValue *= 3.0f;
-//            else if (geneDef.defName.Contains("Robust"))
-//                baseValue *= 2.0f;
-//            else if (geneDef.defName.Contains("Weak") || geneDef.defName.Contains("Feeble"))
-//                baseValue *= 0.3f;
-
-//            return Mathf.Max(baseValue, 25f); // Minimum value
-//        }
-//        /// <summary>
-//        /// Applies scaling factors to xenotype pricing based on overall power and balance considerations.
-//        /// This method is public to allow other mods to extend or override xenotype pricing logic.
-//        /// </summary>
-//        /// <param name="xenotypeDef">The xenotype definition to evaluate</param>
-//        /// <param name="baseMultiplier">The base multiplier calculated from gene values</param>
-//        /// <returns>Final price multiplier for the xenotype</returns>
-
-//        public static float ApplyXenotypeScalingFactors(XenotypeDef xenotypeDef, float baseMultiplier)
-//        {
-//            float multiplier = baseMultiplier;
-
-//            // Apply special xenotype adjustments based on overall power
-//            switch (xenotypeDef.defName)
-//            {
-//                case "Sanguophage":
-//                    multiplier *= 2.2f; // Very valuable - deathless, hemogen, etc.
-//                    break;
-//                case "Hussar":
-//                    multiplier *= 1.8f; // Combat powerhouse but with dependencies
-//                    break;
-//                case "Genie":
-//                    multiplier *= 1.5f; // Great for research and intellectual
-//                    break;
-//                case "Highmate":
-//                    multiplier *= 1.4f; // Social benefits
-//                    break;
-//                case "Waster":
-//                    multiplier *= 1.1f; // Mild benefits with pollution immunity
-//                    break;
-//                case "Pigskin":
-//                    multiplier *= 0.8f; // Mostly negative traits
-//                    break;
-//                case "Dirtmole":
-//                    multiplier *= 1.2f; // Mining benefits
-//                    break;
-//                case "Impid":
-//                    multiplier *= 1.3f; // Fire-based abilities
-//                    break;
-//                case "Yttakin":
-//                    multiplier *= 1.1f; // Cold resistance
-//                    break;
-//                case "Neanderthal":
-//                    multiplier *= 0.9f; // Strong but slow
-//                    break;
-//                    // Add more as needed
-//            }
-
-//            return Mathf.Clamp(multiplier, 0.3f, 8f);
-//        }
-
-//        public static List<GeneDef> GetXenotypeGenes(string xenotypeName)
-//        {
-//            var genes = new List<GeneDef>();
-
-//            if (!ModsConfig.BiotechActive) return genes;
-
-//            var xenotypeDef = DefDatabase<XenotypeDef>.AllDefs.FirstOrDefault(x =>
-//                x.defName.Equals(xenotypeName, StringComparison.OrdinalIgnoreCase));
-
-//            if (xenotypeDef?.genes != null) // CORRECTED FIELD NAME
-//            {
-//                genes.AddRange(xenotypeDef.genes);
-//            }
-
-//            return genes;
-//        }
-
-//        public static string GetXenotypeGeneSummary(string xenotypeName)
-//        {
-//            var genes = GetXenotypeGenes(xenotypeName);
-//            if (genes.Count == 0) return "No specific genes";
-
-//            var geneGroups = genes.GroupBy(g => g.displayCategory?.defName ?? "Unknown")
-//                                 .OrderBy(g => g.Key);
-
-//            var summary = new List<string>();
-//            foreach (var group in geneGroups)
-//            {
-//                summary.Add($"{group.Key}: {group.Count()} genes");
-//            }
-
-//            return string.Join(", ", summary);
-//        }
-
-//        // In GeneUtils.cs - add this for modder extensibility
-//        public static class XenotypePricingExtensions
-//        {
-//            /// <summary>
-//            /// Event that allows other mods to modify xenotype pricing calculations
-//            /// First parameter: XenotypeDef, Second parameter: current multiplier, Returns: new multiplier
-//            /// </summary>
-//            public static event Func<XenotypeDef, float, float> OnCalculateXenotypePrice;
-
-//            /// <summary>
-//            /// Public method that applies all scaling factors including mod extensions
-//            /// </summary>
-//            public static float CalculateFinalXenotypeMultiplier(XenotypeDef xenotypeDef, float baseMultiplier)
-//            {
-//                float multiplier = ApplyXenotypeScalingFactors(xenotypeDef, baseMultiplier);
-
-//                // Allow other mods to modify the price
-//                if (OnCalculateXenotypePrice != null)
-//                {
-//                    foreach (Func<XenotypeDef, float, float> handler in OnCalculateXenotypePrice.GetInvocationList())
-//                    {
-//                        try
-//                        {
-//                            multiplier = handler(xenotypeDef, multiplier);
-//                        }
-//                        catch (Exception ex)
-//                        {
-//                            CAP_ChatInteractive.Logger.Error($"Error in xenotype price handler: {ex}");
-//                        }
-//                    }
-//                }
-
-//                return Mathf.Clamp(multiplier, 0.1f, 10f);
-//            }
-//        }
-
-//        // New method to get detailed gene information for debugging
-//        public static List<string> GetXenotypeGeneDetails(string xenotypeName)
-//        {
-//            var details = new List<string>();
-//            var genes = GetXenotypeGenes(xenotypeName);
-
-//            foreach (var gene in genes.OrderBy(g => g.displayCategory?.defName ?? "Unknown"))
-//            {
-//                string geneInfo = $"{gene.defName}";
-//                if (gene.displayCategory != null)
-//                    geneInfo += $" [{gene.displayCategory.defName}]";
-//                geneInfo += $" - Cpx:{gene.biostatCpx} Met:{gene.biostatMet} Arc:{gene.biostatArc}";
-//                geneInfo += $" Value:{GetGeneMarketValue(gene):F0}";
-
-//                details.Add(geneInfo);
-//            }
-
-//            return details;
-//        }
-//    }
-//}

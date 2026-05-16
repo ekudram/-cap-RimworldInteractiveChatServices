@@ -28,6 +28,12 @@
   <RICS.Tooltip.ResetAllPrices>Reset all xenotype prices for selected race to gene-based values</RICS.Tooltip.ResetAllPrices>
   <RICS.Tooltip.PawnRacesHelp>Pawn Race Settings Help</RICS.Tooltip.PawnRacesHelp>
   <RICS.Tooltip.DebugInfo>Open Race Debug Information</RICS.Tooltip.DebugInfo>
+  
+  <!-- New with 1.35 -->
+
+  <RICS.Button.SetAllXenotypesToBasePrice>Set All Xenotypes to Base Price</RICS.Button.SetAllXenotypesToBasePrice>
+  <RICS.Message.AllXenotypePricesSetToBase>Set {0} xenotype prices to base price {2} for {1}</RICS.Message.AllXenotypePricesSetToBase>
+  <RICS.Tooltip.SetAllXenotypesToBasePrice>Sets every xenotype price for this race to the race Base Price (one-click uniform pricing)</RICS.Tooltip.SetAllXenotypesToBasePrice>
     
     
     

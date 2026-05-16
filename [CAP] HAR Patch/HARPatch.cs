@@ -186,7 +186,7 @@ namespace CAP_ChatInteractive.Patch.HAR
                     if (restriction == null) continue;
 
                     // 1. Exclusive xenotypes (onlyUseRaceRestrictedXenotypes = true)
-                    //    These belong ONLY to the alien race → remove them from Human list or HAR race without whitelist (they are not shared)
+                    //    These belong ONLY to the alien race → remove them from Human list
                     if (restriction.onlyUseRaceRestrictedXenotypes)
                     {
                         var raceExclusive = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -206,17 +206,31 @@ namespace CAP_ChatInteractive.Patch.HAR
                     }
                 }
 
+                // CRITICAL FIX: Baseliner is the core/default xenotype for Humans.
+                // Some HAR alien races or filtering logic can accidentally remove it.
+                // We ALWAYS restore it for Humans (matches vanilla RimWorld pawn generation).
+                if (!allowed.Contains("Baseliner", StringComparer.OrdinalIgnoreCase))
+                {
+                    allowed.Add("Baseliner");
+                    Logger.Debug("[HARPatch] Explicitly re-added Baseliner to Human allowed xenotypes (was filtered out by HAR)");
+                }
+
                 Logger.Debug($"[HARPatch] Human xenotype filter: started with {allowed.Count + removedCount}, removed {removedCount} exclusive/blacklisted, final = {allowed.Count}");
                 return allowed.OrderBy(x => x).ToList();
             }
             catch (Exception ex)
             {
                 Logger.Warning($"[HARPatch] Error while filtering xenotypes for Human: {ex.Message}");
-                return DefDatabase<XenotypeDef>.AllDefs
+                // Fallback still includes Baseliner
+                var fallback = DefDatabase<XenotypeDef>.AllDefs
                     .Where(x => !string.IsNullOrEmpty(x.defName))
                     .Select(x => x.defName)
-                    .OrderBy(x => x)
                     .ToList();
+
+                if (!fallback.Contains("Baseliner", StringComparer.OrdinalIgnoreCase))
+                    fallback.Add("Baseliner");
+
+                return fallback.OrderBy(x => x).ToList();
             }
         }
 
