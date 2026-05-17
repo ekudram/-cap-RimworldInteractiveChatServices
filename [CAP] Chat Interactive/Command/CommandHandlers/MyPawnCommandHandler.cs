@@ -65,6 +65,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         return MyPawnCommandHandler_Body.HandleImplantsInfo(pawn, args);
                     case "gear":
                         return MyPawnCommandHandler_Combat.HandleGearInfo(pawn, args);
+                    case "weapon":          // ← NEW
+                    case "weapons":
+                        return MyPawnCommandHandler_Combat.HandleWeaponInfo(pawn);
                     case "kills":
                     case "killcount":
                         return MyPawnCommandHandler_Combat.HandleKillInfo(pawn, args);

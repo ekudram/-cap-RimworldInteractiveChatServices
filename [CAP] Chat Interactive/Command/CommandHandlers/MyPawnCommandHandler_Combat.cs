@@ -24,12 +24,12 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using Verse;
+using Verse.Noise;
 
 namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class MyPawnCommandHandler_Combat
     {
-        // === Gear ===
         // === Gear ===
         public static string HandleGearInfo(Pawn pawn, string[] args)
         {
@@ -144,9 +144,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return new List<Thing>();
         }
 
-        // In MyPawnCommandHandler_Combat.cs, inside MyPawnCommandHandler_Combat.GetArmorSummary()
-        Replace the entire GetArmorSummary function with this:
-private static string GetArmorSummary(Pawn pawn)
+        private static string GetArmorSummary(Pawn pawn)
         {
             if (pawn?.apparel?.WornApparel == null || !pawn.apparel.WornApparel.Any())
                 return "RICS.MPCH.ArmorNone".Translate() + "\n";
@@ -171,31 +169,67 @@ private static string GetArmorSummary(Pawn pawn)
             }
         }
 
-        private static float CalculateArmorRating(Pawn pawn, StatDef stat)
+        // === Weapon Details ===
+
+        public static string HandleWeaponInfo(Pawn pawn)
         {
-            if (pawn.apparel?.WornApparel == null || !pawn.apparel.WornApparel.Any())
-                return 0f;
+            var report = new StringBuilder();
+            report.AppendLine("🔫 Weapon Report:");
 
-            var rating = 0f;
-            float baseValue = Mathf.Clamp01(pawn.GetStatValue(stat) / 2f);
-            var parts = pawn.RaceProps.body.AllParts;
-            var apparel = pawn.apparel.WornApparel;
-
-            foreach (var part in parts)
+            var weapon = pawn.equipment?.Primary;
+            if (weapon == null)
             {
-                float cache = 1f - baseValue;
-
-                if (apparel != null && apparel.Any())
-                {
-                    cache = apparel.Where(a => a.def.apparel?.CoversBodyPart(part) ?? false)
-                       .Select(a => Mathf.Clamp01(a.GetStatValue(stat) / 2f))
-                       .Aggregate(cache, (current, v) => current * (1f - v));
-                }
-
-                rating += part.coverageAbs * (1f - cache);
+                report.AppendLine("No weapon equipped.");
+                return report.ToString();
             }
 
-            return Mathf.Clamp(rating * 2f, 0f, 2f);
+            string name = MyPawnCommandHandler.StripTags(weapon.LabelCap);
+            report.AppendLine($"• {name}");
+
+            // Use the same reliable method we already have in PriceCheck
+    
+            string stats = CommandHandlerPriceCheck.GetWeaponDamageSummary(weapon);
+            if (!string.IsNullOrEmpty(stats))
+            {
+                report.AppendLine(stats);
+            }
+
+            // Unique weapon traits (short names only)
+            var uniqueTraits = GetUniqueWeaponTraits(weapon);
+            if (uniqueTraits.Count > 0)
+            {
+                report.AppendLine("• Traits: " + string.Join(", ", uniqueTraits));
+            }
+
+            return report.ToString();
+        }
+
+        private static List<string> GetUniqueWeaponTraits(Thing weapon)
+        {
+            var traits = new List<string>();
+
+            if (weapon == null) return traits;
+
+            // Primary method — CompUniqueWeapon (Odyssey unique weapons)
+            var uniqueComp = weapon.TryGetComp<CompUniqueWeapon>();
+            if (uniqueComp != null)
+            {
+                var traitList = uniqueComp.TraitsListForReading;
+                if (traitList != null)
+                {
+                    foreach (var trait in traitList)
+                    {
+                        if (trait != null)
+                            traits.Add(trait.LabelCap);
+                    }
+                }
+            }
+
+            // Fallback for other weapon trait comps (if any)
+            // We skip CompApplyWeaponTraits since it doesn't exist in the decompile
+            // You can add more comp checks here later if needed
+
+            return traits;
         }
 
         // === Kills ===
