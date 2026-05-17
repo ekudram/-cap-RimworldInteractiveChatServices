@@ -194,7 +194,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error in AddTrait command handler: {ex}");
-                return "RICS.TCH.Erroradd".Translate();
+                return "RICS.TCH.Error.add".Translate();  // fixed to match XML key (was causing raw key display)
             }
         }
 
@@ -210,7 +210,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
                 {
-                    return "RICS.TCH.Remove.NoViewerData".Translate();
+                    return "RICS.TCH.Add.NoViewerData".Translate();  // reuse existing translation (generic message)
                 }
 
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
@@ -218,11 +218,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (pawn == null)
                 {
-                    return "RICS.TCH.Remove.NoPawn".Translate();
+                    return "RICS.TCH.Add.NoPawn".Translate();  // reuse existing translation
                 }
                 if (pawn.Dead)
                 {
-                    return "RICS.TCH.Remove.PawnDead".Translate();
+                    return "RICS.TCH.Add.PawnDead".Translate();  // reuse existing translation
                 }
 
                 string traitName = string.Join(" ", args).ToLowerInvariant();
@@ -298,7 +298,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
                 {
-                    return "RICS.TCH.Replace.NoViewerData".Translate();
+                    return "RICS.TCH.Add.NoViewerData".Translate();  // reuse existing translation (generic message)
                 }
 
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
@@ -306,11 +306,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (pawn == null)
                 {
-                    return "RICS.TCH.Replace.NoPawn".Translate();
+                    return "RICS.TCH.Add.NoPawn".Translate();  // reuse existing translation
                 }
                 if (pawn.Dead)
                 {
-                    return "RICS.TCH.Replace.PawnDead".Translate();
+                    return "RICS.TCH.Add.PawnDead".Translate();  // reuse existing translation
                 }
 
                 string oldTraitName = ParseTraitNames(args, out string newTraitName);
@@ -468,7 +468,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
                 {
-                    return "RICS.TCH.Set.NoViewerData".Translate();
+                    return "RICS.TCH.Add.NoViewerData".Translate();  // reuse existing translation (generic message)
                 }
 
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
@@ -476,11 +476,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (pawn == null)
                 {
-                    return "RICS.TCH.Set.NoPawn".Translate();
+                    return "RICS.TCH.Add.NoPawn".Translate();  // reuse existing translation
                 }
                 if (pawn.Dead)
                 {
-                    return "RICS.TCH.Set.PawnDead".Translate();
+                    return "RICS.TCH.Add.PawnDead".Translate();  // reuse existing translation
                 }
 
                 // Step 1: Find and validate all requested traits
