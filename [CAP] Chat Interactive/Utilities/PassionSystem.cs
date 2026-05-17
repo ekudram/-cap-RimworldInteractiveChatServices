@@ -226,8 +226,12 @@ namespace CAP_ChatInteractive
 
             skill.passion = skill.passion == Passion.Minor ? Passion.Major : Passion.Minor;
             var newPassionLevel = skill.passion == Passion.Major ? "major" : "minor";
-            string pawnName = 
-            result.message = "RICS.PASSION.TargetedCritSuccessUpgrade".Translate(pawn.Name.ToString(), skill.def.LabelCap, newPassionLevel);
+
+            result.message = "RICS.PASSION.TargetedCritSuccessUpgrade".Translate(
+                pawn.Name.ToString(),
+                skill.def.LabelCap,
+                newPassionLevel
+            );
             result.success = true;
             result.alreadyCharged = true;
             viewer.TakeCoins(wager);

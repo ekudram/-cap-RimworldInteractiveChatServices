@@ -48,48 +48,33 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                     return ListPawnPassions(pawn);
                 }
 
-                if (args.Length < 1)
+                if (args.Length == 0)
                     return "RICS.PASSION.Usage".Translate();
 
-                SkillDef targetSkill = null;
-                int wager;
+                // NEW: Flexible parsing for both orders (!passion <wager> <skill> OR !passion <skill> <wager>)
+                (int? wager, SkillDef targetSkill) = ParseWagerAndSkill(args);
 
-                if (args.Length >= 2 && TryParseSkill(args[0], out targetSkill))
-                {
-                    if (!int.TryParse(args[1], out wager) || wager <= 0)
-                        return "RICS.PASSION.UsageTargeted".Translate();
-                }
-                else
-                {
-                    if (!int.TryParse(args[0], out wager) || wager <= 0)
-                        return "RICS.PASSION.UsageRandom".Translate();
-                }
+                if (wager == null)
+                    return "RICS.PASSION.Usage".Translate();
 
-                if (targetSkill != null)
-                {
-                    var pawnSkill = pawn.skills.GetSkill(targetSkill);
-                    if (pawnSkill == null)
-                        return "RICS.PASSION.NoSkill".Translate(targetSkill.LabelCap);
-
-                    if (pawnSkill.passion == RimWorld.Passion.Major)
-                        return "RICS.PASSION.AlreadyMajorTargeted".Translate(targetSkill.LabelCap);
-                }
-
-                if (viewer.Coins < wager)
-                    return "RICS.PASSION.NotEnoughCoins".Translate(viewer.Coins, wager);
+                int finalWager = wager.Value;
 
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-                if (wager < settings.MinPassionWager)
+
+                if (finalWager < settings.MinPassionWager)
                     return "RICS.PASSION.MinWager".Translate(settings.MinPassionWager);
 
-                if (wager > settings.MaxPassionWager)
+                if (finalWager > settings.MaxPassionWager)
                     return "RICS.PASSION.MaxWager".Translate(settings.MaxPassionWager);
 
-                var result = PassionSystem.GambleForPassion(pawn, wager, viewer, targetSkill);
+                if (viewer.Coins < finalWager)
+                    return "RICS.PASSION.NotEnoughCoins".Translate(viewer.Coins, finalWager);
+
+                var result = PassionSystem.GambleForPassion(pawn, finalWager, viewer, targetSkill);
 
                 if (!result.alreadyCharged)
                 {
-                    viewer.TakeCoins(wager);
+                    viewer.TakeCoins(finalWager);
                 }
 
                 Viewers.SaveViewers();
@@ -149,6 +134,40 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 s.LabelCap.ToString().Equals(skillName, StringComparison.OrdinalIgnoreCase));
 
             return skillDef != null;
+        }
+
+        /// <summary>
+        /// Parses wager + optional skill from any argument order.
+        /// Supports: !passion 5000 melee, !passion melee 5000, !passion 500 (random)
+        /// </summary>
+        private static (int? wager, SkillDef targetSkill) ParseWagerAndSkill(string[] args)
+        {
+            int? wager = null;
+            SkillDef skill = null;
+
+            foreach (string arg in args)
+            {
+                if (int.TryParse(arg, out int num) && num > 0)
+                {
+                    if (wager == null)
+                        wager = num;
+                }
+                else if (TryParseSkill(arg, out SkillDef parsedSkill))
+                {
+                    if (skill == null)
+                        skill = parsedSkill;
+                }
+            }
+
+            // If only one arg and it's a number → random mode
+            if (wager != null && skill == null && args.Length == 1)
+                return (wager, null);
+
+            // If we have both → targeted
+            if (wager != null && skill != null)
+                return (wager, skill);
+
+            return (null, null);
         }
     }
 }
