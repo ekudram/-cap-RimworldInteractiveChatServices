@@ -156,12 +156,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 bodyTypeInfo = $"🧬 Body Type: {displayName} |";
             }
 
-
-            if (pawn.health?.hediffSet?.hediffs == null || pawn.health.hediffSet.hediffs.Count == 0)
-            {
-                // return $"{bodyTypeInfo}{pawn.Name} has no health conditions. 🟢";
-                return "RICS.MPCH.BodyNoConditions".Translate(pawn.LabelShortCap);
-            }
+            // Lets try showing information even if there are no health conditions, instead of just saying "no conditions"
+            //if (pawn.health?.hediffSet?.hediffs == null || pawn.health.hediffSet.hediffs.Count == 0)
+            //{
+            //    // return $"{bodyTypeInfo}{pawn.Name} has no health conditions. 🟢";
+            //    return "RICS.MPCH.BodyNoConditions".Translate(pawn.LabelShortCap);
+            //}
 
             var report = new StringBuilder();
 
