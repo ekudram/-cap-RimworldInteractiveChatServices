@@ -144,35 +144,31 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return new List<Thing>();
         }
 
-        private static string GetArmorSummary(Pawn pawn)
+        // In MyPawnCommandHandler_Combat.cs, inside MyPawnCommandHandler_Combat.GetArmorSummary()
+        Replace the entire GetArmorSummary function with this:
+private static string GetArmorSummary(Pawn pawn)
         {
+            if (pawn?.apparel?.WornApparel == null || !pawn.apparel.WornApparel.Any())
+                return "RICS.MPCH.ArmorNone".Translate() + "\n";
+
             try
             {
-                float sharpArmor = CalculateArmorRating(pawn, StatDefOf.ArmorRating_Sharp);
-                float bluntArmor = CalculateArmorRating(pawn, StatDefOf.ArmorRating_Blunt);
-                float heatArmor = CalculateArmorRating(pawn, StatDefOf.ArmorRating_Heat);
+                float sharp = pawn.GetStatValue(StatDefOf.ArmorRating_Sharp);
+                float blunt = pawn.GetStatValue(StatDefOf.ArmorRating_Blunt);
+                float heat = pawn.GetStatValue(StatDefOf.ArmorRating_Heat);
 
-                var armorStats = new List<string>();
+                var parts = new List<string>();
+                if (sharp >= 0.01f) parts.Add($"🗡️{sharp.ToStringPercent()}");
+                if (blunt >= 0.01f) parts.Add($"🔨{blunt.ToStringPercent()}");
+                if (heat >= 0.01f) parts.Add($"🔥{heat.ToStringPercent()}");
 
-                if (sharpArmor >= 0.01f)
-                    armorStats.Add($"🗡️{sharpArmor.ToStringPercent()}");
-
-                if (bluntArmor >= 0.01f)
-                    armorStats.Add($"🔨{bluntArmor.ToStringPercent()}");
-
-                if (heatArmor >= 0.01f)
-                    armorStats.Add($"🔥{heatArmor.ToStringPercent()}");
-
-                if (armorStats.Count > 0)
-                {
-                    return "RICS.MPCH.ArmorHeader".Translate() + $" {string.Join(" ", armorStats)}\n";
-                }
+                return "RICS.MPCH.ArmorHeader".Translate() + string.Join(" ", parts) + "\n";
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error calculating armor: {ex}");
+                return "RICS.MPCH.ArmorNone".Translate() + "\n";
             }
-            return "RICS.MPCH.ArmorNone".Translate() + "\n";
         }
 
         private static float CalculateArmorRating(Pawn pawn, StatDef stat)

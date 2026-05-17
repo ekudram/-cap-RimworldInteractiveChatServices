@@ -190,7 +190,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 : "";
         }
 
-        private static string GetWeaponDamageSummary(Thing weapon)
+        public static string GetWeaponDamageSummary(Thing weapon)
         {
             if (weapon.def.IsMeleeWeapon)
             {

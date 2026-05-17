@@ -36,31 +36,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
-                // Get the viewer and their pawn
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
                 {
-                    // return "Could not find your viewer data.";
                     return "RICS.MPCH.NoViewerData".Translate();
                 }
 
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-
-                // Check if viewer already has a pawn assigned using the new manager
-                if (assignmentManager != null)
+                if (assignmentManager == null)
                 {
-                    Pawn existingPawn = assignmentManager.GetAssignedPawn(messageWrapper);
-                    if (existingPawn == null)
-                    {
-                        // return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
-                        return "RICS.MPCH.NoPawnAssigned".Translate();
-                    }
+                    return "RICS.MPCH.NoPawnAssigned".Translate(); // graceful fallback
                 }
 
-                var pawn = assignmentManager.GetAssignedPawn(messageWrapper);
+                Pawn pawn = assignmentManager.GetAssignedPawn(messageWrapper);
+                if (pawn == null || pawn.Destroyed)
+                {
+                    return "RICS.MPCH.NoPawnAssigned".Translate();
+                }
 
-                // Route to appropriate handler based on subcommand
-                switch (subCommand)
+                // Route to sub-handler
+                switch (subCommand?.ToLowerInvariant())
                 {
                     case "body":
                         return MyPawnCommandHandler_Body.HandleBodyInfo(pawn, args);
@@ -86,21 +81,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "traits":
                         return HandleTraitsInfo(pawn, args);
                     case "work":
-                        return HandleWorkInfo(pawn, args);                  
+                        return HandleWorkInfo(pawn, args);
                     case "job":
                     case "action":
                         return HandleJobInfo(pawn);
                     case "psycasts":
                         return HandlePsycastsInfo(pawn);
                     default:
-                        // return $"Unknown subcommand: {subCommand}. !mypawn [type]: body, health, implants, gear, kills, needs, relations, skills, stats, story, traits, work";
-                        return "RICS.MPCH.UnknownSubcommand".Translate(subCommand);
+                        return "RICS.MPCH.UnknownSubcommand".Translate(subCommand ?? "none");
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in MyPawn command handler: {ex}");
-                // return "An error occurred while processing your pawn information.";
                 return "RICS.MPCH.ErrorProcessingPawn".Translate();
             }
         }
@@ -223,7 +216,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             report.AppendLine("RICS.MPCH.RelationsHeader".Translate());
 
             // Get the assignment manager
-            var assignmentManager = Current.Game?.GetComponent<GameComponent_PawnAssignmentManager>();
+            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+
             if (assignmentManager == null)
             {
                 // return "Relations system not available.";
@@ -930,7 +924,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Debug("[MyPawn Psycasts] Forced Pawn_AbilityTracker creation");
             }
 
-            pawn.abilities.Notify_TemporaryAbilitiesChanged();
+            if (pawn.abilities != null)
+                pawn.abilities.Notify_TemporaryAbilitiesChanged();
 
             var allAbilities = pawn.abilities.AllAbilitiesForReading;
 

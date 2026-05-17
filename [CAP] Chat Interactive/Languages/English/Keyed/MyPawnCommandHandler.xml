@@ -33,6 +33,8 @@
   <RICS.MPCH.OverallStatus>📊 Overall Status: {0}</RICS.MPCH.OverallStatus>
   <RICS.MPCH.BleedoutIn>Bleedout in {0}!</RICS.MPCH.BleedoutIn>
   <RICS.MPCH.NeedsMedical>⚠️ Needs medical attention!</RICS.MPCH.NeedsMedical>
+  <RICS.MPCH.HealthError>Error retrieving health information.</RICS.MPCH.HealthError>
+  <RICS.MPCH.NoPawnAssigned>You don't have an active pawn in the colony. Use !pawn to purchase one!</RICS.MPCH.NoPawnAssigned>
 
   <!-- Gear -->
   <RICS.MPCH.GearHeader>🎒 Gear Report:</RICS.MPCH.GearHeader>
