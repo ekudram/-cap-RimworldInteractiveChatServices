@@ -29,6 +29,11 @@ namespace CAP_ChatInteractive
     public static class UIUtilities
     {
         /// <summary>
+        /// Persistent buffers for float fields (prevents typing flicker on per-tick redraws).
+        /// Used by BufferedNumericField / NumericField(float).
+        /// </summary>
+        private static readonly Dictionary<string, string> numericBuffers = new();
+        /// <summary>
         /// Recommended truncation method (uses efficient binary search)
         /// 1 reference (primary public API)
         /// </summary>
@@ -218,41 +223,80 @@ namespace CAP_ChatInteractive
         }
 
         /// <summary>
-        /// Draws a numeric integer field with label and description
-        /// 9 references
+        /// Buffered integer numeric field — uses the same persistent numericBuffers dictionary
+        /// as the float version and Dialog_CommandManager.cs.
+        /// Prevents typing flicker / lost input on every-tick redraws in settings tabs.
+        /// Fully backwards-compatible with all existing calls (auto-generates stable key if none provided).
         /// </summary>
-        public static void NumericField(Listing_Standard listing, string label, string description, ref int value, int min, int max)
+        public static void NumericField(Listing_Standard listing, string label, string description, ref int value, int min, int max, string uniqueKey = null)
         {
+            // Auto-generate stable key from label if none provided (safe for every existing call)
+            if (string.IsNullOrEmpty(uniqueKey))
+                uniqueKey = "intfield_" + label.GetHashCode().ToString(System.Globalization.CultureInfo.InvariantCulture);
+
             Rect rect = listing.GetRect(Text.LineHeight);
             Rect leftRect = rect.LeftPart(0.7f).Rounded();
             Rect rightRect = rect.RightPart(0.3f).Rounded();
 
             LabelWithDescription(leftRect, label, description);
 
-            string buffer = value.ToString();
+            if (!numericBuffers.ContainsKey(uniqueKey))
+            {
+                numericBuffers[uniqueKey] = value.ToString();
+            }
+
+            string buffer = numericBuffers[uniqueKey];
+
             Widgets.TextFieldNumeric(rightRect, ref value, ref buffer, min, max);
+
+            numericBuffers[uniqueKey] = buffer;   // persist edited buffer for next tick
 
             listing.Gap(2f);
         }
 
         // Float version commented out as unused (0 references) - keep for future use if needed
-        public static void NumericField(Listing_Standard listing, string label, string description, ref float value, float min, float max)
+        /// <summary>
+        /// Buffered float numeric field — ESSENTIAL for settings tabs.
+        /// Uses persistent buffer dictionary so decimals (0.01f, 0.05f, etc.) type reliably.
+        /// Falls back to old behavior if no uniqueKey is passed (for backwards compatibility).
+        /// Matches the exact buffer pattern you already use in Dialog_CommandManager.cs.
+        /// </summary>
+        public static void NumericField(Listing_Standard listing, string label, string description, ref float value, float min, float max, string uniqueKey = null)
         {
+            // Auto-generate stable key from label if none provided (safe for all existing calls)
+            if (string.IsNullOrEmpty(uniqueKey))
+                uniqueKey = "floatfield_" + label.GetHashCode().ToString(System.Globalization.CultureInfo.InvariantCulture);
+
             Rect rect = listing.GetRect(Text.LineHeight);
             Rect leftRect = rect.LeftPart(0.7f).Rounded();
             Rect rightRect = rect.RightPart(0.3f).Rounded();
 
             LabelWithDescription(leftRect, label, description);
 
-            // Initialize buffer with "0.##" so decimals (0.05, 0.35, etc.) parse correctly
-            string buffer = value.ToString("0.##");
+            if (!numericBuffers.ContainsKey(uniqueKey))
+            {
+                // Use InvariantCulture so decimal point is always '.' regardless of OS locale
+                numericBuffers[uniqueKey] = value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            string buffer = numericBuffers[uniqueKey];
 
             Widgets.TextFieldNumeric(rightRect, ref value, ref buffer, min, max);
 
-            // Always clamp after editing (TextFieldNumeric does not return success/failure)
+            // Always clamp (TextFieldNumeric does not enforce it)
             value = Mathf.Clamp(value, min, max);
 
+            numericBuffers[uniqueKey] = buffer;   // persist edited buffer for next tick
+
             listing.Gap(2f);
+        }
+
+        /// <summary>
+        /// Call this from any settings dialog's PostClose() to prevent memory growth.
+        /// </summary>
+        public static void ClearNumericBuffers()
+        {
+            numericBuffers.Clear();
         }
 
         /// <summary>
@@ -311,6 +355,9 @@ namespace CAP_ChatInteractive
     /// </summary>
     public static class TextFieldHelper
     {
+        /// <summary>
+        /// Persistent buffers for text fields (prevents typing flicker on per-tick redraws).
+        /// </summary>
         private static readonly Dictionary<string, string> textFieldBuffers = new();
 
         public static string DrawBufferedTextField(Rect rect, string currentValue, string uniqueKey)

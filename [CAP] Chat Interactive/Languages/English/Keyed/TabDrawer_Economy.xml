@@ -42,7 +42,7 @@
 
   <!-- Decay settings -->
   <RICS.Economy.KarmaDecayRate>Decay Rate (% per interval):</RICS.Economy.KarmaDecayRate>
-  <RICS.Economy.KarmaDecayRateDesc>Higher = faster decay toward baseline.</RICS.Economy.KarmaDecayRateDesc>
+  <RICS.Economy.KarmaDecayRateDesc>Higher = faster decay.</RICS.Economy.KarmaDecayRateDesc>
 
   <RICS.Economy.KarmaDecayInterval>Decay Interval (minutes):</RICS.Economy.KarmaDecayInterval>
   <RICS.Economy.KarmaDecayIntervalDesc>How often karma decay runs.</RICS.Economy.KarmaDecayIntervalDesc>

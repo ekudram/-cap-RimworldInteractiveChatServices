@@ -99,7 +99,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             // Uses live settings so admins can tune without touching code or translations
             return $"Karma ({settings.MinKarma:F0}-{settings.MaxKarma:F0}): Decay {settings.KarmaDecayRate:P0} every {settings.KarmaDecayIntervalMinutes}min (floor {settings.KarmaMinDecayFloor}). " +
                    $"Good+{settings.KarmaGainPerGoodEvent} Neut+{settings.KarmaGainPerNeutralEvent} Bad-{settings.KarmaLossPerBadEvent} Doom-{settings.KarmaLossPerDoomEvent}. " +
-                   $"Store +{settings.KarmaPerStoreItem:0.##}/item | Event×{settings.KarmaEventPriceMultiplier:0.##}. Higher = better coin rewards!";
+                   $"Store +{settings.KarmaPerStoreItem:0.##}%/item | Event×{settings.KarmaEventPriceMultiplier:0.##}. Higher = better coin rewards!";
         }
     }
 

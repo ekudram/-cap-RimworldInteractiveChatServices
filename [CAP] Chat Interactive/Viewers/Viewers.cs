@@ -614,7 +614,7 @@ namespace CAP_ChatInteractive
                         continue;
 
                     // Calculate how much to lose this tick
-                    float decayAmount = viewer.Karma * settings.KarmaDecayRate;
+                    float decayAmount = viewer.Karma * settings.KarmaDecayRate/100;
 
                     // Enforce a minimum decay floor so it never becomes meaningless on low-karma viewers
                     if (decayAmount < settings.KarmaMinDecay)
@@ -639,7 +639,7 @@ namespace CAP_ChatInteractive
                 {
                     Logger.Message($"[Karma Decay] Applied to {viewersAffected} viewers. " +
                                    $"Total lost: {totalKarmaLost:F1} karma " +
-                                   $"(rate: {settings.KarmaDecayRate}, min: {settings.KarmaMinDecay})");
+                                   $"(rate: {settings.KarmaDecayRate}%, min: {settings.KarmaMinDecay})");
                     SaveViewers();
                 }
             }

@@ -259,7 +259,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             float karmaPerItem = settings?.KarmaPerStoreItem ?? 0.01f;
 
-            float karmaEarned = totalCost * karmaPerItem;
+            float karmaEarned = totalCost * karmaPerItem/100;
 
             if (karmaEarned > 0f)
             {

@@ -254,7 +254,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 viewer.TakeCoins(finalPrice);
 
                 // Use the new dedicated store karma setting (per item purchased)
-                float karmaEarned = finalPrice * settings.KarmaPerStoreItem;
+                float karmaEarned = finalPrice * (settings.KarmaPerStoreItem / 100f) ;
                 if (karmaEarned > 0f)
                 {
                     viewer.GiveKarma(karmaEarned);
