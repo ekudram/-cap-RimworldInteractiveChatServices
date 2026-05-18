@@ -187,7 +187,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (!playerMaps.Any())
             {
                 // return new RaidResult(false, "No player home maps found.");
-                return new RaidResult(false, "RICSRICS.Raid.NoValidMaps".Translate()); 
+                return new RaidResult(false, "RICS.Raid.NoValidMaps".Translate()); 
             }
 
             // Try each player map until we find one that works
@@ -223,7 +223,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // return new RaidResult(false, "No valid targets or factions available for raid right now.");
-            return new RaidResult(false, "RICS.raid.NoValidTargets".Translate() );
+            return new RaidResult(false, "RICS.Raid.NoValidTargets".Translate() );
         }
 
         private static string BuildRaidDescription(RaidConfiguration config, string raidType)
