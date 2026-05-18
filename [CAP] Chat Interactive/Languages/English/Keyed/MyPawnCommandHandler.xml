@@ -131,6 +131,8 @@
 
   <!-- Weapon -->
   <RICS.MPCH.WeaponHeader>🔫⚔️ Weapon Report:</RICS.MPCH.WeaponHeader>
+  <RICS.MPCH.NoWeaponEquipped>No weapon equipped.</RICS.MPCH.NoWeaponEquipped>
+  <RICS.MPCH.WeaponTraits>🎯 Weapon Traits:</RICS.MPCH.WeaponTraits>
 
   
 </LanguageData>

@@ -171,15 +171,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         // === Weapon Details ===
 
+        // In MyPawnCommandHandler_Combat.cs, replace the entire HandleWeaponInfo() with this improved version:
+        // In MyPawnCommandHandler_Combat.cs, inside MyPawnCommandHandler_Combat.HandleWeaponInfo()
+
         public static string HandleWeaponInfo(Pawn pawn)
         {
             var report = new StringBuilder();
-            report.AppendLine("🔫 Weapon Report:");
+            report.AppendLine("RICS.MPCH.WeaponHeader".Translate());
 
             var weapon = pawn.equipment?.Primary;
             if (weapon == null)
             {
-                report.AppendLine("No weapon equipped.");
+                report.AppendLine("RICS.MPCH.NoWeaponEquipped".Translate());
                 return report.ToString();
             }
 
@@ -187,17 +190,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             report.AppendLine($"• {name}");
 
             // Core stats (damage / DPS / AP)
-            string stats = CommandHandlerPriceCheck.GetWeaponDamageSummary(weapon);  // reuse price check logic for consistent formatting
+            string stats = CommandHandlerPriceCheck.GetWeaponDamageSummary(weapon);
             if (!string.IsNullOrEmpty(stats))
             {
                 report.AppendLine(stats);
             }
 
-            // Unique traits (short names only)
+            // Unique + Persona traits
             var uniqueTraits = GetUniqueWeaponTraits(weapon);
             if (uniqueTraits.Count > 0)
             {
-                report.AppendLine($"• Traits: {string.Join(", ", uniqueTraits)}");
+                report.AppendLine("RICS.MPCH.WeaponTraits".Translate());
+                report.AppendLine(string.Join(", ", uniqueTraits));
             }
 
             return report.ToString();
