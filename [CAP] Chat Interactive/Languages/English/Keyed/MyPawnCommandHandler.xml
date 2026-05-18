@@ -5,8 +5,8 @@
   <RICS.MPCH.NoViewerData>Could not find your viewer data.</RICS.MPCH.NoViewerData>
   <RICS.MPCH.NoPawnAssigned>You don't have an active pawn in the colony. Use !pawn to purchase one!</RICS.MPCH.NoPawnAssigned>
   <RICS.MPCH.ErrorProcessingPawn>An error occurred while processing your pawn information.</RICS.MPCH.ErrorProcessingPawn>
-  <RICS.MPCH.UnknownSubcommand>Unknown subcommand: {0}. Available: body, health, implants, gear, kills, needs, relations, skills, stats, story, traits, work</RICS.MPCH.UnknownSubcommand>
-
+  <RICS.MPCH.UnknownSubcommand>Unknown subcommand: {0}. Available: body, health, implants, gear, weapon, kills, needs, relations, skills, stats, story, traits, work</RICS.MPCH.UnknownSubcommand>
+  
   <!-- Implants -->
   <RICS.MPCH.NoHealthRecords>{0} has no health records.</RICS.MPCH.NoHealthRecords>
   <RICS.MPCH.ImplantsHeader>🔧 Implants:</RICS.MPCH.ImplantsHeader>
@@ -130,6 +130,7 @@
   <RICS.MPCH.NoPsycastsVPE>Psycasts from Vanilla Psycasts Expanded are not visible in this command (mod incompatibility). Check your pawn's bio/abilities tab in-game.</RICS.MPCH.NoPsycastsVPE>
 
   <!-- Weapon -->
-  <RICS.MPCH.WeaponHeader>🔫 Weapon Report:</RICS.MPCH.WeaponHeader>
+  <RICS.MPCH.WeaponHeader>🔫⚔️ Weapon Report:</RICS.MPCH.WeaponHeader>
+
   
 </LanguageData>

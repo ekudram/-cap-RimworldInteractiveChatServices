@@ -186,31 +186,30 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             string name = MyPawnCommandHandler.StripTags(weapon.LabelCap);
             report.AppendLine($"• {name}");
 
-            // Use the same reliable method we already have in PriceCheck
-    
-            string stats = CommandHandlerPriceCheck.GetWeaponDamageSummary(weapon);
+            // Core stats (damage / DPS / AP)
+            string stats = CommandHandlerPriceCheck.GetWeaponDamageSummary(weapon);  // reuse price check logic for consistent formatting
             if (!string.IsNullOrEmpty(stats))
             {
                 report.AppendLine(stats);
             }
 
-            // Unique weapon traits (short names only)
+            // Unique traits (short names only)
             var uniqueTraits = GetUniqueWeaponTraits(weapon);
             if (uniqueTraits.Count > 0)
             {
-                report.AppendLine("• Traits: " + string.Join(", ", uniqueTraits));
+                report.AppendLine($"• Traits: {string.Join(", ", uniqueTraits)}");
             }
 
             return report.ToString();
         }
 
+        // In MyPawnCommandHandler_Combat.cs
         private static List<string> GetUniqueWeaponTraits(Thing weapon)
         {
             var traits = new List<string>();
-
             if (weapon == null) return traits;
 
-            // Primary method — CompUniqueWeapon (Odyssey unique weapons)
+            // 1. Odyssey Unique Weapons + Mods using CompUniqueWeapon
             var uniqueComp = weapon.TryGetComp<CompUniqueWeapon>();
             if (uniqueComp != null)
             {
@@ -225,9 +224,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            // Fallback for other weapon trait comps (if any)
-            // We skip CompApplyWeaponTraits since it doesn't exist in the decompile
-            // You can add more comp checks here later if needed
+            // 2. Persona / Bladelink Weapons (Royalty + mods)
+            var bladelinkComp = weapon.TryGetComp<CompBladelinkWeapon>();
+            if (bladelinkComp != null)
+            {
+                var traitList = bladelinkComp.TraitsListForReading;
+                if (traitList != null)
+                {
+                    foreach (var trait in traitList)
+                    {
+                        if (trait != null && !traits.Contains(trait.LabelCap)) // avoid duplicates
+                            traits.Add(trait.LabelCap);
+                    }
+                }
+            }
 
             return traits;
         }
