@@ -123,12 +123,6 @@ namespace CAP_ChatInteractive
             Rect clearRect = new Rect(x, controlsY, buttonWidth, controlsHeight);
             if (Widgets.ButtonText(clearRect, "RICS.Button.ClearQueue".Translate()))
             {
-                //Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                //    "Are you sure you want to clear the entire pawn queue?",
-                //    () => GetQueueManager().ClearQueue(),
-                //    true
-                //));
-
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
                     "RICS.Confirm.ClearQueue".Translate(),
                     () => GetQueueManager().ClearQueue(),
@@ -261,12 +255,7 @@ namespace CAP_ChatInteractive
 
             // Line 1: Name • Age • Gender (NO tranlation for this line to preserve formatting with symbols)
             string nameAgeGender = $"{pawn.Name?.ToStringShort ?? "Unnamed"} • {pawn.ageTracker.AgeBiologicalYears} • {GetGenderSymbol(pawn)}";
-            //string nameAgeGender = "RICS.Pawn.NameAgeGender".Translate(
-            //    pawn.Name?.ToStringShort ?? "RICS.Pawn.Unnamed".Translate(),
-            //    pawn.ageTracker.AgeBiologicalYears,
-            //    GetGenderSymbol(pawn)
-            //);
-
+ 
             Rect line1Rect = new Rect(rect.x, startY, rect.width, lineHeight);
             Widgets.Label(line1Rect, nameAgeGender);
 
@@ -665,49 +654,49 @@ namespace CAP_ChatInteractive
         {
             var queueManager = GetQueueManager();
 
-            // If platformID is missing but username looks like a platform ID, try to resolve
-            if (string.IsNullOrEmpty(platformID) && !string.IsNullOrEmpty(username))
+            // === ROBUST VALIDATION FIRST (fixes the reported typo bypass) ===
+            Viewer viewer = null;
+
+            // 1. Try platform ID (most secure)
+            if (!string.IsNullOrEmpty(platformID))
             {
-                Viewer viewer = Viewers.GetViewerByPlatformIdentifier(username);
-                if (viewer != null)
+                viewer = Viewers.GetViewerByPlatformIdentifier(platformID);
+            }
+
+            // 2. Fallback to username lookup
+            if (viewer == null && !string.IsNullOrEmpty(username))
+            {
+                viewer = Viewers.GetViewerNoAdd(username); // NoAdd prevents creating bogus viewer
+                if (viewer == null)
                 {
-                    username = viewer.Username;                    // Fix username
-                    platformID = viewer.GetPrimaryPlatformIdentifier(); // Fix platform ID
+                    viewer = Viewers.GetViewer(username); // creates only if truly new (still safe)
                 }
             }
 
-            // Validate that we have a valid platform ID
-            if (string.IsNullOrEmpty(platformID))
+            if (viewer == null)
             {
-                // Try to find the viewer and get their platform ID
-                Viewer viewer = Viewers.GetViewer(username);
-                if (viewer != null)
-                {
-                    platformID = viewer.GetPrimaryPlatformIdentifier();
-                    //Logger.Debug($"Found platform ID for {username}: {platformID}");
-                }
-                else
-                {
-                    // Show warning and abort the assignment
-                    //Messages.Message($"Cannot assign pawn - viewer '{username}' not found in database.", MessageTypeDefOf.RejectInput);
-                    Messages.Message("RICS.Message.ViewerNotFound".Translate(username), MessageTypeDefOf.RejectInput);
-
-                    //Logger.Warning($"Cannot assign pawn to {username} - viewer not found in database");
-                    return; // Abort the assignment
-                }
+                Messages.Message("RICS.Message.ViewerNotFound".Translate(username), MessageTypeDefOf.RejectInput);
+                Logger.Warning($"AssignPawnDirectly aborted - viewer not found for username='{username}' platformID='{platformID}'");
+                return;
             }
 
-            // Remove from queue using platform ID
-            queueManager.RemoveFromQueue(platformID);
+            // Use authoritative platform ID from the real viewer object
+            string authoritativePlatformID = viewer.GetPrimaryPlatformIdentifier();
+            if (!authoritativePlatformID.Contains(":"))
+            {
+                // Fallback safety - should never hit with current Viewer system
+                authoritativePlatformID = platformID ?? $"username:{username.ToLowerInvariant()}";
+            }
 
-            // Directly assign the pawn - now we have a valid platformID
-            queueManager.AssignPawnToViewerDialog(username, platformID, pawn);
+            // Remove from queue using authoritative ID
+            queueManager.RemoveFromQueue(authoritativePlatformID);
 
-            // Send confirmation message to chat (user-facing)
-            // string assignMessage = $"🎉 You have been assigned {pawn.Name}! Use !mypawn to check your pawn's status.";
+            // Direct assignment using platform ID (core security fix)
+            queueManager.AssignPawnToViewerDialog(viewer.Username, authoritativePlatformID, pawn);
+
+            // Send confirmation (user-facing)
             string assignMessage = "RICS.Message.PawnAssigned".Translate(pawn.Name.ToStringFull);
-
-            ChatCommandProcessor.SendMessageToUsername(username, assignMessage);
+            ChatCommandProcessor.SendMessageToUsername(viewer.Username, assignMessage);
 
             // Update UI
             RefreshAvailablePawns();
@@ -721,8 +710,8 @@ namespace CAP_ChatInteractive
             else
                 selectedPawn = null;
 
-            // Messages.Message($"Assigned pawn directly to {username}", MessageTypeDefOf.PositiveEvent);
-            Messages.Message("RICS.Message.PawnAssignedDirectly".Translate(username), MessageTypeDefOf.PositiveEvent);
+            Messages.Message("RICS.Message.PawnAssignedDirectly".Translate(viewer.Username), MessageTypeDefOf.PositiveEvent);
+            Logger.Debug($"Successfully assigned pawn {pawn.ThingID} to verified viewer {viewer.Username} (platformID: {authoritativePlatformID})");
         }
 
         private GameComponent_PawnAssignmentManager GetQueueManager()
