@@ -223,7 +223,9 @@ namespace _CAP__Chat_Interactive.Utilities
                     {
                         defaultEnabled = allowedXenotypes.Contains(xenotype);
 
-                        if (defaultEnabled && xenotype.Equals(race.defName, StringComparison.OrdinalIgnoreCase))
+                        if (defaultEnabled &&
+                                                (xenotype.Equals(race.defName, StringComparison.OrdinalIgnoreCase) ||
+                                                 xenotype.Equals(race.defName.Replace("Alien_", ""), StringComparison.OrdinalIgnoreCase)))
                         {
                             settings.DefaultXenotype = xenotype;
                         }

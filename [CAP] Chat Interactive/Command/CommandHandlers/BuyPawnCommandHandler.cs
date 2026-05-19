@@ -20,10 +20,8 @@ using _CAP__Chat_Interactive.Utilities;
 using RimWorld;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using Verse;
-using static UnityEngine.UI.Image;
 
 namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
@@ -103,17 +101,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // === XENOTYPE RESOLUTION & VALIDATION ===
-                
+
                 string finalXenotypeName = xenotypeName;  // start with cleaned user input
 
                 // Auto-pick logic if no xenotype given or Baseliner is disabled for this race
+                // HAR support: now prefers race-specific xenotype (e.g. Nyaron race → Nyaron xenotype)
                 if (string.IsNullOrEmpty(xenotypeName) ||
                     xenotypeName.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
                 {
                     if (!raceSettings.EnabledXenotypes.TryGetValue("Baseliner", out bool baselinerEnabled) || !baselinerEnabled)
                     {
-                        finalXenotypeName = PickRandomEnabledXenotype(raceSettings);
-                        Logger.Debug($"Baseliner disabled for {raceName} → auto-picked '{finalXenotypeName}' from RaceSettings");
+                        finalXenotypeName = PickRandomEnabledXenotype(raceSettings, raceName);
+                        Logger.Debug($"Baseliner disabled for {raceName} → auto-picked '{finalXenotypeName}' from RaceSettings (HAR-aware)");
                     }
                     else
                     {
@@ -270,12 +269,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 string resolvedXenotype = xenotypeName;
 
                 // Auto-pick if nothing specified or Baseliner is disabled for this race
+                // HAR support: now prefers race-specific xenotype (Nyaron example)
                 if (string.IsNullOrEmpty(xenotypeName) || xenotypeName.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
                 {
                     if (!raceSettings.EnabledXenotypes.TryGetValue("Baseliner", out bool baselinerEnabled) || !baselinerEnabled)
                     {
-                        resolvedXenotype = PickRandomEnabledXenotype(raceSettings); // new helper below
-                        Logger.Debug($"Baseliner disabled → auto-picked '{resolvedXenotype}' from RaceSettings");
+                        resolvedXenotype = PickRandomEnabledXenotype(raceSettings, raceName);
+                        Logger.Debug($"Baseliner disabled → auto-picked '{resolvedXenotype}' from RaceSettings (HAR-aware)");
                     }
                     else
                     {
@@ -1090,16 +1090,41 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        private static string PickRandomEnabledXenotype(RaceSettings settings)
+        private static string PickRandomEnabledXenotype(RaceSettings settings, string raceDefName = null)
         {
+            if (settings?.EnabledXenotypes == null)
+                return "Baseliner";
+
             var enabled = settings.EnabledXenotypes
                 .Where(kv => kv.Value && kv.Key != "Baseliner")
                 .Select(kv => kv.Key)
                 .ToList();
 
-            return enabled.Any()
-                ? enabled.RandomElement()
-                : "Baseliner"; // safety fallback
+            if (!enabled.Any())
+                return "Baseliner"; // safety fallback
+
+            // === HAR / custom race support (Nyaron example) ===
+            // Prefer the xenotype whose name matches the race (most common pattern in HAR mods)
+            // e.g. Nyaron race → Nyaron xenotype (as defined in PawnKindDef xenotypeSet)
+            if (!string.IsNullOrEmpty(raceDefName))
+            {
+                string cleanRace = raceDefName.Replace("Alien_", "").Trim();
+
+                string preferred = enabled.FirstOrDefault(x =>
+                    x.Equals(cleanRace, StringComparison.OrdinalIgnoreCase) ||
+                    x.Equals(raceDefName, StringComparison.OrdinalIgnoreCase));
+
+                if (preferred != null)
+                {
+                    Logger.Debug($"[HAR Support] Picked preferred race xenotype '{preferred}' for race '{raceDefName}'");
+                    return preferred;
+                }
+            }
+
+            // Fallback: random among enabled non-Baseliner xenotypes
+            string picked = enabled.RandomElement();
+            Logger.Debug($"[HAR Support] Picked random enabled xenotype '{picked}' for race '{raceDefName ?? "unknown"}'");
+            return picked;
         }
 
         private static List<string> GetAllowedXenotypesForRace(ThingDef raceDef)
