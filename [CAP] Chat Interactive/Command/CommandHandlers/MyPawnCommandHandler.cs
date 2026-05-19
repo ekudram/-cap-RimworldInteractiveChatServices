@@ -212,6 +212,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             };
         }
 
+        /// === Relations ===
         private static string HandleRelationsInfo(Pawn pawn, Viewer viewer, string[] args)
         {
             var report = new StringBuilder();
@@ -251,35 +252,40 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             string pawnViewer = GetViewerNameFromPawn(pawn);
             string targetPawnViewer = GetViewerNameFromPawn(targetPawn);
 
-            // report.AppendLine($"🤝 Relations between {pawnViewer} and {targetPawnViewer}:");
             report.AppendLine("RICS.MPCH.SpecificRelationHeader".Translate(pawnViewer, targetPawnViewer));
 
-            // Get direct relation
-            var directRelation = pawn.relations.DirectRelationExists(PawnRelationDefOf.Spouse, targetPawn) ? "Spouse 💍" :
-                                pawn.relations.DirectRelationExists(PawnRelationDefOf.Lover, targetPawn) ? "Lover ❤️" :
-                                pawn.relations.DirectRelationExists(PawnRelationDefOf.Fiance, targetPawn) ? "Fiancé 💑" :
-                                pawn.relations.DirectRelationExists(PawnRelationDefOf.ExLover, targetPawn) ? "Ex-Lover 💔" :
-                                pawn.relations.DirectRelationExists(PawnRelationDefOf.ExSpouse, targetPawn) ? "Ex-Spouse 💔" :
-                                pawn.relations.DirectRelationExists(PawnRelationDefOf.Child, targetPawn) ? "Child 👶" :
-                                pawn.relations.DirectRelationExists(PawnRelationDefOf.Parent, targetPawn) ? "Parent 👨‍👦" :
-                                pawn.relations.DirectRelationExists(PawnRelationDefOf.Sibling, targetPawn) ? "Sibling 👫" :
-                                "No direct relation";
+            // === Dynamic relation list (replaces hardcoded chain - uses vanilla GetRelations) ===
+            var allRelations = pawn.GetRelations(targetPawn).ToList();
+            if (allRelations.Count > 0)
+            {
+                report.AppendLine("RICS.MPCH.SpecificRelationType".Translate(
+                    string.Join(" • ", allRelations.Select(r => r.GetGenderSpecificLabelCap(targetPawn)))));
+            }
+            else
+            {
+                report.AppendLine("RICS.MPCH.SpecificRelationType".Translate("No direct relation"));
+            }
 
-            // report.AppendLine($"• Relationship: {directRelation}");
-            report.AppendLine("RICS.MPCH.SpecificRelationType".Translate(directRelation));
-
-            // Opinion
+            // Opinion (unchanged but kept for completeness)
             int opinion = pawn.relations.OpinionOf(targetPawn);
             string opinionEmoji = opinion >= 50 ? "😍" : opinion >= 25 ? "😊" : opinion >= 0 ? "🙂" : opinion >= -25 ? "😐" : opinion >= -50 ? "😠" : "😡";
-            // report.AppendLine($"• Opinion: {opinion} {opinionEmoji}");
             report.AppendLine("RICS.MPCH.Opinion".Translate(opinion, opinionEmoji));
 
-            // Romance-related info - basic
+            // === NEW: Romance compatibility (vanilla Pawn_RelationsTracker APIs) ===
+            string romanceInfo = GetRomanceCompatibility(pawn, targetPawn);
+            report.AppendLine($"💞 Romance Potential: {romanceInfo}");
+
+            // Active romantic status
             if (pawn.relations.DirectRelationExists(PawnRelationDefOf.Lover, targetPawn) ||
                 pawn.relations.DirectRelationExists(PawnRelationDefOf.Spouse, targetPawn))
             {
-                // report.AppendLine($"• Relationship: Active 💑");
                 report.AppendLine("RICS.MPCH.ActiveRelationship".Translate());
+            }
+
+            // Bonus: Romance cooldown warning (Biotech-aware)
+            if (pawn.relations.IsTryRomanceOnCooldown)
+            {
+                report.AppendLine("⏳ Romance on cooldown (recent attempt)");
             }
 
             return report.ToString();
@@ -388,34 +394,69 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return "Relation"; // Fallback
         }
 
+
+        // Replace the existing GetViewerNameFromPawn (now uses gender emoji for romance clarity)
         private static string GetViewerNameFromPawn(Pawn pawn)
         {
-            if (pawn?.Name is NameTriple nameTriple)
-            {
-                // Prefer the Nick (username) if it's not empty
-                if (!string.IsNullOrEmpty(nameTriple.Nick))
-                    return nameTriple.Nick;
+            if (pawn == null)
+                return "Unknown";
 
-                // Fallback to first name if Nick is empty
-                return nameTriple.First;
-            }
-            return pawn?.Name?.ToString() ?? "Unknown";
+            string baseName = GetDisplayNameForRelations(pawn);
+
+            string genderEmoji = GetGenderEmoji(pawn);
+            return $"{genderEmoji} {baseName}";
         }
 
         private static string GetDisplayNameForRelations(Pawn pawn, GameComponent_PawnAssignmentManager assignmentManager = null)
         {
-            if (pawn?.Name is NameTriple nameTriple)
-            {
-                // If this is a viewer pawn, always use the Nick (username)
-                if (assignmentManager?.IsViewerPawn(pawn) == true)
-                    return nameTriple.Nick;
+            if (pawn?.Name is not NameTriple nameTriple)
+                return pawn?.Name?.ToString() ?? "Unknown";
 
-                // For non-viewer pawns, use First name (more natural for family relationships)
-                return nameTriple.First;
+            // Viewer pawns always have username in Nick (via PawnAssignmentManager) — prefer it
+            if (!string.IsNullOrEmpty(nameTriple.Nick))
+                return nameTriple.Nick;
+
+            // Fallback: show First + Last when Nick is blank/empty (matches Colonist Bar style + user request)
+            string fullName = nameTriple.First ?? "";
+            if (!string.IsNullOrEmpty(nameTriple.Last))
+            {
+                if (!string.IsNullOrEmpty(fullName))
+                    fullName += " ";
+                fullName += nameTriple.Last;
             }
-            return pawn?.Name?.ToString() ?? "Unknown";
+
+            return string.IsNullOrEmpty(fullName) ? "Unknown" : fullName;
         }
 
+        private static string GetGenderEmoji(Pawn pawn)
+        {
+            if (pawn == null || pawn.gender == Gender.None)
+                return "⚪"; // Neutral / unknown
+
+            return pawn.gender switch
+            {
+                Gender.Male => "♂",
+                Gender.Female => "♀",
+                _ => "⚧" // Other / custom (e.g. modded genders)
+            };
+        }
+
+        private static string GetRomanceCompatibility(Pawn pawn, Pawn targetPawn)
+        {
+            if (pawn == null || targetPawn == null || pawn.relations == null)
+                return "N/A";
+
+            float compatibility = pawn.relations.CompatibilityWith(targetPawn);
+            float romanceChance = pawn.relations.SecondaryRomanceChanceFactor(targetPawn);
+
+            string compatText = compatibility >= 0.3f ? "High ❤️" :
+                               compatibility >= 0.1f ? "Good 🙂" :
+                               compatibility >= -0.1f ? "Neutral" : "Low 😕";
+
+            return $"{compatText} (compat: {compatibility:F2} | romance: {romanceChance:P0})";
+        }
+
+        // === Skills & Stats ===
         private static string HandleSkillsInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
@@ -642,6 +683,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
+        // === Story & Traits ===
         private static string HandleBackstoriesInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();

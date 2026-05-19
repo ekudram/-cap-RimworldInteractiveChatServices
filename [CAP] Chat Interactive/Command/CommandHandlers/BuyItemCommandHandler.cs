@@ -255,7 +255,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 // Use the new dedicated store karma setting (per item purchased)
                 float karmaEarned = finalPrice * (settings.KarmaPerStoreItem / 100f) ;
-                if (karmaEarned > 0f)
+                if (karmaEarned > 0f)  
                 {
                     viewer.GiveKarma(karmaEarned);
                     Logger.Debug($"Awarded {karmaEarned:F2} karma ({finalPrice} × settings.KarmaPerStoreItem) for store purchase");
