@@ -59,6 +59,16 @@ namespace CAP_ChatInteractive
             LoadViewers();
         }
 
+        /// <summary>
+        /// Gets the Viewer object associated with a given chat message.
+        /// This method first attempts to find a viewer by their platform-specific user ID (if available), which is the most reliable method of identification.
+        /// If that fails, it falls back to looking up the viewer by their username.
+        /// This approach helps to ensure that viewers are correctly identified even if they change their display name
+        /// or if there are multiple viewers with the same username across different platforms.
+        /// The method also includes robust null checks and logging to prevent and diagnose potential issues with viewer retrieval.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
         public static Viewer GetViewer(ChatMessageWrapper message)
         {
             if (message == null || string.IsNullOrEmpty(message.Username))
@@ -81,6 +91,11 @@ namespace CAP_ChatInteractive
             return GetViewer(message.Username);
         }
 
+        /// <summary>
+        /// Gets the Viewer object for a given username. If no viewer exists with that username, a new one is created and added to the list.
+        /// </summary>
+        /// <param name="username">The username of the viewer.</param>
+        /// <returns>The Viewer object associated with the given username.</returns>
         public static Viewer GetViewer(string username)
         {
             if (string.IsNullOrEmpty(username))
