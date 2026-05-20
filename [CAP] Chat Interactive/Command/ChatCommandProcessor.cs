@@ -135,7 +135,7 @@ namespace CAP_ChatInteractive
                 if (CommandSettingsManager.GetSettings("openlootbox").Enabled)
                 {
                     // Process viewer message to check for daily lootboxes
-                    lootboxComponent.ProcessViewerMessage(message.Username);
+                    lootboxComponent.ProcessViewerMessage(message);
                 }
             }
             catch (Exception ex)

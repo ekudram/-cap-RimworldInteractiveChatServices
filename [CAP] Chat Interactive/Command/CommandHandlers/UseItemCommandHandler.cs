@@ -45,7 +45,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
-                var viewer = Viewers.GetViewer(messageWrapper.Username);
+                var viewer = Viewers.GetViewer(messageWrapper);
 
                 var parsed = CommandParserUtility.ParseCommandArguments(args, allowQuality: false, allowMaterial: false, allowSide: false, allowQuantity: true);
                 if (parsed.HasError)

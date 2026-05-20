@@ -30,7 +30,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return "RICS.LBCH.NotAvailable".Translate();
 
             // Process viewer message to check for daily lootboxes
-            lootboxComponent.ProcessViewerMessage(messageWrapper.Username);
+            lootboxComponent.ProcessViewerMessage(messageWrapper);
 
             if (args.Length > 0 && args[0].ToLower() == "count")
             {

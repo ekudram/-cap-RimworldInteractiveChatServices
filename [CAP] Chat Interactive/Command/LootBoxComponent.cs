@@ -51,9 +51,9 @@ namespace CAP_ChatInteractive
             this.todayFileTime = this.today.ToFileTime();
         }
 
-        public void ProcessViewerMessage(string username)
+        public void ProcessViewerMessage(ChatMessageWrapper message)
         {
-            var viewer = Viewers.GetViewer(username);
+            var viewer = Viewers.GetViewer(message);
             if (this.IsViewerOwedLootboxesToday(viewer.Username.ToLower()))
                 this.AwardViewerDailyLootboxes(viewer.Username.ToLower());
         }
