@@ -120,7 +120,10 @@ namespace _CAP__Chat_Interactive
             Rect resetRect = listing.GetRect(28f);
             if (Widgets.ButtonText(resetRect, "Reset Karma Settings to Defaults"))
             {
-                // Recommended defaults (matches our design for balanced decay + punishment)
+                // Reset to current CAPGlobalChatSettings field defaults (gentle 1f decay + ultra-low store karma to prevent spam abuse)
+                // This now perfectly matches the class field initializers + ExposeData() Scribe_Values defaults
+                // We now use 1 = 1% and not 0.01 = 1% to make it more intuitive for users and prevent confusion, so the default is 1f and not 0.01f
+
                 settings.StartingKarma = 100f;
                 settings.MinKarma = 0f;
                 settings.MaxKarma = 200f;
@@ -130,12 +133,12 @@ namespace _CAP__Chat_Interactive
                 settings.KarmaMinDecay = 0f;
                 settings.KarmaMinDecayFloor = 100f;
 
-                settings.KarmaPerStoreItem = 1f;
+                settings.KarmaPerStoreItem = 5f;
                 settings.KarmaLossPerBadEvent = 12f;
                 settings.KarmaGainPerGoodEvent = 5f;
                 settings.KarmaGainPerNeutralEvent = 1f;
                 settings.KarmaLossPerDoomEvent = 25f;
-                settings.KarmaEventPriceMultiplier = 0.05f;
+                settings.KarmaEventPriceMultiplier = 5f;
             }
 
             listing.Gap(20f);

@@ -121,7 +121,7 @@ namespace CAP_ChatInteractive
     public class CAPGlobalChatSettings : IExposable
     {
         // Existing properties...
-        public string modVersion = "1.35";  // Current mod version WE DONT SAVE THIS! Used in history control
+        public string modVersion = "1.36";  // Current mod version WE DONT SAVE THIS! Used in history control
         public string modVersionSaved = "";
         public string priceListUrl = "https://github.com/ekudram/RICS-Pricelist";
         public bool EnableDebugLogging = false;
@@ -315,14 +315,14 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref KarmaDecayRate, "karmaDecayRate", 1f);
             Scribe_Values.Look(ref KarmaDecayIntervalMinutes, "karmaDecayIntervalMinutes", 60);
             Scribe_Values.Look(ref KarmaMinDecay, "karmaMinDecay", 0f);
-            Scribe_Values.Look(ref KarmaPerStoreItem, "karmaPerStoreItem", 1f);
+            Scribe_Values.Look(ref KarmaPerStoreItem, "karmaPerStoreItem", 5f);
             Scribe_Values.Look(ref KarmaMinDecayFloor, "minDecayKarma", 100f);
 
             Scribe_Values.Look(ref KarmaLossPerBadEvent, "karmaLossPerBadEvent", 12f);
             Scribe_Values.Look(ref KarmaGainPerGoodEvent, "karmaGainPerGoodEvent", 5f);
             Scribe_Values.Look(ref KarmaGainPerNeutralEvent, "karmaGainPerNeutralEvent", 1f);
             Scribe_Values.Look(ref KarmaLossPerDoomEvent, "karmaLossPerDoomEvent", 25f);
-            Scribe_Values.Look(ref KarmaEventPriceMultiplier, "karmaEventPriceMultiplier", 0.05f);
+            Scribe_Values.Look(ref KarmaEventPriceMultiplier, "karmaEventPriceMultiplier", 5f);
 
             Scribe_Values.Look(ref MinutesForActive, "minutesForActive", 30);
             Scribe_Values.Look(ref MaxTraits, "maxTraits", 4);
