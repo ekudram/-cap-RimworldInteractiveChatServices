@@ -16,37 +16,10 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 
 
-using _CAP__Chat_Interactive.Utilities;
-using CAP_ChatInteractive.CAP_ChatInteractive;
-using CAP_ChatInteractive.Commands.CommandHandlers;
-using CAP_ChatInteractive.Commands.ViewerCommands;
-using NAudio.CoreAudioApi;
-using NAudio.SoundFont;
-using RimWorld;
+
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Composition.Primitives;
-using System.Diagnostics;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
-using TwitchLib.Api.Core.RateLimiter;
-using TwitchLib.Api.Helix;
-using TwitchLib.Api.Helix.Models.EventSub.Conduits.Shards.UpdateConduitShards;
-using Unity.Burst.Intrinsics;
-using UnityEngine;
-using UnityEngine.PlayerLoop;
-using UnityEngine.Rendering;
-using UnityEngine.UIElements;
 using Verse;
-using Verse.AI.Group;
-using Verse.Noise;
-using static HarmonyLib.Code;
-using static RimWorld.IdeoFoundation_Deity;
-using static System.Collections.Specialized.BitVector32;
-using static System.Net.WebRequestMethods;
-
-// Add this class to a new file or within your existing files
 
 namespace CAP_ChatInteractive
 {
@@ -54,6 +27,11 @@ namespace CAP_ChatInteractive
     {
         public static Dictionary<string, string> UpdateNotes = new Dictionary<string, string>
         {
+            /// <summary>
+            /// Version History Notes
+            /// Each entry should include: Version number, release date, and detailed changelog of features, fixes, and updates.
+            /// Do not use Emojis or special formatting in the changelog text, as it may not display properly in all contexts.
+            /// </summary>
             {
                 "1.0.14a",
                 @"Xenotype Pricing System Update 
@@ -984,6 +962,78 @@ Translations:
   - RICS.Message.AllXenotypePricesSetToBase
   - RICS.Tooltip.SetAllXenotypesToBasePrice
 - Note that full translations for Dialog_PawnRaceSettings are not complete
+==========================================================="
+            },
+            {
+                "1.36",
+                @"===========================================================
+                         <b>RICS 1.36 - Changelog</b>
+                         Released: May 21, 2026 
+===========================================================
+
+<b>MEMORANDUM</b>
+──────────
+- You will need to fix your Karma Decay Rates and Karma Per store Purchases.
+  - Karma Decay, Store percent and Item percent have changed!
+  - 1 now equals 1% not 0.01. Your Settings may have been adjusted.  
+  - <b><COLOR=red>PLEASE CHECK YOUR SETTINGS!</COLOR></b>
+  - If your Karma Settings have decimal places change accordingly
+
+<b>UPDATED</b>
+───────
+- Karma Rate for Decay and Karma for store purchases is now a percent entry
+  - 1 is now 1% (no more typing 0.01)
+
+- !Fixallpawns will also remove bogus viewer assignments
+
+<b>FIXED</b>
+─────
+- !passion command now works no matter the order you type it!
+  - Skills with zero flames now correctly gain a flame when targeted 
+  - Fixed incorrect “already has all major passions” messages
+
+- !mypawn command is now much more reliable and robust
+  - Works even if your pawn is dead or has no conditions
+  - Better health, body, armor, and relations reports
+  - Fixed crashes and missing info on modded pawns (HAR, VPE, Biotech, etc.)
+
+- Missing tooltips in Store Editor for stack items fixed
+- Economy Tab numeric inputs are now much easier to use (affects other tabs too)
+
+- Direct viewer assignment in the Pawn Que Dialog now rejects misspelled names.
+
+- Fixed type in raid command that caused translation key to show instead of proper text.
+
+<b>ADDED</b>  
+──────
+- **Moderator Command Upgrades**  
+  • New `!givekarma <viewer|all> <amount>` (or convenient shorthand `!givekarma <amount>` to give to **all** viewers)  
+  • `!givecoins` now also supports shorthand: `!givecoins 1500` automatically gives to **all** viewers  
+  • Both commands remain fully backward compatible with the original syntax (`!givecoins viewername 300`, `!givecoins all 1000`, etc.)
+
+- Viewers Requested: `!mypawn weapon` returns information on your equipped weapon (1st weapon if Simple Sidearms is loaded)  
+  - Weapon name  
+  - Damage / DPS / AP   
+  - Unique weapon traits (clean short names only)  
+
+  ""Returns equipped weapon stats. Includes Royalty and Odyssey support.  
+  It is not my fault if your carrying a log."" - Captolamia  
+
+- **Huge upgrade to the !pawn / pawn purchase system**  
+  • Full support for HAR alien races — buying a Nyaron (or any custom race) now correctly uses the right xenotype by default (no more surprise Baseliner pawns!)  
+  • Pawns now drop in dramatically via drop pods when possible — just like new colonists at the start of a game  
+  • Super smart spawning on tricky maps: underground colonies look for a nearby Rimazon Locker or colony center; space maps automatically dress the new pawn in a vacsuit (adult or kid version) so they don’t instantly die  
+  • Overall much more reliable and stable pawn buying experience across all map types  
+
+<b>TRANSLATIONS</b>
+────────────
+- MyPawnCommandHandler.xml added three translation keys:
+  - RICS.MPCH.HealthError
+  - RICS.MPCH.NoPawnAssigned
+  - RICS.MPCH.WeaponHeader
+
+- Changed one in same file:
+  - RICS.MPCH.UnknownSubcommand>
 ==========================================================="
             }
 

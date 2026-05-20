@@ -269,6 +269,19 @@
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
+    <defName>WhatIsKarma</defName>
+    <commandText>whatiskarma</commandText>
+    <label>karma explanation</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.WhatIsKarma</commandClass>
+    <requiresMod>false</requiresMod>
+    <commandDescription>Explain what karma is</commandDescription>
+    <permissionLevel>everyone</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
     <defName>OpenLootBox</defName>
     <commandText>openlootbox</commandText>
     <label>Opens your dialy loot box!</label>

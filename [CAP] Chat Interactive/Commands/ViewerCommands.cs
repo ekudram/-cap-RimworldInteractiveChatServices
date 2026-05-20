@@ -103,6 +103,16 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
+    public class WhatIsKarma : ChatCommand
+    {
+        public override string Name => "whatiskarma";
+
+        public override string Execute(ChatMessageWrapper user, string[] args)
+        {
+            return "RICS.CC.whatiskarma".Translate();
+        }
+    }
+
     public class help : ChatCommand
     {
         public override string Name => "help";
