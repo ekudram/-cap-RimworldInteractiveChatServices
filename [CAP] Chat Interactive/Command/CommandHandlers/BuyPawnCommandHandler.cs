@@ -16,8 +16,10 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Pawn purchase command handler
+using _CAP__Chat_Interactive.Command.CommandHelpers;
 using _CAP__Chat_Interactive.Utilities;
 using RimWorld;
+using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -87,7 +89,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         return "RICS.BPCH.RaceDisabled".Translate(raceName);
 
                     // return $"Invalid pawn request for {raceName}.";
-                    return "RICS.BPCH.InvalidRaceRequest".Translate(raceName);  
+                    return "RICS.BPCH.InvalidRaceRequest".Translate(raceName);
                 }
 
                 // NOW parse age with the validated raceSettings
@@ -251,7 +253,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!playerMaps.Any())
                 {
                     // return new BuyPawnResult(false, "No player home maps found.");
-                    return new BuyPawnResult(false, "RICS.BPCH.NoHomeMap".Translate()); 
+                    return new BuyPawnResult(false, "RICS.BPCH.NoHomeMap".Translate());
                 }
 
                 var map = playerMaps.First();
@@ -321,7 +323,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         //return new BuyPawnResult(false,
                         //    $"The {raceName} race allows {allowedText}. Please choose a different gender or use 'random'.");
                         return new BuyPawnResult(false,
-                            "RICS.BPCH.GenderNotAllowed".Translate(raceName, allowedText)); 
+                            "RICS.BPCH.GenderNotAllowed".Translate(raceName, allowedText));
                     }
                 }
 
@@ -353,12 +355,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     fixedGender: ParseGender(genderName),          // ← add null check if needed
                     fixedLastName: null,
                     forcedXenotype: xenotypeDef   // null = HAR race defaults win
-                    //forcedXenotype: xenotypeDef ?? XenotypeDefOf.Baseliner  // ← explicit fallback prevents null if needed put back
+                                                  //forcedXenotype: xenotypeDef ?? XenotypeDefOf.Baseliner  // ← explicit fallback prevents null if needed put back
                 );
 
                 Logger.Debug($"ForcedXenotype in request: {(request.ForcedXenotype?.defName ?? "null (defaults to Baseliner)")}");
 
                 // Generate pawn
+                // Generate pawn using RimWorld's full system (PawnGenerator + PawnGenerationRequest)
+                // Why: This is the exact same path vanilla uses for new colonists, caravans, and trader pawns.
+                // It correctly applies forcedXenotype, age, gender, and HAR race rules.
                 Pawn pawn = PawnGenerator.GeneratePawn(request);
 
                 if (pawn != null)
@@ -369,9 +374,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 else
                 {
                     Logger.Error("PawnGenerator returned null pawn!");
+                    return new BuyPawnResult(false, "RICS.BPCH.GenerationError".Translate("PawnGenerator returned null"));
                 }
 
-                // Set custom name
+                // Set custom name (viewer username as nickname)
+                // Why: Keeps RimWorld name triple structure while making the pawn clearly belong to the buyer.
                 if (pawn.Name is NameTriple nameTriple)
                 {
                     pawn.Name = new NameTriple(nameTriple.First, username, nameTriple.Last);
@@ -381,10 +388,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     pawn.Name = new NameSingle(username);
                 }
 
-                // Use improved pawn spawning that works for space biomes
+                // Spawn using robust multi-strategy system (drop pod → locker → colonist → home area)
+                // Why: Handles space, underground, and modded maps reliably while preserving vanilla drop-pod feel.
                 if (!TrySpawnPawnInSpaceBiome(pawn, map))
                 {
-                    // return new BuyPawnResult(false, "Could not find valid spawn location for pawn.");
+                    Logger.Error("All spawn strategies failed for purchased pawn");
                     return new BuyPawnResult(false, "RICS.BPCH.SpawnLocationNotFound".Translate());
                 }
 
@@ -402,7 +410,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 Logger.Error($"Error generating pawn: {ex}");
                 // return new BuyPawnResult(false, $"Generation error: {ex.Message}");
-                return new BuyPawnResult(false, "RICS.BPCH.GenerationError".Translate(ex.Message)); 
+                return new BuyPawnResult(false, "RICS.BPCH.GenerationError".Translate(ex.Message));
             }
         }
 
@@ -411,7 +419,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             // Use centralized race lookup
             var raceDef = RaceUtils.FindRaceByName(raceName);
-            
+
             if (raceDef == null)
             {
                 // Logger.Warning($"Race not found: {raceName}");
@@ -474,7 +482,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             // Final fallback
             // Logger.Warning($"No pawn kind found for race: {raceDef.defName}, using default Colonist");
-            Logger.Warning("RICS.BPCH.Debug.NoPawnKindFound".Translate(raceDef.defName));   
+            Logger.Warning("RICS.BPCH.Debug.NoPawnKindFound".Translate(raceDef.defName));
             return PawnKindDefOf.Colonist;
         }
 
@@ -603,7 +611,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         // Update IsCustomXenotype (tiny change – now works with labels)
         private static bool IsCustomXenotype(string input, RaceSettings raceSettings)
         {
-            
+
             string defName = GetXenotypeDefName(input, raceSettings);
             return DefDatabase<XenotypeDef>.AllDefs.FirstOrDefault(x =>
                 x.defName.Equals(defName, StringComparison.OrdinalIgnoreCase)) == null;
@@ -671,7 +679,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (!allowedGenders.AllowMale && allowedGenders.AllowFemale && !allowedGenders.AllowOther)
                 // return "only female";
-                return "RICS.BPCH.Gender.OnlyFemale".Translate();   
+                return "RICS.BPCH.Gender.OnlyFemale".Translate();
 
             if (allowedGenders.AllowMale && allowedGenders.AllowFemale && !allowedGenders.AllowOther)
                 // return "male or female only (no other)";
@@ -685,21 +693,31 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
-                Logger.Debug($"Attempting to spawn pawn in biome: {map.Biome.defName}");
+                Logger.Debug($"Attempting to spawn pawn in biome: {map.Biome.defName} (underground: {ItemDeliveryHelper.IsUndergroundMap(map)})");
 
-                // Strategy 1: Try standard edge spawning (works for ground maps)
-                if (CellFinder.TryFindRandomEdgeCellWith(
-                    c => map.reachability.CanReachColony(c) && !c.Fogged(map),
-                    map,
-                    CellFinder.EdgeRoadChance_Neutral,
-                    out IntVec3 spawnLoc))
+                // === PRIORITY 1: Drop pod delivery (vanilla pawn arrival behavior) ===
+                // Why: Matches new-game pawn drops, handles space/underground correctly, and is the most robust RimWorld system.
+                if (TryDropPodDelivery(pawn, map))
                 {
-                    GenSpawn.Spawn(pawn, spawnLoc, map, WipeMode.Vanish);
-                    Logger.Debug($"Spawned pawn at edge cell: {spawnLoc}");
                     return true;
                 }
 
-                // Strategy 2: For space biomes or when edge spawning fails, try near existing colonists
+                // === PRIORITY 2: Near Rimazon locker (best visual & gameplay fit) ===
+                // Why: Lockers are the mod's delivery hubs; avoids "pawn appears in middle of nowhere".
+                var locker = ItemDeliveryHelper.FindSuitableLockerFor(pawn, map);
+                if (locker != null)
+                {
+                    IntVec3 nearLocker = CellFinder.TryFindRandomCellNear(locker.Position, map, 6,
+                        c => c.Standable(map) && !c.Fogged(map) && c.Walkable(map) && c.GetRoom(map) == locker.GetRoom(),
+                        out IntVec3 spawnLoc) ? spawnLoc : locker.Position;
+
+                    GenSpawn.Spawn(pawn, nearLocker, map, WipeMode.Vanish);
+                    Logger.Debug($"Spawned pawn near RimazonLocker at: {nearLocker}");
+                    return true;
+                }
+
+                // === PRIORITY 3: Near existing colonists / home area (vanilla fallback) ===
+                // Why: Guarantees a safe, reachable location even on weird maps (space, underground, etc.).
                 var existingColonist = map.mapPawns.FreeColonists.FirstOrDefault();
                 if (existingColonist != null)
                 {
@@ -713,7 +731,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                 }
 
-                // Strategy 3: Try any valid cell in the player's base area
+                // === PRIORITY 4: Home area (last safe zone) ===
                 if (map.areaManager.Home.ActiveCells != null)
                 {
                     var homeCells = map.areaManager.Home.ActiveCells.Where(c =>
@@ -728,8 +746,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                 }
 
-                // Strategy 4: Use drop pod delivery as last resort
-                Logger.Debug("Attempting drop pod delivery as fallback...");
+                // === FINAL FALLBACK: Drop pod retry (should almost never reach here) ===
+                Logger.Debug("All spawn strategies failed → forcing drop pod retry");
                 return TryDropPodDelivery(pawn, map);
             }
             catch (Exception ex)
@@ -743,31 +761,47 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
-                // Find a safe drop position
-                IntVec3 dropPos;
-                if (DropCellFinder.TryFindDropSpotNear(map.Center, map, out dropPos,
-                    allowFogged: false, canRoofPunch: true, maxRadius: 20))
+                // === CRITICAL: Use ItemDeliveryHelper targeting for consistency with store deliveries ===
+                // Why: Reuses tested underground/space/trade-spot logic; avoids duplicating drop-spot code.
+                IntVec3 dropPos = ItemDeliveryHelper.GetCustomDropSpot(map);
+
+                Logger.Debug($"Attempting drop pod delivery at custom trade spot: {dropPos}");
+
+                if (!ItemDeliveryHelper.IsValidDeliveryPosition(dropPos, map))
                 {
-                    // Use RimWorld's built-in drop pod utility - much simpler!
-                    List<Thing> thingsToDeliver = new List<Thing> { pawn };
-
-                    DropPodUtility.DropThingsNear(
-                        dropPos,
-                        map,
-                        thingsToDeliver,
-                        openDelay: 110,
-                        leaveSlag: false,
-                        canRoofPunch: true,
-                        forbid: true,
-                        allowFogged: false
-                    );
-
-                    Logger.Debug($"Delivered pawn via drop pod at: {dropPos}");
-                    return true;
+                    Logger.Debug("Trade spot invalid → finding nearest valid cell");
+                    if (!DropCellFinder.TryFindDropSpotNear(map.Center, map, out dropPos,
+                        allowFogged: false, canRoofPunch: true, maxRadius: 30))
+                    {
+                        Logger.Error("Could not find any valid drop position for pawn delivery");
+                        return false;
+                    }
                 }
 
-                Logger.Error("Could not find valid drop position for pawn delivery");
-                return false;
+                List<Thing> thingsToDeliver = new List<Thing> { pawn };
+
+                // === VAC SUIT FOR SPACE MAPS ===
+                // Why: Vanilla space maps expect pawns to have breathing gear; prevents instant death on space purchase.
+                if (ItemDeliveryHelper.IsSpaceMap(map))
+                {
+                    Logger.Debug("Space map detected → equipping vacsuit");
+                    TryEquipVacsuit(pawn, map);
+                }
+
+                // Use RimWorld's built-in drop pod utility (handles pawns perfectly)
+                DropPodUtility.DropThingsNear(
+                    dropPos,
+                    map,
+                    thingsToDeliver,
+                    openDelay: 110,
+                    leaveSlag: false,
+                    canRoofPunch: true,
+                    forbid: true,
+                    allowFogged: false
+                );
+
+                Logger.Debug($"Delivered pawn via drop pod at: {dropPos}");
+                return true;
             }
             catch (Exception ex)
             {
@@ -790,7 +824,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (string.IsNullOrEmpty(raceName))
                 {
                     // return "You must specify a race. Usage: !pawn [race] [xenotype] [gender] [age]";
-                    return "RICS.BPCH.Usage".Translate();   
+                    return "RICS.BPCH.Usage".Translate();
                 }
 
                 // Check if the race exists - try to find it
@@ -1179,6 +1213,51 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 // return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
                 return "RICS.BPCH.MyPawn.NoPawn".Translate();
+            }
+        }
+
+        // NEW: Auto-equip vacsuit for space purchases
+        // Why: Prevents "pawn dies instantly in vacuum" – uses exact defs from user request.
+        // Uses PawnApparelGenerator.GenerateApparelOfDefFor (correct API) + direct Wear.
+        private static void TryEquipVacsuit(Pawn pawn, Map map)
+        {
+            try
+            {
+                if (pawn == null || pawn.apparel == null)
+                    return;
+
+                // Prefer child suit for babies/children
+                ThingDef suitDef = pawn.ageTracker.CurLifeStageIndex <= 1
+                    ? DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_VacsuitChildren")
+                    : DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_Vacsuit");
+
+                ThingDef helmetDef = DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_VacsuitHelmet");
+
+                // Generate and equip suit
+                if (suitDef != null)
+                {
+                    Apparel suit = PawnApparelGenerator.GenerateApparelOfDefFor(pawn, suitDef);
+                    if (suit != null && ApparelUtility.HasPartsToWear(pawn, suit.def))
+                    {
+                        pawn.apparel.Wear(suit);
+                        Logger.Debug($"Equipped vacsuit on space pawn: {pawn.Name}");
+                    }
+                }
+
+                // Generate and equip helmet
+                if (helmetDef != null)
+                {
+                    Apparel helmet = PawnApparelGenerator.GenerateApparelOfDefFor(pawn, helmetDef);
+                    if (helmet != null && ApparelUtility.HasPartsToWear(pawn, helmet.def))
+                    {
+                        pawn.apparel.Wear(helmet);
+                        Logger.Debug($"Equipped vacsuit helmet on space pawn: {pawn.Name}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Failed to equip vacsuit on space pawn {pawn?.Name}: {ex.Message}");
             }
         }
     }

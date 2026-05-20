@@ -19,6 +19,7 @@
 
 using CAP_ChatInteractive;
 using RimWorld;
+using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -884,7 +885,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return preferredPos;
         }
 
-        private static bool IsValidDeliveryPosition(IntVec3 pos, Map map)
+        public static bool IsValidDeliveryPosition(IntVec3 pos, Map map)
         {
             if (map == null)
             {
@@ -1285,5 +1286,16 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             return things;
         }
+
+
+
+        // NEW: Space map detection (complements ItemDeliveryHelper.IsUndergroundMap)
+        // Why: Space maps are a distinct case from underground; pawns need vacsuits immediately.
+        public static bool IsSpaceMap(Map map)
+        {
+            if (map == null) return false;
+            return map.Biome.defName.Contains("Space") || map.Parent is SpaceMapParent;
+        }
+
     }
 }
