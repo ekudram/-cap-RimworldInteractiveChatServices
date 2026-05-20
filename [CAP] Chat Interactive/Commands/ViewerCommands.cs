@@ -82,9 +82,9 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
-    public class WhatIsKarma : ChatCommand
+    public class KarmaSettings : ChatCommand
     {
-        public override string Name => "whatiskarma";
+        public override string Name => "karmasettings";
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {

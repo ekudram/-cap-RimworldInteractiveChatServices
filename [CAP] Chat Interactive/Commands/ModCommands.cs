@@ -29,38 +29,48 @@ namespace CAP_ChatInteractive.Commands.ModCommands
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
-            // Check if we have enough arguments
-            if (args.Length < 2)
+            // Support shorthand: !givecoins <amount>  (treats as "all")
+            // Full syntax: !givecoins <viewer|all> <amount>
+            if (args.Length == 0)
             {
-                // return "Usage: !givecoins <viewer|all> <amount>";
                 return "RICS.CC.givecoins.usage".Translate();
             }
 
-            string target = args[0].ToLowerInvariant();
+            string target;
+            string amountStr;
+
+            if (args.Length == 1)
+            {
+                // Shorthand: !givecoins 500 → give to all
+                target = "all";
+                amountStr = args[0];
+            }
+            else
+            {
+                // Full syntax
+                target = args[0].ToLowerInvariant();
+                amountStr = args[1];
+            }
 
             // Parse the coin amount
-            if (!int.TryParse(args[1], out int coinAmount))
+            if (!int.TryParse(amountStr, out int coinAmount))
             {
-                // return "Please specify a valid positive number of coins to give.";
                 return "RICS.CC.givecoins.errorcoin".Translate();
             }
 
-            // Handle "all" case
+            // Handle "all" case (both shorthand and explicit)
             if (target == "all")
             {
-                // Give coins to all viewers
                 Viewers.GiveAllViewersCoins(coinAmount);
-                // return $"Gave {coinAmount:N0} coins to all viewers.";
                 return "RICS.CC.givecoins".Translate(coinAmount);
             }
 
-            // Handle individual viewer case (original logic)
-            string targetUsername = args.Length > 0 ? args[0].Replace("@", "") : "";
+            // Handle individual viewer case
+            string targetUsername = args[0].Replace("@", "");
 
             Viewer targetViewer = Viewers.GetViewerNoAdd(targetUsername);
             if (targetViewer == null)
             {
-                // return $"Viewer '{targetUsername}' not found.";
                 return "RICS.CC.givecoins.notfound".Translate(targetUsername);
             }
 
@@ -70,8 +80,68 @@ namespace CAP_ChatInteractive.Commands.ModCommands
             // Save the changes
             Viewers.SaveViewers();
 
-            // return $"Gave {coinAmount:N0} coins to {targetViewer.DisplayName}. {targetViewer.GetCoins()} now has coins.";
             return "RICS.CC.givecoins.success".Translate(coinAmount, targetViewer.DisplayName, targetViewer.GetCoins());
+        }
+    }
+
+    public class GiveKarma : ChatCommand
+    {
+        public override string Name => "givekarma";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            // Support shorthand: !givekarma <amount>  (treats as "all")
+            // Full syntax: !givekarma <viewer|all> <amount>
+            if (args.Length == 0)
+            {
+                return "RICS.CC.givekarma.usage".Translate();
+            }
+
+            string target;
+            string amountStr;
+
+            if (args.Length == 1)
+            {
+                // Shorthand: !givekarma 50 → give to all
+                target = "all";
+                amountStr = args[0];
+            }
+            else
+            {
+                // Full syntax
+                target = args[0].ToLowerInvariant();
+                amountStr = args[1];
+            }
+
+            // Parse the karma amount (float)
+            if (!float.TryParse(amountStr, out float karmaAmount))
+            {
+                return "RICS.CC.givekarma.error".Translate();
+            }
+
+            // Handle "all" case
+            if (target == "all")
+            {
+                Viewers.GiveAllViewersKarma(karmaAmount);
+                return "RICS.CC.givekarma.all".Translate(karmaAmount);
+            }
+
+            // Handle individual viewer case
+            string targetUsername = args[0].Replace("@", "");
+
+            Viewer targetViewer = Viewers.GetViewerNoAdd(targetUsername);
+            if (targetViewer == null)
+            {
+                return "RICS.CC.givekarma.notfound".Translate(targetUsername);
+            }
+
+            // Give karma to the target
+            targetViewer.GiveKarma(karmaAmount);
+
+            // Save the changes
+            Viewers.SaveViewers();
+
+            return "RICS.CC.givekarma.success".Translate(karmaAmount, targetViewer.DisplayName, targetViewer.GetKarma());
         }
     }
 

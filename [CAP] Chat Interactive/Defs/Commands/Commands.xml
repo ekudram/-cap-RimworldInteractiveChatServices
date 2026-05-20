@@ -8,24 +8,25 @@
     <enabled>true</enabled>
     <commandClass>CAP_ChatInteractive.Commands.ModCommands.GiveCoins</commandClass>
     <requiresMod>true</requiresMod>
-    <commandDescription>Give coins to a viewer</commandDescription>
+    <commandDescription>Give coins to a viewer(s)</commandDescription>
     <permissionLevel>moderator</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
-    <defName>GiftCoins</defName>
-    <commandText>giftcoins</commandText>
-    <label>gift coins</label>
-    <enabled>false</enabled>
-    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.GiftCoins</commandClass>
+    <defName>GiveKarma</defName>
+    <commandText>givekarma</commandText>
+    <label>give karma</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ModCommands.GiveKarma</commandClass>
     <requiresMod>true</requiresMod>
-    <commandDescription>gift coins from one viewer to another viewer</commandDescription>
-    <permissionLevel>everyone</permissionLevel>
+    <commandDescription>Give karma to a viewer(s)</commandDescription>
+    <permissionLevel>moderator</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
+
 
   <CAP_ChatInteractive.ChatCommandDef>
     <defName>SetKarma</defName>
@@ -255,13 +256,13 @@
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
-    <defName>WhatIsKarma</defName>
-    <commandText>whatiskarma</commandText>
+    <defName>KarmaSettings</defName>
+    <commandText>karmasettings</commandText>
     <label>karma explanation</label>
     <enabled>true</enabled>
-    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.WhatIsKarma</commandClass>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.KarmaSettings</commandClass>
     <requiresMod>false</requiresMod>
-    <commandDescription>Explain what karma is</commandDescription>
+    <commandDescription>Shows your current Karma settings in chat.</commandDescription>
     <permissionLevel>everyone</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
@@ -275,6 +276,19 @@
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.OpenLootBox</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>Explain what karma is</commandDescription>
+    <permissionLevel>everyone</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>GiftCoins</defName>
+    <commandText>giftcoins</commandText>
+    <label>gift coins</label>
+    <enabled>false</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.GiftCoins</commandClass>
+    <requiresMod>true</requiresMod>
+    <commandDescription>gift coins from one viewer to another viewer</commandDescription>
     <permissionLevel>everyone</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>

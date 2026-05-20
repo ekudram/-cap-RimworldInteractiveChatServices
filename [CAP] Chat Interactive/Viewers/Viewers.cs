@@ -289,6 +289,18 @@ namespace CAP_ChatInteractive
             }
         }
 
+        public static void GiveAllViewersKarma(float amount)
+        {
+            lock (_lock)
+            {
+                foreach (var viewer in All)
+                {
+                    viewer?.GiveKarma(amount);
+                }
+                SaveViewers();
+            }
+        }
+
         public static void SetAllViewersCoins(int amount, List<Viewer> specificViewers = null)
         {
             lock (_lock)
