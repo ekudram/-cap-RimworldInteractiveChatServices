@@ -330,19 +330,24 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Debug($"GenerateAndSpawnPawn: XenotypeDef = {(xenotypeDef != null ? xenotypeDef.defName + " (" + xenotypeDef.LabelCap + ")" : "null → Baseliner fallback")}");
 
                 // Prepare generation request with specific age and xenotype
+                // === EXACT 1.6 PAWNGENERATIONREQUEST (verified from decompile) ===
+                // We now use the precise constructor signature from RimWorld 1.6.
+                // This guarantees full HAR compatibility (xenotypeSet / whiteXenotypeList from PawnKindDef patches)
+                // and clean spawning on space/underground maps.
                 var request = new PawnGenerationRequest(
-                    kind: pawnKindDef,
-                    faction: Faction.OfPlayer,
-                    context: PawnGenerationContext.NonPlayer,
-                    tile: map.Tile,
-                    forceGenerateNewPawn: true,
-                    allowDead: false,
-                    allowDowned: false,
-                    canGeneratePawnRelations: true,
-                    mustBeCapableOfViolence: false,
-                    colonistRelationChanceFactor: 0f,
-                    forceAddFreeWarmLayerIfNeeded: true,
+                    kind: pawnKindDef,                                      // HAR-aware pawn kind (already resolved by GetPawnKindDefForRace)
+                    faction: Faction.OfPlayer,                              // Pawn joins colony immediately (vanilla new-colonist behavior)
+                    context: PawnGenerationContext.NonPlayer,               // NonPlayer = purchased viewer pawn (matches caravans/traders)
+                    tile: map.Tile,                                         // Required for proper world-tile context
+                    forceGenerateNewPawn: true,                             // Always fresh pawn, never reuse world-pawn template
+                    allowDead: false,                                       // Never spawn dead
+                    allowDowned: false,                                     // Fresh colonists should not be downed
+                    canGeneratePawnRelations: false,                        // No unwanted family links for purchased pawns
+                    mustBeCapableOfViolence: false,                         // Allow peaceful colonists (viewer choice)
+                    colonistRelationChanceFactor: 0f,                       // No extra colonist relations
+                    forceAddFreeWarmLayerIfNeeded: true,                    // Safety for cold maps
                     allowGay: true,
+                    allowPregnant: false,                                   // No pregnant purchased pawns
                     allowFood: true,
                     allowAddictions: true,
                     inhabitant: false,
@@ -350,17 +355,32 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     forceRedressWorldPawnIfFormerColonist: false,
                     worldPawnFactionDoesntMatter: false,
                     biocodeWeaponChance: 0f,
-                    fixedBiologicalAge: age,
+                    biocodeApparelChance: 0f,
+                    fixedBiologicalAge: age,                                // Viewer-requested age (or random within race limits)
                     fixedChronologicalAge: null,
-                    fixedGender: ParseGender(genderName),          // ← add null check if needed
-                    fixedLastName: null,
-                    forcedXenotype: xenotypeDef   // null = HAR race defaults win
-                                                  //forcedXenotype: xenotypeDef ?? XenotypeDefOf.Baseliner  // ← explicit fallback prevents null if needed put back
+                    fixedGender: ParseGender(genderName),                   // Viewer-requested gender or random
+                    fixedLastName: null,                                    // We override name later with username
+                    forceNoIdeo: false,                                     // Let Ideology apply normally
+                    forceNoBackstory: false,                                // Let vanilla backstories generate
+                    forbidAnyTitle: false,
+                    forceDead: false,
+                    forcedXenotype: xenotypeDef,                            // HAR-aware xenotype (Nyaron example) — null falls back correctly
+                    forceBaselinerChance: 0f,
+                    developmentalStages: DevelopmentalStage.Adult,          // Adult unless race forces otherwise
+                    forceNoGear: true,                                      // CRITICAL: we handle vacsuit ourselves on space maps
+                    dontGiveWeapon: true,                                   // No random weapon (we want clean delivery)
+                    onlyUseForcedBackstories: false,
+                    maximumAgeTraits: -1,                                   // Let vanilla decide trait count
+                    minimumAgeTraits: 0
                 );
+
+                Logger.Debug($"PawnGenerationRequest built for buyer '{username}': " +
+                             $"Kind={pawnKindDef?.defName ?? "null"}, " +
+                             $"Xenotype={xenotypeDef?.defName ?? "null (HAR default)"}, " +
+                             $"Age={age}, Gender={ParseGender(genderName)?.ToString() ?? "Random"}");
 
                 Logger.Debug($"ForcedXenotype in request: {(request.ForcedXenotype?.defName ?? "null (defaults to Baseliner)")}");
 
-                // Generate pawn
                 // Generate pawn using RimWorld's full system (PawnGenerator + PawnGenerationRequest)
                 // Why: This is the exact same path vanilla uses for new colonists, caravans, and trader pawns.
                 // It correctly applies forcedXenotype, age, gender, and HAR race rules.
