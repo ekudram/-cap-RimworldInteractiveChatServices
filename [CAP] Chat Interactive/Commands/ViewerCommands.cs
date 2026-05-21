@@ -512,6 +512,126 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             return "RICS.CC.colonists.withViewers".Translate(colonistCount, viewerPawnCount, animalCount);
         }
     }
+
+    public class Races : ChatCommand
+    {
+        public override string Name => "races";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            try
+            {
+                var enabledRaces = RaceUtils.GetEnabledRaces()
+                    .Where(r => r != null)
+                    .OrderBy(r => r.LabelCap.RawText)
+                    .ToList();
+
+                if (!enabledRaces.Any())
+                {
+                    return "RICS.LCH.NoRacesEnabled".Translate(); // "No races are currently enabled."
+                }
+
+                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var currency = settings.CurrencyName?.Trim() ?? "¢";
+
+                var lines = new List<string>();
+
+                foreach (var race in enabledRaces)
+                {
+                    var raceSettings = RaceSettingsManager.GetRaceSettings(race.defName);
+                    if (raceSettings?.Enabled != true) continue;
+
+                    string name = race.LabelCap.RawText;
+                    int cost = raceSettings.BasePrice;
+
+                    lines.Add($"{TextUtilities.StripTags(name)}: {cost} {currency}");
+                }
+
+                if (!lines.Any())
+                {
+                    return "RICS.LCH.NoRacesEnabled".Translate();
+                }
+
+                string resultList = string.Join(" | ", lines.Take(15)); // safety limit
+                string header = "RICS.LCH.AllRaces".Translate(); // "Available races"
+
+                return $"🔍 {header}: {resultList}";
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in !races command: {ex}");
+                return "RICS.LCH.ErrorListingRaces".Translate();
+            }
+        }
+    }
+
+    public class Xenotype : ChatCommand
+    {
+        public override string Name => "xenotype";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            if (!ModsConfig.BiotechActive)
+            {
+                return "RICS.CC.xenotype.dlcrequired".Translate(); // add translation key
+            }
+
+            try
+            {
+                string raceName = args.Length > 0 ? string.Join(" ", args).Trim() : "Human";
+
+                var raceDef = RaceUtils.FindRaceByName(raceName);
+                if (raceDef == null || RaceUtils.IsRaceExcluded(raceDef))
+                {
+                    // If no race specified or invalid, default to Human for simplicity
+                    if (args.Length == 0)
+                    {
+                        raceDef = ThingDefOf.Human;
+                    }
+                    else
+                    {
+                        return $"Unknown race '{raceName}'. Use !races to see available races.";
+                    }
+                }
+
+                var raceSettings = RaceSettingsManager.GetRaceSettings(raceDef.defName);
+                if (raceSettings == null || !raceSettings.Enabled)
+                {
+                    return $"Race '{raceDef.LabelCap}' is not enabled for purchase.";
+                }
+
+                var enabledXenos = raceSettings.EnabledXenotypes
+                    .Where(kv => kv.Value)
+                    .Select(kv => new
+                    {
+                        Name = kv.Key,
+                        Price = raceSettings.XenotypePrices.TryGetValue(kv.Key, out float p) ? (int)p : 0
+                    })
+                    .OrderBy(x => x.Name)
+                    .ToList();
+
+                if (!enabledXenos.Any())
+                {
+                    return $"No xenotypes enabled for {raceDef.LabelCap}.";
+                }
+
+                var currency = CAPChatInteractiveMod.Instance.Settings.GlobalSettings.CurrencyName?.Trim() ?? "¢";
+                var lines = enabledXenos.Take(10) // prevent spam
+                    .Select(x => $"{x.Name}: {x.Price} {currency}")
+                    .ToList();
+
+                string header = $"Xenotypes for {raceDef.LabelCap} ({enabledXenos.Count} total)";
+                string list = string.Join(" | ", lines);
+
+                return $"🔬 {header}: {list}";
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in !xenotype command: {ex}");
+                return "Error retrieving xenotypes.";
+            }
+        }
+    }
     // Slated to be moved to its own command handler
     public class Storage : ChatCommand
     {
@@ -647,4 +767,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             return twitchService.ProcessUserJoinRaidCommmand(messageWrapper);
         }
     }
+
+
 }

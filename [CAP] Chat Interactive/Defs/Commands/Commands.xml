@@ -675,6 +675,30 @@
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>Races</defName>
+    <commandText>races</commandText>
+    <label>races</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Races</commandClass>
+    <requiresMod>false</requiresMod>
+    <commandDescription>List all available races.</commandDescription>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>Xenotype</defName>
+    <commandText>xenotype</commandText>
+    <label>xenotype</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Xenotype</commandClass>
+    <requiresMod>false</requiresMod>
+    <commandDescription>List all available xenotypes by race.  !xenotype [race]</commandDescription>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
   <!-- Pawn Queue Commands -->
   <CAP_ChatInteractive.ChatCommandDef>
     <defName>JoinQueue</defName>
