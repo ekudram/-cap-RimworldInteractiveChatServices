@@ -61,7 +61,10 @@ namespace CAP_ChatInteractive.Commands.TestCommands
                     "!study will show you the current anomaly research project being worked on in the colony.",
                     "!research will show you the current research project being worked on in the colony.",
                     "!research [project name] will show you the progress of that research project in the colony.",
-                    "to buy a pawn you have to at least select a race.  Example: !pawn human [xenotype] [age] [m/f gender].  Xenotype, age and Gender are optional."
+                    "To buy a pawn you have to at least select a race.  Example: !pawn human [xenotype] [age] [m/f gender].  Xenotype, age and Gender are optional.",
+                    "Events from mods are off by default.  If you want to enable them, you can do so in the RICS settings.",
+                    "Anomoly events are off by default.  If you want to enable them, you can do so in the RICS settings.",
+                    "!races will list all the races that are available to be bought with the !pawn command.",
 
                     // Add more tips here later - they will be picked randomly
                 };

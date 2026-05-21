@@ -114,7 +114,7 @@
   
   <!-- Pawn Command-->
   <RICS.CC.pawn.usage>
-    Usage: !pawn {race} [xenotype] [gender] [age] OR !pawn list [races|xenotypes] OR !pawn mypawn Wiki: https://tinyurl.com/RICSPawnCMD
+    Usage: !pawn {race} [xenotype] [gender] [age] OR !pawn mypawn Wiki: https://tinyurl.com/RICSPawnCMD
   </RICS.CC.pawn.usage>
 
   <RICS.CC.pawn.handlist.usage>

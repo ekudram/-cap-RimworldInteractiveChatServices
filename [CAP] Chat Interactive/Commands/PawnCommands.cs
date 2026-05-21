@@ -44,11 +44,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             string firstArg = args[0].ToLower();
 
-            // Handle list commands
-            if (firstArg == "list" || firstArg == "races" || firstArg == "xenotypes")
-            {
-                return HandleListCommand(messageWrapper, args);
-            }
+            // Handle list commands where moved to !races and !xenotypes for better discoverability
 
             // Handle mypawn command
             if (firstArg == "mypawn")
@@ -64,29 +60,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             // return "Usage: !pawn [race] [xenotype] [gender] [age] OR !pawn list [races|xenotypes] OR !pawn mypawn";
             return "RICS.CC.pawn.usage".Translate();
-        }
-
-        private string HandleListCommand(ChatMessageWrapper user, string[] args)
-        {
-            if (args.Length > 1)
-            {
-                string listType = args[1].ToLower();
-                switch (listType)
-                {
-                    case "race":
-                    case "races":
-                        return BuyPawnCommandHandler.ListAvailableRaces();
-                    case "xenotypes":
-                        // Support: !pawn list xenotypes human
-                        string raceName = args.Length > 2 ? args[2] : null;
-                        return BuyPawnCommandHandler.ListAvailableXenotypes(raceName);
-                    default:
-                        return $"Unknown list type: {listType}. Use: races, xenotypes";
-                }
-            }
-
-            // return "List types: races, xenotypes [race]. Examples: !pawn list races, !pawn list xenotypes human";
-            return "RICS.CC.pawn.handlist.usage".Translate() ;
         }
 
         private string HandleMyPawnCommand(ChatMessageWrapper user)
