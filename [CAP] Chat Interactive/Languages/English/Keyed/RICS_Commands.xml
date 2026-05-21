@@ -350,6 +350,10 @@
     Usage: !givecoins &lt;viewer|all&gt; &lt;amount&gt;
   </RICS.CC.givecoins.usage>
 
+  <RICS.CC.givekarma.usage>
+    Usage: !givekarma &lt;viewer|all&gt; &lt;amount&gt;
+  </RICS.CC.givekarma.usage>
+
   <RICS.CC.givecoins.errorcoin>
     Please specify a valid positive number of coins.
   </RICS.CC.givecoins.errorcoin>
