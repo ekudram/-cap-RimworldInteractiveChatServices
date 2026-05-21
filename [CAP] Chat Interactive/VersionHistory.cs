@@ -982,20 +982,20 @@ Translations:
 <b>UPDATED</b>
 ───────
 - Karma Rate for Decay and Karma for store purchases is now a percent entry
-  - 1 is now 1% (no more typing 0.01)
+  • 1 is now 1% (no more typing 0.01)
 
 - !Fixallpawns will also remove bogus viewer assignments
 
 <b>FIXED</b>
 ─────
 - !passion command now works no matter the order you type it!
-  - Skills with zero flames now correctly gain a flame when targeted 
-  - Fixed incorrect “already has all major passions” messages
+  • Skills with zero flames now correctly gain a flame when targeted 
+  • Fixed incorrect “already has all major passions” messages
 
 - !mypawn command is now much more reliable and robust
-  - Works even if your pawn is dead or has no conditions
-  - Better health, body, armor, and relations reports
-  - Fixed crashes and missing info on modded pawns (HAR, VPE, Biotech, etc.)
+  • Works even if your pawn is dead or has no conditions
+  • Better health, body, armor, and relations reports
+  • Fixed crashes and missing info on modded pawns (HAR, VPE, Biotech, etc.)
 
 - Missing tooltips in Store Editor for stack items fixed
 - Economy Tab numeric inputs are now much easier to use (affects other tabs too)
@@ -1012,12 +1012,12 @@ Translations:
   • Both commands remain fully backward compatible with the original syntax (`!givecoins viewername 300`, `!givecoins all 1000`, etc.)
 
 - Viewers Requested: `!mypawn weapon` returns information on your equipped weapon (1st weapon if Simple Sidearms is loaded)  
-  - Weapon name  
-  - Damage / DPS / AP   
-  - Unique weapon traits (clean short names only)  
-
-  ""Returns equipped weapon stats. Includes Royalty and Odyssey support.  
-  It is not my fault if your carrying a log."" - Captolamia  
+  • Weapon name  
+  • Damage / DPS / AP   
+  • Unique weapon traits (clean short names only)  
+  • Returns equipped weapon stats. Includes Royalty and Odyssey support.  
+  
+""It is not my fault if your carrying a log."" - Captolamia  
 
 - **Huge upgrade to the !pawn / pawn purchase system**  
   • Full support for HAR alien races — buying a Nyaron (or any custom race) now correctly uses the right xenotype by default (no more surprise Baseliner pawns!)  
