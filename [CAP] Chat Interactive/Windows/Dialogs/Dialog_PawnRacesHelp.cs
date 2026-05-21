@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // A help dialog for the Pawn Race Settings
+using RimWorld;
 using System.Text;
 using UnityEngine;
 using Verse;
@@ -51,145 +52,99 @@ namespace CAP_ChatInteractive
             DrawHelpContent(contentRect);
         }
 
+        // In Dialog_PawnRacesHelp.cs, inside Dialog_PawnRacesHelp.DrawHelpContent()
         private void DrawHelpContent(Rect rect)
         {
             StringBuilder sb = new StringBuilder();
 
-            sb.AppendLine($"<b>Pawn Race Settings Overview</b>");
-            sb.AppendLine($"Configure which races and xenotypes are available for purchase via chat commands, and set their prices, age limits, and other options.");
+            sb.AppendLine($"<b>Pawn Race & Xenotype Settings Overview</b>");
+            sb.AppendLine($"Configure which races and xenotypes viewers can purchase, set prices (absolute silver), age ranges, and enable/disable options.");
             sb.AppendLine($"");
 
-            sb.AppendLine($"<b>⚠️ IMPORTANT RECENT CHANGE - XENOTYPE PRICING UPDATE</b>");
-            sb.AppendLine($"The system has been updated to use actual silver prices instead of arbitrary multipliers.");
-            sb.AppendLine($"• <b>Old:</b> Race base price × xenotype multiplier");
-            sb.AppendLine($"• <b>New:</b> Race base price + xenotype price");
-            sb.AppendLine($"<color=orange>You MUST click the 'Reset' button next to each xenotype price to update to the new system!</color>");
+            sb.AppendLine($"<b>⚠️ XENOTYPE PRICING — IMPORTANT UPDATE</b>");
+            sb.AppendLine($"Prices are now <b>absolute silver values</b> (Race Base + Xenotype Price).");
+            sb.AppendLine($"• Use the <b>Reset</b> button next to each xenotype (or <b>Reset All Prices</b> in header) after mod updates.");
+            sb.AppendLine($"<color=orange>Click Reset on every xenotype you want updated to the new gene-based system!</color>");
             sb.AppendLine($"");
 
             sb.AppendLine($"<b>Main Interface Sections:</b>");
             sb.AppendLine($"1. <b>Left Panel</b> - Race List");
-            sb.AppendLine($"   • Lists all humanlike races from loaded mods");
-            sb.AppendLine($"   • Disabled races show [DISABLED]");
-            sb.AppendLine($"   • Click any race to view and edit its settings");
+            sb.AppendLine($"   • All humanlike races from loaded mods (excluded races hidden)");
+            sb.AppendLine($"   • [DISABLED] tag on disabled races");
+            sb.AppendLine($"   • Click to edit → right panel updates instantly");
             sb.AppendLine($"");
 
-            sb.AppendLine($"2. <b>Right Panel</b> - Race Details & Settings");
-            sb.AppendLine($"   • Shows race name, description, and configuration options");
-            sb.AppendLine($"   • All changes are saved automatically");
+            sb.AppendLine($"2. <b>Right Panel</b> - Detailed Settings");
+            sb.AppendLine($"   • Race description, gender restrictions (HAR read-only), age range, base price");
+            sb.AppendLine($"   • Xenotype list (only HAR-allowed xenotypes shown)");
             sb.AppendLine($"");
 
             sb.AppendLine($"<b>Header Controls:</b>");
-            sb.AppendLine($"• <b>Search Bar</b> - Filter races by name or description");
-            sb.AppendLine($"• <b>Sort Buttons</b> - Sort races by Name, Category, or Status");
-            sb.AppendLine($"   - Name: Alphabetical order");
-            sb.AppendLine($"   - Category: By mod source (Core, mod name)");
-            sb.AppendLine($"   - Status: Enabled races first");
-            sb.AppendLine($"• <b>Help Button (?)</b> - Open this help window");
-            sb.AppendLine($"• <b>Reset All Prices</b> - Reset all xenotype prices for selected race");
-            sb.AppendLine($"• <b>Debug Gear</b> - Open Race Debug Information");
+            sb.AppendLine($"• <b>Search</b> - Live filter by name/description");
+            sb.AppendLine($"• <b>Sort</b> - Name, Category (mod source), Status (enabled first)");
+            sb.AppendLine($"• <b>Reset All Prices</b> - Reset xenotype prices for selected race (confirmation dialog)");
+            sb.AppendLine($"• <b>Help (?)</b> - This window");
+            sb.AppendLine($"• <b>Debug Gear</b> - Technical info + rebuild settings");
             sb.AppendLine($"");
 
-            sb.AppendLine($"<b>Race Settings Section:</b>");
-            sb.AppendLine($"• <b>Enabled</b> - Toggle if this race is available for purchase");
-            sb.AppendLine($"• <b>Base Price</b> - Base cost in silver for a baseliner of this race");
-            sb.AppendLine($"• <b>Min/Max Age</b> - Age range allowed for this race");
-            sb.AppendLine($"   - Use text fields for precise input");
-            sb.AppendLine($"   - Use sliders for quick adjustment");
-            sb.AppendLine($"   - Ages are in biological years");
-            sb.AppendLine($"• <b>Allow Custom Xenotypes</b> - Allow custom xenotypes not in the list");
+            sb.AppendLine($"<b>Race Settings:</b>");
+            sb.AppendLine($"• <b>Enabled</b> - Toggle availability for chat purchases");
+            sb.AppendLine($"• <b>Base Price</b> - Silver cost for a baseliner of this race");
+            sb.AppendLine($"• <b>Min / Max Age</b> - Text fields + sliders (buffered, auto-clamped)");
+            sb.AppendLine($"• <b>Allow Custom Xenotypes</b> - Permit xenotypes not in the explicit list");
+            sb.AppendLine($"• <b>Gender Restrictions</b> - Read-only (sourced from HAR)");
             sb.AppendLine($"");
 
-            sb.AppendLine($"<b>Gender Restrictions (Read-Only):</b>");
-            sb.AppendLine($"• Shows inherent gender limitations from HAR (Humanoid Alien Races)");
-            sb.AppendLine($"• Cannot be changed here - set in the race's HAR definition");
-            sb.AppendLine($"• Example: 'Female only', 'Male/Female only (no other)', etc.");
+            sb.AppendLine($"<b>Xenotype Section (Biotech required):</b>");
+            sb.AppendLine($"• Only xenotypes allowed by HAR for the selected race are shown");
+            sb.AppendLine($"• <b>Enabled</b> checkbox per xenotype");
+            sb.AppendLine($"• <b>Price (silver)</b> - Additional cost on top of race base");
+            sb.AppendLine($"• <b>Reset</b> button - Calculates proper gene market value");
+            sb.AppendLine($"• <b>Bulk Button</b> - \"Set All Xenotypes To Base Price\" (one-click uniform pricing)");
             sb.AppendLine($"");
 
-            sb.AppendLine($"<b>Xenotype Settings Section (Biotech DLC Required):</b>");
-            sb.AppendLine($"• Shows all available xenotypes from base game and mods");
-            sb.AppendLine($"• <b>Enabled</b> - Checkbox to allow/disallow each xenotype");
-            sb.AppendLine($"• <b>Price (silver)</b> - Additional cost on top of race base price");
-            sb.AppendLine($"• <b>Reset Button</b> - Reset price to Rimworld's gene-based value");
+            sb.AppendLine($"<b>Price Formula (transparent & accurate):</b>");
+            sb.AppendLine($"<b>Total = Race Base Price + Xenotype Price</b>");
+            sb.AppendLine($"Xenotype Price = Gene contribution (marketValueFactor logic via GeneUtils)");
             sb.AppendLine($"");
 
-            sb.AppendLine($"<b>Price Calculation Formula:</b>");
-            sb.AppendLine($"<b>Total Cost = Race Base Price + Xenotype Price</b>");
-            sb.AppendLine($"• <b>Race Base Price</b>: Usually 1000-2000 silver (from BaseMarketValue)");
-            sb.AppendLine($"• <b>Xenotype Price</b>: Sum of all gene values");
-            sb.AppendLine($"• <b>Gene Value</b>: (gene.marketValueFactor - 1) × Race Base Price");
-            sb.AppendLine($"");
-
-            sb.AppendLine($"<b>Example Calculations (Human, 1000 silver base):</b>");
-            sb.AppendLine($"• <b>Baseliner</b>: 1000 silver (no genes)");
-            sb.AppendLine($"• <b>Sanguophage</b>: ~1500 silver (gene factor 1.5 = +500 silver)");
-            sb.AppendLine($"• <b>Hussar</b>: ~1400 silver");
-            sb.AppendLine($"• <b>Genie</b>: ~1300 silver");
-            sb.AppendLine($"");
-
-            sb.AppendLine($"<b>How Xenotypes Are Enabled:</b>");
-            sb.AppendLine($"1. <b>Humans</b>: Only base game xenotypes enabled by default");
-            sb.AppendLine($"2. <b>HAR Races</b>: Use whiteXenotypeList from HAR definitions");
-            sb.AppendLine($"3. <b>Other Races</b>: All xenotypes enabled by default");
-            sb.AppendLine($"• You can override these defaults in the settings");
+            sb.AppendLine($"<b>Header Bulk Reset:</b>");
+            sb.AppendLine($"• Only affects currently selected race");
+            sb.AppendLine($"• Confirms before resetting every xenotype price for that race");
             sb.AppendLine($"");
 
             sb.AppendLine($"<b>Important Notes:</b>");
-            sb.AppendLine($"• Changes are saved automatically");
-            sb.AppendLine($"• Prices are in actual silver (matches Rimworld economy)");
-            sb.AppendLine($"• Xenotype prices should typically be 0-5000 silver");
-            sb.AppendLine($"• 'Reset' button calculates proper gene-based prices");
-            sb.AppendLine($"• Custom xenotypes without marketValueFactor default to 0 cost");
-            sb.AppendLine($"• Age limits apply to all purchases of this race");
-            sb.AppendLine($"• Gender restrictions from HAR cannot be overridden");
+            sb.AppendLine($"• All changes auto-save (JSON + in-memory)");
+            sb.AppendLine($"• HAR gender & xenotype restrictions are respected and shown read-only");
+            sb.AppendLine($"• Excluded races never appear in the list");
+            sb.AppendLine($"• Use Debug Gear → \"Delete RaceSettings & Rebuild\" after major mod changes");
             sb.AppendLine($"");
 
             sb.AppendLine($"<b>Common Tasks:</b>");
-            sb.AppendLine($"1. <b>Disable a Race</b>: Uncheck 'Enabled' checkbox");
-            sb.AppendLine($"2. <b>Adjust Prices</b>: Edit Base Price or xenotype prices");
-            sb.AppendLine($"3. <b>Limit Xenotypes</b>: Uncheck unwanted xenotypes");
-            sb.AppendLine($"4. <b>Set Age Range</b>: Adjust Min/Max Age sliders");
-            sb.AppendLine($"5. <b>Reset Prices</b>: Click 'Reset' next to each xenotype or 'Reset All Prices'");
+            sb.AppendLine($"• Disable unwanted races");
+            sb.AppendLine($"• Fine-tune age ranges with sliders + text fields");
+            sb.AppendLine($"• Reset xenotype prices after adding gene mods");
+            sb.AppendLine($"• Use bulk button for simple uniform pricing");
+            sb.AppendLine($"• Search to quickly locate a race");
             sb.AppendLine($"");
 
-            sb.AppendLine($"<b>Troubleshooting:</b>");
-            sb.AppendLine($"• <b>Race not showing up?</b> It might be excluded (check debug info)");
-            sb.AppendLine($"• <b>Xenotype not available?</b> Check if it's enabled for that race");
-            sb.AppendLine($"• <b>Price seems wrong?</b> Click 'Reset' to recalculate from genes");
-            sb.AppendLine($"• <b>Gender options limited?</b> That's from HAR - cannot be changed");
-            sb.AppendLine($"• <b>Biotech xenotypes missing?</b> Ensure Biotech DLC is enabled");
-            sb.AppendLine($"");
-
-            sb.AppendLine($"<b>Debug Information (Gear Icon):</b>");
-            sb.AppendLine($"• Shows detailed technical information about races");
-            sb.AppendLine($"• Lists excluded races (not shown in settings)");
-            sb.AppendLine($"• Shows HAR integration status");
-            sb.AppendLine($"• Can delete and rebuild race settings");
-            sb.AppendLine($"");
-
-            sb.AppendLine($"<b>Chat Commands Related to This Settings:</b>");
-            sb.AppendLine($"• <b>!pawn [race] [xenotype] [gender] [age]</b> - Purchase a pawn");
-            sb.AppendLine($"• <b>!mypawn</b> - Check on your assigned pawn");
-            sb.AppendLine($"• <b>!races</b> - List available races for purchase");
-            sb.AppendLine($"• <b>!xenotypes [race]</b> - List xenotypes available for a race");
+            sb.AppendLine($"<b>Related Chat Commands:</b>");
+            sb.AppendLine($"• <b>!pawn [race] [xenotype] [gender] [age]</b>");
+            sb.AppendLine($"• <b>!races</b> / <b>!xenotypes [race]</b>");
             sb.AppendLine($"");
 
             sb.AppendLine($"<b>Tips & Best Practices:</b>");
-            sb.AppendLine($"• Use 'Reset All Prices' after mod updates or price changes");
-            sb.AppendLine($"• Set reasonable age ranges for each race");
-            sb.AppendLine($"• Disable overpowered xenotypes for balance");
-            sb.AppendLine($"• Adjust prices based on your stream's economy");
-            sb.AppendLine($"• Use search to find specific races quickly");
-            sb.AppendLine($"• Check debug info if something seems wrong");
-            sb.AppendLine($"• Xenotype prices now match Rimworld's caravan values");
-            sb.AppendLine($"• The new pricing system is more transparent and accurate");
+            sb.AppendLine($"• Reset prices after every major mod update");
+            sb.AppendLine($"• Keep xenotype prices 0-5000 silver for balance");
+            sb.AppendLine($"• Use bulk button when you want every xenotype the same price");
+            sb.AppendLine($"• Check Debug window if a race/xenotype is missing");
+            sb.AppendLine($"• Prices now match RimWorld caravan / gene economy values");
 
             string fullText = sb.ToString();
 
-            // Calculate text height with proper formatting
             float textHeight = Text.CalcHeight(fullText, rect.width - 30f);
             Rect viewRect = new Rect(0f, 0f, rect.width - 20f, textHeight + 20f);
 
-            // Scroll view with background
             Widgets.DrawMenuSection(rect);
             Widgets.BeginScrollView(new Rect(rect.x + 5f, rect.y + 5f, rect.width - 10f, rect.height - 10f),
                                    ref scrollPosition, viewRect);
