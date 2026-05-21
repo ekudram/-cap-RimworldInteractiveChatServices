@@ -1294,7 +1294,18 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         public static bool IsSpaceMap(Map map)
         {
             if (map == null) return false;
-            return map.Biome.defName.Contains("Space") || map.Parent is SpaceMapParent;
+
+            // Primary: Orbit / Space in biome name (current maps)
+            if (map.Biome?.defName?.Contains("Space", StringComparison.OrdinalIgnoreCase) == true ||
+                map.Biome?.defName?.Contains("Orbit", StringComparison.OrdinalIgnoreCase) == true)
+                return true;
+
+            // Secondary: BiomeDef.inVacuum flag (most accurate for Odyssey)
+            if (map.Biome?.inVacuum == true)
+                return true;
+
+            // Fallback: SpaceMapParent
+            return map.Parent is SpaceMapParent;
         }
 
     }

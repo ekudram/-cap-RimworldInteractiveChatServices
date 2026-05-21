@@ -181,17 +181,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         assignmentManager.AssignPawnToViewer(messageWrapper, result.Pawn);
                     }
 
-                    // Get location info AFTER spawn
-                    string locationInfo = "";
-                    if (result.Pawn != null && result.Pawn.Spawned && result.Pawn.Map != null)
+                    // Use the exact drop position we already know (bypasses timing issues)
+                    string locationInfo = "RICS.BPCH.Letter.Delivery.Unknown".Translate();
+
+                    if (result.DeliveryPosition.IsValid)
                     {
-                        IntVec3 pos = result.Pawn.Position;
-                        string mapName = result.Pawn.Map.Parent.LabelCap ?? "Home Map";
-                        locationInfo = $"RICS.BPCH.Letter.Delivery".Translate(pos.x, pos.z, mapName);  // Note: y is usually 0
+                        string mapName = result.Pawn?.Map?.Parent?.LabelCap ?? "Home Map";
+                        locationInfo = "RICS.BPCH.Letter.Delivery".Translate(
+                            result.DeliveryPosition.x,
+                            result.DeliveryPosition.z,
+                            mapName);
+                        Logger.Debug($"Letter using known drop position: {result.DeliveryPosition}");
                     }
-                    else
+                    else if (result.Pawn != null && result.Pawn.Map != null)
                     {
-                        locationInfo = "RICS.BPCH.Letter.Delivery.Unknown".Translate();
+                        IntVec3 pos = result.Pawn.PositionHeld;
+                        string mapName = result.Pawn.Map.Parent?.LabelCap ?? "Home Map";
+                        locationInfo = "RICS.BPCH.Letter.Delivery".Translate(pos.x, pos.z, mapName);
                     }
 
                     // Send notification
@@ -331,9 +337,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 // Prepare generation request with specific age and xenotype
                 // === EXACT 1.6 PAWNGENERATIONREQUEST (verified from decompile) ===
-                // We now use the precise constructor signature from RimWorld 1.6.
-                // This guarantees full HAR compatibility (xenotypeSet / whiteXenotypeList from PawnKindDef patches)
-                // and clean spawning on space/underground maps.
+                // forceNoGear = false lets vanilla generate normal starting clothes (fixes naked pawns).
+                // Vacsuit is layered on top for space maps only.
                 var request = new PawnGenerationRequest(
                     kind: pawnKindDef,                                      // HAR-aware pawn kind (already resolved by GetPawnKindDefForRace)
                     faction: Faction.OfPlayer,                              // Pawn joins colony immediately (vanilla new-colonist behavior)
@@ -367,7 +372,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     forcedXenotype: xenotypeDef,                            // HAR-aware xenotype (Nyaron example) — null falls back correctly
                     forceBaselinerChance: 0f,
                     developmentalStages: DevelopmentalStage.Adult,          // Adult unless race forces otherwise
-                    forceNoGear: true,                                      // CRITICAL: we handle vacsuit ourselves on space maps
+                    forceNoGear: false,                                     // Let vanilla generate starting clothes (fixes naked pawns)
                     dontGiveWeapon: true,                                   // No random weapon (we want clean delivery)
                     onlyUseForcedBackstories: false,
                     maximumAgeTraits: -1,                                   // Let vanilla decide trait count
@@ -410,21 +415,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 // Spawn using robust multi-strategy system (drop pod → locker → colonist → home area)
                 // Why: Handles space, underground, and modded maps reliably while preserving vanilla drop-pod feel.
-                if (!TrySpawnPawnInSpaceBiome(pawn, map))
+                // Spawn using robust multi-strategy system...
+                IntVec3 deliveryPos = IntVec3.Invalid;
+                if (!TrySpawnPawnInSpaceBiome(pawn, map, out deliveryPos))
                 {
                     Logger.Error("All spawn strategies failed for purchased pawn");
                     return new BuyPawnResult(false, "RICS.BPCH.SpawnLocationNotFound".Translate());
                 }
 
-                // Send letter notification we do this when we reture
-                // TaggedString letterTitle = $"{username} Joins Colony";
-                // TaggedString letterText = $"{username} has purchased a {raceName} pawn and joined the colony!";
-                // PawnRelationUtility.TryAppendRelationsWithColonistsInfo(ref letterText, ref letterTitle, pawn);
-
-                // Find.LetterStack.ReceiveLetter(letterTitle, letterText, LetterDefOf.PositiveEvent, pawn);
-
-                // return new BuyPawnResult(true, "Pawn purchased successfully!", pawn);
-                return new BuyPawnResult(true, "RICS.BPCH.PawnGenerated".Translate(), pawn);
+                return new BuyPawnResult(true, "RICS.BPCH.PawnGenerated".Translate(), pawn, deliveryPos);
             }
             catch (Exception ex)
             {
@@ -709,7 +708,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return "RICS.BPCH.Gender.Any".Translate();
         }
 
-        private static bool TrySpawnPawnInSpaceBiome(Pawn pawn, Map map)
+        private static bool TrySpawnPawnInSpaceBiome(Pawn pawn, Map map, out IntVec3 deliveryPosition)
         {
             try
             {
@@ -717,7 +716,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 // === PRIORITY 1: Drop pod delivery (vanilla pawn arrival behavior) ===
                 // Why: Matches new-game pawn drops, handles space/underground correctly, and is the most robust RimWorld system.
-                if (TryDropPodDelivery(pawn, map))
+                if (TryDropPodDelivery(pawn, map, out deliveryPosition))
                 {
                     return true;
                 }
@@ -768,17 +767,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 // === FINAL FALLBACK: Drop pod retry (should almost never reach here) ===
                 Logger.Debug("All spawn strategies failed → forcing drop pod retry");
-                return TryDropPodDelivery(pawn, map);
+                return TryDropPodDelivery(pawn, map, out deliveryPosition);
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in TrySpawnPawnInSpaceBiome: {ex}");
+                deliveryPosition = IntVec3.Invalid;
                 return false;
             }
         }
 
-        private static bool TryDropPodDelivery(Pawn pawn, Map map)
+        private static bool TryDropPodDelivery(Pawn pawn, Map map, out IntVec3 deliveryPos)
         {
+            deliveryPos = IntVec3.Invalid;
             try
             {
                 // === CRITICAL: Use ItemDeliveryHelper targeting for consistency with store deliveries ===
@@ -801,10 +802,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 List<Thing> thingsToDeliver = new List<Thing> { pawn };
 
                 // === VAC SUIT FOR SPACE MAPS ===
-                // Why: Vanilla space maps expect pawns to have breathing gear; prevents instant death on space purchase.
-                if (ItemDeliveryHelper.IsSpaceMap(map))
+                // Why: Orbit + inVacuum biomes need immediate breathing gear. Equipped AFTER generation but BEFORE drop pod.
+                if (ItemDeliveryHelper.IsSpaceMap(map) || (map.Biome?.inVacuum == true))
                 {
-                    Logger.Debug("Space map detected → equipping vacsuit");
+                    Logger.Debug($"Space/vacuum map detected ({map.Biome?.defName}) → equipping vacsuit");
                     TryEquipVacsuit(pawn, map);
                 }
 
@@ -820,8 +821,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     allowFogged: false
                 );
 
+                deliveryPos = dropPos;   // <-- Capture the exact position
                 Logger.Debug($"Delivered pawn via drop pod at: {dropPos}");
-                return true;
+                return true;  // We will pass dropPos up the call stack
             }
             catch (Exception ex)
             {
@@ -1287,12 +1289,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         public bool Success { get; }
         public string Message { get; }
         public Pawn Pawn { get; }
+        public IntVec3 DeliveryPosition { get; }   // NEW: Exact drop-pod / spawn location
 
-        public BuyPawnResult(bool success, string message, Pawn pawn = null)
+        public BuyPawnResult(bool success, string message, Pawn pawn = null, IntVec3 deliveryPos = default)
         {
             Success = success;
             Message = message;
             Pawn = pawn;
+            DeliveryPosition = deliveryPos;
         }
     }
 }
