@@ -347,11 +347,11 @@
 
   <!-- ModCommands - givecoins (moderator version) -->
   <RICS.CC.givecoins.usage>
-    Usage: !givecoins &lt;viewer|all&gt; &lt;amount&gt;
+    Usage: !givecoins [viewer|all] [amount] (putting just the amount will give coins to all users)
   </RICS.CC.givecoins.usage>
 
   <RICS.CC.givekarma.usage>
-    Usage: !givekarma &lt;viewer|all&gt; &lt;amount&gt;
+    Usage: !givekarma [viewer|all] [amount] (putting just the amount will give karma to all users)
   </RICS.CC.givekarma.usage>
 
   <RICS.CC.givecoins.errorcoin>
