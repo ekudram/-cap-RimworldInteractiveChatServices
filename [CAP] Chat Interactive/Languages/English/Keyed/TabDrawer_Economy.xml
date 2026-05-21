@@ -74,4 +74,6 @@
   <RICS.Economy.KarmaPerEventPriceMultiplier>Karma per Event Price Multiplier:</RICS.Economy.KarmaPerEventPriceMultiplier>
   <RICS.Economy.KarmaPerEventPriceMultiplierDesc>Multiplier applied as a % to the event's price.</RICS.Economy.KarmaPerEventPriceMultiplierDesc>
 
+  <RICS.Economy.ResetKarmaSettings>Reset Karma Settings to Defaults</RICS.Economy.ResetKarmaSettings>
+
 </LanguageData>

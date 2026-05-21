@@ -33,7 +33,7 @@ namespace _CAP__Chat_Interactive
             var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
 
             // Tall virtual view for full scrolling support
-            var view = new Rect(0f, 0f, rect.width - 16f, 1450f);
+            var view = new Rect(0f, 0f, rect.width - 16f, 1580f);
             Widgets.BeginScrollView(rect, ref _scrollPosition, view);
 
             var listing = new Listing_Standard();
@@ -118,7 +118,8 @@ namespace _CAP__Chat_Interactive
 
             // Reset button for the entire Karma section
             Rect resetRect = listing.GetRect(28f);
-            if (Widgets.ButtonText(resetRect, "Reset Karma Settings to Defaults"))
+            //    if (Widgets.ButtonText(resetRect, "Reset Karma Settings to Defaults"))
+            if (Widgets.ButtonText(resetRect, "RICS.Economy.ResetKarmaSettings".Translate()))
             {
                 // Reset to current CAPGlobalChatSettings field defaults (gentle 1f decay + ultra-low store karma to prevent spam abuse)
                 // This now perfectly matches the class field initializers + ExposeData() Scribe_Values defaults
@@ -139,6 +140,15 @@ namespace _CAP__Chat_Interactive
                 settings.KarmaGainPerNeutralEvent = 1f;
                 settings.KarmaLossPerDoomEvent = 25f;
                 settings.KarmaEventPriceMultiplier = 5f;
+
+                // CRITICAL FIX: The NumericField helper in UIUtilities.cs uses a static
+                // numericBuffers dictionary to prevent typing flicker.  When we mutate
+                // settings values directly (as a reset does), the buffers become stale.
+                // Clearing them forces every NumericField to re-read the live settings
+                // values on the next frame → instant visible reset.
+                UIUtilities.ClearNumericBuffers();
+
+                CAP_ChatInteractive.Logger.Message("[RICS Economy] Karma settings reset to defaults and UI buffers cleared");
             }
 
             listing.Gap(20f);
