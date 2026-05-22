@@ -565,9 +565,9 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
-    public class Xenotype : ChatCommand
+    public class Xenotypes : ChatCommand
     {
-        public override string Name => "xenotype";
+        public override string Name => "xenotypes";
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {

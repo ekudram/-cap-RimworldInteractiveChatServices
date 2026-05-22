@@ -21,6 +21,7 @@
     <enabled>true</enabled>
     <commandClass>CAP_ChatInteractive.Commands.ModCommands.GiveKarma</commandClass>
     <requiresMod>true</requiresMod>
+    <mod>RICS</mod>
     <commandDescription>Give karma to a viewer(s)</commandDescription>
     <permissionLevel>moderator</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
@@ -688,11 +689,11 @@
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
-    <defName>Xenotype</defName>
-    <commandText>xenotype</commandText>
-    <label>xenotype</label>
+    <defName>Xenotypes</defName>
+    <commandText>xenotypes</commandText>
+    <label>xenotypes</label>
     <enabled>true</enabled>
-    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Xenotype</commandClass>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Xenotypes</commandClass>
     <requiresMod>false</requiresMod>
     <commandDescription>List all available xenotypes by race.  !xenotype [race]</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
