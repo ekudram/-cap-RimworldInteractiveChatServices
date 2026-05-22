@@ -51,6 +51,8 @@
   <RICS.SBCH.AlreadyHasBodyType>Your pawn already has a {0} body type. No change needed!</RICS.SBCH.AlreadyHasBodyType>
   <RICS.SBCH.SurgeryAlreadyScheduled>{0} surgery is already scheduled for your pawn. Please wait.</RICS.SBCH.SurgeryAlreadyScheduled>
   <RICS.SBCH.DeniedReason>Sorry, gender swap surgery cannot be performed: {0}</RICS.SBCH.DeniedReason>
+
+  <RICS.SBCH.InvalidBodyPart>The part '{0}' is not valid for this surgery. Valid locations: {1}.</RICS.SBCH.InvalidBodyPart>  <!-- New for 1.37 -->
   
   <RICS.SBCH.MinAgeRequired>Minimum age {0} required.</RICS.SBCH.MinAgeRequired>
   <RICS.SBCH.RequiresFemale>Requires female pawn.</RICS.SBCH.RequiresFemale>

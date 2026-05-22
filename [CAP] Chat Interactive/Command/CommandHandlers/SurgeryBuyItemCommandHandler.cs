@@ -175,7 +175,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var recipe = FindSurgeryRecipeForImplant(thingDef, viewerPawn);
                 if (recipe == null) return "RICS.SBCH.NoProcedure".Translate(itemName);
 
-                var bodyParts = FindBodyPartsForSurgery(recipe, viewerPawn, sideStr, quantity);
+                string partError = null;
+                var bodyParts = FindBodyPartsForSurgery(recipe, viewerPawn, sideStr, quantity, out partError);
+                if (!string.IsNullOrEmpty(partError))
+                {
+                    return partError;
+                }
                 if (bodyParts.Count == 0)
                 {
                     string available = GetAvailableBodyPartsDescription(recipe, viewerPawn);
@@ -533,9 +538,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             AwardSurgeryKarma(viewer, finalPrice, "biotech surgery");
 
             // Body parts: most misc surgeries don't target parts → empty list
+            string partError = null;
             List<BodyPartRecord> bodyParts = recipe.targetsBodyPart
-                ? FindBodyPartsForSurgery(recipe, pawn, "", 1)   // 'parsed' must be in scope!
+                ? FindBodyPartsForSurgery(recipe, pawn, "", 1, out partError)   // 'parsed' must be in scope!
                 : new List<BodyPartRecord>();
+            // For surgeries that target body parts, we still want to validate availability even if we don't show the selection to the user
+            // Not needed for current misc surgeries, but good for future-proofing if we add more that target parts
+            //if (!string.IsNullOrEmpty(partError))
+            //{
+            //    return partError;
+            //}   
 
             // Schedule the bill(s)
             ScheduleSurgeries(pawn, recipe, bodyParts);
@@ -557,42 +569,68 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         // ===== BODY PART SELECTION METHODS =====
-        private static List<BodyPartRecord> FindBodyPartsForSurgery(RecipeDef recipe, Verse.Pawn pawn, string sideFilter, int maxQuantity)
+        // In SurgeryBuyItemCommandHandler.cs, inside SurgeryItemCommandHandler class
+        private static List<BodyPartRecord> FindBodyPartsForSurgery(RecipeDef recipe, Verse.Pawn pawn, string sideFilter, int maxQuantity, out string validationError)
         {
+            validationError = null;
             Logger.Debug($"FindBodyPartsForSurgery - Recipe: {recipe.defName}, SideFilter: {sideFilter}, MaxQuantity: {maxQuantity}");
 
-            // Let RimWorld tell us which parts this surgery applies to
+            if (recipe == null || pawn == null)
+            {
+                validationError = "RICS.SBCH.NoProcedure".Translate("unknown");
+                return new List<BodyPartRecord>();
+            }
+
+            // Core RimWorld behavior: GetPartsToApplyOn respects appliedOnFixedBodyParts + pawn state
             var availableParts = recipe.Worker.GetPartsToApplyOn(pawn, recipe).ToList();
             Logger.Debug($"Initial available parts from recipe: {availableParts.Count}");
 
-            // Filter by side if specified
-            if (!string.IsNullOrEmpty(sideFilter))
+            if (availableParts.Count == 0)
+            {
+                validationError = "RICS.SBCH.NoBodyParts".Translate(recipe.label, "none");
+                return new List<BodyPartRecord>();
+            }
+
+            // --- Enhanced side / body part filter (supports EPOE fixed parts + user intent) ---
+            bool hasSideFilter = !string.IsNullOrEmpty(sideFilter);
+            if (hasSideFilter)
             {
                 var beforeFilterCount = availableParts.Count;
                 availableParts = availableParts
-                    .Where(part => GetBodyPartSide(part).ToLower().Contains(sideFilter.ToLower()))
+                    .Where(part => GetBodyPartSide(part).ToLowerInvariant().Contains(sideFilter.ToLowerInvariant()) ||
+                                   GetBodyPartDisplayName(part).ToLowerInvariant().Contains(sideFilter.ToLowerInvariant()))
                     .ToList();
-                Logger.Debug($"After side filter '{sideFilter}': {beforeFilterCount} -> {availableParts.Count}");
+
+                Logger.Debug($"After side/part filter '{sideFilter}': {beforeFilterCount} -> {availableParts.Count}");
+
+                if (availableParts.Count == 0)
+                {
+                    // Helpful EPOE-style feedback
+                    string validParts = GetAvailableBodyPartsDescription(recipe, pawn);
+                    validationError = "RICS.SBCH.InvalidBodyPart".Translate(sideFilter, validParts);
+                    // Still return empty so caller knows to abort
+                    return new List<BodyPartRecord>();
+                }
             }
 
-            // Remove parts that already have this surgery scheduled or the implant already installed
+            // Remove already scheduled / installed
             var beforeDedupeCount = availableParts.Count;
             availableParts = availableParts
                 .Where(part => !HasSurgeryScheduled(pawn, recipe, part) && !HasImplantAlready(pawn, part, recipe))
                 .ToList();
             Logger.Debug($"After deduplication: {beforeDedupeCount} -> {availableParts.Count}");
 
-            // Log available parts for debugging
-            if (availableParts.Count > 0)
+            if (availableParts.Count == 0)
             {
-                Logger.Debug($"Available body parts: {string.Join(", ", availableParts.Select(p => $"{GetBodyPartDisplayName(p)}"))}");
-            }
-            else
-            {
-                Logger.Debug("No available body parts found after all filters");
+                validationError = "RICS.SBCH.SurgeryAlreadyScheduled".Translate(recipe.label);
             }
 
-            // Limit to requested quantity
+            // Log for debugging (especially useful for EPOE nanobots)
+            if (availableParts.Count > 0)
+            {
+                Logger.Debug($"Available body parts: {string.Join(", ", availableParts.Select(p => GetBodyPartDisplayName(p)))}");
+            }
+
             return availableParts.Take(maxQuantity).ToList();
         }
 
