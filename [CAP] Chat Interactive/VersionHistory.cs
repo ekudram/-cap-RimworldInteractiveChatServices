@@ -1035,9 +1035,33 @@ Translations:
 - Changed one in same file:
   - RICS.MPCH.UnknownSubcommand>
 ==========================================================="
-            }
+            },
+             {"1.37",
+                @"===========================================================
+                         RICS 1.37 - Changelog
+                         Released: May 28, 2026
+===========================================================
 
+<b>MEMORANDUM</b>
+──────────
 
+<b>UPDATED</b>
+───────
+
+<b>FIXED</b>
+─────
+
+<b>ADDED</b>  
+──────
+- !races command returns a list of available races.
+- !xenotypes command returns a list of available xenotypes for a specified race
+
+<b>TRANSLATIONS</b>
+────────────
+
+"
+
+            }    
 
 
 
