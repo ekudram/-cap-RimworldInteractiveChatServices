@@ -45,7 +45,7 @@ namespace CAP_ChatInteractive.Commands.TestCommands
 
             if (!isCaptoLamia)
             {
-                // RICS tips for regular viewers
+                // RICS tips 
                 var tips = new[]
                 {
                     "You can have multiple Rimworld Lockers",
@@ -65,6 +65,12 @@ namespace CAP_ChatInteractive.Commands.TestCommands
                     "Events from mods are off by default.  If you want to enable them, you can do so in the RICS settings.",
                     "Anomoly events are off by default.  If you want to enable them, you can do so in the RICS settings.",
                     "!races will list all the races that are available to be bought with the !pawn command.",
+                    "Did you know you can add an alias to a command in the Command Editor?  This allows you to have multiple ways to call the same command. For example, you could add an alias of `!bald` to `!bal` so both commands work the same way.  This can also be used to add translations for commands in other languages.  For example, you could add `!dar` as an alias for `!raid` for Spanish speakers.",
+                    "The Rimazon Locker has settings so you can set up multiple lockers in different areas of the map and have them receive specific items.  For example, you could have a locker in the freezer that only receives food and medicine, and a locker in the workshop that only receives weapons and apparel.",
+                    "The `!dye` command can be used to change hair color.  Example !dye hair blue will change your pawns hair color to blue.",
+                    "Many purchase use fuzzy logic in their item matching.  This means that you don't have to type the exact name of an item for it to be recognized.  For example, !event soothe will buy !event psychic soothe.",
+                    "Meow!",
+
 
                     // Add more tips here later - they will be picked randomly
                 };

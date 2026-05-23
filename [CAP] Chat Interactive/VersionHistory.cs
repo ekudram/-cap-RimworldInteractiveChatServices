@@ -1057,6 +1057,7 @@ This can also be used to add translations for commands in other languages.  For 
 - Removed !pawn Lists command as it was confusing to viewers and not very useful.
 - Two new commands added to replace it: !races and !xenotypes.
 - `!dye` tweaked to allow for more specific color targeting, and to improve return message.
+- The `!captolamia` command will give RICS tips for anyone but Captolamia.
 
 <b>FIXED</b>
 ─────
