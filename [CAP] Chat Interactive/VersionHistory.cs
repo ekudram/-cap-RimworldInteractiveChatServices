@@ -1050,6 +1050,8 @@ Translations:
 
 <b>FIXED</b>
 ─────
+- Fixed a bug where Karma for events and weather give 100x more karma then intended.
+- Fixed a bug where Cooldown for days for individual events was not working properly.
 
 <b>ADDED</b>  
 ──────

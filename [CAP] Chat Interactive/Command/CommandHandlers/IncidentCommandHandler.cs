@@ -91,7 +91,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         if (!cooldownManager.CanUseIncident(buyableIncident.DefName, buyableIncident.CooldownDays, settings))
                         {
                             int daysRemaining = GetRemainingCooldownDays(buyableIncident.DefName, buyableIncident.CooldownDays, cooldownManager);
-                            string cooldownMessage = GetIndividualCooldownMessage(buyableIncident.Label, daysRemaining, settings.EventCooldownDays);
+                            string cooldownMessage = GetIndividualCooldownMessage(buyableIncident.Label, daysRemaining, buyableIncident.CooldownDays);
                             Logger.Debug($"Individual cooldown blocked: {cooldownMessage}");
                             return cooldownMessage;
                         }
@@ -209,39 +209,36 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static int GetRemainingCooldownDays(string incidentDefName, int incidentCooldownDays, GlobalCooldownManager cooldownManager)
         {
-            if (cooldownManager.data.IncidentUsage == null ||
+            if (cooldownManager?.data?.IncidentUsage == null ||
                 !cooldownManager.data.IncidentUsage.ContainsKey(incidentDefName))
                 return 0;
 
             var record = cooldownManager.data.IncidentUsage[incidentDefName];
             int currentDay = GenDate.DaysPassed;
 
-            // Find the most recent use of this incident
-            if (record.UsageDays.Count == 0)
+            if (record.LastUsedDay < 0)
                 return 0;
 
-            int mostRecentUseDay = record.UsageDays.Max();
-            int daysSinceUse = currentDay - mostRecentUseDay;
+            int daysSinceUse = currentDay - record.LastUsedDay;
             int daysRemaining = incidentCooldownDays - daysSinceUse;
+
+            Logger.Debug($"GetRemainingCooldownDays: {incidentDefName} - Last used day {record.LastUsedDay}, days since: {daysSinceUse}, remaining: {daysRemaining}");
 
             return Math.Max(0, daysRemaining);
         }
 
-        private static string GetIndividualCooldownMessage(string incidentLabel, int daysRemaining, int globalCooldownDays)
+        private static string GetIndividualCooldownMessage(string incidentLabel, int daysRemaining, int incidentCooldownDays)
         {
             if (daysRemaining > 0)
             {
                 if (daysRemaining == 1)
-                    // return $"❌ {incidentLabel} is on cooldown for {daysRemaining} more day";
-                    return "RICS.ICH.RETURN.IncidentCooldownOneDay".Translate(incidentLabel);   
+                    return "RICS.ICH.RETURN.IncidentCooldownOneDay".Translate(incidentLabel);
                 else
-                    // return $"❌ {incidentLabel} is on cooldown for {daysRemaining} more days";
                     return "RICS.ICH.RETURN.IncidentCooldownMultipleDays".Translate(incidentLabel, daysRemaining);
             }
             else
             {
-                // return $"❌ {incidentLabel} is on cooldown (resets every {globalCooldownDays} days)";
-                return "RICS.ICH.RETURN.IncidentCooldownReset".Translate(incidentLabel, globalCooldownDays);
+                return "RICS.ICH.RETURN.IncidentCooldownReset".Translate(incidentLabel, incidentCooldownDays);
             }
         }
 

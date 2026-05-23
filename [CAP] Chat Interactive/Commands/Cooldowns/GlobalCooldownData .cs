@@ -26,14 +26,12 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
     public class IncidentUsageRecord : IExposable
     {
         public string IncidentDefName;
-        public List<int> UsageDays = new List<int>(); // Game days when incidents were used
-
-        public int CurrentPeriodUses => UsageDays.Count;
+        public int LastUsedDay = -1;   // We only need this now
 
         public void ExposeData()
         {
             Scribe_Values.Look(ref IncidentDefName, "incidentDefName");
-            Scribe_Collections.Look(ref UsageDays, "usageDays", LookMode.Value);
+            Scribe_Values.Look(ref LastUsedDay, "lastUsedDay", -1);
         }
     }
 
@@ -54,32 +52,15 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             Scribe_Collections.Look(ref BuyUsage, "buyUsage", LookMode.Value, LookMode.Deep);
             Scribe_Collections.Look(ref IncidentUsage, "incidentUsage", LookMode.Value, LookMode.Deep);
 
-            // Backward compatibility: Initialize any missing dictionaries after loading
-            if (EventUsage == null)
-            {
-                EventUsage = new Dictionary<string, EventUsageRecord>();
-                Logger.Debug("EventUsage initialized in GlobalCooldownData.ExposeData");
-            }
-            if (CommandUsage == null)
-            {
-                CommandUsage = new Dictionary<string, CommandUsageRecord>();
-                Logger.Debug("CommandUsage initialized in GlobalCooldownData.ExposeData");
-            }
-            if (BuyUsage == null)
-            {
-                BuyUsage = new Dictionary<string, BuyUsageRecord>();
-                Logger.Debug("BuyUsage initialized in GlobalCooldownData.ExposeData");
-            }
-            if (IncidentUsage == null)
-            {
-                IncidentUsage = new Dictionary<string, IncidentUsageRecord>();
-                Logger.Debug("IncidentUsage initialized in GlobalCooldownData.ExposeData");
-            }
+            // Backward compatibility + safety
+            EventUsage ??= new Dictionary<string, EventUsageRecord>();
+            CommandUsage ??= new Dictionary<string, CommandUsageRecord>();
+            BuyUsage ??= new Dictionary<string, BuyUsageRecord>();
+            IncidentUsage ??= new Dictionary<string, IncidentUsageRecord>();
         }
 
         public GlobalCooldownData()
         {
-            // Ensure all dictionaries are initialized
             EventUsage = new Dictionary<string, EventUsageRecord>();
             CommandUsage = new Dictionary<string, CommandUsageRecord>();
             BuyUsage = new Dictionary<string, BuyUsageRecord>();

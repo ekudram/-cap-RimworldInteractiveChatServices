@@ -253,8 +253,6 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             foreach (var record in data.CommandUsage.Values)
                 CleanupOldCommandUses(record, globalSettings.EventCooldownDays);
 
-            foreach (var record in data.IncidentUsage.Values)
-                CleanupOldIncidentUses(record, globalSettings.EventCooldownDays);
 
             foreach (var record in data.BuyUsage.Values)
                 CleanupOldPurchases(record, globalSettings.EventCooldownDays);
@@ -281,15 +279,6 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             Logger.Debug($"After cleanup: {record.UsageDays.Count} uses remaining.");
         }
 
-        private void CleanupOldIncidentUses(IncidentUsageRecord record, int cooldownDays)
-        {
-            if (cooldownDays == 0) return; // Never expire
-            Logger.Debug($"Cleaning up for cooldown {cooldownDays}. Current day: {CurrentGameDay}. Before cleanup: {record.UsageDays.Count} uses.");
-            // Remove usage days that are older than or equal to the cooldown period  // Changed comment for clarity
-            record.UsageDays.RemoveAll(day => (CurrentGameDay - day) >= cooldownDays);  // Changed > to >=
-            Logger.Debug($"After cleanup: {record.UsageDays.Count} uses remaining.");
-        }
-
         public bool CanUseIncident(string incidentDefName, int incidentCooldownDays, CAPGlobalChatSettings settings)
         {
             Logger.Debug($"CanUseIncident: {incidentDefName}, IncidentCooldownDays: {incidentCooldownDays}");
@@ -304,23 +293,26 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
 
             if (incidentCooldownDays <= 0)
             {
-                Logger.Debug($"Incident {incidentDefName} has no cooldown (CooldownDays = {incidentCooldownDays})");
+                Logger.Debug($"Incident {incidentDefName} has no cooldown");
                 return true;
             }
 
             var record = GetOrCreateIncidentRecord(incidentDefName);
-            CleanupOldIncidentUses(record, incidentCooldownDays);
 
-            // Specific incident cooldown
-            bool incidentUsedRecently = record.UsageDays.Any(day => (CurrentGameDay - day) < incidentCooldownDays);
-            if (incidentUsedRecently)
+            // === MAIN FIX: Proper same-day + multi-day cooldown check ===
+            if (record.LastUsedDay >= 0)  // Changed > 0 to >= 0
             {
-                Logger.Debug($"Incident {incidentDefName} was used within the last {incidentCooldownDays} days → blocked");
-                return false;
+                int daysSinceLastUse = CurrentGameDay - record.LastUsedDay;
+
+                if (daysSinceLastUse < incidentCooldownDays)
+                {
+                    Logger.Debug($"Incident {incidentDefName} was used {daysSinceLastUse} days ago (cooldown: {incidentCooldownDays}) → blocked");
+                    return false;
+                }
             }
 
-            // Global + karma-type limits (this was the main bug)
-            string karmaType = GetKarmaTypeForIncident(incidentDefName);   // now safe
+            // Global + karma-type limits
+            string karmaType = GetKarmaTypeForIncident(incidentDefName);   // or better: use buyableIncident.KarmaType when possible
             if (!CanUseEvent(karmaType, settings))
             {
                 Logger.Debug($"Global {karmaType} event limit reached → blocking {incidentDefName}");
@@ -331,29 +323,10 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             return true;
         }
 
-        private string GetKarmaTypeForIncident(string incidentDefNameOrKarma)
-        {
-            if (string.IsNullOrEmpty(incidentDefNameOrKarma))
-                return "neutral";
-
-            string lower = incidentDefNameOrKarma.ToLowerInvariant();
-
-            // Direct karma type passed from BuyableIncident
-            if (lower == "good" || lower == "bad" || lower == "doom" || lower == "neutral")
-                return lower;
-
-            // Fallback defName mapping (keeps old saves safe)
-            if (lower.Contains("insanitymass") || lower.Contains("toxicfallout") || lower.Contains("volcanicwinter") ||
-                lower.Contains("defoliator") || lower.Contains("psychicemanator"))
-                return "doom";
-
-            return "bad";   // most !event purchases are bad
-        }
-
         public void RecordIncidentUse(string incidentDefName)
         {
             var record = GetOrCreateIncidentRecord(incidentDefName);
-            record.UsageDays.Add(CurrentGameDay);
+            record.LastUsedDay = CurrentGameDay;
 
             Logger.Debug($"Recorded incident use: {incidentDefName} on day {CurrentGameDay}");
         }
@@ -364,10 +337,34 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             {
                 data.IncidentUsage[incidentDefName] = new IncidentUsageRecord
                 {
-                    IncidentDefName = incidentDefName
+                    IncidentDefName = incidentDefName,
+                    LastUsedDay = -1
                 };
             }
             return data.IncidentUsage[incidentDefName];
+        }
+
+        private string GetKarmaTypeForIncident(string incidentDefNameOrKarma)
+        {
+            if (string.IsNullOrEmpty(incidentDefNameOrKarma))
+                return "neutral";
+
+            string lower = incidentDefNameOrKarma.ToLowerInvariant();
+
+            // Direct karma type from BuyableIncident
+            if (lower == "good" || lower == "bad" || lower == "doom" || lower == "neutral")
+                return lower;
+
+            // Fallback mapping
+            if (lower.Contains("trader") || lower.Contains("caravan") || lower.Contains("refugee") ||
+                lower.Contains("wanderer") || lower.Contains("ally") || lower.Contains("visitor"))
+                return "neutral";   // or "good" depending on your preference
+
+            if (lower.Contains("insanity") || lower.Contains("toxic") || lower.Contains("volcanic") ||
+                lower.Contains("defoliator") || lower.Contains("psychicemanator") || lower.Contains("raid"))
+                return "bad";
+
+            return "neutral";   // safer default
         }
 
         private int CurrentGameDay => GenDate.DaysPassed;
