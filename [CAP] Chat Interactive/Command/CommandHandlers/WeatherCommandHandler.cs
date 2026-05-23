@@ -247,18 +247,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             string typeLower = karmaType?.ToLowerInvariant() ?? "neutral";
 
             // Base value from Economy settings
-            float baseValue = typeLower switch
+            float total = typeLower switch
             {
-                "good" => settings.KarmaGainPerGoodEvent,
-                "bad" => settings.KarmaLossPerBadEvent,
-                "doom" => settings.KarmaLossPerDoomEvent,
-                _ => settings.KarmaGainPerNeutralEvent  // neutral or unknown
+                "good" => settings.KarmaGainPerGoodEvent + (baseCost * settings.KarmaEventPriceMultiplier/100f),
+                "bad" => settings.KarmaLossPerBadEvent - (baseCost * settings.KarmaEventPriceMultiplier / 100f),
+                "doom" => settings.KarmaLossPerDoomEvent - (baseCost * settings.KarmaEventPriceMultiplier / 100f),
+                _ => settings.KarmaGainPerNeutralEvent + (baseCost * settings.KarmaEventPriceMultiplier / 100f),  // neutral or unknown
             };
 
             // NEW: price-based karma scaling (same formula used everywhere)
-            float priceBased = baseCost * settings.KarmaEventPriceMultiplier;
+            //float priceBased = baseCost * settings.KarmaEventPriceMultiplier/100f;
 
-            float total = baseValue + priceBased;
+            //float total = baseValue + priceBased;
 
             // Never return zero or negative for a good/neutral event
             // (bad/doom events are always positive loss amounts)
