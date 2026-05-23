@@ -157,9 +157,6 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
 
             bool canUse = record.CurrentPeriodUses < maxUses;
 
-            string message = $"Current {eventType} events in cooldown period: {record.CurrentPeriodUses}/{maxUses}";
-            Messages.Message(message, MessageTypeDefOf.CautionInput);
-
             if (!canUse)
                 Logger.Debug($"[LIMIT REACHED] {eventType} events at {record.CurrentPeriodUses}/{maxUses} - blocking further use");
 
@@ -216,20 +213,37 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             int totalEvents = data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
             return totalEvents < settings.EventsperCooldown;
         }
-
         public void RecordEventUse(string eventType)
         {
             if (string.IsNullOrEmpty(eventType)) return;
 
             eventType = eventType.ToLowerInvariant();
             if (eventType == "doom")
-                eventType = "bad";   // <<< Doom uses the same record as bad
+                eventType = "bad";
 
             var record = GetOrCreateEventRecord(eventType);
             record.UsageDays.Add(CurrentGameDay);
 
             Logger.Debug($"Recorded event usage for type: {eventType} (doom normalized to bad)");
             Logger.Debug($"Current usage for {eventType}: {record.CurrentPeriodUses}");
+
+            // === NEW: Informative message for players (only shown when event actually fires) ===
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings as CAPGlobalChatSettings;
+            if (settings != null)
+            {
+                int maxUses = eventType switch
+                {
+                    "good" => settings.MaxGoodEvents,
+                    "bad" => settings.MaxBadEvents,
+                    "neutral" => settings.MaxNeutralEvents,
+                    _ => settings.MaxBadEvents
+                };
+
+                string displayType = eventType == "bad" ? "Bad/Doom" : char.ToUpperInvariant(eventType[0]) + eventType.Substring(1);
+
+                string message = $"Current {displayType} events this period: {record.CurrentPeriodUses}/{maxUses}";
+                Messages.Message(message, MessageTypeDefOf.PositiveEvent); // or CautionInput
+            }
         }
 
         public void RecordCommandUse(string commandName)
