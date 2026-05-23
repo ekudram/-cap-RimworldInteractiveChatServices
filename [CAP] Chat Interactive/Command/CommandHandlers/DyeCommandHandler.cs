@@ -267,6 +267,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         /// <param name="color"></param>
         /// <param name="colorInput"></param>
         /// <returns></returns>
+        // In DyeCommandHandler.cs, inside DyeCommandHandler.HandleHairDye(Verse.Pawn pawn, Color color, string colorInput = null)
         private static string HandleHairDye(Verse.Pawn pawn, Color color, string colorInput = null)
         {
             if (pawn.story == null || pawn.story.hairDef == null)
@@ -275,16 +276,53 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             }
 
             // Log before setting
-            Logger.Debug($"[CAP] Setting hair color to R:{color.r} G:{color.g} B:{color.b} from input: {colorInput}");
+            Logger.Debug($"[CAP] Setting hair color to R:{color.r:F2} G:{color.g:F2} B:{color.b:F2} from input: {colorInput}");
 
-            // Set hair color directly in vanilla (1.6 compatible)
+            // === CORE FIX ===
+            // 1. Set the color (vanilla)
             pawn.story.HairColor = color;
 
+            // 2. Force immediate visual update
+            ForceHairGraphicsUpdate(pawn);
+
             // Log after setting
-            Logger.Debug($"[CAP] Hair color now: R:{pawn.story.HairColor.r} G:{pawn.story.HairColor.g} B:{pawn.story.HairColor.b}");
+            Logger.Debug($"[CAP] Hair color now: R:{pawn.story.HairColor.r:F2} G:{pawn.story.HairColor.g:F2} B:{pawn.story.HairColor.b:F2}");
 
             string colorName = GetColorNameForResponse(color, colorInput);
             return "RICS.DyeCommand.HairSuccess".Translate(colorName);
+        }
+
+        /// <summary>
+        /// Forces the pawn's hair and overall graphics to refresh immediately after changing HairColor.
+        /// This replicates what the Styling Station does internally.
+        /// </summary>
+        private static void ForceHairGraphicsUpdate(Verse.Pawn pawn)
+        {
+            if (pawn == null || pawn.Drawer?.renderer == null)
+                return;
+
+            try
+            {
+                // Primary method - marks all render nodes dirty
+                pawn.Drawer.renderer.SetAllGraphicsDirty();
+
+                // Optional: Also notify style tracker (helps with Ideology/Style system)
+                if (pawn.style != null)
+                {
+                    pawn.style.Notify_StyleItemChanged();
+                    // If nextHairColor was somehow involved
+                    if (pawn.style.nextHairColor.HasValue)
+                        pawn.style.FinalizeHairColor();
+                }
+
+                // Extra safety: dirty the hair render node specifically
+                // pawn.Drawer.renderer.SetDirtyFor(PawnRenderNodeTagDefOf.Hair);
+
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Warning($"[CAP] Failed to force hair graphics update for {pawn.LabelShort}: {ex.Message}");
+            }
         }
 
         /// <summary>
