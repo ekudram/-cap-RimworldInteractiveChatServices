@@ -474,68 +474,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             Logger.Message($"DLC: {dlcIncidents.Count(i => IsIncidentSuitableForCommand(i))}/{dlcIncidents.Count} available");
             Logger.Message($"Mods: {modIncidents.Count(i => IsIncidentSuitableForCommand(i))}/{modIncidents.Count} available");
         }
-
-        // Add this debug action to IncidentCommandHandler.cs
-        // Update the debug action
-        [DebugAction("CAP", "Test Incident Cooldowns", allowedGameStates = AllowedGameStates.Playing)]
-        public static void DebugTestIncidentCooldowns()
-        {
-            var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
-            if (cooldownManager == null)
-            {
-                Logger.Message("No GlobalCooldownManager found!");
-                return;
-            }
-
-            Logger.Message($"=== INCIDENT COOLDOWN REPORT ===");
-            Logger.Message($"Current game day: {GenDate.DaysPassed}");
-
-            if (cooldownManager.data.IncidentUsage == null || cooldownManager.data.IncidentUsage.Count == 0)
-            {
-                Logger.Message("No incident cooldown data recorded.");
-            }
-            else
-            {
-                foreach (var kvp in cooldownManager.data.IncidentUsage)
-                {
-                    Logger.Message($"Incident: {kvp.Key}");
-                    Logger.Message($"  Total uses: {kvp.Value.CurrentPeriodUses}");
-
-                    foreach (int usageDay in kvp.Value.UsageDays)
-                    {
-                        int daysAgo = GenDate.DaysPassed - usageDay;
-                        Logger.Message($"    Used {daysAgo} days ago");
-                    }
-                }
-            }
-
-            // Test a specific incident
-            var testIncident = GetAvailableIncidents().Values.FirstOrDefault();
-            if (testIncident != null)
-            {
-                Logger.Message("");
-                Logger.Message($"=== TESTING: {testIncident.DefName} ===");
-                Logger.Message($"CooldownDays: {testIncident.CooldownDays}");
-
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-                bool canUse = cooldownManager.CanUseIncident(
-                    testIncident.DefName,
-                    testIncident.CooldownDays,
-                    settings);
-
-                Logger.Message($"Can this incident be used now? {canUse}");
-
-                if (!canUse)
-                {
-                    int daysRemaining = GetRemainingCooldownDays(
-                        testIncident.DefName,
-                        testIncident.CooldownDays,
-                        cooldownManager);
-
-                    Logger.Message($"Days remaining on cooldown: {daysRemaining}");
-                }
-            }
-        }
     }
 
 }

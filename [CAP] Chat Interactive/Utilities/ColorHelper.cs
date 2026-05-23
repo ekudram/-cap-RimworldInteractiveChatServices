@@ -23,6 +23,9 @@ namespace CAP_ChatInteractive.Helpers
 {
     internal static class ColorHelper
     {
+        /// <summary>
+        /// Dictionary of common color names to their corresponding Unity Color values.
+        /// </summary>
         private static readonly Dictionary<string, Color> ColorDictionary = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
         {
             {"red", Color.red},
@@ -57,29 +60,51 @@ namespace CAP_ChatInteractive.Helpers
             {"lightgray", new Color(0.83f, 0.83f, 0.83f)},
         };
 
+        /// <summary>
+        /// Parses a color from a string input. Supports named colors, hex codes, and rgb() format.
+        /// </summary>
+        /// <param name="colorInput">The input string representing the color.</param>
+        /// <returns>A Unity Color if parsing is successful; otherwise, null.</returns>
         public static Color? ParseColor(string colorInput)
         {
             if (string.IsNullOrEmpty(colorInput))
                 return null;
 
-            // Remove # if present for hex parsing
             string cleanInput = colorInput.Trim().TrimStart('#');
 
-            // Check named colors first
+            // Named colors first
             if (ColorDictionary.TryGetValue(cleanInput, out Color namedColor))
             {
                 return namedColor;
             }
 
-            // Try parsing as hex color
+            // Hex
             if (ColorUtility.TryParseHtmlString("#" + cleanInput, out Color hexColor))
             {
                 return hexColor;
             }
 
+            // NEW: Support "rgb(255,0,0)" style if users paste from tools
+            if (cleanInput.StartsWith("rgb"))
+            {
+                // Simple parser for rgb/rgba - can be expanded if needed
+                var match = System.Text.RegularExpressions.Regex.Match(cleanInput, @"rgb\((\d+),\s*(\d+),\s*(\d+)\)");
+                if (match.Success &&
+                    int.TryParse(match.Groups[1].Value, out int r) &&
+                    int.TryParse(match.Groups[2].Value, out int g) &&
+                    int.TryParse(match.Groups[3].Value, out int b))
+                {
+                    return new Color(r / 255f, g / 255f, b / 255f);
+                }
+            }
+
             return null;
         }
 
+        /// <summary>
+        /// Returns the dictionary of named colors. This can be used for auto-completion or reference in other parts of the code.
+        /// </summary>
+        /// <returns></returns>
         public static Dictionary<string, Color> GetColorDictionary()
         {
             return ColorDictionary;

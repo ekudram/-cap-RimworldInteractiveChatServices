@@ -9,7 +9,7 @@
   <RICS.DyeCommand.NoDyeableClothing>No dyeable clothing found on your pawn.</RICS.DyeCommand.NoDyeableClothing>
 
   <!-- Success messages -->
-  <RICS.DyeCommand.HairSuccess>Successfully dyed hair to {0} at the styling station.</RICS.DyeCommand.HairSuccess>
+  <RICS.DyeCommand.HairSuccess>Successfully dyed hair to {0}.</RICS.DyeCommand.HairSuccess>
   <RICS.DyeCommand.ApparelSuccess>Successfully dyed {0} piece(s) of clothing to {1}.</RICS.DyeCommand.ApparelSuccess>
 
 </LanguageData>

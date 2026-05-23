@@ -19,12 +19,13 @@ using LudeonTK;
 using Newtonsoft.Json;
 using RimWorld;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Verse;
+using Verse.Sound;
 
 namespace CAP_ChatInteractive
 {
@@ -436,16 +437,18 @@ namespace CAP_ChatInteractive
                 Widgets.Label(settingsLabelRect, "CAP.CommandManager.BasicSettings".Translate());
                 y += sectionHeight;
 
-                // Enabled toggle
-                Rect enabledRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                Widgets.Label(enabledRect, "CAP.CommandManager.Enabled".Translate());
-                Rect enabledToggleRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                string toggleText = settings.Enabled ? "CAP.CommandManager.On".Translate() : "CAP.CommandManager.Off".Translate();
-                if (Widgets.ButtonText(enabledToggleRect, toggleText))
+                // Enabled toggle — changed to CheckboxLabeled (standard RimWorld pattern) ver 1.37
+                Rect enabledRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
+                bool wasEnabled = settings.Enabled;
+                Widgets.CheckboxLabeled(enabledRect, "CAP.CommandManager.Enabled".Translate(), ref settings.Enabled);
+
+                // Play click sound when toggled (vanilla behavior)
+                if (settings.Enabled != wasEnabled)
                 {
-                    settings.Enabled = !settings.Enabled;
+                    SoundDefOf.Click.PlayOneShotOnCamera();
                 }
                 y += sectionHeight;
+
 
                 // Cooldown setting 
                 Rect cooldownLabelRect = new Rect(leftPadding + 10f, y, 250f, sectionHeight);
@@ -466,15 +469,15 @@ namespace CAP_ChatInteractive
                 Widgets.TextFieldNumeric(cooldownInputRect, ref settings.CooldownSeconds, ref cooldownBuffer, 0f, 300f);
                 numericBuffers[cooldownKey] = cooldownBuffer;
 
-                // Description below
-                Rect cooldownDescRect = new Rect(leftPadding + 10f, y + sectionHeight - 8f, viewRect.width - leftPadding, 14f);
+                // Description for cooldown — wider + height for wrapping (fixes cutoff) ver 1.37
+                Rect cooldownDescRect = new Rect(leftPadding + 10f, y + sectionHeight - 4f, viewRect.width - leftPadding - 20f, 40f);
                 Text.Font = GameFont.Tiny;
-                GUI.color = new Color(0.7f, 0.7f, 0.7f); // Softer gray
+                GUI.color = new Color(0.7f, 0.7f, 0.7f);
                 Widgets.Label(cooldownDescRect, "CAP.CommandManager.CooldownDesc".Translate());
                 Text.Font = GameFont.Small;
                 GUI.color = Color.white;
 
-                y += sectionHeight + 10f; // Extra space for description
+                y += sectionHeight + 38f; // Extra vertical space so next section doesn't overlap
 
                 // Cost setting (if applicable)
                 if (settings.SupportsCost)
@@ -527,15 +530,15 @@ namespace CAP_ChatInteractive
 
                 y += sectionHeight;
 
-                // Description for alias
-                Rect aliasDescRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, 14f);
+                // Description for alias — wider rect + more height for long translations ver 1.37
+                Rect aliasDescRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 20f, 38f);
                 Text.Font = GameFont.Tiny;
                 GUI.color = new Color(0.8f, 0.8f, 0.8f);
                 string aliasDesc = "CAP.CommandManager.AliasDesc".Translate(globalSettings.Prefix, globalSettings.BuyPrefix);
                 Widgets.Label(aliasDescRect, aliasDesc);
                 Text.Font = GameFont.Small;
                 GUI.color = Color.white;
-                y += 20f;
+                y += 40f; // Increased spacing after the potentially multi-line description
 
                 // Event Command Settings - Only show for commands like raid, militaryaid
                 Rect eventHeaderRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
@@ -1225,7 +1228,7 @@ namespace CAP_ChatInteractive
             if (settings.SupportsCost) height += 28f; // Cost if applicable
             height += 38f; // Advanced settings label + spacing
             height += 28f; // Command alias
-            height += 14f; // Alias description
+            height += 38f; // ← Changed from 14f to 38f for alias description
 
             // Command Cooldown Settings (replaces the old game days cooldown)
             height += 28f; // Command Cooldown Settings header

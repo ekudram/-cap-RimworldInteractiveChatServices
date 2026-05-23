@@ -1044,15 +1044,26 @@ Translations:
 
 <b>MEMORANDUM</b>
 ──────────
+- Did you know you can add an alias to a command in the Command Editor?  This allows you to have multiple ways to call the same command.
+For example, you could add an alias of `!bald` to `!bal` so both commands work the same way.
+Or you could add `!gk` as an alias for `!givekarma` for a shorter command.  The possibilities are endless!
+This can also be used to add translations for commands in other languages.  For example, you could add `!dar` as an alias for `!raid` for Spanish speakers.
 
 <b>UPDATED</b>
 ───────
+- `!surgury` now allows to specify body part.
+  - Only needed if part can go in multiple spots.
+  - This is for Mod Support
+- Removed !pawn Lists command as it was confusing to viewers and not very useful.
+- Two new commands added to replace it: !races and !xenotypes.
+- `!dye` tweaked to allow for more specific color targeting, and to improve return message.
 
 <b>FIXED</b>
 ─────
 - Fixed a bug where Karma for events and weather give 100x more karma then intended.
 - Fixed a bug where Cooldown for days for individual events was not working properly.
 - Fixed a bug where the Message about event usage was not showing the correct cooldown time for events.
+- Fixed Command Editor spacing where some text was being cut off.
 
 <b>ADDED</b>  
 ──────

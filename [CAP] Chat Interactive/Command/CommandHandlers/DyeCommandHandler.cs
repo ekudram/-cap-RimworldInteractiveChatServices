@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 
+// This class handles the !dye command for changing hair color or apparel color.
+
 using _CAP__Chat_Interactive.Command.CommandHelpers;
 using CAP_ChatInteractive.Helpers;
 using RimWorld;
@@ -25,11 +27,15 @@ using Verse;
 
 namespace CAP_ChatInteractive.Commands.ViewerCommands
 {
-    // This class handles the !dye command for changing hair color or apparel color.
     internal static class DyeCommandHandler
     {
+        // Cache of RimWorld hair color definitions for quick lookup
         private static Dictionary<string, Color> _rimColorCache;
 
+        /// <summary>
+        /// Caches all RimWorld ColorDefs that are likely to be used for all colors, using defName and label for lookup.
+        /// </summary>
+        /// <returns></returns>
         private static Dictionary<string, Color> GetAllRimColorDefs()
         {
             if (_rimColorCache != null) return _rimColorCache;
@@ -70,6 +76,12 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             return _rimColorCache;
         }
 
+        /// <summary>
+        /// Handles the !dye command, allowing viewers to change their pawn's hair color or apparel color.
+        /// </summary>
+        /// <param name="messageWrapper">The wrapper containing the chat message information.</param>
+        /// <param name="args">The arguments passed with the !dye command.</param>
+        /// <returns>A string message indicating the result of the command.</returns>
         internal static string HandleDyeCommand(ChatMessageWrapper messageWrapper, string[] args)
         {
             // Get the viewer's pawn
@@ -128,6 +140,12 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             }
         }
 
+        /// <summary>
+        /// String reconstruction helper to combine multiple arguments into a single color string, allowing for multi-word color names.
+        /// </summary>
+        /// <param name="args">The array of arguments passed to the command.</param>
+        /// <param name="startIndex">The index in the arguments array to start combining from.</param>
+        /// <returns>A single string representing the combined color name.</returns>
         private static string ReconstructColorString(string[] args, int startIndex)
         {
             if (startIndex >= args.Length) return null;
@@ -141,6 +159,12 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Parses the color input string, trying multiple methods to find a matching Color.
+        /// It checks RimWorld hair colors, common color names, hex codes, and custom ChatColorDefs.
+        /// </summary>
+        /// <param name="colorInput">The input string representing the color.</param>
+        /// <returns>A Unity Color if parsing is successful; otherwise, null.</returns>
         private static Color? ParseColorInput(string colorInput)
         {
             if (string.IsNullOrEmpty(colorInput))
@@ -160,7 +184,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             string lowerInput = colorInput.ToLower();
             foreach (var kvp in rimColors)
             {
-                // Check against defName (case-sensitive in dictionary but we'll compare lowercase)
                 if (kvp.Key.ToLower() == lowerInput)
                 {
                     Logger.Debug($"[CAP] Found case-insensitive match: {kvp.Key} -> R:{kvp.Value.r} G:{kvp.Value.g} B:{kvp.Value.b}");
@@ -168,7 +191,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 }
             }
 
-            // Try without spaces (for multi-word colors like "Dark Reddish" -> "DarkReddish")
+            // Try without spaces
             string noSpaces = colorInput.Replace(" ", "");
             foreach (var kvp in rimColors)
             {
@@ -179,21 +202,20 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 }
             }
 
-            // Try matching just the color part (for when they use just the color name like "black" for "PitchBlack")
-            string[] colorWords = colorInput.Split(' ');
-            foreach (string word in colorWords)
+            // NEW: ChatColorDef lookup (your expanded colors)
+            var chatColor = FindChatColorDef(colorInput);
+            if (chatColor.HasValue)
             {
-                if (word.Length > 3) // Skip small words like "and", "the", etc.
-                {
-                    foreach (var kvp in rimColors)
-                    {
-                        if (kvp.Key.IndexOf(word, System.StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            Logger.Debug($"[CAP] Found partial word match: {kvp.Key} contains '{word}' -> R:{kvp.Value.r} G:{kvp.Value.g} B:{kvp.Value.b}");
-                            return kvp.Value;
-                        }
-                    }
-                }
+                Logger.Debug($"[CAP] Found ChatColorDef match: {colorInput}");
+                return chatColor.Value;
+            }
+
+            // NEW: Custom hash lookup (e.g. from favorite color or direct hex)
+            var hashColor = TryGetColorByHash(colorInput);
+            if (hashColor.HasValue)
+            {
+                Logger.Debug($"[CAP] Found color by hash: {colorInput}");
+                return hashColor.Value;
             }
 
             // Fall back to ColorHelper
@@ -204,48 +226,74 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             }
             return helperColor;
         }
+        /// <summary>
+        /// Checks for a matching ChatColorDef based on the input string, allowing for both "Chat_ColorName" and just "ColorName" lookups.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        private static Color? FindChatColorDef(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return null;
 
+            var def = DefDatabase<ColorDef>.GetNamedSilentFail("Chat_" + input.Replace(" ", ""))
+                   ?? DefDatabase<ColorDef>.GetNamedSilentFail(input);
+
+            return def?.color;
+        }
+
+        /// <summary>
+        /// Tries to parse a color from a hex string (e.g. "#FF0000").
+        /// Returns null if parsing fails or if the input is not a valid hex code.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns>Returns a Color if parsing is successful; otherwise, null.</returns>
+        private static Color? TryGetColorByHash(string input)
+        {
+            if (string.IsNullOrEmpty(input) || !input.StartsWith("#")) return null;
+
+            if (ColorUtility.TryParseHtmlString(input, out Color c))
+                return c;
+
+            return null;
+        }
+
+        /// <summary>
+        /// Ver 1.37 Removed Styling Station support, so we set hair color directly on the pawn's story.
+        /// This should work with all hair types and mods that use the standard hair system.
+        /// If a mod uses a completely custom hair system that doesn't rely on the pawn's story.HairColor,
+        /// then it may not work, but most should be compatible with this approach.
+        /// </summary>
+        /// <param name="pawn"></param>
+        /// <param name="color"></param>
+        /// <param name="colorInput"></param>
+        /// <returns></returns>
         private static string HandleHairDye(Verse.Pawn pawn, Color color, string colorInput = null)
         {
             if (pawn.story == null || pawn.story.hairDef == null)
             {
-                // return "Your pawn doesn't have hair to dye.";
                 return "RICS.DyeCommand.NoHair".Translate();
             }
-
-            // Check if there's a styling station in the colony
-            bool hasStylingStation = false;
-            List<Building> allBuildings = pawn.Map.listerBuildings.allBuildingsColonist;
-            foreach (Building building in allBuildings)
-            {
-                if (building.def.defName == "StylingStation" ||
-                    building.def.defName.Contains("StylingStation") ||
-                    building.def.label?.ToLower().Contains("styling") == true)
-                {
-                    hasStylingStation = true;
-                    break;
-                }
-            }
-
-            //if (!hasStylingStation)
-            //{
-            //    return "Your pawn needs to use a styling station to change their hair color. Build one first.";
-            //}
 
             // Log before setting
             Logger.Debug($"[CAP] Setting hair color to R:{color.r} G:{color.g} B:{color.b} from input: {colorInput}");
 
-            // Set hair color directly in vanilla
+            // Set hair color directly in vanilla (1.6 compatible)
             pawn.story.HairColor = color;
 
-            // Log after setting to verify
+            // Log after setting
             Logger.Debug($"[CAP] Hair color now: R:{pawn.story.HairColor.r} G:{pawn.story.HairColor.g} B:{pawn.story.HairColor.b}");
 
             string colorName = GetColorNameForResponse(color, colorInput);
-            // return $"Successfully dyed hair to {colorName} at the styling station.";
             return "RICS.DyeCommand.HairSuccess".Translate(colorName);
         }
 
+        /// <summary>
+        /// Applies the specified color to all dyeable apparel worn by the pawn, excluding jewelry and utility items.
+        /// </summary>
+        /// <param name="pawn"></param>
+        /// <param name="color"></param>
+        /// <param name="colorInput"></param>
+        /// <returns>Returns a string message indicating the result of the dye operation.</returns>
         private static string HandleApparelDye(Verse.Pawn pawn, Color color, string colorInput = null)
         {
             // Apply dye to appropriate apparel
@@ -262,6 +310,12 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             return "RICS.DyeCommand.ApparelSuccess".Translate(dyedCount, colorName);
         }
 
+        /// <summary>
+        /// Applies the specified color to all dyeable apparel worn by the pawn, excluding jewelry and utility items.
+        /// </summary>
+        /// <param name="pawn"></param>
+        /// <param name="color"></param>
+        /// <returns>Returns the number of apparel items successfully dyed.</returns>
         private static int ApplyDyeToApparel(Verse.Pawn pawn, Color color)
         {
             int count = 0;
@@ -285,50 +339,55 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             return count;
         }
 
+        /// <summary>
+        /// Attempts to find a user-friendly name for the color to include in the response message.
+        /// </summary>
+        /// <param name="color">The color to find a name for.</param>
+        /// <param name="colorInput">Optional user input for the color name.</param>
+        /// <returns>A string representing the color name.</returns>
         private static string GetColorNameForResponse(Color color, string colorInput = null)
         {
-            // If we have the original input and it's not just a hex code, use it
             if (!string.IsNullOrEmpty(colorInput) && !colorInput.StartsWith("#") && colorInput != "favorite color")
             {
                 return colorInput;
             }
 
-            // Try to find in RimWorld color defs first
+            // RimWorld defs
             var rimColors = GetAllRimColorDefs();
             foreach (var kvp in rimColors)
             {
-                if (kvp.Value.r == color.r && kvp.Value.g == color.g && kvp.Value.b == color.b)
-                {
+                if (ColorsApproximatelyEqual(kvp.Value, color))
                     return kvp.Key;
-                }
             }
 
-            // Then try ColorHelper dictionary
+            // ColorHelper named colors
             foreach (var kvp in ColorHelper.GetColorDictionary())
             {
-                if (kvp.Value.r == color.r && kvp.Value.g == color.g && kvp.Value.b == color.b)
-                {
+                if (ColorsApproximatelyEqual(kvp.Value, color))
                     return kvp.Key;
+            }
+
+            // NEW: Try ChatColorDef labels
+            foreach (var colorDef in DefDatabase<ColorDef>.AllDefs)
+            {
+                if (colorDef.defName.StartsWith("Chat_") && ColorsApproximatelyEqual(colorDef.color, color))
+                {
+                    return colorDef.label.CapitalizeFirst();
                 }
             }
 
-            // Otherwise approximate
-            return ApproximateColorName(color);
+            // Fallback: Return hex hash for custom colors (user-friendly)
+            return $"#{ColorUtility.ToHtmlStringRGB(color)}";
         }
 
-        private static string ApproximateColorName(Color color)
+
+        private static bool ColorsApproximatelyEqual(Color a, Color b, float tolerance = 0.02f)
         {
-            if (color.r > 0.8f && color.g < 0.3f && color.b < 0.3f) return "red";
-            if (color.r > 0.8f && color.g > 0.8f && color.b < 0.3f) return "yellow";
-            if (color.r < 0.3f && color.g > 0.8f && color.b < 0.3f) return "green";
-            if (color.r < 0.3f && color.g < 0.3f && color.b > 0.8f) return "blue";
-            if (color.r > 0.8f && color.g < 0.3f && color.b > 0.8f) return "purple";
-            if (color.r > 0.8f && color.g > 0.5f && color.b < 0.3f) return "orange";
-            if (color.r > 0.9f && color.g > 0.9f && color.b > 0.9f) return "white";
-            if (color.r < 0.2f && color.g < 0.2f && color.b < 0.2f) return "black";
-            if (Mathf.Abs(color.r - color.g) < 0.1f && Mathf.Abs(color.g - color.b) < 0.1f) return "gray";
-            return "custom";
+            return Mathf.Abs(a.r - b.r) < tolerance &&
+                   Mathf.Abs(a.g - b.g) < tolerance &&
+                   Mathf.Abs(a.b - b.b) < tolerance;
         }
+
 
         private static bool IsDyeableApparel(Apparel apparel)
         {
