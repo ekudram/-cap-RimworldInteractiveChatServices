@@ -187,7 +187,7 @@
 
   <!-- WhatIsKarma -->
   <RICS.CC.whatiskarma>
-    Karma system is still loading… check back soon!
+    This command is disabled!  Use !karmasettings.
   </RICS.CC.whatiskarma>
 
   <!-- Help -->
@@ -350,12 +350,8 @@
     Usage: !givecoins [viewer|all] [amount] (putting just the amount will give coins to all users)
   </RICS.CC.givecoins.usage>
 
-  <RICS.CC.givekarma.usage>
-    Usage: !givekarma [viewer|all] [amount] (putting just the amount will give karma to all users)
-  </RICS.CC.givekarma.usage>
-
   <RICS.CC.givecoins.errorcoin>
-    Please specify a valid positive number of coins.
+    Please specify a valid number of coins.
   </RICS.CC.givecoins.errorcoin>
 
   <RICS.CC.givecoins.notfound>
@@ -369,8 +365,31 @@
   <RICS.CC.givecoins>
     Gave {0} coins to all viewers.
   </RICS.CC.givecoins>
+  
+  <!-- GiveKarma-->
 
-  <!-- ToggleStore -->
+  <RICS.CC.givekarma.usage>
+    Usage: !givekarma [viewer|all] [amount] (putting just the amount will give karma to all users)
+  </RICS.CC.givekarma.usage>
+
+  <RICS.CC.givekarma.error>
+    Please specify a valid number of karma points.
+  </RICS.CC.givekarma.error>
+
+  <RICS.CC.givekarma.all>
+    Gave {0} karma points to all viewers.
+  </RICS.CC.givekarma.all>
+
+  <RICS.CC.givekarma.notfound>
+    Viewer '{0}' not found.
+  </RICS.CC.givekarma.notfound>
+  
+  <RICS.CC.givekarma.success>
+    Gave {0} karma points to {1}. {1} now has {2} karma points.
+  </RICS.CC.givekarma.success>
+
+
+    <!-- ToggleStore -->
   <RICS.CC.togglestore.success>
     Store commands now {0}!
   </RICS.CC.togglestore.success>
