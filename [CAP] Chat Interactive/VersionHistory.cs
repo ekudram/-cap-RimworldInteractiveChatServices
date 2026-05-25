@@ -1039,7 +1039,7 @@ Translations:
              {"1.37",
                 @"===========================================================
                          RICS 1.37 - Changelog
-                         Released: May 28, 2026
+                         Released: May 24, 2026
 ===========================================================
 
 <b>MEMORANDUM</b>
@@ -1073,6 +1073,8 @@ This can also be used to add translations for commands in other languages.  For 
 
 <b>TRANSLATIONS</b>
 ────────────
+- RICS_Commands.xml added new keys for !givekarma
+- LookupCommandHandler.xml added new keys at the bottom for the new Races and Xenotypes commands.
 
 "
 

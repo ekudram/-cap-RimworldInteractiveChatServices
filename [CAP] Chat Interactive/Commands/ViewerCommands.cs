@@ -632,7 +632,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             }
         }
     }
-    // Slated to be moved to its own command handler
+
     public class Storage : ChatCommand
     {
         public override string Name => "storage";
