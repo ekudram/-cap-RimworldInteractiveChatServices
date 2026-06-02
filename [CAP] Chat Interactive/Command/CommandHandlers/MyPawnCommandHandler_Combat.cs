@@ -31,6 +31,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
     public static class MyPawnCommandHandler_Combat
     {
         // === Gear ===
+        /// <summary>
+        /// Provides a comprehensive overview of the pawn's current gear and combat-related stats, including:
+        /// - Weapons (primary and sidearms)
+        /// - Apparel
+        /// - Inventory items
+        /// - Armor stats
+        /// </summary>
+        /// <param name="pawn">The pawn whose gear information is being requested.</param>
+        /// <param name="args">Additional arguments for the command.</param>
+        /// <returns>A formatted string containing the pawn's gear and combat-related stats.</returns>
         public static string HandleGearInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();
@@ -102,8 +112,35 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     var sidearms = GetSidearmsViaReflection(pawn);
                     if (sidearms != null && sidearms.Count > 0)
                     {
-                        weapons.AddRange(sidearms.Select(weapon => MyPawnCommandHandler.StripTags(weapon.LabelCap)));
-                        return weapons;
+                        // Enhanced display: include material where available + mark first melee sidearm
+                        int meleeCount = 0;
+                        foreach (var sidearm in sidearms)
+                        {
+                            if (sidearm == null) continue;
+
+                            string label = MyPawnCommandHandler.StripTags(sidearm.LabelCap);
+                            string material = GetWeaponMaterialString(sidearm);
+
+                            string entry = !string.IsNullOrEmpty(material)
+                                ? $"{label} ({material})"
+                                : label;
+
+                            // Highlight first melee sidearm
+                            if (meleeCount == 0 && sidearm.def.IsMeleeWeapon)
+                            {
+                                entry = $"★ {entry} [Primary Sidearm]";
+                                meleeCount++;
+                            }
+                            else if (sidearm.def.IsMeleeWeapon)
+                            {
+                                meleeCount++;
+                            }
+
+                            weapons.Add(entry);
+                        }
+
+                        if (weapons.Count > 0)
+                            return weapons;
                     }
                 }
                 catch (Exception ex)
@@ -116,10 +153,32 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var equipment = pawn.equipment?.AllEquipmentListForReading;
             if (equipment != null && equipment.Count > 0)
             {
-                weapons.AddRange(equipment.Select(e => MyPawnCommandHandler.StripTags(e.LabelCap)));
+                weapons.AddRange(equipment.Select(e =>
+                {
+                    string label = MyPawnCommandHandler.StripTags(e.LabelCap);
+                    string material = GetWeaponMaterialString(e);
+                    return !string.IsNullOrEmpty(material) ? $"{label} ({material})" : label;
+                }));
             }
 
             return weapons;
+        }
+
+        private static string GetWeaponMaterialString(Thing weapon)
+        {
+            if (weapon == null) return null;
+
+            if (weapon.Stuff != null)
+            {
+                return MyPawnCommandHandler.StripTags(weapon.Stuff.LabelCap);
+            }
+
+            if (weapon.def.MadeFromStuff)
+            {
+                return "RICS.MPCH.WeaponMaterialUnknown".Translate();
+            }
+
+            return null;
         }
 
         private static List<Thing> GetSidearmsViaReflection(Pawn pawn)
@@ -170,44 +229,114 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         // === Weapon Details ===
-
-        // In MyPawnCommandHandler_Combat.cs, replace the entire HandleWeaponInfo() with this improved version:
-        // In MyPawnCommandHandler_Combat.cs, inside MyPawnCommandHandler_Combat.HandleWeaponInfo()
+        /// <summary>
+        /// Provides a detailed overview of the pawn's equipped weapons, including:
+        /// - Primary weapon
+        /// - Sidearms (if Simple Sidearms mod is active)
+        /// - Material / Stuff
+        /// </summary>
+        /// <param name="pawn">The pawn whose weapon information is being retrieved.</param>
+        /// <returns>A string containing the detailed weapon information.</returns>
 
         public static string HandleWeaponInfo(Pawn pawn)
         {
             var report = new StringBuilder();
             report.AppendLine("RICS.MPCH.WeaponHeader".Translate());
 
-            var weapon = pawn.equipment?.Primary;
-            if (weapon == null)
+            var primary = pawn.equipment?.Primary;
+
+            // === Simple Sidearms Integration ===
+            bool hasSimpleSidearms = ModLister.GetActiveModWithIdentifier("PeteTimesSix.SimpleSidearms") != null;
+            List<Thing> sidearms = null;
+
+            if (hasSimpleSidearms)
+            {
+                try
+                {
+                    sidearms = GetSidearmsViaReflection(pawn);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"Failed to get SimpleSidearms data for weapon info: {ex.Message}");
+                }
+            }
+
+            // Collect weapons to display: Primary + first melee sidearm + first ranged sidearm
+            var weaponsToShow = new List<Thing>();
+
+            if (primary != null)
+                weaponsToShow.Add(primary);
+
+            if (sidearms != null && sidearms.Count > 0)
+            {
+                Thing firstMelee = null;
+                Thing firstRanged = null;
+
+                foreach (var sidearm in sidearms)
+                {
+                    if (sidearm == null) continue;
+
+                    if (firstMelee == null && sidearm.def.IsMeleeWeapon)
+                        firstMelee = sidearm;
+                    else if (firstRanged == null && sidearm.def.IsRangedWeapon)
+                        firstRanged = sidearm;
+
+                    if (firstMelee != null && firstRanged != null)
+                        break;
+                }
+
+                if (firstMelee != null)
+                    weaponsToShow.Add(firstMelee);
+                if (firstRanged != null)
+                    weaponsToShow.Add(firstRanged);
+            }
+
+            if (weaponsToShow.Count == 0)
             {
                 report.AppendLine("RICS.MPCH.NoWeaponEquipped".Translate());
                 return report.ToString();
             }
 
-            string name = MyPawnCommandHandler.StripTags(weapon.LabelCap);
-            report.AppendLine($"• {name}");
-
-            // Core stats (damage / DPS / AP)
-            string stats = CommandHandlerPriceCheck.GetWeaponDamageSummary(weapon);
-            if (!string.IsNullOrEmpty(stats))
+            // Display each weapon with material
+            foreach (var weapon in weaponsToShow)
             {
-                report.AppendLine(stats);
-            }
+                string name = MyPawnCommandHandler.StripTags(weapon.LabelCap);
+                string prefix = weapon == primary ? "• " : "  ↳ ";
 
-            // Unique + Persona traits
-            var uniqueTraits = GetUniqueWeaponTraits(weapon);
-            if (uniqueTraits.Count > 0)
-            {
-                report.AppendLine("RICS.MPCH.WeaponTraits".Translate());
-                report.AppendLine(string.Join(", ", uniqueTraits));
+                report.AppendLine($"{prefix}{name}");
+
+                // Material display -- Material shows already in the label. No need to repeat and clutter the output.
+                //if (weapon.Stuff != null)
+                //{
+                //    string materialName = MyPawnCommandHandler.StripTags(weapon.Stuff.LabelCap);
+                //    report.AppendLine("  " + "RICS.MPCH.WeaponMaterial".Translate(materialName));
+                //}
+                //else if (weapon.def.MadeFromStuff)
+                //{
+                //    report.AppendLine("  " + "RICS.MPCH.WeaponMaterialUnknown".Translate());
+                //}
+
+                // Only show detailed stats/traits for the primary weapon
+                if (weapon == primary)
+                {
+                    string stats = CommandHandlerPriceCheck.GetWeaponDamageSummary(weapon);
+                    if (!string.IsNullOrEmpty(stats))
+                    {
+                        report.AppendLine("  " + stats);
+                    }
+
+                    var uniqueTraits = GetUniqueWeaponTraits(weapon);
+                    if (uniqueTraits.Count > 0)
+                    {
+                        report.AppendLine("  " + "RICS.MPCH.WeaponTraits".Translate());
+                        report.AppendLine("    " + string.Join(", ", uniqueTraits));
+                    }
+                }
             }
 
             return report.ToString();
         }
 
-        // In MyPawnCommandHandler_Combat.cs
         private static List<string> GetUniqueWeaponTraits(Thing weapon)
         {
             var traits = new List<string>();
@@ -247,6 +376,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         // === Kills ===
+        /// <summary>
+        /// Provides a summary of the pawn's combat history based on their kill records, including:
+        /// </summary>
+        /// <param name="pawn">The pawn whose kill information is being retrieved.</param>
+        /// <param name="args">Additional arguments for the command (not used).</param>
+        /// <returns>A string containing the pawn's combat history summary.</returns>
         public static string HandleKillInfo(Pawn pawn, string[] args)
         {
             var report = new StringBuilder();

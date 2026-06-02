@@ -1078,7 +1078,53 @@ This can also be used to add translations for commands in other languages.  For 
 
 "
 
-            }    
+            },
+             {"1.38",
+                @"===========================================================
+                         RICS 1.38 - Changelog
+                         Released: June xx, 2026
+===========================================================
+
+<b>MEMORANDUM</b>
+─────────────────
+
+<b>UPDATED</b>
+──────────────
+
+<b>FIXED</b>
+────────────
+
+<b>ADDED</b>
+────────────
+- Simple Sidearms support for !mypawn weapon command.  If SSA is loaded, it will show the stats for your first equipped weapon instead of just your main hand weapon.
+- Simple Sidearms support for !mypawn gear command.  If SSA is loaded, it will show the stats for all your equipped gear instead of just your main hand weapon and apparel.
+
+<b>TRANSLATIONS</b>
+───────────────────
+
+"
+
+/*  Copy this template for future versions and fill in the details
+===========================================================
+                         RICS version - Changelog
+                         Released: Month Day, Year
+===========================================================
+<b>MEMORANDUM</b>
+─────────────────
+<b>UPDATED</b>
+──────────────
+<b>FIXED</b>
+────────────
+<b>ADDED</b>
+────────────
+<b>TRANSLATIONS</b>
+───────────────────
+*/
+
+
+
+
+            }
 
 
 
