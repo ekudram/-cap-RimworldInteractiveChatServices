@@ -23,6 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using TwitchLib.Api.Helix.Models.Moderation.CheckAutoModStatus;
 using TwitchLib.Api.Helix.Models.Users.GetUsers;
 using Verse;
 
@@ -89,7 +90,7 @@ namespace CAP_ChatInteractive
         }
 
         // Do we check this in other places too?
-        private static bool IsGameReady()
+        public static bool IsGameReady()
         {
             try
             {
@@ -435,6 +436,13 @@ namespace CAP_ChatInteractive
                 var mod = CAPChatInteractiveMod.Instance;
                 if (mod == null) return;
 
+                // === Log outbound message so AI bot can see RICS replies ===
+                ChatMessageLogger.AddMessage(
+                    username: message.Username,
+                    message: cleanText,
+                    platform: message.Platform
+                );
+
                 switch (message.Platform.ToLowerInvariant())
                 {
                     case "twitch":
@@ -512,6 +520,13 @@ namespace CAP_ChatInteractive
                 // Try to find the viewer to determine platform
                 string platform = DetermineUserPlatform(viewer);
                 if (platform == null) return;
+
+                // === Log outbound message so AI bot can see RICS replies ===
+                ChatMessageLogger.AddMessage(
+                    username: username,
+                    message: cleanText,
+                    platform: platform
+                );
 
                 switch (platform)
                 {

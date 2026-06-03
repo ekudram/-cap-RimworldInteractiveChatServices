@@ -277,11 +277,12 @@ namespace CAP_ChatInteractive
         // Master kill-switch. When false, all AI routing, state export, and related commands are disabled.
         // External bots should treat this as "feature off" and fall back to normal chat or do nothing.
         public bool AIChatBotActive = false;
+        public string AIChatBotName = "AI Storyteller";   // NEW - customizable
 
         // Future-proofing fields for local API / external bot communication (populated in later steps)
         // These are safe to add now — they default safely and cost nothing until used.
         public string AIChatBotEndpoint = "http://127.0.0.1:17888"; // Default local port for RICS↔bot HTTP API
-        public int AIChatBotTimeoutMs = 1500;                       // Max wait for bot response before graceful fallback
+        public int AIChatBotTimeoutMs = 8000;                       // Max wait for bot response before graceful fallback
         public bool AIChatBotSendGameState = true;                  // Whether to include colony/pawn snapshot in context
         public bool AIChatBotSendChatHistory = true;                // Include recent chat context (privacy note: viewer names only when necessary)
 
@@ -436,8 +437,9 @@ namespace CAP_ChatInteractive
 
             // === AI Chatbot Integration (persisted so users don't lose preference across restarts) ===
             Scribe_Values.Look(ref AIChatBotActive, "aiChatBotActive", false);
+            Scribe_Values.Look(ref AIChatBotName, "aiChatBotName", "Masie");
             Scribe_Values.Look(ref AIChatBotEndpoint, "aiChatBotEndpoint", "http://127.0.0.1:17888");
-            Scribe_Values.Look(ref AIChatBotTimeoutMs, "aiChatBotTimeoutMs", 1500);
+            Scribe_Values.Look(ref AIChatBotTimeoutMs, "aiChatBotTimeoutMs", 8000);
             Scribe_Values.Look(ref AIChatBotSendGameState, "aiChatBotSendGameState", true);
             Scribe_Values.Look(ref AIChatBotSendChatHistory, "aiChatBotSendChatHistory", true);
 

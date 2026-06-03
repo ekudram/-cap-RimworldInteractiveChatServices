@@ -16,6 +16,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // Draws the Global Settings tab in the mod settings window
 using CAP_ChatInteractive;
+using RimWorld;
 using UnityEngine;
 using Verse;
 using ColorLibrary = CAP_ChatInteractive.ColorLibrary;
@@ -126,6 +127,37 @@ namespace _CAP__Chat_Interactive
             }
 
             listing.Gap(24f);
+
+            // === AI ChatBot Integration ===
+            Text.Font = GameFont.Medium;
+            GUI.color = ColorLibrary.HeaderAccent;
+            listing.Label("AI Storyteller / Chatbot Integration");
+            Text.Font = GameFont.Small;
+            GUI.color = Color.white;
+
+            listing.GapLine(6f);
+
+            listing.CheckboxLabeled("Enable AI Chatbot (Masie / Custom)", ref settings.AIChatBotActive);
+
+            if (settings.AIChatBotActive)
+            {
+                listing.Label("AI Bot Endpoint (local):");
+                settings.AIChatBotEndpoint = listing.TextEntry(settings.AIChatBotEndpoint);
+
+                listing.Label("Bot Display Name (shown in chat):");
+                settings.AIChatBotName = listing.TextEntry(settings.AIChatBotName);
+
+                listing.CheckboxLabeled("Include Game State in prompts", ref settings.AIChatBotSendGameState);
+                listing.CheckboxLabeled("Include Recent Chat History", ref settings.AIChatBotSendChatHistory);
+
+                //if (listing.ButtonText("Test Connection to AI Bot"))
+                //{
+                //    Messages.Message("Testing connection to AI bot...", MessageTypeDefOf.NeutralEvent);
+                //    // TODO: Add simple test call later
+                //}
+            }
+
+            listing.Gap(12f);
             listing.End();
             Widgets.EndScrollView();
         }

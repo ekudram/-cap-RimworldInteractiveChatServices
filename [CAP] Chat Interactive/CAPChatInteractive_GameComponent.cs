@@ -20,6 +20,7 @@
 
 
 using _CAP__Chat_Interactive.Utilities;
+using CAP_ChatInteractive.AI;
 using CAP_ChatInteractive.Incidents;
 using CAP_ChatInteractive.Incidents.Weather;
 using CAP_ChatInteractive.Store;
@@ -44,6 +45,9 @@ namespace CAP_ChatInteractive
         private bool eventsInitialized = false;
         private bool weatherInitialized = false;
         private bool traitsInitialized = false;
+
+        // AI ChatBot Service
+        public AIChatBotService _aiChatBotService;
 
         public CAPChatInteractive_GameComponent(Game game)
         {
@@ -112,6 +116,9 @@ namespace CAP_ChatInteractive
             InitializeWeather();
             InitializeTraits();
 
+            // Initialize AI ChatBot listener if enabled
+            InitializeAIChatBot();
+
             Logger.Message("All core systems initialized");
         }
 
@@ -162,6 +169,17 @@ namespace CAP_ChatInteractive
             traitsInitialized = true;
             Logger.Debug("Traits initialized");
         }
+
+        private void InitializeAIChatBot()
+        {
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings?.AIChatBotActive != true) return;
+
+            _aiChatBotService ??= new AIChatBotService();
+            _aiChatBotService.Start();
+        }
+
+
 
         /// <summary>
         /// Runs every frame (like Update). Checks Ctrl+V globally to toggle live chat.

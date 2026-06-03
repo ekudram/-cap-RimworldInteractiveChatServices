@@ -896,4 +896,20 @@
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
+
+  <!-- AI Chatbot Command (Masie Lamia / external bots) -->
+  <!-- Users can change the Alias in mod settings to customize (e.g. !masie, !ai, !storyteller) -->
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>ricsaichatbot</defName>
+    <commandText>ricsaichatbot</commandText>
+    <label>AI Chatbot</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.AICommands.AIChatBotCommand</commandClass>
+    <requiresMod>false</requiresMod>
+    <commandDescription>Talk to the AI storyteller (Masie Lamia or custom bot). Requires AIChatBotActive in settings.</commandDescription>
+    <permissionLevel>everyone</permissionLevel>
+    <cooldownSeconds>8</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+  
 </Defs>

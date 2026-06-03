@@ -26,5 +26,6 @@ namespace CAP_ChatInteractive
         public string Platform { get; set; }
         public bool IsSystem { get; set; }
         public DateTime Timestamp { get; set; }
+        public bool IsFromRICS { get; set; }   // NEW: distinguishes bot/RICS replies
     }
 }
