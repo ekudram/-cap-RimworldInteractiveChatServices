@@ -161,7 +161,7 @@ namespace CAP_ChatInteractive
         /// Multiplier applied to the event's price (in coins) to calculate additional karma.
         /// Good/Neutral → + (price * multiplier)
         /// Bad/Doom     → - (price * multiplier)
-        /// Default 0.05f = +5 karma per 100 coins of event price (balanced default).
+        /// Default 5f = +5 karma per 100 coins of event price (balanced default).
         /// Set to 0 to disable price-based karma entirely.
         /// This is capped at 0f and 5f in the UI to prevent extreme values, but can be set higher via config for fun or testing (e.g. 0.1f = +10 karma per 100 coins, 1.0f = +100 karma per 100 coins, etc.).
         /// </summary>
@@ -272,6 +272,18 @@ namespace CAP_ChatInteractive
         public bool ChannelPointsEnabled = true;
         public bool ShowChannelPointsDebugMessages = false;
         public List<ChannelPoints_RewardSettings> RewardSettings = new List<ChannelPoints_RewardSettings>();
+
+        // === AI Chatbot Integration (Masie Lamia / external storyteller bots) ===
+        // Master kill-switch. When false, all AI routing, state export, and related commands are disabled.
+        // External bots should treat this as "feature off" and fall back to normal chat or do nothing.
+        public bool AIChatBotActive = false;
+
+        // Future-proofing fields for local API / external bot communication (populated in later steps)
+        // These are safe to add now — they default safely and cost nothing until used.
+        public string AIChatBotEndpoint = "http://127.0.0.1:17888"; // Default local port for RICS↔bot HTTP API
+        public int AIChatBotTimeoutMs = 1500;                       // Max wait for bot response before graceful fallback
+        public bool AIChatBotSendGameState = true;                  // Whether to include colony/pawn snapshot in context
+        public bool AIChatBotSendChatHistory = true;                // Include recent chat context (privacy note: viewer names only when necessary)
 
         // === Twitch Raids feature (Phase 1) ===
         public bool TwitchRaidsEnabled = false;           // global kill-switch
@@ -421,6 +433,14 @@ namespace CAP_ChatInteractive
             // Channel Points settings
             Scribe_Values.Look(ref ChannelPointsEnabled, "channelPointsEnabled", true);
             Scribe_Values.Look(ref ShowChannelPointsDebugMessages, "showChannelPointsDebugMessages", false);
+
+            // === AI Chatbot Integration (persisted so users don't lose preference across restarts) ===
+            Scribe_Values.Look(ref AIChatBotActive, "aiChatBotActive", false);
+            Scribe_Values.Look(ref AIChatBotEndpoint, "aiChatBotEndpoint", "http://127.0.0.1:17888");
+            Scribe_Values.Look(ref AIChatBotTimeoutMs, "aiChatBotTimeoutMs", 1500);
+            Scribe_Values.Look(ref AIChatBotSendGameState, "aiChatBotSendGameState", true);
+            Scribe_Values.Look(ref AIChatBotSendChatHistory, "aiChatBotSendChatHistory", true);
+
             // === Channel Points Reward Settings ===
             // Special handling so the "Example Reward" only appears for new users
             // and never duplicates or disappears on existing saves.
