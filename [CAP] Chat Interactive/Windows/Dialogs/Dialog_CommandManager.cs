@@ -385,8 +385,6 @@ namespace CAP_ChatInteractive
             float viewHeight = CalculateDetailsHeight(settings);
             Rect viewRect = new Rect(0f, 0f, contentWidth, Mathf.Max(viewHeight, rect.height));
 
-            Logger.Debug($"DrawCommandDetailsContent - rect.height: {rect.height}, viewHeight: {viewHeight}, viewRect.height: {viewRect.height}");
-
             Widgets.BeginScrollView(rect, ref detailsScrollPosition, viewRect);
             {
                 float y = 0f;
