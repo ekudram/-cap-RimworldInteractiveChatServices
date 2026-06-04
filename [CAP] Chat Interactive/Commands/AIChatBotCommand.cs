@@ -1,16 +1,4 @@
 ﻿// AIChatBotCommand.cs
-// Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive (RICS).
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// AIChatBotCommand.cs
-// Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive (RICS).
-
 using RimWorld;
 using System;
 using System.Linq;
@@ -18,58 +6,53 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Verse;
+using Newtonsoft.Json;
 
 namespace CAP_ChatInteractive.Commands.AICommands
 {
-    /// <summary>
-    /// Command for AI Chatbot integration (Masie Lamia / external bots).
-    /// Sends recent chat history + game state to local Python bot and returns response.
-    /// </summary>
     public class AIChatBotCommand : ChatCommand
     {
         public override string Name => "ricsaichatbot";
-        public override string Alias => ""; // Users customize via settings alias
 
-        private static readonly HttpClient _httpClient = new HttpClient
-        {
-            Timeout = TimeSpan.FromSeconds(8) // Reasonable timeout
-        };
-
-        public override bool CanExecute(ChatMessageWrapper message)
-        {
-            return base.CanExecute(message);
-        }
+        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
 
         public override string Execute(ChatMessageWrapper message, string[] args)
         {
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             if (settings == null || !settings.AIChatBotActive)
-            {
-                return "The AI storyteller is currently sleeping... Enable AIChatBotActive in RICS settings to wake them up!";
-            }
+                return "AI storyteller is sleeping... Enable it in RICS settings.";
 
             if (!ChatCommandProcessor.IsGameReady())
-            {
-                return "Please wait until the colony is fully loaded before chatting with the AI.";
-            }
+                return "Please wait until the colony is fully loaded.";
 
             string userInput = string.Join(" ", args).Trim();
             if (string.IsNullOrWhiteSpace(userInput))
-            {
-                return "What would you like to talk about?";
-            }
+                return "Nya? What would you like to talk about?";
 
+            string botName = settings.AIChatBotName ?? "Masie";
+
+            ChatMessageLogger.AddMessage(botName, "Thinking... *ear twitch*", "AI", isFromRICS: true);
+
+            // Queue on main thread then fire async
+            LongEventHandler.QueueLongEvent(() =>
+            {
+                _ = ProcessAIResponseAsync(message, userInput, settings);
+            }, "AIChatBotThinking", false, null);
+
+            return null; // No immediate reply
+        }
+
+        private async Task ProcessAIResponseAsync(ChatMessageWrapper originalMessage, string userInput, CAPGlobalChatSettings settings)
+        {
             try
             {
-                // Get data for the bot
-                var recentChat = ChatMessageLogger.GetRecentMessagesForAI(35);
+                var recentChat = ChatMessageLogger.GetRecentMessagesForAI(20);
                 var gameState = GetGameStateForAI();
 
-                // Build payload
                 var payload = new
                 {
-                    username = message.Username,
                     input = userInput,
+                    username = originalMessage.Username,
                     gameState = gameState,
                     recentChat = recentChat.Select(m => new
                     {
@@ -81,25 +64,25 @@ namespace CAP_ChatInteractive.Commands.AICommands
                     }).ToList()
                 };
 
-                string jsonPayload = Newtonsoft.Json.JsonConvert.SerializeObject(payload);
+                string jsonPayload = JsonConvert.SerializeObject(payload);
 
-                // Send to Python (or any other) bot
-                var response = SendToAIBotAsync(jsonPayload).GetAwaiter().GetResult();
+                string response = await SendToAIBotAsync(jsonPayload, settings);
 
                 if (!string.IsNullOrWhiteSpace(response))
                 {
-                    // Log the bot's reply using generic "AI" tag so other bots work cleanly
-                    string botName = settings.AIChatBotName ?? "AI";
+                    string botName = settings.AIChatBotName ?? "Masie";
                     ChatMessageLogger.AddMessage(botName, response, "AI", isFromRICS: true);
-                    return response;
+                    ChatCommandProcessor.SendMessageToUsername(originalMessage.Username, response);
                 }
-
-                return "The AI is thinking... (No response received)";
+                else
+                {
+                    ChatCommandProcessor.SendMessageToUsername(originalMessage.Username, "Nya~... I didn't catch that. Try again?");
+                }
             }
             catch (Exception ex)
             {
                 Logger.Error($"[AI ChatBot Command] Error: {ex.Message}");
-                return "Something went wrong while talking to the AI. Please try again later.";
+                ChatCommandProcessor.SendMessageToUsername(originalMessage.Username, "Nya~... something went wrong with the connection!");
             }
         }
 
@@ -109,36 +92,44 @@ namespace CAP_ChatInteractive.Commands.AICommands
             if (service != null)
             {
                 string json = service.GetGameStateJson();
-                return Newtonsoft.Json.JsonConvert.DeserializeObject(json); // Convert back to object for payload
+                try
+                {
+                    return JsonConvert.DeserializeObject(json);
+                }
+                catch
+                {
+                    return new { status = "ok", raw = json };
+                }
             }
-
-            // Fallback
             return new { status = "unavailable" };
         }
 
-        private async Task<string> SendToAIBotAsync(string jsonPayload)
+        private async Task<string> SendToAIBotAsync(string jsonPayload, CAPGlobalChatSettings settings)
         {
-            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
-            if (settings == null) return null;
-
             try
             {
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-                var response = await _httpClient.PostAsync(settings.AIChatBotEndpoint.TrimEnd('/') + "/chat", content);
 
-                if (response.IsSuccessStatusCode)
+                // IMPORTANT: Use ListenUrl (bot's port), NOT Endpoint
+                string botUrl = settings.AIChatBotListenUrl.TrimEnd('/') + "/chat";
+
+                var httpResponse = await _httpClient.PostAsync(botUrl, content);
+
+                if (httpResponse.IsSuccessStatusCode)
                 {
-                    return await response.Content.ReadAsStringAsync();
+                    return await httpResponse.Content.ReadAsStringAsync();
                 }
                 else
                 {
-                    Logger.Warning($"AI Bot returned status: {response.StatusCode}");
+                    Logger.Warning($"AI Bot returned HTTP {(int)httpResponse.StatusCode} from {botUrl}");
                     return null;
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Failed to contact AI bot: {ex.Message}");
+                Logger.Error($"[AI ChatBot] Failed to reach bot at '{settings.AIChatBotListenUrl}'.\n" +
+                             $"   → Error: {ex.Message}\n" +
+                             $"   → Make sure the Python bot is running on port 5000 (or whatever you set in AIChatBotListenUrl).");
                 return null;
             }
         }

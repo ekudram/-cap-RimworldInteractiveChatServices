@@ -17,6 +17,7 @@
 // Draws the Global Settings tab in the mod settings window
 using CAP_ChatInteractive;
 using RimWorld;
+using System;
 using UnityEngine;
 using Verse;
 using ColorLibrary = CAP_ChatInteractive.ColorLibrary;
@@ -150,11 +151,11 @@ namespace _CAP__Chat_Interactive
                 listing.CheckboxLabeled("Include Game State in prompts", ref settings.AIChatBotSendGameState);
                 listing.CheckboxLabeled("Include Recent Chat History", ref settings.AIChatBotSendChatHistory);
 
-                //if (listing.ButtonText("Test Connection to AI Bot"))
-                //{
-                //    Messages.Message("Testing connection to AI bot...", MessageTypeDefOf.NeutralEvent);
-                //    // TODO: Add simple test call later
-                //}
+                // === Test Connection Button ===
+                if (listing.ButtonText("Test Connection to AI Bot"))
+                {
+                    TestAIConnection();
+                }
             }
 
             listing.Gap(12f);
@@ -168,6 +169,37 @@ namespace _CAP__Chat_Interactive
             if (prefix.Contains(" ")) return false;
             if (prefix.StartsWith("/") || prefix.StartsWith(".") || prefix.StartsWith("\\")) return false;
             return true;
+        }
+
+        private static void TestAIConnection()
+        {
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings == null || string.IsNullOrEmpty(settings.AIChatBotEndpoint))
+            {
+                Messages.Message("AI ChatBot endpoint is not set.", MessageTypeDefOf.NegativeEvent);
+                return;
+            }
+
+            try
+            {
+                using (var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) })
+                {
+                    var response = client.GetAsync(settings.AIChatBotEndpoint.TrimEnd('/') + "/gamestate").GetAwaiter().GetResult();
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Messages.Message($"✅ Successfully connected to AI bot at {settings.AIChatBotEndpoint}", MessageTypeDefOf.PositiveEvent);
+                    }
+                    else
+                    {
+                        Messages.Message($"⚠️ Connected but got status code: {response.StatusCode}", MessageTypeDefOf.CautionInput);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Messages.Message($"❌ Failed to connect to AI bot:\n{ex.Message}", MessageTypeDefOf.NegativeEvent);
+            }
         }
     }
 }

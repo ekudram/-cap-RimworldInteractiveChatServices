@@ -21,7 +21,7 @@
     <enabled>true</enabled>
     <commandClass>CAP_ChatInteractive.Commands.ModCommands.GiveKarma</commandClass>
     <requiresMod>true</requiresMod>
-    <mod>RICS</mod>
+    <!--<mod>RICS</mod>-->
     <commandDescription>Give karma to a viewer(s)</commandDescription>
     <permissionLevel>moderator</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
