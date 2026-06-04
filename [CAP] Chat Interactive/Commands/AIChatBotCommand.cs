@@ -1,12 +1,13 @@
 ﻿// AIChatBotCommand.cs
+using Newtonsoft.Json;
 using RimWorld;
 using System;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Verse;
-using Newtonsoft.Json;
 
 namespace CAP_ChatInteractive.Commands.AICommands
 {
@@ -110,7 +111,7 @@ namespace CAP_ChatInteractive.Commands.AICommands
             {
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-                // Clean URL construction - prevent double /chat
+                // Clean URL construction
                 string baseUrl = settings.AIChatBotListenUrl.TrimEnd('/');
                 string botUrl = baseUrl.EndsWith("/chat", StringComparison.OrdinalIgnoreCase)
                     ? baseUrl
@@ -118,12 +119,15 @@ namespace CAP_ChatInteractive.Commands.AICommands
 
                 Logger.Debug($"[AI ChatBot] Sending request to: {botUrl}");
 
-                var httpResponse = await _httpClient.PostAsync(botUrl, content);
+                // Increased timeout for Ollama + TTS
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(25));
+
+                var httpResponse = await _httpClient.PostAsync(botUrl, content, cts.Token);
 
                 if (httpResponse.IsSuccessStatusCode)
                 {
                     string responseText = await httpResponse.Content.ReadAsStringAsync();
-                    Logger.Debug($"[AI ChatBot] Received response: {responseText.Substring(0, Math.Min(100, responseText.Length))}");
+                    Logger.Debug($"[AI ChatBot] Received response ({responseText.Length} chars): {responseText.Substring(0, Math.Min(120, responseText.Length))}");
                     return responseText;
                 }
                 else
@@ -131,6 +135,11 @@ namespace CAP_ChatInteractive.Commands.AICommands
                     Logger.Warning($"AI Bot returned HTTP {(int)httpResponse.StatusCode} from {botUrl}");
                     return null;
                 }
+            }
+            catch (TaskCanceledException)
+            {
+                Logger.Warning("[AI ChatBot] Request timed out - Ollama or TTS may be slow on first call.");
+                return "I'm thinking really hard! I might even have responded... Try again in a moment if needed?";
             }
             catch (Exception ex)
             {

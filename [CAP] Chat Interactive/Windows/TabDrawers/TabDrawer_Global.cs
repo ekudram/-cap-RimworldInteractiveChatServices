@@ -140,6 +140,7 @@ namespace _CAP__Chat_Interactive
 
             // TODO: Add validation for URLs and display warnings if they don't look correct <-- this is important to help users avoid common mistakes when setting up the AI integration 
             // TODO: Add clarification message that RICS does not provide the AI chatbot itself, just the integration points for users to connect their own bots
+            // Note:  Must be in a game (have game loaded) for AI connection to work <-- consider adding a warning message or disabling the test connection button if not in a game to prevent confusion and error messages when users try to test the connection without having a game loaded.
 
             // Semantic / theme colors from RICS Color Library - consider using these for section headers and important labels in the settings UI to create a more visually engaging and organized layout that ties into the overall RICS branding and design language.
             //public static readonly Color HeaderAccent = new Color(1.0f, 0.5f, 0.1f);   // Orange - headers

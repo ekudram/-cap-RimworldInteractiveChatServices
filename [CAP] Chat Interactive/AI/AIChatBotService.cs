@@ -105,15 +105,18 @@ namespace CAP_ChatInteractive.AI
         {
             try
             {
+                // Run on main thread safe way
+                if (Current.Game == null || Find.CurrentMap == null)
+                    return "{\"status\":\"no_map\"}";
+
                 var map = Find.CurrentMap;
-                if (map == null) return "{\"status\":\"no_map\"}";
 
                 var state = new
                 {
                     status = "ok",
                     day = GenDate.DaysPassed,
                     hour = GenDate.HourOfDay(Find.TickManager.TicksGame, Find.WorldGrid.LongLatOf(map.Tile).x),
-                    colonists = map.mapPawns?.FreeColonists?.Count ?? 0,
+                    colonists = map.mapPawns?.FreeColonists?.Count(p => !p.Dead) ?? 0,
                     threatPoints = StorytellerUtility.DefaultThreatPointsNow(map),
                     wealth = (int)(map.wealthWatcher?.WealthTotal ?? 0),
                     season = GenDate.Season(Find.TickManager.TicksGame, Find.WorldGrid.LongLatOf(map.Tile)).ToString(),
