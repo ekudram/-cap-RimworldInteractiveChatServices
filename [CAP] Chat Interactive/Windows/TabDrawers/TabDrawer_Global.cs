@@ -129,29 +129,31 @@ namespace _CAP__Chat_Interactive
 
             listing.Gap(24f);
 
-            // === AI ChatBot Integration ===
+            // === AI Chatbot Integration ===
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.HeaderAccent;
-            listing.Label("AI Storyteller / Chatbot Integration");
+            listing.Label("AI Chatbot Integration");
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
 
             listing.GapLine(6f);
 
-            listing.CheckboxLabeled("Enable AI Chatbot (Masie / Custom)", ref settings.AIChatBotActive);
+            listing.CheckboxLabeled("Enable AI Chatbot", ref settings.AIChatBotActive);
 
             if (settings.AIChatBotActive)
             {
-                listing.Label("AI Bot Endpoint (local):");
+                listing.Label("RICS Listener URL (Python bot calls this):");
                 settings.AIChatBotEndpoint = listing.TextEntry(settings.AIChatBotEndpoint);
 
-                listing.Label("Bot Display Name (shown in chat):");
+                listing.Label("AI Bot URL (RICS calls this):");
+                settings.AIChatBotListenUrl = listing.TextEntry(settings.AIChatBotListenUrl);
+
+                listing.Label("Bot Display Name:");
                 settings.AIChatBotName = listing.TextEntry(settings.AIChatBotName);
 
                 listing.CheckboxLabeled("Include Game State in prompts", ref settings.AIChatBotSendGameState);
                 listing.CheckboxLabeled("Include Recent Chat History", ref settings.AIChatBotSendChatHistory);
 
-                // === Test Connection Button ===
                 if (listing.ButtonText("Test Connection to AI Bot"))
                 {
                     TestAIConnection();
@@ -171,34 +173,31 @@ namespace _CAP__Chat_Interactive
             return true;
         }
 
+
+        /// <summary>
+        /// Sends a test request to the AI chatbot endpoint to verify connectivity and displays the result in a message.
+        /// </summary>
         private static void TestAIConnection()
         {
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
-            if (settings == null || string.IsNullOrEmpty(settings.AIChatBotEndpoint))
-            {
-                Messages.Message("AI ChatBot endpoint is not set.", MessageTypeDefOf.NegativeEvent);
-                return;
-            }
+            if (settings == null) return;
 
             try
             {
                 using (var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) })
                 {
-                    var response = client.GetAsync(settings.AIChatBotEndpoint.TrimEnd('/') + "/gamestate").GetAwaiter().GetResult();
+                    var url = settings.AIChatBotEndpoint.TrimEnd('/') + "/gamestate";
+                    var response = client.GetAsync(url).GetAwaiter().GetResult();
 
                     if (response.IsSuccessStatusCode)
-                    {
-                        Messages.Message($"✅ Successfully connected to AI bot at {settings.AIChatBotEndpoint}", MessageTypeDefOf.PositiveEvent);
-                    }
+                        Messages.Message($"✅ RICS AI listener responding at {url}", MessageTypeDefOf.PositiveEvent);
                     else
-                    {
-                        Messages.Message($"⚠️ Connected but got status code: {response.StatusCode}", MessageTypeDefOf.CautionInput);
-                    }
+                        Messages.Message($"⚠️ Connected but got status {response.StatusCode}", MessageTypeDefOf.CautionInput);
                 }
             }
             catch (Exception ex)
             {
-                Messages.Message($"❌ Failed to connect to AI bot:\n{ex.Message}", MessageTypeDefOf.NegativeEvent);
+                Messages.Message($"❌ Could not connect to RICS AI listener:\n{ex.Message}", MessageTypeDefOf.NegativeEvent);
             }
         }
     }

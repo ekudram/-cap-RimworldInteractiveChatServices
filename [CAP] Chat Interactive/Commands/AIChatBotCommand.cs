@@ -29,7 +29,7 @@ namespace CAP_ChatInteractive.Commands.AICommands
             if (string.IsNullOrWhiteSpace(userInput))
                 return "Nya? What would you like to talk about?";
 
-            string botName = settings.AIChatBotName ?? "Masie";
+            string botName = settings.AIChatBotName ?? "AI Storyteller";
 
             ChatMessageLogger.AddMessage(botName, "Thinking... *ear twitch*", "AI", isFromRICS: true);
 
