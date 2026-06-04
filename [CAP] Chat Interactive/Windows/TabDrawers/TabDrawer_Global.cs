@@ -31,7 +31,7 @@ namespace _CAP__Chat_Interactive
         public static void Draw(Rect region)
         {
             var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            var view = new Rect(0f, 0f, region.width - 16f, 800f);
+            var view = new Rect(0f, 0f, region.width - 16f, 1100f);
 
             Widgets.BeginScrollView(region, ref _scrollPosition, view);
             var listing = new Listing_Standard();
@@ -138,29 +138,53 @@ namespace _CAP__Chat_Interactive
 
             listing.GapLine(6f);
 
+            // TODO: Add validation for URLs and display warnings if they don't look correct <-- this is important to help users avoid common mistakes when setting up the AI integration 
+            // TODO: Add clarification message that RICS does not provide the AI chatbot itself, just the integration points for users to connect their own bots
+
+            // Semantic / theme colors from RICS Color Library - consider using these for section headers and important labels in the settings UI to create a more visually engaging and organized layout that ties into the overall RICS branding and design language.
+            //public static readonly Color HeaderAccent = new Color(1.0f, 0.5f, 0.1f);   // Orange - headers
+            //public static readonly Color SubHeader = new Color(0.529f, 0.808f, 0.922f); // SkyBlue - sub-headers
+            //public static readonly Color PrimaryAction = new Color(0.2f, 0.4f, 0.8f);   // Blue
+            //public static readonly Color Success = new Color(0.2f, 0.8f, 0.2f);
+            //public static readonly Color Warning = new Color(1.0f, 0.75f, 0.2f);  // Yellow-Orange  Maybe more yellow?
+            //public static readonly Color Danger = new Color(0.9f, 0.1f, 0.1f);
+            //public static readonly Color Info = new Color(0.3f, 0.65f, 0.95f); // Informational / neutral blue for status messages, tips, secondary labels and info sections. Distinct from PrimaryAction (darker action blue) and SubHeader (lighter sky blue) while staying readable on RimWorld dark UI.
+
+            // Remove comments after implementing the above TODOs to clean up the code and avoid confusion for future maintainers. The comments are meant to guide the implementation of the AI chatbot settings section, but once it's implemented and the UI is polished, the comments should be removed to keep the codebase clean and maintainable.
+
+
             listing.CheckboxLabeled("Enable AI Chatbot", ref settings.AIChatBotActive);
 
             if (settings.AIChatBotActive)
             {
-                listing.Label("RICS Listener URL (Python bot calls this):");
+                listing.Label("RICS Listener URL (Python bot calls this for game state):");
                 settings.AIChatBotEndpoint = listing.TextEntry(settings.AIChatBotEndpoint);
 
-                listing.Label("AI Bot URL (RICS calls this):");
+                listing.Label("AI Bot URL (RICS calls this when using !ricsaichatbot):");
                 settings.AIChatBotListenUrl = listing.TextEntry(settings.AIChatBotListenUrl);
 
-                listing.Label("Bot Display Name:");
+                listing.Label("Bot Display Name (shown in chat):");
                 settings.AIChatBotName = listing.TextEntry(settings.AIChatBotName);
 
                 listing.CheckboxLabeled("Include Game State in prompts", ref settings.AIChatBotSendGameState);
                 listing.CheckboxLabeled("Include Recent Chat History", ref settings.AIChatBotSendChatHistory);
 
+                listing.Gap(8f);
                 if (listing.ButtonText("Test Connection to AI Bot"))
                 {
                     TestAIConnection();
                 }
+
+                if (listing.ButtonText("Reset AI Settings to Defaults"))
+                {
+                    settings.AIChatBotEndpoint = "http://127.0.0.1:17888";
+                    settings.AIChatBotListenUrl = "http://127.0.0.1:5000/chat";
+                    settings.AIChatBotName = "AI Storyteller";
+                    Messages.Message("AI Chatbot settings reset to defaults.", MessageTypeDefOf.PositiveEvent);
+                }
             }
 
-            listing.Gap(12f);
+            listing.Gap(24f);
             listing.End();
             Widgets.EndScrollView();
         }

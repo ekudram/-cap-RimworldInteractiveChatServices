@@ -177,6 +177,7 @@ namespace CAP_ChatInteractive
 
             _aiChatBotService ??= new AIChatBotService();
             _aiChatBotService.Start();
+            Logger.Debug("AI ChatBot service initialized");
         }
 
 

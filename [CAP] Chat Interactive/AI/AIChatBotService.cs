@@ -27,6 +27,7 @@ namespace CAP_ChatInteractive.AI
 
             try
             {
+                // RICS must listen on AIChatBotEndpoint (17888), NOT the bot's port
                 string endpoint = settings.AIChatBotEndpoint.TrimEnd('/') + "/";
                 _listener = new HttpListener();
                 _listener.Prefixes.Add(endpoint);
@@ -35,13 +36,14 @@ namespace CAP_ChatInteractive.AI
                 _cts = new CancellationTokenSource();
                 _isRunning = true;
 
-                Logger.Message($"[RICS AI] ✅ Listener started on {endpoint} (Python bot should GET /gamestate here)");
+                Logger.Message($"[RICS AI] ✅ Listener successfully started on {endpoint} (Python bot should GET /gamestate here)");
 
                 Task.Run(() => ListenLoop(_cts.Token));
             }
             catch (Exception ex)
             {
                 Logger.Error($"[RICS AI] Failed to start listener on {settings?.AIChatBotEndpoint}: {ex.Message}");
+                Logger.Error("   → Make sure no other program (including the Python bot) is using this port.");
                 _isRunning = false;
             }
         }

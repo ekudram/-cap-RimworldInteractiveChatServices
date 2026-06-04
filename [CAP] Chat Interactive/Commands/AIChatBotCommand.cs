@@ -110,14 +110,21 @@ namespace CAP_ChatInteractive.Commands.AICommands
             {
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-                // IMPORTANT: Use ListenUrl (bot's port), NOT Endpoint
-                string botUrl = settings.AIChatBotListenUrl.TrimEnd('/') + "/chat";
+                // Clean URL construction - prevent double /chat
+                string baseUrl = settings.AIChatBotListenUrl.TrimEnd('/');
+                string botUrl = baseUrl.EndsWith("/chat", StringComparison.OrdinalIgnoreCase)
+                    ? baseUrl
+                    : baseUrl + "/chat";
+
+                Logger.Debug($"[AI ChatBot] Sending request to: {botUrl}");
 
                 var httpResponse = await _httpClient.PostAsync(botUrl, content);
 
                 if (httpResponse.IsSuccessStatusCode)
                 {
-                    return await httpResponse.Content.ReadAsStringAsync();
+                    string responseText = await httpResponse.Content.ReadAsStringAsync();
+                    Logger.Debug($"[AI ChatBot] Received response: {responseText.Substring(0, Math.Min(100, responseText.Length))}");
+                    return responseText;
                 }
                 else
                 {
@@ -128,8 +135,7 @@ namespace CAP_ChatInteractive.Commands.AICommands
             catch (Exception ex)
             {
                 Logger.Error($"[AI ChatBot] Failed to reach bot at '{settings.AIChatBotListenUrl}'.\n" +
-                             $"   → Error: {ex.Message}\n" +
-                             $"   → Make sure the Python bot is running on port 5000 (or whatever you set in AIChatBotListenUrl).");
+                             $"   → Error: {ex.Message}");
                 return null;
             }
         }

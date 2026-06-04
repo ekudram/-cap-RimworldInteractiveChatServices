@@ -304,6 +304,7 @@ namespace CAP_ChatInteractive
         // In CAPChatInteractiveSettings.cs, inside CAPGlobalChatSettings.ExposeData()
         public void ExposeData()
         {
+
             Scribe_Values.Look(ref modVersionSaved, "modVersionSaved", "");
             Scribe_Values.Look(ref priceListUrl, "priceListUrl", "https://github.com/ekudram/RICS-Pricelist");
             Scribe_Values.Look(ref EnableDebugLogging, "enableDebugLogging", false);
