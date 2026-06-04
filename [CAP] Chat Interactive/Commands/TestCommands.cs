@@ -70,6 +70,8 @@ namespace CAP_ChatInteractive.Commands.TestCommands
                     "The `!dye` command can be used to change hair color.  Example !dye hair blue will change your pawns hair color to blue.",
                     "Many purchase use fuzzy logic in their item matching.  This means that you don't have to type the exact name of an item for it to be recognized.  For example, !event soothe will buy !event psychic soothe.",
                     "Meow!",
+                    "Good prompt engineering is basically \"How do I speak to a superintelligent alien who has no cultural context and takes everything literally?\" - Grok",
+                    "Ok so the one thing I learned with AI is to be direct. And the english language is if full of ambiquity. -- Captolamia",
 
 
                     // Add more tips here later - they will be picked randomly
