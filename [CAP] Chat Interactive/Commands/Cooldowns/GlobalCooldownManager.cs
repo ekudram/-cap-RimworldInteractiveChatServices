@@ -228,8 +228,9 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             Logger.Debug($"Current usage for {eventType}: {record.CurrentPeriodUses}");
 
             // === NEW: Informative message for players (only shown when event actually fires) ===
+            
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings as CAPGlobalChatSettings;
-            if (settings != null)
+            if (settings != null && settings.EventCooldownsEnabled)
             {
                 int maxUses = eventType switch
                 {
