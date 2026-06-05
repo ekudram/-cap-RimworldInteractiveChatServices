@@ -12,7 +12,7 @@ Button Type Documentation:
   <!-- Main Interactive Service Button (Existing) -->
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
     <defName>CAPChatInteractive</defName>
-    <label>Rimworld Chat Interactive Service</label>
+    <label>Rimworld Interactive Chat Service</label>
     <description>Main menu for CAP Chat Interactive mod features</description>
     <menuClass>CAP_ChatInteractive.ChatInteractiveAddonMenu</menuClass>
     <buttonType>MenuButton</buttonType>
