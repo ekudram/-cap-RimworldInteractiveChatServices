@@ -128,6 +128,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
+        // In File EnhancedInteractionCommandHandler.cs, inside EnhancedInteractionCommandHandler.FindInteractionTarget()
         private static Pawn FindInteractionTarget(Pawn initiator, InteractionDef interaction, string[] args)
         {
             // Animal-specific commands now search colony animals (named only)
@@ -136,7 +137,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                  interaction.defName?.ToLowerInvariant() == "animalchat" ||
                  interaction.defName?.ToLowerInvariant().Contains("animalchat") == true);
 
-            // If args provided, try to find specific target
+            // If args provided, try to find specific target (unchanged)
             if (args.Length > 0)
             {
                 string targetQuery = args[0];
@@ -169,10 +170,62 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return null; // Specific target not found
             }
 
-            // No target specified - use random animal for nuzzle/animalchat, random colonist otherwise
+            // === NEW PREFERENCE LOGIC ===
+            if (!isAnimalInteraction)
+            {
+                Pawn preferredPartner = GetPreferredRomanticPartner(initiator);
+                if (preferredPartner != null && preferredPartner != initiator)
+                {
+                    if (CanPawnsInteract(initiator, preferredPartner))
+                    {
+                        Logger.Debug($"[Social] No target specified for {initiator.Name} - preferring romantic partner {preferredPartner.Name}");
+                        return preferredPartner;
+                    }
+                }
+            }
+
+            // Fallback: No target specified - use random animal for nuzzle/animalchat, random colonist otherwise
             return isAnimalInteraction
                 ? FindRandomColonistAnimal(initiator)
                 : FindRandomColonist(initiator);
+        }
+
+        private static Pawn GetPreferredRomanticPartner(Pawn initiator)
+        {
+            if (initiator == null || initiator.relations == null) return null;
+
+            Pawn bestPartner = null;
+            int bestPriority = -1;
+
+            // Check direct relations for spouse / lover / fiancé
+            foreach (var directRelation in initiator.relations.DirectRelations)
+            {
+                if (directRelation.otherPawn == null ||
+                    directRelation.otherPawn.Dead ||
+                    !directRelation.otherPawn.Spawned)
+                    continue;
+
+                int priority = GetRelationPriority(directRelation.def);
+                if (priority > bestPriority)
+                {
+                    bestPriority = priority;
+                    bestPartner = directRelation.otherPawn;
+                }
+            }
+
+            return bestPartner;
+        }
+
+        private static int GetRelationPriority(PawnRelationDef def)
+        {
+            if (def == null) return 0;
+
+            // Higher number = stronger preference
+            if (def == PawnRelationDefOf.Spouse) return 3;
+            if (def == PawnRelationDefOf.Lover) return 2;
+            if (def == PawnRelationDefOf.Fiance) return 1;
+
+            return 0;
         }
 
         private static Pawn FindPawnByName(string name)
