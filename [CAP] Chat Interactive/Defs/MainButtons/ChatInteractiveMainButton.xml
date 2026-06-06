@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Defs/MainButtons/ChatInteractiveMainButton.xml -->
+<Defs>
+  <MainButtonDef>
+    <defName>CAPChatInteractive</defName>
+    <label>RICS</label>
+    <description>Access chat integration features and settings</description>
+    <tabWindowClass>CAP_ChatInteractive.Windows.MainTabWindow_ChatInteractive</tabWindowClass>
+    <order>85</order>
+  </MainButtonDef>
+</Defs>

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <!-- This ensures our GameComponent is always added to the game -->
+</Defs>

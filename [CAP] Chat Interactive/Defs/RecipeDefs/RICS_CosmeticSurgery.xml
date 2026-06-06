@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <!-- Dummy hediff for cosmetic surgeries - severity 0, no effects, auto-heals instantly -->
+  <HediffDef Name="RICS_CosmeticSurgery">
+    <defName>RICS_CosmeticSurgery</defName>
+    <label>cosmetic adjustment</label>
+    <description>Temporary marker for cosmetic surgery. Heals instantly.</description>
+    <hediffClass>Hediff_Injury</hediffClass>
+    <label>cosmetic adjustment</label>
+    <isBad>false</isBad>
+    <maxSeverity>1</maxSeverity>
+    <minSeverity>0</minSeverity>
+  </HediffDef>
+</Defs>
