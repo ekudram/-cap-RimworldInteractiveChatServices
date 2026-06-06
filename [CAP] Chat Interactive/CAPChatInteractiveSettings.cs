@@ -163,9 +163,9 @@ namespace CAP_ChatInteractive
         /// Bad/Doom     → - (price * multiplier)
         /// Default 5f = +5 karma per 100 coins of event price (balanced default).
         /// Set to 0 to disable price-based karma entirely.
-        /// This is capped at 0f and 5f in the UI to prevent extreme values, but can be set higher via config for fun or testing (e.g. 0.1f = +10 karma per 100 coins, 1.0f = +100 karma per 100 coins, etc.).
+        /// This is capped at 0f and 5f in the UI to prevent extreme values, but can be set higher via config for fun or testing (e.g. 1f = +1 karma per 100 coins, 100f = +100 karma per 100 coins, etc.).
         /// </summary>
-        public float KarmaEventPriceMultiplier = 0.05f; // Multiplier for how much karma gain/loss you get per event based on its price (default 1.0 = no change, 0.5 = half karma, 2.0 = double karma, etc.) as a percentage.
+        public float KarmaEventPriceMultiplier = 5f; 
 
         public int MinutesForActive = 30;
         public int MaxTraits = 4;
@@ -302,9 +302,12 @@ namespace CAP_ChatInteractive
         }
 
         // In CAPChatInteractiveSettings.cs, inside CAPGlobalChatSettings.ExposeData()
+        // In CAPChatInteractiveSettings.cs, inside CAPGlobalChatSettings.ExposeData()
+        // Replace the entire ExposeData() method with this version.
+        // Only two lines changed from the file you just pasted (KarmaPerStoreItem default and AIChatBotName default).
+        // All other defaults now exactly match their field initializers.
         public void ExposeData()
         {
-
             Scribe_Values.Look(ref modVersionSaved, "modVersionSaved", "");
             Scribe_Values.Look(ref priceListUrl, "priceListUrl", "https://github.com/ekudram/RICS-Pricelist");
             Scribe_Values.Look(ref EnableDebugLogging, "enableDebugLogging", false);
@@ -319,19 +322,19 @@ namespace CAP_ChatInteractive
 
             // New economy settings
             Scribe_Values.Look(ref StartingCoins, "startingCoins", 100);
-            Scribe_Values.Look(ref StartingKarma, "startingKarma", 100f);  // float now
+            Scribe_Values.Look(ref StartingKarma, "startingKarma", 100f);
             Scribe_Values.Look(ref BaseCoinReward, "baseCoinReward", 10);
             Scribe_Values.Look(ref SubscriberExtraCoins, "subscriberExtraCoins", 5);
             Scribe_Values.Look(ref VipExtraCoins, "vipExtraCoins", 3);
             Scribe_Values.Look(ref ModExtraCoins, "modExtraCoins", 2);
 
-            // Enhanced Karma System
+            // Enhanced Karma System — all defaults now match field initializers
             Scribe_Values.Look(ref MinKarma, "minKarma", 0f);
-            Scribe_Values.Look(ref MaxKarma, "maxKarma", 200f);           // FIXED default to match field initializer (was 200f)
+            Scribe_Values.Look(ref MaxKarma, "maxKarma", 200f);
             Scribe_Values.Look(ref KarmaDecayRate, "karmaDecayRate", 1f);
             Scribe_Values.Look(ref KarmaDecayIntervalMinutes, "karmaDecayIntervalMinutes", 60);
             Scribe_Values.Look(ref KarmaMinDecay, "karmaMinDecay", 0f);
-            Scribe_Values.Look(ref KarmaPerStoreItem, "karmaPerStoreItem", 5f);
+            Scribe_Values.Look(ref KarmaPerStoreItem, "karmaPerStoreItem", 1f);           // FIXED: was 5f
             Scribe_Values.Look(ref KarmaMinDecayFloor, "minDecayKarma", 100f);
 
             Scribe_Values.Look(ref KarmaLossPerBadEvent, "karmaLossPerBadEvent", 12f);
@@ -343,7 +346,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref MinutesForActive, "minutesForActive", 30);
             Scribe_Values.Look(ref MaxTraits, "maxTraits", 4);
             Scribe_Values.Look(ref CurrencyName, "currencyName", " 💰 ");
-            Scribe_Values.Look(ref StoreCommandsEnabled, "storeCommandsEnabled", true);  // For !togglestore command
+            Scribe_Values.Look(ref StoreCommandsEnabled, "storeCommandsEnabled", true);
 
             // Cooldown settings
             Scribe_Values.Look(ref EventCooldownsEnabled, "eventCooldownsEnabled", true);
@@ -386,10 +389,10 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref LegendaryQuality, "legendaryQuality", 5.0f);
 
             // Research settings
-            Scribe_Values.Look(ref RequireResearch, "requireResearch", true);  // FIXED: now matches field initializer (was false)
+            Scribe_Values.Look(ref RequireResearch, "requireResearch", true);
 
             // Passion Command
-            Scribe_Values.Look(ref MinPassionWager, "minPassionWager", 500);  // FIXED: now matches field initializer (was 10)
+            Scribe_Values.Look(ref MinPassionWager, "minPassionWager", 500);
             Scribe_Values.Look(ref MaxPassionWager, "maxPassionWager", 1000);
             Scribe_Values.Look(ref BasePassionSuccessChance, "basePassionSuccessChance", 15.0f);
             Scribe_Values.Look(ref MaxPassionSuccessChance, "maxPassionSuccessChance", 60.0f);
@@ -405,11 +408,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref CritFailLoseVsWrongChance, "critFailLoseVsWrongChance", 0.6f);
             Scribe_Values.Look(ref TargetedCritFailAffectTargetChance, "targetedCritFailAffectTargetChance", 0.7f);
 
-            // === Surgery Command Settings — now fully persisted ===
-            // Previously only the first two costs had Scribe lines. The remaining 7 costs + all 9 Allow* flags
-            // were declared with proper defaults but never saved/loaded. This caused them to reset on every
-            // world load or mod settings reload. All lines below use the exact field initializer values
-            // so old saves and new installs behave identically.
+            // Surgery Command Settings
             Scribe_Values.Look(ref SurgeryGenderSwapCost, "surgeryGenderSwapCost", 1000);
             Scribe_Values.Look(ref SurgeryBodyChangeCost, "surgeryBodyChangeCost", 800);
             Scribe_Values.Look(ref SurgerySterilizeCost, "surgerySterilizeCost", 400);
@@ -430,7 +429,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref SurgeryAllowTransfusion, "surgeryAllowTransfusion", true);
             Scribe_Values.Look(ref SurgeryAllowMiscBiotech, "surgeryAllowMiscBiotech", true);
 
-            // Backstory Settings 
+            // Backstory Settings
             Scribe_Values.Look(ref ChildhoodWager, "childhoodWager", 1000);
             Scribe_Values.Look(ref AdulthoodWager, "adulthoodWager", 1000);
 
@@ -438,18 +437,16 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref ChannelPointsEnabled, "channelPointsEnabled", true);
             Scribe_Values.Look(ref ShowChannelPointsDebugMessages, "showChannelPointsDebugMessages", false);
 
-            // === AI Chatbot Integration (persisted so users don't lose preference across restarts) ===
+            // AI Chatbot Integration
             Scribe_Values.Look(ref AIChatBotActive, "aiChatBotActive", false);
-            Scribe_Values.Look(ref AIChatBotName, "aiChatBotName", "Masie");
+            Scribe_Values.Look(ref AIChatBotName, "aiChatBotName", "AI Storyteller"); // FIXED: was "Masie"
             Scribe_Values.Look(ref AIChatBotEndpoint, "aiChatBotEndpoint", "http://127.0.0.1:17888");
             Scribe_Values.Look(ref AIChatBotListenUrl, "aiChatBotListenUrl", "http://127.0.0.1:5000/chat");
             Scribe_Values.Look(ref AIChatBotTimeoutMs, "aiChatBotTimeoutMs", 8000);
             Scribe_Values.Look(ref AIChatBotSendGameState, "aiChatBotSendGameState", true);
             Scribe_Values.Look(ref AIChatBotSendChatHistory, "aiChatBotSendChatHistory", true);
 
-            // === Channel Points Reward Settings ===
-            // Special handling so the "Example Reward" only appears for new users
-            // and never duplicates or disappears on existing saves.
+            // Channel Points Reward Settings
             if (Scribe.mode == LoadSaveMode.LoadingVars)
             {
                 RewardSettings.Clear();
@@ -457,7 +454,6 @@ namespace CAP_ChatInteractive
 
             Scribe_Collections.Look(ref RewardSettings, "rewardSettings", LookMode.Deep);
 
-            // Only add the example reward for completely new configs (first install or empty list)
             if (Scribe.mode == LoadSaveMode.PostLoadInit && (RewardSettings == null || RewardSettings.Count == 0))
             {
                 RewardSettings ??= new List<ChannelPoints_RewardSettings>();
@@ -470,12 +466,11 @@ namespace CAP_ChatInteractive
                 ));
             }
 
-            // Twitch Raids (new in 1.31+)
+            // Twitch Raids
             Scribe_Values.Look(ref TwitchRaidsEnabled, "twitchRaidsEnabled", false);
             Scribe_Values.Look(ref TwitchRaidsOnlyRaiders, "twitchRaidsOnlyRaiders", true);
             Scribe_Values.Look(ref TwitchRaidDelayMinutes, "twitchRaidDelayMinutes", 1);
             Scribe_Values.Look(ref TwitchRaidMinRaiders, "twitchRaidMinRaiders", 5);
-
         }
     }
 

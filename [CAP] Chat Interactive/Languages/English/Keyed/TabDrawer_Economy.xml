@@ -75,5 +75,8 @@
   <RICS.Economy.KarmaPerEventPriceMultiplierDesc>Multiplier applied as a % to the event's price.</RICS.Economy.KarmaPerEventPriceMultiplierDesc>
 
   <RICS.Economy.ResetKarmaSettings>Reset Karma Settings to Defaults</RICS.Economy.ResetKarmaSettings>
+  
+  <!-- New 1.38 -->
+  <RICS.Economy.KarmaEventPriceExplanation>Good/Neutral → + (price × multiplier) | Bad/Doom → - (price × multiplier) | 5 = +5 karma per 100 coins of event price</RICS.Economy.KarmaEventPriceExplanation>
 
 </LanguageData>

@@ -168,7 +168,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         ///   • Good/Neutral → pass to GiveKarma()
         ///   • Bad/Doom     → pass to TakeKarma()
         /// Now includes price-based scaling via KarmaEventPriceMultiplier
-        /// (default 0.05f = ±5 karma per 100 coins of BaseCost).
+        /// (default 5f = ±5 karma per 100 coins of BaseCost).
         /// </summary>
         private static float CalculateEventKarmaChange(string karmaType, int baseCost, CAPGlobalChatSettings settings)
         {

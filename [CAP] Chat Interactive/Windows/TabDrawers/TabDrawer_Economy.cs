@@ -112,7 +112,7 @@ namespace _CAP__Chat_Interactive
             UIUtilities.NumericField(listing, "RICS.Economy.KarmaLossPerBadEvent".Translate(), "RICS.Economy.KarmaLossPerBadEventDesc".Translate(), ref settings.KarmaLossPerBadEvent, 0f, 200f, "karmaLossPerBadEvent");
             UIUtilities.NumericField(listing, "RICS.Economy.KarmaLossPerDoomEvent".Translate(), "RICS.Economy.KarmaLossPerDoomEventDesc".Translate(), ref settings.KarmaLossPerDoomEvent, 0f, 200f, "karmaLossPerDoomEvent");
             UIUtilities.NumericField(listing, "RICS.Economy.KarmaPerEventPriceMultiplier".Translate(), "RICS.Economy.KarmaPerEventPriceMultiplierDesc".Translate(), ref settings.KarmaEventPriceMultiplier, 0f, 5f, "karmaEventPriceMultiplier");
-            listing.Label("Good/Neutral → + (price × multiplier) | Bad/Doom → - (price × multiplier) | 0.05 = +5 karma per 100 coins");
+            listing.Label("RICS.Economy.KarmaEventPriceExplanation".Translate());
 
             listing.Gap(20f);
 
