@@ -34,7 +34,7 @@ namespace CAP_ChatInteractive.Commands.AICommands
 
             ChatMessageLogger.AddMessage(botName, "Thinking... *ear twitch*", "AI", isFromRICS: true);
 
-            // Queue on main thread then fire async
+            // Safe: Queue on main thread before going async
             LongEventHandler.QueueLongEvent(() =>
             {
                 _ = ProcessAIResponseAsync(message, userInput, settings);
@@ -87,12 +87,13 @@ namespace CAP_ChatInteractive.Commands.AICommands
             }
         }
 
-        private object GetGameStateForAI()
+private object GetGameStateForAI()
         {
             var service = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>()?._aiChatBotService;
             if (service != null)
             {
-                string json = service.GetGameStateJson();
+                // Use cached version (main-thread safe)
+                string json = service.GetCachedGameStateJson();
                 try
                 {
                     return JsonConvert.DeserializeObject(json);
@@ -111,7 +112,6 @@ namespace CAP_ChatInteractive.Commands.AICommands
             {
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-                // Clean URL construction
                 string baseUrl = settings.AIChatBotListenUrl.TrimEnd('/');
                 string botUrl = baseUrl.EndsWith("/chat", StringComparison.OrdinalIgnoreCase)
                     ? baseUrl
@@ -119,15 +119,15 @@ namespace CAP_ChatInteractive.Commands.AICommands
 
                 Logger.Debug($"[AI ChatBot] Sending request to: {botUrl}");
 
-                // Increased timeout for Ollama + TTS
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(25));
+                // Very generous timeout for cold Ollama + TTS generation
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
 
                 var httpResponse = await _httpClient.PostAsync(botUrl, content, cts.Token);
 
                 if (httpResponse.IsSuccessStatusCode)
                 {
                     string responseText = await httpResponse.Content.ReadAsStringAsync();
-                    Logger.Debug($"[AI ChatBot] Received response ({responseText.Length} chars): {responseText.Substring(0, Math.Min(120, responseText.Length))}");
+                    Logger.Debug($"[AI ChatBot] Successfully received response ({responseText.Length} characters)");
                     return responseText;
                 }
                 else
@@ -138,8 +138,8 @@ namespace CAP_ChatInteractive.Commands.AICommands
             }
             catch (TaskCanceledException)
             {
-                Logger.Warning("[AI ChatBot] Request timed out - Ollama or TTS may be slow on first call.");
-                return "I'm thinking really hard! I might even have responded... Try again in a moment if needed?";
+                Logger.Warning("[AI ChatBot] Request timed out - Ollama/TTS slow on first call.");
+                return "Nya~... I'm thinking really hard right now! Try again in a few seconds?";
             }
             catch (Exception ex)
             {

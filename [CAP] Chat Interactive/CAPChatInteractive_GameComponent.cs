@@ -49,6 +49,7 @@ namespace CAP_ChatInteractive
         // AI ChatBot Service
         public AIChatBotService _aiChatBotService;
 
+
         public CAPChatInteractive_GameComponent(Game game)
         {
             if (game?.components == null) return;
@@ -103,8 +104,17 @@ namespace CAP_ChatInteractive
                     Logger.Debug($"Karma decay tick executed (interval: {settings.KarmaDecayIntervalMinutes} min, rate: {settings.KarmaDecayRate})");
                 }
             }
+            // should updated Raid join timer only if the setting is enabled.
+            if (CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.TwitchRaidsEnabled == true)
+            {
+                CAPChatInteractiveMod.Instance.TwitchService?.UpdateRaidJoinTimer();
+            }
 
-            CAPChatInteractiveMod.Instance.TwitchService?.UpdateRaidJoinTimer();
+            // Update AI ChatBot game state cache on main thread (only when enabled)
+            if (CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.AIChatBotActive == true)
+            {
+                _aiChatBotService?.UpdateGameStateCache();
+            }
         }
 
         private void InitializeAll()

@@ -1097,6 +1097,7 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 
 <b>UPDATED</b>
 ──────────────
+- Social interactions now prioritize Lovers, Spouse or Fiance over other pawns when name is blank.
 
 <b>FIXED</b>
 ────────────
