@@ -158,6 +158,13 @@ namespace _CAP__Chat_Interactive
 
             if (settings.AIChatBotActive)
             {
+                listing.GapLine(6f);
+                listing.Label("To use the AI chatbot, set up your own bot that can receive game state data from RICS and respond to chat messages. Then enter the appropriate URLs below to connect RICS to your bot.");
+                listing.Label("RICS will send game state data to the AIChatBotEndpoint URL, and your bot should respond to these requests with chat messages that RICS will relay back to Twitch/YouTube chat. When you use the !ricsaichatbot command in chat, RICS will send the message content and optionally recent chat history and game state to the AIChatBotListenUrl, and display the response in chat as if it came from the bot.");
+                listing.Label("This is experimental and advanced functionality that requires you to set up and host your own AI chatbot that can interface with RICS. It is not required for basic RICS functionality and is intended for users who want to create a more interactive experience by connecting an AI bot to their stream.");
+
+                listing.GapLine(6f);
+
                 listing.Label("RICS Listener URL (Python bot calls this for game state):");
                 settings.AIChatBotEndpoint = listing.TextEntry(settings.AIChatBotEndpoint);
 

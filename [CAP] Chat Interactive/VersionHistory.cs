@@ -1097,7 +1097,8 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 
 <b>UPDATED</b>
 ──────────────
-- Social interactions now prioritize Lovers, Spouse or Fiance over other pawns when name is blank.
+- Social interactions now prioritize Lovers, Spouse or Fiancé over other pawns when name is blank.
+- !nuzzle and !animalchat will now prefer bonded animals when name is not specified.  If you have multiple bonded animals, it will choose the one with the strongest bond.
 
 <b>FIXED</b>
 ────────────
