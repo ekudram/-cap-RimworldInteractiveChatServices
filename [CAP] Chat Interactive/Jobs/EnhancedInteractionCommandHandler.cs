@@ -129,6 +129,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         // In File EnhancedInteractionCommandHandler.cs, inside EnhancedInteractionCommandHandler.FindInteractionTarget()
+        // In File EnhancedInteractionCommandHandler.cs, inside EnhancedInteractionCommandHandler.FindInteractionTarget()
         private static Pawn FindInteractionTarget(Pawn initiator, InteractionDef interaction, string[] args)
         {
             // Animal-specific commands now search colony animals (named only)
@@ -148,13 +149,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (isAnimalInteraction)
                 {
-                    // New: colony animals by name (e.g. !nuzzle Fluffy)
                     var targetAnimal = FindAnimalByName(targetQuery);
                     if (targetAnimal != null && targetAnimal != initiator) return targetAnimal;
                 }
                 else
                 {
-                    // Existing human/colonist logic (unchanged)
                     var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
                     if (assignmentManager != null && assignmentManager.HasAssignedPawn(targetQuery))
                     {
@@ -162,7 +161,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         if (targetPawn != null && targetPawn != initiator) return targetPawn;
                     }
 
-                    // Try to find by pawn name
                     var namedPawn = FindPawnByName(targetQuery);
                     if (namedPawn != null && namedPawn != initiator) return namedPawn;
                 }
@@ -170,7 +168,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return null; // Specific target not found
             }
 
-            // === NEW PREFERENCE LOGIC ===
+            // === PREFERENCE LOGIC ===
+
+            // 1. Human social commands: prefer romantic partner (spouse > lover > fiancé)
             if (!isAnimalInteraction)
             {
                 Pawn preferredPartner = GetPreferredRomanticPartner(initiator);
@@ -183,8 +183,21 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                 }
             }
+            // 2. Animal commands: prefer bonded animal if any
+            else
+            {
+                Pawn bondedAnimal = GetPreferredBondedAnimal(initiator);
+                if (bondedAnimal != null && bondedAnimal != initiator)
+                {
+                    if (CanPawnsInteract(initiator, bondedAnimal))
+                    {
+                        Logger.Debug($"[Social] No target specified for {initiator.Name} - preferring bonded animal {bondedAnimal.Name}");
+                        return bondedAnimal;
+                    }
+                }
+            }
 
-            // Fallback: No target specified - use random animal for nuzzle/animalchat, random colonist otherwise
+            // Fallback: random animal for animal commands, random colonist otherwise
             return isAnimalInteraction
                 ? FindRandomColonistAnimal(initiator)
                 : FindRandomColonist(initiator);
@@ -226,6 +239,40 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (def == PawnRelationDefOf.Fiance) return 1;
 
             return 0;
+        }
+
+        // In File EnhancedInteractionCommandHandler.cs, inside EnhancedInteractionCommandHandler class
+        // Replace the existing GetPreferredBondedAnimal() with this:
+        private static Pawn GetPreferredBondedAnimal(Pawn initiator)
+        {
+            if (initiator == null || initiator.relations == null)
+                return null;
+
+            Pawn bestBonded = null;
+
+            // Follow vanilla bonded animal logic exactly (from ThoughtWorker_BondedAnimalMaster)
+            foreach (var relation in initiator.relations.DirectRelations)
+            {
+                Pawn animal = relation.otherPawn;
+                if (animal == null) continue;
+
+                if (relation.def == PawnRelationDefOf.Bond &&
+                    !animal.Dead &&
+                    animal.Spawned &&
+                    animal.Faction == Faction.OfPlayer &&
+                    animal.RaceProps != null &&
+                    animal.RaceProps.Animal &&
+                    animal.training != null &&
+                    animal.training.HasLearned(TrainableDefOf.Obedience))
+                {
+                    // Prefer the first valid bonded animal (usually the strongest bond)
+                    // We can expand this later to sort by relation age or thought strength if desired
+                    bestBonded = animal;
+                    break; // Take the first one found (order in DirectRelations is usually fine)
+                }
+            }
+
+            return bestBonded;
         }
 
         private static Pawn FindPawnByName(string name)
