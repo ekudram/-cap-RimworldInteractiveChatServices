@@ -107,9 +107,9 @@ namespace CAP_ChatInteractive
                 }
             }
 
-            // === THROTTLED UPDATES (every 30 ticks ≈ 0.5 seconds) ===
+            // === THROTTLED UPDATES (every 60 ticks ≈ 1 second) ===
             // This was the main source of the previous 23% spike.
-            if (tickCounter % 30 == 0)
+            if (tickCounter % 60 == 0)
             {
                 // Raid timer - only if enabled
                 if (CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.TwitchRaidsEnabled == true)
