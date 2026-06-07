@@ -1517,7 +1517,8 @@ namespace CAP_ChatInteractive
             Widgets.EndGroup();
         }
 
-        // This method resets all item prices in the selected category to their default values based on ThingDef.BaseMarketValue.
+        // This method resets all item prices in the selected category to the calculated default
+        // (uses StoreItem.CalculateBasePrice so unique weapons get proper high price).
         private void ResetCategoryPrices()
         {
             int changedCount = 0;
@@ -1526,7 +1527,7 @@ namespace CAP_ChatInteractive
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
                 if (thingDef != null)
                 {
-                    int defaultPrice = (int)thingDef.BaseMarketValue;
+                    int defaultPrice = StoreItem.CalculateBasePrice(thingDef);
                     if (item.BasePrice != defaultPrice)
                     {
                         item.BasePrice = defaultPrice;
@@ -1548,7 +1549,8 @@ namespace CAP_ChatInteractive
                 SoundDefOf.Click.PlayOneShotOnCamera();
             }
         }
-        // This method resets all item prices from the selected mod source to their default values based on ThingDef.BaseMarketValue.
+        // This method resets all item prices from the selected mod source to the calculated default
+        // (uses StoreItem.CalculateBasePrice so unique weapons get proper high price).
         private void ResetModSourcePrices()
         {
             int changedCount = 0;
@@ -1558,9 +1560,7 @@ namespace CAP_ChatInteractive
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
                 if (thingDef != null)
                 {
-                    int defaultPrice = (int)thingDef.BaseMarketValue;
-                    // Optional: enforce minimum price of 1
-                    defaultPrice = Math.Max(1, defaultPrice);
+                    int defaultPrice = StoreItem.CalculateBasePrice(thingDef);
 
                     if (item.BasePrice != defaultPrice)
                     {
@@ -1694,7 +1694,8 @@ namespace CAP_ChatInteractive
                 originalPrices[item.DefName] = item.BasePrice;
             }
         }
-        // This method resets all item prices to their default values based on ThingDef.BaseMarketValue.
+        // This method resets all item prices to the calculated default (uses StoreItem.CalculateBasePrice
+        // so unique weapons get the proper high Legendary + trait price instead of raw BaseMarketValue).
         private void ResetAllPrices()
         {
             foreach (var item in StoreInventory.AllStoreItems.Values)
@@ -1702,9 +1703,8 @@ namespace CAP_ChatInteractive
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
                 if (thingDef != null)
                 {
-                    // Round properly and ensure minimum price of 1
-                    item.BasePrice = Math.Max(1, (int)Math.Round(thingDef.BaseMarketValue));
-                    // item.Enabled = true;  // Lets just reset the prices not enable them all
+                    item.BasePrice = StoreItem.CalculateBasePrice(thingDef);
+                    // item.Enabled = true; // Lets just reset the prices not enable them all
                 }
             }
             StoreInventory.SaveStoreToJson();

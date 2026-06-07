@@ -180,11 +180,52 @@ namespace CAP_ChatInteractive.Store
             return false;
         }
 
-        private int CalculateBasePrice(ThingDef thingDef)
+
+        /// Calculates the base price for a given ThingDef, with special high-end handling for unique weapons.
+        /// Unique weapons (CompUniqueWeapon) only spawn as Masterwork or Legendary and can have up to 3 traits.
+        /// This gives players a realistic "maximum expected cost" so they understand the value and avoid cheap spam buys.
+        /// </summary>
+        /// <param name="thingDef">The ThingDef to price.</param>
+        /// <returns>The calculated base price (always >= 1).</returns>
+        public static int CalculateBasePrice(ThingDef thingDef)
         {
-            // Price floor only - based on community discussion about minimum values
-            // Round properly to handle values like 0.9
-            return Math.Max(1, (int)Math.Round(thingDef.BaseMarketValue));
+            if (thingDef == null) return 1;
+
+            int basePrice = Math.Max(1, (int)Math.Round(thingDef.BaseMarketValue));
+
+            // === UNIQUE WEAPON DETECTION ===
+            // CompUniqueWeapon is the definitive vanilla + mod marker for weapons with special traits.
+            bool isUniqueWeapon = thingDef.comps != null &&
+                                  thingDef.comps.Any(c => c.compClass?.Name == "CompUniqueWeapon" ||
+                                                          c.compClass?.FullName?.Contains("CompUniqueWeapon") == true);
+
+            if (isUniqueWeapon)
+            {
+                // Real cost model: (BaseMarketValue + trait bonus) * Legendary multiplier (5x)
+                // Traits: up to ~500 each × 3 = 1500 estimate
+                const int TraitBonusEstimate = 1500;
+                const float LegendaryMultiplier = 5.0f;
+
+                int estimatedValue = basePrice + TraitBonusEstimate;
+                basePrice = (int)Math.Round(estimatedValue * LegendaryMultiplier);
+
+                // Enforce minimum visible price for clarity and anti-spam
+                basePrice = Math.Max(5000, basePrice);
+
+                Logger.Debug($"[Store] Unique weapon detected: {thingDef.defName} → BasePrice set to {basePrice} " +
+                             $"(base={thingDef.BaseMarketValue}, traits+{TraitBonusEstimate}, ×{LegendaryMultiplier})");
+            }
+
+            return basePrice;
+        }
+
+        public static bool IsUniqueWeapon(ThingDef thingDef)
+        {
+            if (thingDef == null || thingDef.comps == null) return false;
+
+            return thingDef.comps.Any(c =>
+                c.compClass?.Name == "CompUniqueWeapon" ||
+                (c.compClass?.FullName?.Contains("CompUniqueWeapon") == true));
         }
 
         public static string GetCategoryFromThingDef(ThingDef thingDef)

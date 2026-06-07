@@ -17,6 +17,7 @@
 // Command handler for buying items from Rimazon store
 using _CAP__Chat_Interactive.Command.CommandHelpers;
 using CAP_ChatInteractive.Commands.Cooldowns;
+using CAP_ChatInteractive.Store;
 using CAP_ChatInteractive.Utilities;
 using RimWorld;
 using System;
@@ -187,12 +188,36 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 Logger.Debug($"Final quantity after limits: {quantity}");
 
-                // Calculate final price
-                int finalPrice = ItemConfigHelper.CalculateFinalPrice(storeItem, quantity, quality, material);
+                // === PRICE + ITEM CREATION ===
+                Thing finalItem = null;   // Will hold the real spawned unique weapon if applicable
+                int finalPrice;
 
-                // Check if user can afford
+                bool isUniqueWeapon = StoreItem.IsUniqueWeapon(thingDef);
+
+                if (isUniqueWeapon)
+                {
+                    // Create the REAL item once (traits get assigned here)
+                    finalItem = CreateTemporaryValuationItem(thingDef, quality, material);
+
+                    if (finalItem != null)
+                    {
+                        finalPrice = (int)(finalItem.MarketValue * quantity);
+                        Logger.Message($"[Unique Weapon] {messageWrapper.Username} buying '{itemName}' → true value {finalPrice} (traits randomized once)");
+                    }
+                    else
+                    {
+                        finalPrice = 5000 * quantity;
+                    }
+                }
+                else
+                {
+                    finalPrice = ItemConfigHelper.CalculateFinalPrice(storeItem, quantity, quality, material);
+                }
+
+                // Check affordability
                 if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
                 {
+                    if (finalItem != null) finalItem.Destroy(); // cleanup
                     return $"You need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} to purchase {quantity}x {itemName}! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
                 }
 
@@ -254,8 +279,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 viewer.TakeCoins(finalPrice);
 
                 // Use the new dedicated store karma setting (per item purchased)
-                float karmaEarned = finalPrice * (settings.KarmaPerStoreItem / 100f) ;
-                if (karmaEarned > 0f)  
+                float karmaEarned = finalPrice * (settings.KarmaPerStoreItem / 100f);
+                if (karmaEarned > 0f)
                 {
                     viewer.GiveKarma(karmaEarned);
                     Logger.Debug($"Awarded {karmaEarned:F2} karma ({finalPrice} × settings.KarmaPerStoreItem) for store purchase");
@@ -266,15 +291,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 //(List<Thing> spawnedItems, IntVec3 deliveryPos) spawnResult;
                 DeliveryResult deliveryResult;
 
-                if (requireEquippable || requireWearable)
+                if (requireEquippable || requireWearable || addToInventory)
                 {
-                    deliveryResult = ItemDeliveryHelper.SpawnItemForPawn(thingDef,
-                        quantity, quality, material, viewerPawn, false, requireEquippable, requireWearable);
+                    deliveryResult = ItemDeliveryHelper.SpawnItemForPawn(thingDef, quantity, quality, material,
+                        viewerPawn, false, requireEquippable, requireWearable, preCreatedItem: finalItem);
                 }
                 else
                 {
-                    deliveryResult = ItemDeliveryHelper.SpawnItemForPawn(thingDef,
-                        quantity, quality, material, viewerPawn, addToInventory, false, false);
+                    deliveryResult = ItemDeliveryHelper.SpawnItemForPawn(thingDef, quantity, quality, material,
+                        viewerPawn, addToInventory, false, false, preCreatedItem: finalItem);
                 }
 
                 List<Thing> allSpawnedItems = new List<Thing>();
@@ -417,6 +442,30 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Error($"Error in HandleBuyItem: {ex}");
                 // return "Error processing purchase. Please try again.";
                 return "RICS.BICH.Return.GenericError".Translate();
+            }
+        }
+
+        // Add near the bottom of BuyItemCommandHandler.cs
+        private static Thing CreateTemporaryValuationItem(ThingDef thingDef, QualityCategory? quality, ThingDef material)
+        {
+            try
+            {
+                Thing thing = ThingMaker.MakeThing(thingDef, material);
+
+                if (quality.HasValue && thing.TryGetComp<CompQuality>() is CompQuality cq)
+                {
+                    cq.SetQuality(quality.Value, ArtGenerationContext.Outsider);
+                }
+
+                // Let CompUniqueWeapon run its full setup (this is what we want for accurate pricing)
+                thing.PostPostMake();
+
+                return thing;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to create valuation item for {thingDef.defName}: {ex.Message}");
+                return null;
             }
         }
 

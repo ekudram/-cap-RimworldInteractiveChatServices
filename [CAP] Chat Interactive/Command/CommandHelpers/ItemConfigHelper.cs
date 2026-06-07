@@ -28,56 +28,41 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 {
     public static class ItemConfigHelper
     {
-
+        /// <summary>
+        /// Calculates the final price of an item based on its base price, quantity, quality, and material.
+        /// </summary>
+        /// <param name="storeItem"></param>
+        /// <param name="quantity"></param>
+        /// <param name="quality"></param>
+        /// <param name="material"></param>
+        /// <returns>The final price of the item.</returns>
         public static int CalculateFinalPrice(StoreItem storeItem, int quantity, QualityCategory? quality, ThingDef material)
         {
             try
             {
-                // Get the thing def for accurate price calculation
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
                 if (thingDef == null)
+                    return storeItem.BasePrice * quantity;
+
+                // For normal items use fast path
+                if (!StoreItem.IsUniqueWeapon(thingDef))
                 {
-                    Logger.Error($"ThingDef not found for store item: {storeItem.DefName}");
-                    return storeItem.BasePrice * quantity; // Fallback
+                    float baseCost = storeItem.BasePrice;
+
+                    if (thingDef.MadeFromStuff && material != null)
+                        baseCost *= (material.BaseMarketValue > 0 ? material.BaseMarketValue : 1f);
+
+                    if (quality.HasValue && thingDef.HasComp(typeof(CompQuality)))
+                        baseCost *= GetQualityMultiplier(quality.Value);
+
+                    return Math.Max(1, (int)(baseCost * quantity));
                 }
 
-                // Start with the base market value from storeItem  
-                float baseCost = storeItem.BasePrice;
-
-                // Logger.Debug($"Base market value for {thingDef.defName}: {baseCost}");
-
-                // Apply material cost if it's a stuff-based item and material is specified
-                if (thingDef.MadeFromStuff && material != null)
-                {
-                    // RimWorld's formula: baseCost * (stuffMarketValue / defaultStuffMarketValue)
-                    float stuffCost = material.BaseMarketValue;
-                    float materialMultiplier = stuffCost;
-
-                    // Apply the material multiplier to base cost
-                    baseCost *= materialMultiplier;
-
-                    // Logger.Debug($"Material cost: {material.defName} ({stuffCost}) = multiplier {materialMultiplier:F2}");
-                }
-
-                // Apply quality multiplier if the item supports quality
-                if (quality.HasValue && thingDef.HasComp(typeof(CompQuality)))
-                {
-                    float qualityMultiplier = GetQualityMultiplier(quality.Value);
-                    baseCost *= qualityMultiplier;
-                    // Logger.Debug($"Quality multiplier for {quality.Value}: {qualityMultiplier}");
-                }
-
-                // Apply quantity and round to whole number
-                int finalPrice = (int)(baseCost * quantity);
-
-                // Logger.Debug($"Final price for {quantity}x {thingDef.defName}: {finalPrice} (Base: {thingDef.BaseMarketValue}, Quality: {quality}, Material: {material?.defName})");
-
-                return Math.Max(1, finalPrice); // Ensure at least 1 coin
+                // Unique weapons → handled in BuyItemCommandHandler after real spawn
+                return storeItem.BasePrice * quantity; // temporary placeholder
             }
-            catch (Exception ex)
+            catch
             {
-                Logger.Error($"Error calculating final price for {storeItem.DefName}: {ex}");
-                // Fallback to simple calculation
                 return storeItem.BasePrice * quantity;
             }
         }

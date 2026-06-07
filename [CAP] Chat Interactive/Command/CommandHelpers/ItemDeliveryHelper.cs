@@ -422,7 +422,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         /// <param name="wearItem"></param>
         /// <returns></returns>
         public static DeliveryResult SpawnItemForPawn(ThingDef thingDef, int quantity, QualityCategory? quality,
-            ThingDef material, Pawn pawn, bool addToInventory, bool equipItem, bool wearItem)
+            ThingDef material, Pawn pawn, bool addToInventory, bool equipItem, bool wearItem,
+            Thing preCreatedItem = null)
         {
             DeliveryResult result = new DeliveryResult
             {
@@ -434,6 +435,22 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             try
             {
+                if (preCreatedItem != null)
+                {
+                    // UNIQUE WEAPON PATH — reuse the already-created item with traits
+                    Logger.Debug($"Using pre-created unique weapon for delivery: {preCreatedItem.def.defName}");
+
+                    // For direct interactions (equip/wear/inventory)
+                    if (equipItem || wearItem || addToInventory)
+                    {
+                        return HandleDirectPawnInteractionWithPreCreated(preCreatedItem, pawn, equipItem, wearItem, addToInventory, result);
+                    }
+                    else
+                    {
+                        // Regular delivery
+                        return HandleRegularDeliveryWithPreCreated(preCreatedItem, pawn, result);
+                    }
+                }
                 // Logger.Debug($"Spawning item: {thingDef.defName}, quantity: {quantity}, for pawn: {pawn?.Name}, " +
                 //             $"addToInventory: {addToInventory}, equipItem: {equipItem}, wearItem: {wearItem}");
 
@@ -1306,6 +1323,46 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             // Fallback: SpaceMapParent
             return map.Parent is SpaceMapParent;
+        }
+        private static DeliveryResult HandleDirectPawnInteractionWithPreCreated(Thing item, Pawn pawn,
+    bool equipItem, bool wearItem, bool addToInventory, DeliveryResult result)
+        {
+            result.DirectlyDeliveredItems.Add(item);
+
+            if (equipItem && PawnItemHelper.EquipItemOnPawn(item, pawn))
+                result.PrimaryMethod = DeliveryMethod.Equipped;
+            else if (wearItem && PawnItemHelper.WearApparelOnPawn(item, pawn))
+                result.PrimaryMethod = DeliveryMethod.Worn;
+            else if (addToInventory && pawn.inventory.innerContainer.TryAdd(item))
+                result.PrimaryMethod = DeliveryMethod.Inventory;
+            else
+            {
+                // Fallback to locker
+                TryDeliverToLocker(item, pawn.Map, pawn, result);
+            }
+
+            return result;
+        }
+
+        private static DeliveryResult HandleRegularDeliveryWithPreCreated(Thing item, Pawn pawn, DeliveryResult result)
+        {
+            Map map = GetTargetMapForDelivery(pawn);
+            if (TryDeliverToLocker(item, map, pawn, result))
+            {
+                result.PrimaryMethod = DeliveryMethod.Locker;
+            }
+            else
+            {
+                // Drop pod fallback
+                IntVec3 dropPos = GetDeliveryPosition(map, pawn);
+                if (TryShuttleDelivery(new List<Thing> { item }, dropPos, map))
+                {
+                    result.DropPodDeliveredItems.Add(item);
+                    result.PrimaryMethod = DeliveryMethod.DropPod;
+                    result.DeliveryPosition = dropPos;
+                }
+            }
+            return result;
         }
 
     }
