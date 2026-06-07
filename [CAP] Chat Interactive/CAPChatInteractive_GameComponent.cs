@@ -82,6 +82,8 @@ namespace CAP_ChatInteractive
         public override void GameComponentTick()
         {
             tickCounter++;
+
+            // === 2-MINUTE COIN REWARD (unchanged - already efficient) ===
             if (tickCounter >= TICKS_PER_REWARD)
             {
                 tickCounter = 0;
@@ -89,13 +91,13 @@ namespace CAP_ChatInteractive
                 Logger.Debug("2-minute coin reward tick executed");
             }
 
-            // === KARMA DECAY TIMER ===
+            // === KARMA DECAY TIMER (already counter-based) ===
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             if (settings != null && settings.KarmaDecayRate > 0f && settings.KarmaDecayIntervalMinutes > 0)
             {
                 karmaDecayTickCounter++;
 
-                int ticksPerDecayInterval = settings.KarmaDecayIntervalMinutes * 2500; // 1 in-game minute ≈ 2500 ticks
+                int ticksPerDecayInterval = settings.KarmaDecayIntervalMinutes * 2500;
 
                 if (karmaDecayTickCounter >= ticksPerDecayInterval)
                 {
@@ -104,16 +106,22 @@ namespace CAP_ChatInteractive
                     Logger.Debug($"Karma decay tick executed (interval: {settings.KarmaDecayIntervalMinutes} min, rate: {settings.KarmaDecayRate})");
                 }
             }
-            // should updated Raid join timer only if the setting is enabled.
-            if (CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.TwitchRaidsEnabled == true)
-            {
-                CAPChatInteractiveMod.Instance.TwitchService?.UpdateRaidJoinTimer();
-            }
 
-            // Update AI ChatBot game state cache on main thread (only when enabled)
-            if (CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.AIChatBotActive == true)
+            // === THROTTLED UPDATES (every 30 ticks ≈ 0.5 seconds) ===
+            // This was the main source of the previous 23% spike.
+            if (tickCounter % 30 == 0)
             {
-                _aiChatBotService?.UpdateGameStateCache();
+                // Raid timer - only if enabled
+                if (CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.TwitchRaidsEnabled == true)
+                {
+                    CAPChatInteractiveMod.Instance.TwitchService?.UpdateRaidJoinTimer();
+                }
+
+                // AI ChatBot game state cache - only if enabled
+                if (CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.AIChatBotActive == true)
+                {
+                    _aiChatBotService?.UpdateGameStateCache();
+                }
             }
         }
 
