@@ -585,7 +585,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // Base loss comes from the tunable Economy settings (KarmaLossPerBadEvent)
-            float baseLoss = settings.KarmaLossPerBadEvent;
+            float baseLoss = settings.KarmaLossPerBadEvent / 100f;
 
             // Extra penalty for the nastiest raid types
             string typeLower = raidType.ToLowerInvariant();
@@ -601,7 +601,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // NEW: price-based karma scaling (Good/Neutral would add, Bad/Doom subtracts)
             // We use multiplication because it produces sane, balanced numbers
             // (e.g. default 0.05f = +5 karma loss per 100 coins spent)
-            float priceBasedLoss = wager * settings.KarmaEventPriceMultiplier;
+            float priceBasedLoss = wager * settings.KarmaEventPriceMultiplier / 100f;
 
             // Combine base + price scaling
             float totalLoss = baseLoss + priceBasedLoss;
