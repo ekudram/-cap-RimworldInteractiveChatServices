@@ -92,41 +92,71 @@ namespace CAP_ChatInteractive
 
         public void Connect()
         {
-            if (_isConnecting || IsConnected)
+            if (_isConnecting)
             {
-                Logger.Debug("Already connecting or connected, skipping...");
+                Logger.Debug("Already connecting - skipping duplicate request");
+                return;
+            }
+
+            if (IsConnected)
+            {
+                Logger.Debug("Already connected - skipping");
                 return;
             }
 
             Logger.Twitch("Attempting to connect to Twitch...");
             try
             {
-                if (!_settings.CanConnect)
+                if (_settings == null || !_settings.CanConnect)
                 {
-                    Logger.Error("Cannot connect to Twitch: Missing credentials");
+                    Logger.Error("Cannot connect to Twitch: Missing credentials or settings null");
                     Messages.Message("Cannot connect to Twitch: Missing credentials", MessageTypeDefOf.NegativeEvent);
                     return;
                 }
 
                 _isConnecting = true;
 
-                // Set up connection timeout
+                // Clean up any previous stale state
+                _connectionTimeoutToken?.Cancel();
                 _connectionTimeoutToken = new CancellationTokenSource();
-                Task.Delay(15000, _connectionTimeoutToken.Token).ContinueWith(t =>
+
+                // Improved timeout with better cleanup
+                _connectionTimeoutToken.Token.Register(() =>
                 {
-                    if (t.IsCompleted && !IsConnected && _isConnecting)
+                    if (_isConnecting && !IsConnected)
                     {
-                        Logger.Error("Twitch connection timeout - taking too long to connect");
-                        Disconnect();
-                        Messages.Message("Twitch connection timeout - check credentials", MessageTypeDefOf.NegativeEvent);
+                        Logger.Error("Twitch connection timeout - cleaning up state");
+                        Disconnect();  // This now safely resets everything
                     }
                 });
+
+                Task.Delay(15000, _connectionTimeoutToken.Token).ContinueWith(t =>
+                {
+                    if (!t.IsCanceled && _isConnecting && !IsConnected)
+                    {
+                        Logger.Error("Twitch connection timeout after 15s");
+                        Disconnect();
+                        Messages.Message("Twitch connection timeout - check credentials / internet", MessageTypeDefOf.NegativeEvent);
+                    }
+                });
+
+                // Force client reset if it exists
+                if (_client != null)
+                {
+                    try
+                    {
+                        SafeUnsubscribeFromEvents();
+                        _client.Disconnect();
+                    }
+                    catch { }
+                    _client = null;
+                }
 
                 InitializeClient();
             }
             catch (Exception ex)
             {
-                Logger.Error($"Failed to connect to Twitch: {ex.Message}");
+                Logger.Error($"Failed to start Twitch connection: {ex.Message}");
                 _settings.IsConnected = false;
                 _isConnecting = false;
                 _connectionTimeoutToken?.Cancel();
@@ -139,15 +169,46 @@ namespace CAP_ChatInteractive
             try
             {
                 _isConnecting = false;
+
+                // Safe token cancel
                 _connectionTimeoutToken?.Cancel();
-                _client?.Disconnect();
-                _settings.IsConnected = false;
-                // Logger.Twitch("Disconnected from Twitch");
-                OnDisconnected?.Invoke(_settings.ChannelName);
+                _connectionTimeoutToken = null;  // Prevent reuse of disposed token
+
+                // Safe client disconnect
+                if (_client != null)
+                {
+                    try
+                    {
+                        SafeUnsubscribeFromEvents();  // Clean event handlers first
+                        _client.Disconnect();
+                    }
+                    catch (Exception clientEx)
+                    {
+                        Logger.Warning($"Twitch client disconnect inner error: {clientEx.Message}");
+                    }
+                    _client = null;
+                }
+
+                if (_settings != null)
+                {
+                    _settings.IsConnected = false;
+                }
+                else
+                {
+                    Logger.Warning("Disconnect called with null _settings");
+                }
+
+                // Safe event invoke
+                OnDisconnected?.Invoke(_settings?.ChannelName ?? "Unknown");
+
+                Logger.Twitch("Disconnected from Twitch (clean shutdown)");
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error disconnecting from Twitch: {ex.Message}");
+                // Fallback: force settings state
+                if (_settings != null)
+                    _settings.IsConnected = false;
             }
         }
 
@@ -155,26 +216,22 @@ namespace CAP_ChatInteractive
         {
             Logger.Debug("Initializing Twitch client...");
 
-            // Ensure token has correct format and clean it
             string formattedToken = CleanOAuthToken(_settings.AccessToken);
-            // Logger.Debug($"Using token: {formattedToken?.Substring(0, Math.Min(10, formattedToken?.Length ?? 0))}...");
-
             var credentials = new ConnectionCredentials(_settings.BotUsername, formattedToken);
 
-            // Reset client if exists
+            // Full reset
             if (_client != null)
             {
-                UnsubscribeFromEvents();
-                _client.Disconnect();
+                SafeUnsubscribeFromEvents();
+                try { _client.Disconnect(); } catch { }
                 _client = null;
             }
 
-            // Use minimal ClientOptions - sometimes simpler is better
             var clientOptions = new ClientOptions
             {
                 MessagesAllowedInPeriod = 100,
                 ThrottlingPeriod = TimeSpan.FromSeconds(30),
-                ReconnectionPolicy = null, // No automatic reconnection
+                ReconnectionPolicy = null,
                 DisconnectWait = 1000
             };
 
@@ -183,13 +240,13 @@ namespace CAP_ChatInteractive
 
             _client.Initialize(credentials, _settings.ChannelName?.ToLowerInvariant());
 
-            // NEW: Helix API for private whispers (replaces obsolete SendWhisper)
             InitializeHelixApi(formattedToken);
 
-            SubscribeToEvents();
+            SubscribeToEvents();   // ← Must be BEFORE Connect()
+
             _client.Connect();
 
-            Logger.Debug("Twitch client + Helix API (whispers) initialized");
+            Logger.Debug("Twitch client initialized and Connect() called");
         }
 
         private void InitializeHelixApi(string accessToken)
@@ -232,35 +289,54 @@ namespace CAP_ChatInteractive
 
         private void SubscribeToEvents()
         {
-            _client.OnConnected += OnClientConnected;
-            _client.OnJoinedChannel += OnJoinedChannel;
-            _client.OnMessageReceived += OnChatMessageReceived;
-            _client.OnWhisperReceived += OnWhisperMessageReceived;
-            _client.OnConnectionError += OnConnectionError;
-            _client.OnDisconnected += OnClientDisconnected;
-            _client.OnError += OnClientError;
-            _client.OnIncorrectLogin += OnIncorrectLogin;
-            _client.OnUserJoined += OnUserJoined;
-            _client.OnUserLeft += OnUserLeft;
-            _client.OnRaidNotification += OnRaidNotificationReceived;
+            if (_client == null) return;
+
+            try
+            {
+                _client.OnConnected += OnClientConnected;
+                _client.OnJoinedChannel += OnJoinedChannel;
+                _client.OnMessageReceived += OnChatMessageReceived;
+                _client.OnWhisperReceived += OnWhisperMessageReceived;
+                _client.OnConnectionError += OnConnectionError;
+                _client.OnDisconnected += OnClientDisconnected;
+                _client.OnError += OnClientError;
+                _client.OnIncorrectLogin += OnIncorrectLogin;
+                _client.OnUserJoined += OnUserJoined;
+                _client.OnUserLeft += OnUserLeft;
+                _client.OnRaidNotification += OnRaidNotificationReceived;
+
+                Logger.Debug("Twitch events subscribed successfully");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to subscribe to Twitch events: {ex.Message}");
+            }
         }
 
-        private void UnsubscribeFromEvents()
+        private void SafeUnsubscribeFromEvents()
         {
             if (_client == null) return;
 
-            _client.OnConnected += OnClientConnected;
-            _client.OnJoinedChannel += OnJoinedChannel;
-            _client.OnMessageReceived += OnChatMessageReceived;
-            _client.OnWhisperReceived += OnWhisperMessageReceived;
-            _client.OnConnectionError += OnConnectionError;
-            _client.OnDisconnected += OnClientDisconnected;
-            _client.OnError += OnClientError;
-            _client.OnIncorrectLogin += OnIncorrectLogin;
-            _client.OnUserJoined += OnUserJoined;
-            _client.OnUserLeft += OnUserLeft;
-            // Twitch Raids
-            _client.OnRaidNotification -= OnRaidNotificationReceived;
+            try
+            {
+                _client.OnConnected -= OnClientConnected;
+                _client.OnJoinedChannel -= OnJoinedChannel;
+                _client.OnMessageReceived -= OnChatMessageReceived;
+                _client.OnWhisperReceived -= OnWhisperMessageReceived;
+                _client.OnConnectionError -= OnConnectionError;
+                _client.OnDisconnected -= OnClientDisconnected;
+                _client.OnError -= OnClientError;
+                _client.OnIncorrectLogin -= OnIncorrectLogin;
+                _client.OnUserJoined -= OnUserJoined;
+                _client.OnUserLeft -= OnUserLeft;
+                _client.OnRaidNotification -= OnRaidNotificationReceived;
+
+                Logger.Debug("Twitch events unsubscribed safely");
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"SafeUnsubscribe partial failure: {ex.Message}");
+            }
         }
 
         #region Twitch Client Event Handlers
@@ -284,11 +360,14 @@ namespace CAP_ChatInteractive
             var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
             string modVer = settings.modVersion;
             // NOW we're fully connected and in the channel
-            _settings.IsConnected = true;
+
             _isConnecting = false;
             _connectionTimeoutToken?.Cancel();
+            _settings.IsConnected = true;
             OnConnected?.Invoke(_settings.ChannelName);
-            //Logger.Twitch($"SUCCESS: Joined channel: {e.Channel}");
+
+
+
             //Logger.Debug($"Channel join confirmed for: {_settings.ChannelName}");
 
             // Send connection message if configured
@@ -303,6 +382,8 @@ namespace CAP_ChatInteractive
                 });
             }
 
+            // Lets leave this one permanent for the logs since it's a critical milestone in the connection process and can help with debugging connection issues
+            Logger.Twitch($"SUCCESS: Joined channel: {e.Channel}");
             // Causes error on startup with DefOf MessageTypeDefOf because not initialized yet
             // Messages.Message($"Connected to Twitch: {_settings.ChannelName}");
         }
