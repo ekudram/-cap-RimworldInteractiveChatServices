@@ -1099,11 +1099,15 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 ──────────────
 - Social interactions now prioritize Lovers, Spouse or Fiancé over other pawns when name is blank.
 - !nuzzle and !animalchat will now prefer bonded animals when name is not specified.  If you have multiple bonded animals, it will choose the one with the strongest bond.
+- Unique Weapons will now be priced based on their market value plus trait bonuses plus addon for quality and material instead of just their base weapon type.
+  - This means that unique weapons will know longer be priced the same as a basic weapon of the same type, but will be priced based on their actual stats and traits.
+  - So a legendary quality weapon with good traits will be more expensive than a normal quality weapon with no trait
 
 <b>FIXED</b>
 ────────────
 - Issue where you where getting messages about event cooldowns for Karma cooldowns where that settings was turned off.  Now you will only get messages about cooldowns for the settings you have turned on.
 - Name in RICS button on the menu bar was incorrectly showing as ""Rimworld Chat Interactive Services"" instead of ""Rimworld Interactive Chat Services"".
+- Fixed a rare issue where Twitch would hang on connecting.
 
 <b>ADDED</b>
 ────────────
@@ -1112,6 +1116,7 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 
 <b>TRANSLATIONS</b>
 ───────────────────
+- Added new translation keys.
 
 "
 
