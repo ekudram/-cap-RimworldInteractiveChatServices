@@ -97,7 +97,9 @@ namespace CAP_ChatInteractive.Incidents
                     pawn.Name = new NameSingle(viewer);
                 }
 
-                LimitRaiderGearToColonyTech(pawn);
+                // Optional: Limit gear to colony tech level to prevent overpowered raids
+                // Removed for now. Lets test how it feels to have some high-tech gear in the raid, and we can always add this back as a setting if needed.
+                // LimitRaiderGearToColonyTech(pawn);
 
                 spawnedPawns.Add(pawn);
 

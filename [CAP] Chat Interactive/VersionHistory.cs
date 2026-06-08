@@ -1102,6 +1102,7 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 - Unique Weapons will now be priced based on their market value plus trait bonuses plus addon for quality and material instead of just their base weapon type.
   - This means that unique weapons will know longer be priced the same as a basic weapon of the same type, but will be priced based on their actual stats and traits.
   - So a legendary quality weapon with good traits will be more expensive than a normal quality weapon with no trait
+- Removed Gear limiting for Twitch Raids.  Twitch Raids will now be able to spawn with any gear that is appropriate for the raid.
 
 <b>FIXED</b>
 ────────────
