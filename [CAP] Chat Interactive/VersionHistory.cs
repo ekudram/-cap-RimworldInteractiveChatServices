@@ -1088,9 +1088,6 @@ This can also be used to add translations for commands in other languages.  For 
 <b>MEMORANDUM</b>
 ─────────────────
 In global settings tab there is a button to turn on AI Chat Bot Settings.  This is for a future feature that is not yet implemented.
-If you turn it on, it will show some settings for an AI Chat Bot that will be coming in a future update.
-You can turn it on if you want to see the settings, but leave if off as if you don't have an AI Chat Bot it may cause some errors in the log.
-If you do have an AI Chat Bot, you can use these settings to configure it when the feature is released.
 
 RICS development team is actively working on the AI Chat Bot feature and we hope to have it released in the next few updates.  Stay tuned for more information on that!
 We will though not be providing an AI Chat Bot ourselves, but we will be providing the integration for AI Chat Bots to work with RICS when the feature is released.
@@ -1118,7 +1115,7 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 <b>TRANSLATIONS</b>
 ───────────────────
 - Added new translation keys.
-
+ 
 "
 
 /*  Copy this template for future versions and fill in the details
