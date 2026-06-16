@@ -1132,13 +1132,16 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 
 <b>FIXED</b>
 ────────────
+- Fixed an issue when wearing apparel that requires body parts that are missing.  Now properly blocks wearing the item and gives a message about missing body parts.
+
 
 <b>ADDED</b>
 ────────────
 
 <b>TRANSLATIONS</b>
 ───────────────────   
-
+- BuyItemCommandHandler.xml  Added new translation key for when an item is not wearable due to missing body parts.
+ - <RICS.BICH.Return.MissingBodyPartForWear>Your pawn is missing the required body part(s) to wear {0}.</RICS.BICH.Return.MissingBodyPartForWear>  <!-- ADDED RICS v1.39 -->
 "
                 }
 
