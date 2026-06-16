@@ -1126,6 +1126,9 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 
 <b>MEMORANDUM</b>
 ─────────────────
+<b>IMPORTANT:</b> RICS v1.39 now includes manual ""Save Settings Backup"" and ""Load Settings Backup"" buttons at the bottom of the settings dialog (left of the Close button).
+These create timestamped JSON backups of your complete RICS configuration in Config/CAP_ChatInteractive/Backups.
+Use them as a safety net after major changes — this directly addresses the known RimWorld issue where large/complex mod settings sometimes fail to persist.
 
 <b>UPDATED</b>
 ──────────────
@@ -1137,6 +1140,7 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 
 <b>ADDED</b>
 ────────────
+- Added Save and Load buttons for backup JSON of RICS Settings.  Saves as a JSON.
 - Added new funcionality to !mypawn Gear command to show apperal on specific body parts.  For example, you can now do !mypawn gear head to see what is equipped on the head.
 - !mypawn gear <bodypart> will also show the material of the apparel.
 
