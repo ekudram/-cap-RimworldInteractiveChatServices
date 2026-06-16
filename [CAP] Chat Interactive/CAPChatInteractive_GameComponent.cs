@@ -38,6 +38,7 @@ namespace CAP_ChatInteractive
         private const int TICKS_PER_REWARD = 120 * 60;
 
         private int karmaDecayTickCounter = 0;
+        private int aiChatBotStateUpdateTickCounter = 0;
 
         private bool versionCheckDone = false;
         private bool raceSettingsInitialized = false;
@@ -121,13 +122,24 @@ namespace CAP_ChatInteractive
                 {
                     twitch.UpdateRaidJoinTimer();
                 }
+                // === AI CHATBOT GAME STATE CACHE UPDATE ===
+                // Periodically refresh the JSON served at GET /gamestate so the external Python bot
+                // can poll on its own schedule (e.g. every 15 min) and generate colony reports.
+                // Uses the same 2500 ticks/minute convention already used for karma decay in this file.
+                var aiSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (aiSettings?.AIChatBotActive == true && aiSettings.AIChatBotGameStateUpdateIntervalMinutes > 0)
+                {
+                    aiChatBotStateUpdateTickCounter++;
 
-                //// AI ChatBot game state cache - only if enabled
-                /// For now off, only talking to bot via chat commands, so no need to update game state cache every 6 seconds. Can re-enable later if we add more interactive features that rely on the cache.
-                //if (CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.AIChatBotActive == true)
-                //{
-                //    _aiChatBotService?.UpdateGameStateCache();
-                //}
+                    int ticksPerUpdate = aiSettings.AIChatBotGameStateUpdateIntervalMinutes * 2500;
+
+                    if (aiChatBotStateUpdateTickCounter >= ticksPerUpdate)
+                    {
+                        aiChatBotStateUpdateTickCounter = 0;
+                        _aiChatBotService?.UpdateGameStateCache();
+                        Logger.Debug($"[RICS AI] Game state cache refreshed (interval: {aiSettings.AIChatBotGameStateUpdateIntervalMinutes} min)");
+                    }
+                }
             }
         }
 

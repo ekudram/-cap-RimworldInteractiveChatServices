@@ -599,9 +599,13 @@ namespace CAP_ChatInteractive
         // Secrets (tokens) are included because they live in the same local AppData as config.xml.
         private static string BackupFolderPath;
 
+
         /// <summary>
         /// Saves the entire live RICS settings object (all service settings + global settings) to JSON.
         /// Creates a timestamped backup + updates the "Latest" quick-load file.
+        /// Uses explicit JObject.FromObject on the four data sections only to avoid
+        /// Newtonsoft.Json reflection errors on RimWorld types such as Verse.TaggedString
+        /// (which implements IEnumerable and has a problematic Length property).
         /// </summary>
         public static void SaveSettingsBackup(CAPChatInteractiveSettings settings)
         {
@@ -632,7 +636,24 @@ namespace CAP_ChatInteractive
                     ReferenceLoopHandling = ReferenceLoopHandling.Ignore
                 };
 
-                string json = JsonConvert.SerializeObject(settings, jsonSettings);
+                // === SAFE SERIALIZATION (the key fix) ===
+                // WHY: Serializing the whole ModSettings-derived object can trigger
+                // "Error getting value from 'Length' on 'Verse.TaggedString'" because
+                // TaggedString implements IEnumerable<char> and Json.NET tries to treat
+                // it as a collection. By building the root JObject ourselves from only
+                // the four data sections we control, we completely avoid the problematic
+                // RimWorld types and any hidden members from the ModSettings base class.
+                var root = new JObject
+                {
+                    // Add additional settings for new services here as needed, but keep the same structure for consistency
+                    ["TwitchSettings"] = JObject.FromObject(settings.TwitchSettings ?? new StreamServiceSettings(), JsonSerializer.Create(jsonSettings)),
+                    ["YouTubeSettings"] = JObject.FromObject(settings.YouTubeSettings ?? new StreamServiceSettings(), JsonSerializer.Create(jsonSettings)),
+                    ["KickSettings"] = JObject.FromObject(settings.KickSettings ?? new StreamServiceSettings(), JsonSerializer.Create(jsonSettings)),
+                    ["GlobalSettings"] = JObject.FromObject(settings.GlobalSettings ?? new CAPGlobalChatSettings(), JsonSerializer.Create(jsonSettings))
+                };
+
+                string json = root.ToString(Formatting.Indented);
+
                 File.WriteAllText(filePath, json);
 
                 // Always keep a single "latest" file for the Load button (overwrites previous latest)

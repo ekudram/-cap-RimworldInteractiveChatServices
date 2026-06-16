@@ -1,7 +1,24 @@
 ﻿// AIChatBotService.cs
+
+// Copyright (c) Captolamia
+// This file is part of CAP Chat Interactive. aka Rimworld Interactive Chat System (RICS)
+// 
+// CAP Chat Interactive is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// 
+// CAP Chat Interactive is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Affero General Public License for more details.
+// 
+// You should have received a copy of the GNU Affero General Public License
+// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 using Newtonsoft.Json;
 using RimWorld;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -103,7 +120,7 @@ namespace CAP_ChatInteractive.AI
             await context.Response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
         }
 
-        
+
         public void UpdateGameStateCache()
         {
             if (Current.Game == null || Find.CurrentMap == null)
@@ -132,71 +149,76 @@ namespace CAP_ChatInteractive.AI
                     storyteller = Find.Storyteller?.def?.label ?? "Unknown"
                 };
 
-                // === NEW: Food & Medicine Supply Summary ===
+                // === Food & Medicine Supply Summary (improved medicine breakdown) ===
                 int mealsCount = 0;
                 int rawFoodCount = 0;
-                int medicineCount = 0;
+                var medicineBreakdown = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                int medicineTotal = 0;
 
                 try
                 {
                     var resourceCounter = map.resourceCounter;
 
+                    // 1. Fast path via ResourceCounter (authoritative for tracked resources including Medicine category)
+                    if (resourceCounter != null)
+                    {
+                        foreach (var kvp in resourceCounter.AllCountedAmounts)
+                        {
+                            var def = kvp.Key;
+                            if (def == null || def.ingestible == null) continue;
+
+                            int count = kvp.Value;
+                            var foodType = def.ingestible.foodType;
+
+                            // Meals (prepared/processed)
+                            if ((foodType & FoodTypeFlags.Meal) != 0 ||
+                                (foodType & FoodTypeFlags.Processed) != 0 ||
+                                def.defName.IndexOf("Meal", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                def.defName.IndexOf("Pie", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                def.defName.IndexOf("Stew", StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                mealsCount += count;
+                                continue;
+                            }
+
+                            // Raw food
+                            if (def.IsNutritionGivingIngestible &&
+                                ((foodType & FoodTypeFlags.Meat) != 0 ||
+                                 (foodType & FoodTypeFlags.VegetableOrFruit) != 0 ||
+                                 (foodType & FoodTypeFlags.AnimalProduct) != 0 ||
+                                 (foodType & FoodTypeFlags.Seed) != 0 ||
+                                 (foodType & FoodTypeFlags.Plant) != 0))
+                            {
+                                rawFoodCount += count;
+                                continue;
+                            }
+                        }
+
+                        // Medicine via ResourceCounter (fast + complete for vanilla + most modded)
+                        foreach (var kvp in resourceCounter.AllCountedAmounts.Where(k => k.Key.IsMedicine))
+                        {
+                            string key = kvp.Key.defName;
+                            medicineBreakdown[key] = kvp.Value;
+                            medicineTotal += kvp.Value;
+                        }
+                    }
+
+                    // 2. Fallback/supplement pass over AllThings for any medicines ResourceCounter missed
+                    //    (some heavily modded items may not be in the counted categories)
                     foreach (var thing in map.listerThings.AllThings)
                     {
                         if (thing == null || thing.Destroyed || !thing.Spawned) continue;
 
                         var def = thing.def;
-                        if (def == null || def.ingestible == null) continue;
+                        if (def == null) continue;
 
                         int stackCount = thing.stackCount > 0 ? thing.stackCount : 1;
 
-                        var foodType = def.ingestible.foodType;
-
-                        // Meals (prepared / processed food)
-                        if ((foodType & FoodTypeFlags.Meal) != 0 ||
-                            (foodType & FoodTypeFlags.Processed) != 0 ||
-                            def.defName.Contains("Meal") || def.defName.Contains("Pie") || def.defName.Contains("Stew"))
+                        if (def.IsMedicine && !medicineBreakdown.ContainsKey(def.defName))
                         {
-                            mealsCount += stackCount;
-                            continue; // meals take priority over raw
+                            medicineBreakdown[def.defName] = stackCount;
+                            medicineTotal += stackCount;
                         }
-
-                        // Raw food - per your request: Meat, VegetableOrFruit, AnimalProduct (milk, jelly), etc.
-                        // OmnivoreHuman etc. are combinations — we check base flags
-                        if (def.IsNutritionGivingIngestible &&
-                            ((foodType & FoodTypeFlags.Meat) != 0 ||
-                             (foodType & FoodTypeFlags.VegetableOrFruit) != 0 ||
-                             (foodType & FoodTypeFlags.AnimalProduct) != 0))
-                        {
-                            rawFoodCount += stackCount;
-                            continue;
-                        }
-
-                        // Medicine
-                        if (def.IsMedicine ||
-                            (def.ingestible?.outcomeDoers?.Any(o => o is IngestionOutcomeDoer_GiveHediff) == true))
-                        {
-                            medicineCount += stackCount;
-                        }
-                    }
-
-                    // Supplement with ResourceCounter for fast core counts (handles many vanilla + common mod defs)
-                    if (resourceCounter != null)
-                    {
-                        mealsCount = Mathf.Max(mealsCount, resourceCounter.AllCountedAmounts
-                            .Where(kvp => kvp.Key.ingestible != null &&
-                                         ((kvp.Key.ingestible.foodType & FoodTypeFlags.Meal) != 0 ||
-                                          (kvp.Key.ingestible.foodType & FoodTypeFlags.Processed) != 0))
-                            .Sum(kvp => kvp.Value));
-
-                        rawFoodCount = Mathf.Max(rawFoodCount, resourceCounter.AllCountedAmounts
-                            .Where(kvp => kvp.Key.ingestible != null &&
-                                         ((kvp.Key.ingestible.foodType & (FoodTypeFlags.Meat |
-                                                                          FoodTypeFlags.VegetableOrFruit |
-                                                                          FoodTypeFlags.AnimalProduct |
-                                                                          FoodTypeFlags.Seed |
-                                                                          FoodTypeFlags.Plant)) != 0))
-                            .Sum(kvp => kvp.Value));
                     }
                 }
                 catch (Exception exFood)
@@ -217,9 +239,16 @@ namespace CAP_ChatInteractive.AI
 
                     meals = mealsCount,
                     rawFood = rawFoodCount,
-                    medicine = medicineCount,
 
-                    foodSummary = $"Meals: {mealsCount} | Raw: {rawFoodCount} | Meds: {medicineCount}"
+                    // Medicine info (kept flat total for backward compat + new breakdown for AI usefulness)
+                    medicine = medicineTotal,
+                    medicineBreakdown = medicineBreakdown,
+                    medicineSummary = medicineBreakdown.Count == 0
+                        ? "No medicine in stock"
+                        : string.Join(" | ", medicineBreakdown.Select(kvp =>
+                            $"{kvp.Key.Replace("Medicine", "")}: {kvp.Value}")),
+
+                    foodSummary = $"Meals: {mealsCount} | Raw: {rawFoodCount} | Meds: {medicineTotal}"
                 };
 
                 _cachedGameStateJson = JsonConvert.SerializeObject(fullState);

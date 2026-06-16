@@ -287,6 +287,10 @@ namespace CAP_ChatInteractive
         public int AIChatBotTimeoutMs = 8000;                       // Max wait for bot response before graceful fallback
         public bool AIChatBotSendGameState = true;                  // Whether to include colony/pawn snapshot in context
         public bool AIChatBotSendChatHistory = true;                // Include recent chat context (privacy note: viewer names only when necessary)
+        // How often (in real minutes) we refresh the cached game state JSON that the external Python bot can poll via GET /gamestate.
+        // Default 15 minutes keeps the data reasonably fresh for periodic "colony report" style interactions without hammering every few seconds.
+        // Set to 0 to disable periodic updates entirely (the bot will still receive fresh state on explicit !ricsaichatbot commands).
+        public int AIChatBotGameStateUpdateIntervalMinutes = 15;
 
         // === Twitch Raids feature (Phase 1) ===
         public bool TwitchRaidsEnabled = false;           // global kill-switch
@@ -445,6 +449,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref AIChatBotTimeoutMs, "aiChatBotTimeoutMs", 8000);
             Scribe_Values.Look(ref AIChatBotSendGameState, "aiChatBotSendGameState", true);
             Scribe_Values.Look(ref AIChatBotSendChatHistory, "aiChatBotSendChatHistory", true);
+            Scribe_Values.Look(ref AIChatBotGameStateUpdateIntervalMinutes, "aiChatBotGameStateUpdateIntervalMinutes", 15);
 
             // Channel Points Reward Settings
             if (Scribe.mode == LoadSaveMode.LoadingVars)
