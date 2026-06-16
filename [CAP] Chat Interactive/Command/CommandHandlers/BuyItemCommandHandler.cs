@@ -239,6 +239,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         return "RICS.BICH.Return.PawnDead".Translate();
                     }
 
+                    // === BODY PART CHECK FOR APPAREL (critical safety net) ===`
+                    if (requireWearable)
+                    {
+                        if (!ApparelUtility.HasPartsToWear(viewerPawn, thingDef))
+                        {
+                            Logger.Debug($"Purchase blocked for {itemName}: pawn {viewerPawn.Name} is missing required body part(s) for apparel {thingDef.defName} (bodyPartGroups: {string.Join(", ", thingDef.apparel?.bodyPartGroups?.Select(g => g.defName) ?? new[] { "none" })})");
+                            // Return early BEFORE any coin deduction or karma award
+                            return "RICS.BICH.Return.MissingBodyPartForWear".Translate(itemName);
+                        }
+                    }
+
                     // === HAR RACE RESTRICTION CHECK (critical safety net) ===
                     // Runs BEFORE TakeCoins() and SpawnItemForPawn — prevents "coins taken, item vanishes".
                     // Uses our new provider (delegates to HAR's verified CanWear/CanEquip).
@@ -274,6 +285,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                     // If no pawn, items will be delivered to a random colony location
                 }
+
+
 
                 // Deduct coins and process purchase
                 viewer.TakeCoins(finalPrice);

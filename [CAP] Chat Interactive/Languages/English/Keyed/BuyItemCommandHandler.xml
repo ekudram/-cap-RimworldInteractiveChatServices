@@ -21,6 +21,7 @@
   <RICS.BICH.Return.ItemNotEquippable>{0} is not available to be equipped.</RICS.BICH.Return.ItemNotEquippable>
   <RICS.BICH.Return.ItemNotWearable>{0} is not available to be worn.</RICS.BICH.Return.ItemNotWearable>
   <RICS.BICH.Return.RaceBanned>Item '{0}' is a banned race and cannot be purchased.</RICS.BICH.Return.RaceBanned>
+  <RICS.BICH.Return.MissingBodyPartForWear>Your pawn is missing the required body part(s) to wear {0}.</RICS.BICH.Return.MissingBodyPartForWear>  <!-- ADDED RICS v1.39 -->
   
   <!-- Success message (used in final return) -->
   <RICS.BICH.Return.Success>Purchased {0}x {1} for {2} and {3}! Remaining: {4}.</RICS.BICH.Return.Success>
