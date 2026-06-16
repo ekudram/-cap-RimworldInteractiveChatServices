@@ -1137,11 +1137,16 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 
 <b>ADDED</b>
 ────────────
+- Added new funcionality to !mypawn Gear command to show apperal on specific body parts.  For example, you can now do !mypawn gear head to see what is equipped on the head.
+- !mypawn gear <bodypart> will also show the material of the apparel.
 
 <b>TRANSLATIONS</b>
 ───────────────────   
 - BuyItemCommandHandler.xml  Added new translation key for when an item is not wearable due to missing body parts.
  - <RICS.BICH.Return.MissingBodyPartForWear>Your pawn is missing the required body part(s) to wear {0}.</RICS.BICH.Return.MissingBodyPartForWear>  <!-- ADDED RICS v1.39 -->
+- MyPawnCommandHandler.xml
+ - <RICS.MPCH.GearPartHeader>Apparel covering {0}:</RICS.MPCH.GearPartHeader>
+ - <RICS.MPCH.NoApparelCoveringPart>No apparel covering {0}.</RICS.MPCH.NoApparelCoveringPart>
 "
                 }
 
