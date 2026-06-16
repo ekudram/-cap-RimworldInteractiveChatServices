@@ -43,6 +43,9 @@
   <RICS.MPCH.InventoryHeader>🎒 Inventory:</RICS.MPCH.InventoryHeader>
   <RICS.MPCH.ArmorHeader>🛡️ Armor: </RICS.MPCH.ArmorHeader>
   <RICS.MPCH.ArmorNone>🛡️ Armor: None</RICS.MPCH.ArmorNone>
+      <!-- Added RICS Ver 1.39  -->
+  <RICS.MPCH.GearPartHeader>Apparel covering {0}:</RICS.MPCH.GearPartHeader>
+  <RICS.MPCH.NoApparelCoveringPart>No apparel covering {0}.</RICS.MPCH.NoApparelCoveringPart>
 
   <!-- Kills -->
   <RICS.MPCH.KillHeader>💀 Kill Report:</RICS.MPCH.KillHeader>

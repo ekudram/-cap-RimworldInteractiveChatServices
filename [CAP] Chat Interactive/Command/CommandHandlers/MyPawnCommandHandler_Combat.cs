@@ -46,7 +46,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var report = new StringBuilder();
             report.AppendLine("RICS.MPCH.GearHeader".Translate());
 
-            // Weapons - check for Simple Sidearms first
+            // Weapons - check for Simple Sidearms first (unchanged)
             var weapons = GetWeaponsList(pawn);
             if (weapons.Count > 0)
             {
@@ -54,34 +54,112 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 report.AppendLine(string.Join(", ", weapons));
             }
 
-            // Apparel - list everything worn
-            var apparel = pawn.apparel?.WornApparel;
-            if (apparel != null && apparel.Count > 0)
+            // === APPAREL SECTION (conditional) ===
+            // General path (no args): simple list only — NO materials/layers.
+            // This prevents the report from becoming too long/spammy and exceeding chat limits.
+            // Filtered path (args present): show ONLY apparel covering the requested body part,
+            // including material (if any) and layer. Mirrors the existing !mypawn body <part> UX.
+            string bodyPartFilter = args != null && args.Length > 0
+                ? string.Join(" ", args).ToLowerInvariant().Trim()
+                : null;
+
+            if (!string.IsNullOrEmpty(bodyPartFilter))
             {
-                report.AppendLine("RICS.MPCH.ApparelHeader".Translate());
-                foreach (var item in apparel)
+                // Specific body part filter provided → detailed coverage view
+                BodyPartRecord targetPart = null;
+                if (pawn.RaceProps?.body?.AllParts != null)
                 {
-                    string baseName = MyPawnCommandHandler.StripTags(item.def.LabelCap);
-                    string quality = item.TryGetQuality(out QualityCategory qc) ? $" ({qc})" : "";
-                    string hitPoints = item.HitPoints != item.MaxHitPoints ?
-                        $" {((float)item.HitPoints / item.MaxHitPoints).ToStringPercent()}" : "";
-                    report.AppendLine($"  • {baseName}{quality}{hitPoints}");
+                    targetPart = pawn.RaceProps.body.AllParts.FirstOrDefault(p =>
+                        (p.def?.label?.ToLower().Contains(bodyPartFilter) ?? false) ||
+                        (p.def?.defName?.ToLower().Contains(bodyPartFilter) ?? false));
+                }
+
+                if (targetPart == null)
+                {
+                    // Reuse existing translation key from the body handler for consistency
+                    return "RICS.MPCH.BodyPartNotFound".Translate(bodyPartFilter);
+                }
+
+                report.AppendLine();
+                report.AppendLine("RICS.MPCH.GearPartHeader".Translate(targetPart.LabelCap));
+
+                var coveringApparel = pawn.apparel?.WornApparel?
+                    .Where(a => a != null && a.def?.apparel != null && a.def.apparel.CoversBodyPart(targetPart))
+                    .ToList() ?? new List<Apparel>();
+
+                if (coveringApparel.Count == 0)
+                {
+                    report.AppendLine("RICS.MPCH.NoApparelCoveringPart".Translate(targetPart.LabelCap));
+                }
+                else
+                {
+                    foreach (var item in coveringApparel)
+                    {
+                        string baseName = MyPawnCommandHandler.StripTags(item.def.LabelCap);
+                        string quality = item.TryGetQuality(out QualityCategory qc) ? $" ({qc})" : "";
+                        string hitPoints = item.HitPoints != item.MaxHitPoints
+                            ? $" {((float)item.HitPoints / item.MaxHitPoints).ToStringPercent()}"
+                            : "";
+
+                        // Material info — only when relevant.
+                        // Uses vanilla Thing.Stuff + MadeFromStuff. Many modded/unique items have no Stuff.
+                        string materialInfo = "";
+                        if (item.Stuff != null)
+                        {
+                            materialInfo = $" ({MyPawnCommandHandler.StripTags(item.Stuff.LabelCap)})";
+                        }
+                        else if (item.def.MadeFromStuff)
+                        {
+                            materialInfo = " (unknown material)";
+                        }
+
+                        // Layer info — last entry in the layers list is the primary/outermost.
+                        // Works for vanilla (OnSkin/Middle/Shell) and modded layers (Utility, Belt, Overhead, etc.)
+                        // without needing to research every possible ApparelLayerDef.
+                        string layerInfo = "";
+                        var appLayers = item.def.apparel?.layers;
+                        if (appLayers != null && appLayers.Count > 0)
+                        {
+                            var primaryLayer = appLayers[appLayers.Count - 1];
+                            layerInfo = $" [{primaryLayer.LabelCap} Layer]";
+                        }
+
+                        report.AppendLine($"  • {baseName}{quality}{hitPoints}{materialInfo}{layerInfo}");
+                    }
+                }
+            }
+            else
+            {
+                // General path — keep the original simple list (no materials, no layers)
+                // so the default !mypawn gear output stays short and readable.
+                var apparel = pawn.apparel?.WornApparel;
+                if (apparel != null && apparel.Count > 0)
+                {
+                    report.AppendLine("RICS.MPCH.ApparelHeader".Translate());
+                    foreach (var item in apparel)
+                    {
+                        string baseName = MyPawnCommandHandler.StripTags(item.def.LabelCap);
+                        string quality = item.TryGetQuality(out QualityCategory qc) ? $" ({qc})" : "";
+                        string hitPoints = item.HitPoints != item.MaxHitPoints
+                            ? $" {((float)item.HitPoints / item.MaxHitPoints).ToStringPercent()}"
+                            : "";
+                        report.AppendLine($"  • {baseName}{quality}{hitPoints}");
+                        // NOTE: Materials/layers are intentionally omitted in the general view.
+                        // Viewers should use !mypawn gear <bodypart> (torso/head/left arm/etc.) for details.
+                    }
                 }
             }
 
-            // Inventory items - show all notable items (fixed duplicate medicine reporting)
-            // Vanilla innerContainer holds unique Thing stacks; we now use a single-pass filter
-            // to avoid double-matching via IsMedicine + IsIngestible on the same stack.
+            // Inventory items — unchanged (single-pass filter to avoid duplicate medicine reporting)
             var inventory = pawn.inventory?.innerContainer;
             if (inventory != null && inventory.Count > 0)
             {
-                // Distinct by reference (each stack is a unique Thing) + clear non-overlapping conditions
                 var notableItems = inventory.Where(item =>
                     item != null && item.def != null && item.stackCount > 0 &&
                     (item.def.IsMedicine ||
                      item.def.IsDrug ||
                      (item.def.IsIngestible && !item.def.IsMedicine && !item.def.IsDrug)))
-                    .ToList();  // materialize once for safety
+                    .ToList();
 
                 if (notableItems.Any())
                 {
@@ -94,7 +172,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            // Armor stats from RimWorld (no complex calculations)
+            // Armor stats from RimWorld (no complex calculations) — shown in both paths
             report.Append(GetArmorSummary(pawn));
 
             return report.ToString();
