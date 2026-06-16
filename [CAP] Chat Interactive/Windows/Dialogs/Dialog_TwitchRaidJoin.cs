@@ -51,6 +51,9 @@ namespace CAP_ChatInteractive.Windows
             this.forcePause = false;
             this.focusWhenOpened = true;
             this.preventCameraMotion = false;
+            this.closeOnCancel = false;
+            this.doCloseButton = false;
+            this.doCloseX = false;
         }
 
         public override void DoWindowContents(Rect inRect)

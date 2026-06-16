@@ -107,21 +107,27 @@ namespace CAP_ChatInteractive
                 }
             }
 
-            // === THROTTLED UPDATES (every 120 ticks ≈ 2 seconds) ===
-            // This was the main source of the previous 23% spike.
-            if (tickCounter % 120 == 0)
+            // === THROTTLED UPDATES (every 60-120 ticks) ===
+            // Raid timer is now ONLY called when a raid join window is actually active.
+            // This completely eliminates the previous tick overhead when Twitch Raids are enabled
+            // but no raid has occurred (the main source of stutter).
+            if (tickCounter % 120 == 0)   // keep your current interval here
             {
-                // Raid timer - only if enabled
-                if (CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.TwitchRaidsEnabled == true)
+                // Raid timer - only if enabled AND a raid join window is open
+                // (i.e. we actually received a raid notification and are still collecting joiners)
+                var twitch = CAPChatInteractiveMod.Instance?.TwitchService;
+                if (CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.TwitchRaidsEnabled == true &&
+                    twitch?.IsRaidJoinWindowActive == true)
                 {
-                    CAPChatInteractiveMod.Instance.TwitchService?.UpdateRaidJoinTimer();
+                    twitch.UpdateRaidJoinTimer();
                 }
 
-                // AI ChatBot game state cache - only if enabled
-                if (CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.AIChatBotActive == true)
-                {
-                    _aiChatBotService?.UpdateGameStateCache();
-                }
+                //// AI ChatBot game state cache - only if enabled
+                /// For now off, only talking to bot via chat commands, so no need to update game state cache every 6 seconds. Can re-enable later if we add more interactive features that rely on the cache.
+                //if (CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.AIChatBotActive == true)
+                //{
+                //    _aiChatBotService?.UpdateGameStateCache();
+                //}
             }
         }
 

@@ -1133,7 +1133,7 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 <b>FIXED</b>
 ────────────
 - Fixed an issue when wearing apparel that requires body parts that are missing.  Now properly blocks wearing the item and gives a message about missing body parts.
-
+- Fixed an issue where the Twitch Raid system was causing game stutter.
 
 <b>ADDED</b>
 ────────────

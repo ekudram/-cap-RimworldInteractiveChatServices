@@ -71,6 +71,13 @@ namespace CAP_ChatInteractive
         private bool _raidJoinWindowActive = false;
         private DateTime _raidJoinStartTime = DateTime.MinValue;
 
+        /// <summary>
+        /// Public read-only view of whether a raid join window is currently active.
+        /// Used by GameComponentTick to avoid polling UpdateRaidJoinTimer() on every throttled tick
+        /// when no raid has occurred (eliminates the main source of stutter when the feature is enabled but idle).
+        /// </summary>
+        public bool IsRaidJoinWindowActive => _raidJoinWindowActive;
+
         public bool IsConnected => _client?.IsConnected == true;
 
         // Events for other parts of your mod to subscribe to
