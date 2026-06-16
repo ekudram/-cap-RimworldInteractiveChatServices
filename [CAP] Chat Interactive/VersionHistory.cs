@@ -1117,6 +1117,30 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 - Added new translation keys.
  
 "
+            },
+            {"1.39",
+                @"===========================================================
+                         RICS 1.39 - Changelog
+                         Released: Month Day, Year
+===========================================================
+
+<b>MEMORANDUM</b>
+─────────────────
+
+<b>UPDATED</b>
+──────────────
+
+<b>FIXED</b>
+────────────
+
+<b>ADDED</b>
+────────────
+
+<b>TRANSLATIONS</b>
+───────────────────   
+
+"
+                }
 
 /*  Copy this template for future versions and fill in the details
 ===========================================================
@@ -1140,14 +1164,6 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 ───────────────────
 
 */
-
-
-
-
-            }
-
-
-
             // Add more versions here as they're released+
         };
 
