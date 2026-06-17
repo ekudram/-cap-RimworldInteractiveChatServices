@@ -66,12 +66,26 @@ namespace CAP_ChatInteractive
         {
             base.LoadedGame();
             InitializeAll();
+
+            // If AI ChatBot is active, make sure it has fresh colony data as soon as the save finishes loading.
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings?.AIChatBotActive == true && _aiChatBotService != null)
+            {
+                _aiChatBotService.UpdateGameStateCache();
+            }
         }
 
         public override void StartedNewGame()
         {
             base.StartedNewGame();
             InitializeAll();
+
+            // Same immediate cache population for new games
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings?.AIChatBotActive == true && _aiChatBotService != null)
+            {
+                _aiChatBotService.UpdateGameStateCache();
+            }
         }
 
         public override void FinalizeInit()
@@ -213,7 +227,13 @@ namespace CAP_ChatInteractive
 
             _aiChatBotService ??= new AIChatBotService();
             _aiChatBotService.Start();
-            Logger.Debug("AI ChatBot service initialized");
+
+            // Force an immediate game state cache update now that we know a game is loaded.
+            // This guarantees the Python bot gets real colony data (colonists, food, medicine, threat, etc.)
+            // on its very first /gamestate poll instead of waiting for the 15-minute timer.
+            _aiChatBotService?.UpdateGameStateCache();
+
+            Logger.Debug("AI ChatBot service initialized + initial game state cached");
         }
 
 
