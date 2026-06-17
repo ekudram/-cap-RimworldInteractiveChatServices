@@ -129,8 +129,7 @@ namespace CAP_ChatInteractive.AI
         {
             // Prefer a player home map (the actual colony) over Find.CurrentMap.
             // This fixes cases where the player is flying in a grav ship, viewing a temporary map,
-            // or has multiple maps open. Find.AnyPlayerHomeMap is the idiomatic RimWorld way
-            // (confirmed from decompiled Find.cs + Map.IsPlayerHome).
+            // or has multiple maps open.
             Map map = Current.Game?.Maps?.FirstOrDefault(m => m.IsPlayerHome && !m.Disposed)
                    ?? Find.AnyPlayerHomeMap
                    ?? Find.CurrentMap;
@@ -143,42 +142,31 @@ namespace CAP_ChatInteractive.AI
 
             try
             {
-                
                 var tickManager = Find.TickManager;
                 var worldGrid = Find.WorldGrid;
                 var tile = map.Tile;
 
-                // Core state (unchanged)
-                var baseState = new
-                {
-                    status = "ok",
-                    day = GenDate.DaysPassed,
-                    hour = GenDate.HourOfDay(tickManager.TicksGame, worldGrid.LongLatOf(tile).x),
-                    colonists = map.mapPawns?.FreeColonistsSpawnedCount ?? 0,
-                    threatPoints = StorytellerUtility.DefaultThreatPointsNow(map),
-                    wealth = (int)(map.wealthWatcher?.WealthTotal ?? 0),
-                    season = GenDate.Season(tickManager.TicksGame, worldGrid.LongLatOf(tile)).ToString(),
-                    storyteller = Find.Storyteller?.def?.label ?? "Unknown",
+                int colonistCount = map.mapPawns?.FreeColonistsSpawnedCount ?? 1;
 
-                    // === New lightweight context for the Python bot ===
-                    isPlayerHome = map.IsPlayerHome,
-                    biome = map.Biome?.label ?? "Unknown",
-                    biomeDefName = map.Biome?.defName ?? "Unknown",
-                    worldTile = (int)map.Tile,
-
-                    // Colony identity
-                    colonyName = map.Parent?.Label ?? "Unknown Colony",
-                    factionName = Faction.OfPlayer?.Name ?? Faction.OfPlayer?.def?.label ?? "Player",
-
-                    // Current outdoor temperature (useful for weather/roleplay comments)
-                    outdoorTemp = map.mapTemperature?.OutdoorTemp ?? 0f
-                };
-
-                // === Food & Medicine Supply (improved structure for AI) ===
+                // === Grouped counts for AI bot ===
                 int mealsCount = 0;
                 int rawFoodCount = 0;
+
+                int meatCount = 0;
+                int vegetableCount = 0;
+                int fruitCount = 0;
+                int eggCount = 0;
+                int otherRawFoodCount = 0;
+
                 var medicineBreakdown = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
                 int medicineTotal = 0;
+
+                int woodCount = 0;
+                int fabricCount = 0;
+                int leatherCount = 0;
+                int woolCount = 0;
+                int metalCount = 0;          // steel + plasteel
+                int stoneBlockCount = 0;
 
                 try
                 {
@@ -189,41 +177,80 @@ namespace CAP_ChatInteractive.AI
                         foreach (var kvp in resourceCounter.AllCountedAmounts)
                         {
                             var def = kvp.Key;
-                            if (def == null || def.ingestible == null) continue;
+                            if (def == null) continue;
 
                             int count = kvp.Value;
-                            var foodType = def.ingestible.foodType;
 
-                            if ((foodType & FoodTypeFlags.Meal) != 0 ||
-                                (foodType & FoodTypeFlags.Processed) != 0 ||
-                                def.defName.IndexOf("Meal", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                def.defName.IndexOf("Pie", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                def.defName.IndexOf("Stew", StringComparison.OrdinalIgnoreCase) >= 0)
+                            // === Meals ===
+                            if (def.ingestible != null)
                             {
-                                mealsCount += count;
-                                continue;
+                                var foodType = def.ingestible.foodType;
+
+                                if ((foodType & FoodTypeFlags.Meal) != 0 ||
+                                    (foodType & FoodTypeFlags.Processed) != 0 ||
+                                    def.defName.IndexOf("Meal", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    def.defName.IndexOf("Pie", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    def.defName.IndexOf("Stew", StringComparison.OrdinalIgnoreCase) >= 0)
+                                {
+                                    mealsCount += count;
+                                    continue;
+                                }
+
+                                // === Raw Food Classification ===
+                                if (def.IsNutritionGivingIngestible)
+                                {
+                                    if ((foodType & FoodTypeFlags.Meat) != 0)
+                                    {
+                                        meatCount += count;
+                                    }
+                                    else if ((foodType & FoodTypeFlags.VegetableOrFruit) != 0)
+                                    {
+                                        if (def.defName.IndexOf("Fruit", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                            def.defName.IndexOf("Berry", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                            def.defName.IndexOf("Agave", StringComparison.OrdinalIgnoreCase) >= 0)
+                                        {
+                                            fruitCount += count;
+                                        }
+                                        else
+                                        {
+                                            vegetableCount += count;
+                                        }
+                                    }
+                                    else if ((foodType & FoodTypeFlags.AnimalProduct) != 0)
+                                    {
+                                        if (def.defName.IndexOf("Egg", StringComparison.OrdinalIgnoreCase) >= 0)
+                                            eggCount += count;
+                                        else
+                                            otherRawFoodCount += count; // milk, insect jelly, etc.
+                                    }
+                                }
                             }
 
-                            if (def.IsNutritionGivingIngestible &&
-                                ((foodType & FoodTypeFlags.Meat) != 0 ||
-                                 (foodType & FoodTypeFlags.VegetableOrFruit) != 0 ||
-                                 (foodType & FoodTypeFlags.AnimalProduct) != 0))
-                            {
-                                rawFoodCount += count;
-                                continue;
-                            }
-                        }
+                            // === Materials (grouped, excludes chunks/corpses/waste) ===
+                            if (def.defName == "WoodLog")
+                                woodCount += count;
+                            else if (def.thingCategories?.Any(c => c.defName == "Textiles" || c.defName == "Fabric") == true)
+                                fabricCount += count;
+                            else if (def.thingCategories?.Any(c => c.defName == "Leathers") == true)
+                                leatherCount += count;
+                            else if (def.defName.StartsWith("Wool"))
+                                woolCount += count;
+                            else if (def.defName == "Steel" || def.defName == "Plasteel")
+                                metalCount += count;
+                            else if (def.defName.EndsWith("Block") || def.defName.Contains("Blocks"))
+                                stoneBlockCount += count;
 
-                        // Medicine using human-readable labels (much better for the LLM)
-                        foreach (var kvp in resourceCounter.AllCountedAmounts.Where(k => k.Key.IsMedicine))
-                        {
-                            string key = kvp.Key.label?.CapitalizeFirst() ?? kvp.Key.defName;
-                            medicineBreakdown[key] = kvp.Value;
-                            medicineTotal += kvp.Value;
+                            // === Medicine (human readable labels) ===
+                            if (def.IsMedicine)
+                            {
+                                string key = def.label?.CapitalizeFirst() ?? def.defName;
+                                medicineBreakdown[key] = count;
+                                medicineTotal += count;
+                            }
                         }
                     }
 
-                    // Fallback for any missed modded medicines
+                    // Fallback for modded medicines not in resourceCounter
                     foreach (var thing in map.listerThings.AllThings)
                     {
                         if (thing == null || thing.Destroyed || !thing.Spawned) continue;
@@ -233,8 +260,6 @@ namespace CAP_ChatInteractive.AI
                         int stackCount = thing.stackCount > 0 ? thing.stackCount : 1;
                         string key = def.label?.CapitalizeFirst() ?? def.defName;
 
-                 
-                        
                         if (!medicineBreakdown.ContainsKey(key))
                         {
                             medicineBreakdown[key] = stackCount;
@@ -247,27 +272,54 @@ namespace CAP_ChatInteractive.AI
                     Logger.Warning($"[RICS AI] Food/Medicine cache partial failure: {exFood.Message}");
                 }
 
-                // Simple status helpers (very helpful for small models)
-                string foodStatus = mealsCount > 500 ? "Abundant" : mealsCount > 100 ? "Good" : "Low";
-                string medicineStatus = medicineTotal > 300 ? "Good" : medicineTotal > 50 ? "Okay" : "Low";
+                // === Per-colonist status (better for small and large colonies) ===
+                float mealsPerColonist = (float)mealsCount / colonistCount;
+                float medsPerColonist = (float)medicineTotal / colonistCount;
+
+                string foodStatus = mealsPerColonist > 18 ? "Abundant"
+                                   : mealsPerColonist > 9 ? "Good"
+                                   : "Low";
+
+                string medicineStatus = medsPerColonist > 12 ? "Good"
+                                       : medsPerColonist > 4 ? "Okay"
+                                       : "Low";
 
                 var fullState = new
                 {
                     status = "ok",
                     day = GenDate.DaysPassed,
                     hour = GenDate.HourOfDay(tickManager.TicksGame, worldGrid.LongLatOf(tile).x),
-                    colonists = map.mapPawns?.FreeColonistsSpawnedCount ?? 0,
+                    colonists = colonistCount,
                     threatPoints = StorytellerUtility.DefaultThreatPointsNow(map),
                     wealth = (int)(map.wealthWatcher?.WealthTotal ?? 0),
                     season = GenDate.Season(tickManager.TicksGame, worldGrid.LongLatOf(tile)).ToString(),
                     storyteller = Find.Storyteller?.def?.label ?? "Unknown",
 
-                    // === Improved nested structure for the AI bot ===
+                    // === Grouped food (small LLM friendly) ===
                     food = new
                     {
                         meals = mealsCount,
                         rawFood = rawFoodCount,
-                        status = foodStatus
+                        status = foodStatus,
+                        breakdown = new
+                        {
+                            Meat = meatCount,
+                            Vegetables = vegetableCount,
+                            Fruit = fruitCount,
+                            Eggs = eggCount,
+                            Other = otherRawFoodCount
+                        }
+                    },
+
+                    // === Grouped materials ===
+                    materials = new
+                    {
+                        wood = woodCount,
+                        fabric = fabricCount,
+                        leather = leatherCount,
+                        wool = woolCount,
+                        metals = metalCount,
+                        stoneBlocks = stoneBlockCount
                     },
 
                     medicine = new
@@ -286,7 +338,6 @@ namespace CAP_ChatInteractive.AI
                 };
 
                 _cachedGameStateJson = JsonConvert.SerializeObject(fullState);
-
             }
             catch (Exception ex)
             {
@@ -294,7 +345,6 @@ namespace CAP_ChatInteractive.AI
                 _cachedGameStateJson = "{\"status\":\"error\"}";
             }
         }
-
         public string GetCachedGameStateJson()
         {
             return _cachedGameStateJson;
