@@ -25,6 +25,7 @@ using Newtonsoft.Json;
 using RimWorld;
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -40,13 +41,17 @@ namespace CAP_ChatInteractive.AI
         private CancellationTokenSource _cts;
         private bool _isRunning;
 
-        private readonly Queue<(ChatMessageWrapper message, TaskCompletionSource<string> tcs)> _aiCommandQueue
-            = new Queue<(ChatMessageWrapper, TaskCompletionSource<string>)>();
+        // === New decoupled AI command system ===
+        private readonly Queue<(string requestId, ChatMessageWrapper message)> _aiCommandQueue
+            = new Queue<(string, ChatMessageWrapper)>();
+
+        private readonly ConcurrentDictionary<string, string> _aiCommandResults
+            = new ConcurrentDictionary<string, string>();
 
         private readonly object _aiCommandLock = new object();
 
         /// <summary>
-        /// Lightweight flag the GameComponent can check every tick with almost zero cost.
+        /// Lightweight flag the GameComponent can check every tick.
         /// </summary>
         public bool HasPendingAICommands
         {
@@ -67,10 +72,17 @@ namespace CAP_ChatInteractive.AI
         /// <summary>
         /// Called from the main thread (GameComponent) to process any pending AI commands.
         /// This keeps all game logic on the main thread.
+        /// 
+        /// Includes a safety check so we don't execute commands whose HTTP requester
+        /// has already timed out (the TaskCompletionSource is already completed).
+        /// </summary>
+        /// <summary>
+        /// Called from the main thread to process AI commands.
+        /// Executes one command per call and stores the result.
         /// </summary>
         public void ProcessPendingAICommands()
         {
-            (ChatMessageWrapper message, TaskCompletionSource<string> tcs) item;
+            (string requestId, ChatMessageWrapper message) item;
 
             lock (_aiCommandLock)
             {
@@ -81,12 +93,16 @@ namespace CAP_ChatInteractive.AI
             try
             {
                 string result = ChatCommandProcessor.ProcessAICommand(item.message);
-                item.tcs.TrySetResult(result);
+
+                // Store result so it can be retrieved later
+                _aiCommandResults[item.requestId] = result;
+
+                Logger.Debug($"[RICS AI] AI command '{item.message.Message}' processed. RequestId: {item.requestId}");
             }
             catch (Exception ex)
             {
                 Logger.Error($"[RICS AI] Error executing AI command: {ex.Message}");
-                item.tcs.TrySetResult($"Error: {ex.Message}");
+                _aiCommandResults[item.requestId] = $"Error: {ex.Message}";
             }
         }
 
@@ -128,7 +144,7 @@ namespace CAP_ChatInteractive.AI
                 try
                 {
                     var context = await _listener.GetContextAsync();
-                    _ = HandleRequestAsync(context);
+                    HandleRequestAsync(context);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -137,27 +153,33 @@ namespace CAP_ChatInteractive.AI
             }
         }
 
-        private async Task HandleRequestAsync(HttpListenerContext context)
+        private void HandleRequestAsync(HttpListenerContext context)
         {
             try
             {
                 string path = context.Request.Url.AbsolutePath.ToLowerInvariant().TrimEnd('/');
+                string method = context.Request.HttpMethod;
 
                 if (path == "/gamestate" || path == "/state")
                 {
                     string json = GetCachedGameStateJson();
-                    await SendResponseAsync(context, json, "application/json");
-                    Logger.Debug("[RICS AI] Served cached game state to Python bot");
+                    SendResponse(context, json, "application/json");
                 }
-                else if (path == "/aicommand" && context.Request.HttpMethod == "POST")
+                else if (path == "/aicommand" && method == "POST")
                 {
-                    string result = HandleAICommandRequestAsync(context);   // Now synchronous
-                    SendResponseAsync(context, result, "text/plain").GetAwaiter().GetResult();
+                    string response = HandleAICommandRequest(context);
+                    SendResponse(context, response, "application/json");
+                }
+                else if (path == "/aicommandresult" && method == "GET")
+                {
+                    string requestId = context.Request.QueryString["requestId"];
+                    string response = GetAICommandResult(requestId);
+                    SendResponse(context, response, "application/json");
                 }
                 else
                 {
-                    string error = "{\"error\":\"Unknown endpoint. Use /gamestate or POST /aicommand\"}";
-                    await SendResponseAsync(context, error, "application/json", 404);
+                    string error = "{\"error\":\"Unknown endpoint. Use /gamestate, POST /aicommand, or GET /aicommandresult\"}";
+                    SendResponse(context, error, "application/json", 404);
                 }
             }
             catch (Exception ex)
@@ -170,7 +192,7 @@ namespace CAP_ChatInteractive.AI
             }
         }
 
-        private string HandleAICommandRequestAsync(HttpListenerContext context)
+        private string HandleAICommandRequest(HttpListenerContext context)
         {
             try
             {
@@ -190,11 +212,11 @@ namespace CAP_ChatInteractive.AI
                     }
 
                     if (string.IsNullOrWhiteSpace(command))
-                        return "Error: No command provided";
+                        return "{\"status\":\"error\",\"message\":\"No command provided\"}";
 
                     var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
                     if (settings == null || !settings.AIChatBotActive || !settings.AIChatBotCanExecuteCommands)
-                        return "Error: AI command execution is currently disabled";
+                        return "{\"status\":\"error\",\"message\":\"AI command execution is currently disabled\"}";
 
                     var aiMessage = new ChatMessageWrapper(
                         username: settings.AIChatBotName ?? "Masie",
@@ -204,93 +226,34 @@ namespace CAP_ChatInteractive.AI
                         platformMessage: null
                     );
 
-                    var tcs = new TaskCompletionSource<string>();
+                    string requestId = Guid.NewGuid().ToString("N");
 
                     lock (_aiCommandLock)
                     {
-                        _aiCommandQueue.Enqueue((aiMessage, tcs));
+                        _aiCommandQueue.Enqueue((requestId, aiMessage));
                     }
 
-                    // Use blocking wait instead of await (safer in this RimWorld + Mono setup)
-                    bool completed = tcs.Task.Wait(12000); // 12 second timeout
+                    Logger.Debug($"[RICS AI] Queued AI command. RequestId: {requestId}, Command: {command}");
 
-                    if (completed)
-                    {
-                        return tcs.Task.Result;
-                    }
-                    else
-                    {
-                        return "Error: Command timed out waiting for game thread";
-                    }
+                    // Immediately return queued status (no waiting)
+                    return $"{{\"status\":\"queued\",\"requestId\":\"{requestId}\"}}";
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error($"[RICS AI] Error in /aicommand handler: {ex.Message}");
-                return $"Error: {ex.Message}";
+                return $"{{\"status\":\"error\",\"message\":\"{ex.Message}\"}}";
             }
         }
 
-        //private async Task<string> HandleAICommandRequestAsync(HttpListenerContext context)
-        //{
-        //    try
-        //    {
-        //        using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
-        //        {
-        //            string body = await reader.ReadToEndAsync();
-
-        //            string command = "";
-        //            if (body.TrimStart().StartsWith("{"))
-        //            {
-        //                dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(body);
-        //                command = data?.command?.ToString() ?? "";
-        //            }
-        //            else
-        //            {
-        //                command = body.Trim();
-        //            }
-
-        //            if (string.IsNullOrWhiteSpace(command))
-        //                return "Error: No command provided";
-
-        //            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
-        //            if (settings == null || !settings.AIChatBotActive || !settings.AIChatBotCanExecuteCommands)
-        //                return "Error: AI command execution is currently disabled";
-
-        //            var aiMessage = new ChatMessageWrapper(
-        //                username: settings.AIChatBotName ?? "Masie",
-        //                message: command,
-        //                platform: "AiChatBot",
-        //                platformUserId: "aichatbot-internal",
-        //                platformMessage: null
-        //            );
-
-        //            // Queue the command to be executed on the main thread
-        //            var tcs = new TaskCompletionSource<string>();
-        //            lock (_aiCommandLock)
-        //            {
-        //                _aiCommandQueue.Enqueue((aiMessage, tcs));
-        //            }
-
-        //            // Wait up to 12 seconds for the main thread to process it
-        //            var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(12000));
-
-        //            if (completedTask == tcs.Task)
-        //            {
-        //                return await tcs.Task;
-        //            }
-        //            else
-        //            {
-        //                return "Error: Command timed out waiting for game thread";
-        //            }
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Logger.Error($"[RICS AI] Error in /aicommand handler: {ex.Message}");
-        //        return $"Error: {ex.Message}";
-        //    }
-        //}
+        private void SendResponse(HttpListenerContext context, string text, string contentType, int statusCode = 200)
+        {
+            byte[] buffer = Encoding.UTF8.GetBytes(text);
+            context.Response.StatusCode = statusCode;
+            context.Response.ContentType = contentType;
+            context.Response.ContentLength64 = buffer.Length;
+            context.Response.OutputStream.Write(buffer, 0, buffer.Length);
+        }
 
         private async Task SendResponseAsync(HttpListenerContext context, string text, string contentType, int statusCode = 200)
         {
@@ -299,6 +262,30 @@ namespace CAP_ChatInteractive.AI
             context.Response.ContentType = contentType;
             context.Response.ContentLength64 = buffer.Length;
             await context.Response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
+        }
+
+        /// <summary>
+        /// Returns the result of a previously executed AI command, if available.
+        /// </summary>
+        public string GetAICommandResult(string requestId)
+        {
+            if (string.IsNullOrWhiteSpace(requestId))
+                return "{\"status\":\"error\",\"message\":\"Missing requestId\"}";
+
+            if (_aiCommandResults.TryRemove(requestId, out string result))
+            {
+                return $"{{\"status\":\"ready\",\"result\":{Newtonsoft.Json.JsonConvert.SerializeObject(result)}}}";
+            }
+
+            // Check if it's still queued
+            lock (_aiCommandLock)
+            {
+                bool stillQueued = _aiCommandQueue.Any(x => x.requestId == requestId);
+                if (stillQueued)
+                    return "{\"status\":\"pending\"}";
+            }
+
+            return "{\"status\":\"not_found\"}";
         }
 
 
