@@ -96,6 +96,18 @@ namespace CAP_ChatInteractive
                 Logger.Warning($"[RICS] Failed to pre-initialize Viewers/GameComponent: {ex.Message}");
             }
 
+            // Ensure AI Commands folders exist early (before any game is loaded)
+            try
+            {
+                string aiCommandsPath = Path.Combine(GenFilePaths.ConfigFolderPath, "CAP_ChatInteractive", "AI_Commands");
+                Directory.CreateDirectory(Path.Combine(aiCommandsPath, "incoming"));
+                Directory.CreateDirectory(Path.Combine(aiCommandsPath, "outgoing"));
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[RICS] Could not pre-create AI_Commands folders: {ex.Message}");
+            }
+
 
             // Then initialize services (which will use the registered commands)
             InitializeServices();
