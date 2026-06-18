@@ -151,7 +151,11 @@ namespace CAP_ChatInteractive
                         if (aiChatBotStateUpdateTickCounter >= ticksPerUpdate)
                         {
                             aiChatBotStateUpdateTickCounter = 0;
-                            _aiChatBotService?.UpdateGameStateCache();
+
+                            // Process file-based AI commands (main thread only - stable)
+                            _aiChatBotService?.ProcessFileBasedAICommands();
+
+                            // _aiChatBotService?.UpdateGameStateCache(); Not safe for RImworlds Mono, crashes.
                         }
                     }
 
