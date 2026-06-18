@@ -28,10 +28,9 @@
  * Community Preservation Modifications © 2025 Captolamia
  */
 
-using RimWorld;
+using RimWorld.BaseGen;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using Verse;
 
@@ -323,6 +322,16 @@ namespace CAP_ChatInteractive
         {
             Logger.Debug($"Checking permission for viewer '{Username}': Current roles - Broadcaster:{IsBroadcaster}, Moderator:{IsModerator}, VIP:{IsVip}, Subscriber:{IsSubscriber}");
             Logger.Debug($"Required permission level: '{permissionLevel}'");
+
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+
+            if (PlatformUserIds.ContainsKey("aichatbot") ||
+    (PlatformUserIds.Count == 0 && Username.Equals(settings.AIChatBotName, StringComparison.OrdinalIgnoreCase)))
+            {
+                // Temporary Logger message for AI bot detection
+                Logger.Debug($"Viewer '{Username}' identified as AI chat bot. Granting all permissions.");
+                return true; // AI bot can run any command
+            }
 
             bool result = permissionLevel.ToLowerInvariant() switch
             {
