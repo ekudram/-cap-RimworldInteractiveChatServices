@@ -15,6 +15,12 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+
+/// <summary>
+/// AIChatBotService implements a simple HTTP listener that serves the current game state as JSON to an external Python AI bot.
+/// Using Threading here is safe because the listener runs in a separate thread and only accesses the game state cache, which is updated on the main thread.
+/// </summary>
+
 using Newtonsoft.Json;
 using RimWorld;
 using System;
@@ -24,7 +30,6 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using UnityEngine;
 using Verse;
 
 namespace CAP_ChatInteractive.AI
@@ -99,9 +104,15 @@ namespace CAP_ChatInteractive.AI
                     await SendResponseAsync(context, json, "application/json");
                     Logger.Debug("[RICS AI] Served cached game state to Python bot");
                 }
+                else if (path == "/aicommand" && context.Request.HttpMethod == "POST")
+                {
+                    // === NEW: AI ChatBot command execution path ===
+                    string result = await HandleAICommandRequestAsync(context);
+                    await SendResponseAsync(context, result, "text/plain");
+                }
                 else
                 {
-                    string error = "{\"error\":\"Unknown endpoint. Use /gamestate\"}";
+                    string error = "{\"error\":\"Unknown endpoint. Use /gamestate or POST /aicommand\"}";
                     await SendResponseAsync(context, error, "application/json", 404);
                 }
             }
@@ -112,6 +123,52 @@ namespace CAP_ChatInteractive.AI
             finally
             {
                 context.Response.Close();
+            }
+        }
+
+        private async Task<string> HandleAICommandRequestAsync(HttpListenerContext context)
+        {
+            try
+            {
+                using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
+                {
+                    string body = await reader.ReadToEndAsync();
+
+                    // Simple JSON or plain text support
+                    string command = "";
+                    if (body.TrimStart().StartsWith("{"))
+                    {
+                        // Try parse as JSON { "command": "..." }
+                        dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(body);
+                        command = data?.command?.ToString() ?? "";
+                    }
+                    else
+                    {
+                        command = body.Trim();
+                    }
+
+                    if (string.IsNullOrWhiteSpace(command))
+                        return "Error: No command provided";
+
+                    var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+
+                    // Create a fake chat message from the AI bot
+                    var aiMessage = new ChatMessageWrapper(
+                        username: settings?.AIChatBotName ?? "Masie",
+                        message: command,
+                        platform: "AiChatBot",
+                        platformUserId: "aichatbot-internal",
+                        platformMessage: null
+                    );
+
+                    string result = ChatCommandProcessor.ProcessAICommand(aiMessage);
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[RICS AI] Error in /aicommand handler: {ex.Message}");
+                return $"Error: {ex.Message}";
             }
         }
 
@@ -345,6 +402,7 @@ namespace CAP_ChatInteractive.AI
                 _cachedGameStateJson = "{\"status\":\"error\"}";
             }
         }
+
         public string GetCachedGameStateJson()
         {
             return _cachedGameStateJson;
