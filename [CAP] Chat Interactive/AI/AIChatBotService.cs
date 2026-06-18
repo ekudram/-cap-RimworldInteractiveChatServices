@@ -40,10 +40,55 @@ namespace CAP_ChatInteractive.AI
         private CancellationTokenSource _cts;
         private bool _isRunning;
 
+        private readonly Queue<(ChatMessageWrapper message, TaskCompletionSource<string> tcs)> _aiCommandQueue
+            = new Queue<(ChatMessageWrapper, TaskCompletionSource<string>)>();
+
+        private readonly object _aiCommandLock = new object();
+
+        /// <summary>
+        /// Lightweight flag the GameComponent can check every tick with almost zero cost.
+        /// </summary>
+        public bool HasPendingAICommands
+        {
+            get
+            {
+                lock (_aiCommandLock)
+                {
+                    return _aiCommandQueue.Count > 0;
+                }
+            }
+        }
+
         // Cache updated from main thread
         private string _cachedGameStateJson = "{\"status\":\"no_game\"}";
 
         public bool IsRunning => _isRunning;
+
+        /// <summary>
+        /// Called from the main thread (GameComponent) to process any pending AI commands.
+        /// This keeps all game logic on the main thread.
+        /// </summary>
+        public void ProcessPendingAICommands()
+        {
+            (ChatMessageWrapper message, TaskCompletionSource<string> tcs) item;
+
+            lock (_aiCommandLock)
+            {
+                if (_aiCommandQueue.Count == 0) return;
+                item = _aiCommandQueue.Dequeue();
+            }
+
+            try
+            {
+                string result = ChatCommandProcessor.ProcessAICommand(item.message);
+                item.tcs.TrySetResult(result);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[RICS AI] Error executing AI command: {ex.Message}");
+                item.tcs.TrySetResult($"Error: {ex.Message}");
+            }
+        }
 
         public void Start()
         {
@@ -134,11 +179,9 @@ namespace CAP_ChatInteractive.AI
                 {
                     string body = await reader.ReadToEndAsync();
 
-                    // Simple JSON or plain text support
                     string command = "";
                     if (body.TrimStart().StartsWith("{"))
                     {
-                        // Try parse as JSON { "command": "..." }
                         dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(body);
                         command = data?.command?.ToString() ?? "";
                     }
@@ -151,18 +194,35 @@ namespace CAP_ChatInteractive.AI
                         return "Error: No command provided";
 
                     var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                    if (settings == null || !settings.AIChatBotActive || !settings.AIChatBotCanExecuteCommands)
+                        return "Error: AI command execution is currently disabled";
 
-                    // Create a fake chat message from the AI bot
                     var aiMessage = new ChatMessageWrapper(
-                        username: settings?.AIChatBotName ?? "Masie",
+                        username: settings.AIChatBotName ?? "Masie",
                         message: command,
                         platform: "AiChatBot",
                         platformUserId: "aichatbot-internal",
                         platformMessage: null
                     );
 
-                    string result = ChatCommandProcessor.ProcessAICommand(aiMessage);
-                    return result;
+                    // Queue the command to be executed on the main thread
+                    var tcs = new TaskCompletionSource<string>();
+                    lock (_aiCommandLock)
+                    {
+                        _aiCommandQueue.Enqueue((aiMessage, tcs));
+                    }
+
+                    // Wait up to 12 seconds for the main thread to process it
+                    var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(12000));
+
+                    if (completedTask == tcs.Task)
+                    {
+                        return await tcs.Task;
+                    }
+                    else
+                    {
+                        return "Error: Command timed out waiting for game thread";
+                    }
                 }
             }
             catch (Exception ex)
