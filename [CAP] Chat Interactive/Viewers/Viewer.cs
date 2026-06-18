@@ -324,13 +324,13 @@ namespace CAP_ChatInteractive
             Logger.Debug($"Required permission level: '{permissionLevel}'");
 
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            string aiBotName = settings?.AIChatBotName ?? "Masie";
 
             if (PlatformUserIds.ContainsKey("aichatbot") ||
-    (PlatformUserIds.Count == 0 && Username.Equals(settings.AIChatBotName, StringComparison.OrdinalIgnoreCase)))
+                (PlatformUserIds.Count == 0 && Username.Equals(aiBotName, StringComparison.OrdinalIgnoreCase)))
             {
-                // Temporary Logger message for AI bot detection
                 Logger.Debug($"Viewer '{Username}' identified as AI chat bot. Granting all permissions.");
-                return true; // AI bot can run any command
+                return true;
             }
 
             bool result = permissionLevel.ToLowerInvariant() switch
