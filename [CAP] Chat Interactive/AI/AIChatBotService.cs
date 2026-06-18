@@ -16,16 +16,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 
-/// <summary>
-/// AIChatBotService implements a simple HTTP listener that serves the current game state as JSON to an external Python AI bot.
-/// Using Threading here is safe because the listener runs in a separate thread and only accesses the game state cache, which is updated on the main thread.
-/// </summary>
-
 using Newtonsoft.Json;
 using RimWorld;
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -41,7 +37,7 @@ namespace CAP_ChatInteractive.AI
         private CancellationTokenSource _cts;
         private bool _isRunning;
 
-        // === New decoupled AI command system ===
+        // === Decoupled AI command system ===
         private readonly Queue<(string requestId, ChatMessageWrapper message)> _aiCommandQueue
             = new Queue<(string, ChatMessageWrapper)>();
 
@@ -50,9 +46,13 @@ namespace CAP_ChatInteractive.AI
 
         private readonly object _aiCommandLock = new object();
 
-        /// <summary>
-        /// Lightweight flag the GameComponent can check every tick.
-        /// </summary>
+        // === File-based AI Command System (main thread only - stable) ===
+        // Uses RimWorld's official safe config folder to avoid permission issues
+        private string _aiCommandBasePath;
+        private string _aiCommandIncomingPath;
+        private string _aiCommandOutgoingPath;
+        private DateTime _lastFilePollTime = DateTime.MinValue;
+
         public bool HasPendingAICommands
         {
             get
@@ -64,22 +64,10 @@ namespace CAP_ChatInteractive.AI
             }
         }
 
-        // Cache updated from main thread
         private string _cachedGameStateJson = "{\"status\":\"no_game\"}";
 
         public bool IsRunning => _isRunning;
 
-        /// <summary>
-        /// Called from the main thread (GameComponent) to process any pending AI commands.
-        /// This keeps all game logic on the main thread.
-        /// 
-        /// Includes a safety check so we don't execute commands whose HTTP requester
-        /// has already timed out (the TaskCompletionSource is already completed).
-        /// </summary>
-        /// <summary>
-        /// Called from the main thread to process AI commands.
-        /// Executes one command per call and stores the result.
-        /// </summary>
         public void ProcessPendingAICommands()
         {
             (string requestId, ChatMessageWrapper message) item;
@@ -90,14 +78,14 @@ namespace CAP_ChatInteractive.AI
                 item = _aiCommandQueue.Dequeue();
             }
 
+            Logger.Debug($"[RICS AI] ProcessPendingAICommands START - RequestId: {item.requestId}");
+
             try
             {
                 string result = ChatCommandProcessor.ProcessAICommand(item.message);
-
-                // Store result so it can be retrieved later
                 _aiCommandResults[item.requestId] = result;
 
-                Logger.Debug($"[RICS AI] AI command '{item.message.Message}' processed. RequestId: {item.requestId}");
+                Logger.Debug($"[RICS AI] ProcessPendingAICommands SUCCESS - RequestId: {item.requestId}");
             }
             catch (Exception ex)
             {
@@ -114,6 +102,17 @@ namespace CAP_ChatInteractive.AI
 
             try
             {
+                // === SAFE PATH INITIALIZATION ===
+                // Always create folders inside RimWorld's official config directory
+                string baseConfigPath = Path.Combine(GenFilePaths.ConfigFolderPath, "CAP_ChatInteractive", "AI_Commands");
+                _aiCommandBasePath = baseConfigPath; // store for reference if needed later
+                _aiCommandIncomingPath = Path.Combine(baseConfigPath, "incoming");
+                _aiCommandOutgoingPath = Path.Combine(baseConfigPath, "outgoing");
+
+                // Create directories early so the Python bot never crashes
+                Directory.CreateDirectory(_aiCommandIncomingPath);
+                Directory.CreateDirectory(_aiCommandOutgoingPath);
+
                 string endpoint = settings.AIChatBotEndpoint.TrimEnd('/') + "/";
                 _listener = new HttpListener();
                 _listener.Prefixes.Add(endpoint);
@@ -122,12 +121,10 @@ namespace CAP_ChatInteractive.AI
                 _cts = new CancellationTokenSource();
                 _isRunning = true;
 
-                Logger.Message($"[RICS AI] ✅ Listener successfully started on {endpoint} (Python bot should GET /gamestate here)");
+                Logger.Message($"[RICS AI] ✅ Listener started on {endpoint}");
+                Logger.Debug($"[RICS AI] File-based commands using safe path: {baseConfigPath}");
 
-                // Immediately populate the cache so the first GET /gamestate from the Python bot has real data
-                // instead of the default "no_game" / "no_map" placeholder.
                 UpdateGameStateCache();
-
                 Task.Run(() => ListenLoop(_cts.Token));
             }
             catch (Exception ex)
@@ -155,36 +152,27 @@ namespace CAP_ChatInteractive.AI
 
         private void HandleRequestAsync(HttpListenerContext context)
         {
+            string path = "unknown";
+
             try
             {
-                string path = context.Request.Url.AbsolutePath.ToLowerInvariant().TrimEnd('/');
-                string method = context.Request.HttpMethod;
+                path = context.Request.Url.AbsolutePath.ToLowerInvariant().TrimEnd('/');
 
                 if (path == "/gamestate" || path == "/state")
                 {
                     string json = GetCachedGameStateJson();
                     SendResponse(context, json, "application/json");
                 }
-                else if (path == "/aicommand" && method == "POST")
-                {
-                    string response = HandleAICommandRequest(context);
-                    SendResponse(context, response, "application/json");
-                }
-                else if (path == "/aicommandresult" && method == "GET")
-                {
-                    string requestId = context.Request.QueryString["requestId"];
-                    string response = GetAICommandResult(requestId);
-                    SendResponse(context, response, "application/json");
-                }
                 else
                 {
-                    string error = "{\"error\":\"Unknown endpoint. Use /gamestate, POST /aicommand, or GET /aicommandresult\"}";
+                    // All command-related endpoints have been moved to file-based (main thread only)
+                    string error = "{\"error\":\"This endpoint has been removed. Use file-based commands instead.\"}";
                     SendResponse(context, error, "application/json", 404);
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"[RICS AI] Request handler error: {ex.Message}");
+                Logger.Error($"[RICS AI] Request handler error on path '{path}': {ex.Message}");
             }
             finally
             {
@@ -192,108 +180,25 @@ namespace CAP_ChatInteractive.AI
             }
         }
 
-        private string HandleAICommandRequest(HttpListenerContext context)
-        {
-            try
-            {
-                using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
-                {
-                    string body = reader.ReadToEnd();
-
-                    string command = "";
-                    if (body.TrimStart().StartsWith("{"))
-                    {
-                        dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(body);
-                        command = data?.command?.ToString() ?? "";
-                    }
-                    else
-                    {
-                        command = body.Trim();
-                    }
-
-                    if (string.IsNullOrWhiteSpace(command))
-                        return "{\"status\":\"error\",\"message\":\"No command provided\"}";
-
-                    var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
-                    if (settings == null || !settings.AIChatBotActive || !settings.AIChatBotCanExecuteCommands)
-                        return "{\"status\":\"error\",\"message\":\"AI command execution is currently disabled\"}";
-
-                    var aiMessage = new ChatMessageWrapper(
-                        username: settings.AIChatBotName ?? "Masie",
-                        message: command,
-                        platform: "AiChatBot",
-                        platformUserId: "aichatbot-internal",
-                        platformMessage: null
-                    );
-
-                    string requestId = Guid.NewGuid().ToString("N");
-
-                    lock (_aiCommandLock)
-                    {
-                        _aiCommandQueue.Enqueue((requestId, aiMessage));
-                    }
-
-                    Logger.Debug($"[RICS AI] Queued AI command. RequestId: {requestId}, Command: {command}");
-
-                    // Immediately return queued status (no waiting)
-                    return $"{{\"status\":\"queued\",\"requestId\":\"{requestId}\"}}";
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"[RICS AI] Error in /aicommand handler: {ex.Message}");
-                return $"{{\"status\":\"error\",\"message\":\"{ex.Message}\"}}";
-            }
-        }
 
         private void SendResponse(HttpListenerContext context, string text, string contentType, int statusCode = 200)
         {
-            byte[] buffer = Encoding.UTF8.GetBytes(text);
-            context.Response.StatusCode = statusCode;
-            context.Response.ContentType = contentType;
-            context.Response.ContentLength64 = buffer.Length;
-            context.Response.OutputStream.Write(buffer, 0, buffer.Length);
-        }
-
-        private async Task SendResponseAsync(HttpListenerContext context, string text, string contentType, int statusCode = 200)
-        {
-            byte[] buffer = Encoding.UTF8.GetBytes(text);
-            context.Response.StatusCode = statusCode;
-            context.Response.ContentType = contentType;
-            context.Response.ContentLength64 = buffer.Length;
-            await context.Response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
-        }
-
-        /// <summary>
-        /// Returns the result of a previously executed AI command, if available.
-        /// </summary>
-        public string GetAICommandResult(string requestId)
-        {
-            if (string.IsNullOrWhiteSpace(requestId))
-                return "{\"status\":\"error\",\"message\":\"Missing requestId\"}";
-
-            if (_aiCommandResults.TryRemove(requestId, out string result))
+            try
             {
-                return $"{{\"status\":\"ready\",\"result\":{Newtonsoft.Json.JsonConvert.SerializeObject(result)}}}";
+                byte[] buffer = Encoding.UTF8.GetBytes(text);
+                context.Response.StatusCode = statusCode;
+                context.Response.ContentType = contentType;
+                context.Response.ContentLength64 = buffer.Length;
+                context.Response.OutputStream.Write(buffer, 0, buffer.Length);
             }
-
-            // Check if it's still queued
-            lock (_aiCommandLock)
+            catch (Exception ex)
             {
-                bool stillQueued = _aiCommandQueue.Any(x => x.requestId == requestId);
-                if (stillQueued)
-                    return "{\"status\":\"pending\"}";
+                Logger.Error($"[RICS AI] SendResponse failed: {ex.Message}");
             }
-
-            return "{\"status\":\"not_found\"}";
         }
-
 
         public void UpdateGameStateCache()
         {
-            // Prefer a player home map (the actual colony) over Find.CurrentMap.
-            // This fixes cases where the player is flying in a grav ship, viewing a temporary map,
-            // or has multiple maps open.
             Map map = Current.Game?.Maps?.FirstOrDefault(m => m.IsPlayerHome && !m.Disposed)
                    ?? Find.AnyPlayerHomeMap
                    ?? Find.CurrentMap;
@@ -312,10 +217,9 @@ namespace CAP_ChatInteractive.AI
 
                 int colonistCount = map.mapPawns?.FreeColonistsSpawnedCount ?? 1;
 
-                // === Grouped counts for AI bot ===
+                // === Grouped counts (same as before) ===
                 int mealsCount = 0;
                 int rawFoodCount = 0;
-
                 int meatCount = 0;
                 int vegetableCount = 0;
                 int fruitCount = 0;
@@ -329,82 +233,52 @@ namespace CAP_ChatInteractive.AI
                 int fabricCount = 0;
                 int leatherCount = 0;
                 int woolCount = 0;
-                int metalCount = 0;          // steel + plasteel
+                int metalCount = 0;
                 int stoneBlockCount = 0;
 
                 try
                 {
                     var resourceCounter = map.resourceCounter;
-
                     if (resourceCounter != null)
                     {
                         foreach (var kvp in resourceCounter.AllCountedAmounts)
                         {
                             var def = kvp.Key;
                             if (def == null) continue;
-
                             int count = kvp.Value;
 
-                            // === Meals ===
                             if (def.ingestible != null)
                             {
                                 var foodType = def.ingestible.foodType;
-
-                                if ((foodType & FoodTypeFlags.Meal) != 0 ||
-                                    (foodType & FoodTypeFlags.Processed) != 0 ||
-                                    def.defName.IndexOf("Meal", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                    def.defName.IndexOf("Pie", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                    def.defName.IndexOf("Stew", StringComparison.OrdinalIgnoreCase) >= 0)
+                                if ((foodType & FoodTypeFlags.Meal) != 0 || (foodType & FoodTypeFlags.Processed) != 0)
                                 {
-                                    mealsCount += count;
-                                    continue;
+                                    mealsCount += count; continue;
                                 }
-
-                                // === Raw Food Classification ===
                                 if (def.IsNutritionGivingIngestible)
                                 {
-                                    if ((foodType & FoodTypeFlags.Meat) != 0)
-                                    {
-                                        meatCount += count;
-                                    }
+                                    if ((foodType & FoodTypeFlags.Meat) != 0) meatCount += count;
                                     else if ((foodType & FoodTypeFlags.VegetableOrFruit) != 0)
                                     {
                                         if (def.defName.IndexOf("Fruit", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                            def.defName.IndexOf("Berry", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                            def.defName.IndexOf("Agave", StringComparison.OrdinalIgnoreCase) >= 0)
-                                        {
+                                            def.defName.IndexOf("Berry", StringComparison.OrdinalIgnoreCase) >= 0)
                                             fruitCount += count;
-                                        }
-                                        else
-                                        {
-                                            vegetableCount += count;
-                                        }
+                                        else vegetableCount += count;
                                     }
                                     else if ((foodType & FoodTypeFlags.AnimalProduct) != 0)
                                     {
-                                        if (def.defName.IndexOf("Egg", StringComparison.OrdinalIgnoreCase) >= 0)
-                                            eggCount += count;
-                                        else
-                                            otherRawFoodCount += count; // milk, insect jelly, etc.
+                                        if (def.defName.IndexOf("Egg", StringComparison.OrdinalIgnoreCase) >= 0) eggCount += count;
+                                        else otherRawFoodCount += count;
                                     }
                                 }
                             }
 
-                            // === Materials (grouped, excludes chunks/corpses/waste) ===
-                            if (def.defName == "WoodLog")
-                                woodCount += count;
-                            else if (def.thingCategories?.Any(c => c.defName == "Textiles" || c.defName == "Fabric") == true)
-                                fabricCount += count;
-                            else if (def.thingCategories?.Any(c => c.defName == "Leathers") == true)
-                                leatherCount += count;
-                            else if (def.defName.StartsWith("Wool"))
-                                woolCount += count;
-                            else if (def.defName == "Steel" || def.defName == "Plasteel")
-                                metalCount += count;
-                            else if (def.defName.EndsWith("Block") || def.defName.Contains("Blocks"))
-                                stoneBlockCount += count;
+                            if (def.defName == "WoodLog") woodCount += count;
+                            else if (def.thingCategories?.Any(c => c.defName == "Textiles" || c.defName == "Fabric") == true) fabricCount += count;
+                            else if (def.thingCategories?.Any(c => c.defName == "Leathers") == true) leatherCount += count;
+                            else if (def.defName.StartsWith("Wool")) woolCount += count;
+                            else if (def.defName == "Steel" || def.defName == "Plasteel") metalCount += count;
+                            else if (def.defName.EndsWith("Block") || def.defName.Contains("Blocks")) stoneBlockCount += count;
 
-                            // === Medicine (human readable labels) ===
                             if (def.IsMedicine)
                             {
                                 string key = def.label?.CapitalizeFirst() ?? def.defName;
@@ -414,39 +288,28 @@ namespace CAP_ChatInteractive.AI
                         }
                     }
 
-                    // Fallback for modded medicines not in resourceCounter
+                    // Fallback for modded medicine
                     foreach (var thing in map.listerThings.AllThings)
                     {
                         if (thing == null || thing.Destroyed || !thing.Spawned) continue;
-                        var def = thing.def;
-                        if (def == null || !def.IsMedicine) continue;
-
-                        int stackCount = thing.stackCount > 0 ? thing.stackCount : 1;
-                        string key = def.label?.CapitalizeFirst() ?? def.defName;
-
-                        if (!medicineBreakdown.ContainsKey(key))
+                        if (thing.def != null && thing.def.IsMedicine)
                         {
-                            medicineBreakdown[key] = stackCount;
-                            medicineTotal += stackCount;
+                            string key = thing.def.label?.CapitalizeFirst() ?? thing.def.defName;
+                            if (!medicineBreakdown.ContainsKey(key))
+                            {
+                                medicineBreakdown[key] = thing.stackCount;
+                                medicineTotal += thing.stackCount;
+                            }
                         }
                     }
                 }
-                catch (Exception exFood)
-                {
-                    Logger.Warning($"[RICS AI] Food/Medicine cache partial failure: {exFood.Message}");
-                }
+                catch { /* partial failure is ok */ }
 
-                // === Per-colonist status (better for small and large colonies) ===
                 float mealsPerColonist = (float)mealsCount / colonistCount;
                 float medsPerColonist = (float)medicineTotal / colonistCount;
 
-                string foodStatus = mealsPerColonist > 18 ? "Abundant"
-                                   : mealsPerColonist > 9 ? "Good"
-                                   : "Low";
-
-                string medicineStatus = medsPerColonist > 12 ? "Good"
-                                       : medsPerColonist > 4 ? "Okay"
-                                       : "Low";
+                string foodStatus = mealsPerColonist > 18 ? "Abundant" : mealsPerColonist > 9 ? "Good" : "Low";
+                string medicineStatus = medsPerColonist > 12 ? "Good" : medsPerColonist > 4 ? "Okay" : "Low";
 
                 var fullState = new
                 {
@@ -458,41 +321,15 @@ namespace CAP_ChatInteractive.AI
                     wealth = (int)(map.wealthWatcher?.WealthTotal ?? 0),
                     season = GenDate.Season(tickManager.TicksGame, worldGrid.LongLatOf(tile)).ToString(),
                     storyteller = Find.Storyteller?.def?.label ?? "Unknown",
-
-                    // === Grouped food (small LLM friendly) ===
                     food = new
                     {
                         meals = mealsCount,
                         rawFood = rawFoodCount,
                         status = foodStatus,
-                        breakdown = new
-                        {
-                            Meat = meatCount,
-                            Vegetables = vegetableCount,
-                            Fruit = fruitCount,
-                            Eggs = eggCount,
-                            Other = otherRawFoodCount
-                        }
+                        breakdown = new { Meat = meatCount, Vegetables = vegetableCount, Fruit = fruitCount, Eggs = eggCount, Other = otherRawFoodCount }
                     },
-
-                    // === Grouped materials ===
-                    materials = new
-                    {
-                        wood = woodCount,
-                        fabric = fabricCount,
-                        leather = leatherCount,
-                        wool = woolCount,
-                        metals = metalCount,
-                        stoneBlocks = stoneBlockCount
-                    },
-
-                    medicine = new
-                    {
-                        total = medicineTotal,
-                        status = medicineStatus,
-                        breakdown = medicineBreakdown
-                    },
-
+                    materials = new { wood = woodCount, fabric = fabricCount, leather = leatherCount, wool = woolCount, metals = metalCount, stoneBlocks = stoneBlockCount },
+                    medicine = new { total = medicineTotal, status = medicineStatus, breakdown = medicineBreakdown },
                     colony = new
                     {
                         name = map.Parent?.Label ?? "Unknown Colony",
@@ -510,10 +347,128 @@ namespace CAP_ChatInteractive.AI
             }
         }
 
-        public string GetCachedGameStateJson()
+        /// <summary>
+        /// Polled from GameComponentTick on the main thread.
+        /// Processes any new command files dropped by the Python bot.
+        /// Completely thread-safe. Uses safe RimWorld config folder paths.
+        /// </summary>
+        public void ProcessFileBasedAICommands()
         {
-            return _cachedGameStateJson;
+            // Safety guard - paths are only set after Start() is called
+            if (string.IsNullOrEmpty(_aiCommandIncomingPath) || string.IsNullOrEmpty(_aiCommandOutgoingPath))
+                return;
+
+            try
+            {
+                // Throttle to every ~500ms to avoid hammering the filesystem
+                if ((DateTime.Now - _lastFilePollTime).TotalMilliseconds < 500)
+                    return;
+
+                _lastFilePollTime = DateTime.Now;
+
+                // Ensure directories exist (defensive)
+                if (!Directory.Exists(_aiCommandIncomingPath))
+                    Directory.CreateDirectory(_aiCommandIncomingPath);
+
+                if (!Directory.Exists(_aiCommandOutgoingPath))
+                    Directory.CreateDirectory(_aiCommandOutgoingPath);
+
+                var files = Directory.GetFiles(_aiCommandIncomingPath, "*.json");
+                foreach (var file in files)
+                {
+                    try
+                    {
+                        string json = File.ReadAllText(file);
+                        dynamic data = JsonConvert.DeserializeObject(json);
+                        string command = data?.command?.ToString() ?? "";
+
+                        if (string.IsNullOrWhiteSpace(command))
+                        {
+                            File.Delete(file);
+                            continue;
+                        }
+
+                        var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                        if (settings == null || !settings.AIChatBotActive || !settings.AIChatBotCanExecuteCommands)
+                        {
+                            File.Delete(file);
+                            continue;
+                        }
+
+                        var aiMessage = new ChatMessageWrapper(
+                            username: settings.AIChatBotName ?? "Masie",
+                            message: command,
+                            platform: "AiChatBot",
+                            platformUserId: "aichatbot-file",
+                            platformMessage: null
+                        );
+
+                        string result = ChatCommandProcessor.ProcessAICommand(aiMessage);
+
+                        // Write result using the safe outgoing path
+                        string requestId = Path.GetFileNameWithoutExtension(file);
+                        string resultPath = Path.Combine(_aiCommandOutgoingPath, requestId + ".json");
+
+                        var resultObj = new { status = "ready", result = result };
+                        File.WriteAllText(resultPath, JsonConvert.SerializeObject(resultObj));
+
+                        // Delete incoming file
+                        File.Delete(file);
+
+                        Logger.Debug($"[RICS AI] File command processed: {command} → Result written");
+                    }
+                    catch (Exception exFile)
+                    {
+                        Logger.Warning($"[RICS AI] Failed to process command file {file}: {exFile.Message}");
+                        try { File.Delete(file); } catch { }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[RICS AI] File poll error: {ex.Message}");
+            }
         }
+
+        /// <summary>
+        /// Called by Python bot to check for command result (via file).
+        /// Returns the result JSON or {"status":"pending"} / {"status":"not_found"}.
+        /// Uses safe RimWorld config folder paths.
+        /// </summary>
+        public string GetFileBasedAICommandResult(string requestId)
+        {
+            if (string.IsNullOrWhiteSpace(requestId))
+                return "{\"status\":\"error\",\"message\":\"Missing requestId\"}";
+
+            // Safety guard
+            if (string.IsNullOrEmpty(_aiCommandOutgoingPath) || string.IsNullOrEmpty(_aiCommandIncomingPath))
+                return "{\"status\":\"error\",\"message\":\"AI command system not initialized\"}";
+
+            string resultPath = Path.Combine(_aiCommandOutgoingPath, requestId + ".json");
+
+            if (File.Exists(resultPath))
+            {
+                try
+                {
+                    string content = File.ReadAllText(resultPath);
+                    File.Delete(resultPath); // one-time read
+                    return content;
+                }
+                catch
+                {
+                    return "{\"status\":\"error\",\"message\":\"Failed to read result\"}";
+                }
+            }
+
+            // Check if still waiting in incoming folder
+            string incomingPath = Path.Combine(_aiCommandIncomingPath, requestId + ".json");
+            if (File.Exists(incomingPath))
+                return "{\"status\":\"pending\"}";
+
+            return "{\"status\":\"not_found\"}";
+        }
+
+        public string GetCachedGameStateJson() => _cachedGameStateJson;
 
         public void Stop()
         {
@@ -521,9 +476,8 @@ namespace CAP_ChatInteractive.AI
             _cts?.Cancel();
             _listener?.Stop();
             _listener?.Close();
-            Logger.Debug("[RICS AI] Listener stopped");
         }
 
-        public void ExposeData() { /* No persistent state needed */ }
+        public void ExposeData() { }
     }
 }
