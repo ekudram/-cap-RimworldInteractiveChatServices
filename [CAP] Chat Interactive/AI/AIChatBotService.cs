@@ -151,9 +151,8 @@ namespace CAP_ChatInteractive.AI
                 }
                 else if (path == "/aicommand" && context.Request.HttpMethod == "POST")
                 {
-                    // === NEW: AI ChatBot command execution path ===
-                    string result = await HandleAICommandRequestAsync(context);
-                    await SendResponseAsync(context, result, "text/plain");
+                    string result = HandleAICommandRequestAsync(context);   // Now synchronous
+                    SendResponseAsync(context, result, "text/plain").GetAwaiter().GetResult();
                 }
                 else
                 {
@@ -171,13 +170,13 @@ namespace CAP_ChatInteractive.AI
             }
         }
 
-        private async Task<string> HandleAICommandRequestAsync(HttpListenerContext context)
+        private string HandleAICommandRequestAsync(HttpListenerContext context)
         {
             try
             {
                 using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
                 {
-                    string body = await reader.ReadToEndAsync();
+                    string body = reader.ReadToEnd();
 
                     string command = "";
                     if (body.TrimStart().StartsWith("{"))
@@ -205,19 +204,19 @@ namespace CAP_ChatInteractive.AI
                         platformMessage: null
                     );
 
-                    // Queue the command to be executed on the main thread
                     var tcs = new TaskCompletionSource<string>();
+
                     lock (_aiCommandLock)
                     {
                         _aiCommandQueue.Enqueue((aiMessage, tcs));
                     }
 
-                    // Wait up to 12 seconds for the main thread to process it
-                    var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(12000));
+                    // Use blocking wait instead of await (safer in this RimWorld + Mono setup)
+                    bool completed = tcs.Task.Wait(12000); // 12 second timeout
 
-                    if (completedTask == tcs.Task)
+                    if (completed)
                     {
-                        return await tcs.Task;
+                        return tcs.Task.Result;
                     }
                     else
                     {
@@ -231,6 +230,67 @@ namespace CAP_ChatInteractive.AI
                 return $"Error: {ex.Message}";
             }
         }
+
+        //private async Task<string> HandleAICommandRequestAsync(HttpListenerContext context)
+        //{
+        //    try
+        //    {
+        //        using (var reader = new System.IO.StreamReader(context.Request.InputStream, Encoding.UTF8))
+        //        {
+        //            string body = await reader.ReadToEndAsync();
+
+        //            string command = "";
+        //            if (body.TrimStart().StartsWith("{"))
+        //            {
+        //                dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(body);
+        //                command = data?.command?.ToString() ?? "";
+        //            }
+        //            else
+        //            {
+        //                command = body.Trim();
+        //            }
+
+        //            if (string.IsNullOrWhiteSpace(command))
+        //                return "Error: No command provided";
+
+        //            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+        //            if (settings == null || !settings.AIChatBotActive || !settings.AIChatBotCanExecuteCommands)
+        //                return "Error: AI command execution is currently disabled";
+
+        //            var aiMessage = new ChatMessageWrapper(
+        //                username: settings.AIChatBotName ?? "Masie",
+        //                message: command,
+        //                platform: "AiChatBot",
+        //                platformUserId: "aichatbot-internal",
+        //                platformMessage: null
+        //            );
+
+        //            // Queue the command to be executed on the main thread
+        //            var tcs = new TaskCompletionSource<string>();
+        //            lock (_aiCommandLock)
+        //            {
+        //                _aiCommandQueue.Enqueue((aiMessage, tcs));
+        //            }
+
+        //            // Wait up to 12 seconds for the main thread to process it
+        //            var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(12000));
+
+        //            if (completedTask == tcs.Task)
+        //            {
+        //                return await tcs.Task;
+        //            }
+        //            else
+        //            {
+        //                return "Error: Command timed out waiting for game thread";
+        //            }
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Logger.Error($"[RICS AI] Error in /aicommand handler: {ex.Message}");
+        //        return $"Error: {ex.Message}";
+        //    }
+        //}
 
         private async Task SendResponseAsync(HttpListenerContext context, string text, string contentType, int statusCode = 200)
         {
