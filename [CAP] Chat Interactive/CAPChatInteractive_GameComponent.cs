@@ -136,24 +136,34 @@ namespace CAP_ChatInteractive
                 {
                     twitch.UpdateRaidJoinTimer();
                 }
-                // === AI CHATBOT GAME STATE CACHE UPDATE ===
-                // Periodically refresh the JSON served at GET /gamestate so the external Python bot
-                // can poll on its own schedule (e.g. every 15 min) and generate colony reports.
-                // Uses the same 2500 ticks/minute convention already used for karma decay in this file.
+                // === AI CHATBOT GAME STATE CACHE + COMMAND PROCESSING ===
                 var aiSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
-                if (aiSettings?.AIChatBotActive == true && aiSettings.AIChatBotGameStateUpdateIntervalMinutes > 0)
+
+                if (aiSettings?.AIChatBotActive == true)
                 {
-                    aiChatBotStateUpdateTickCounter++;
-
-                    int ticksPerUpdate = aiSettings.AIChatBotGameStateUpdateIntervalMinutes * 2500;
-
-                    if (aiChatBotStateUpdateTickCounter >= ticksPerUpdate)
+                    // Game state cache refresh (every X minutes)
+                    if (aiSettings.AIChatBotGameStateUpdateIntervalMinutes > 0)
                     {
-                        aiChatBotStateUpdateTickCounter = 0;
-                        _aiChatBotService?.UpdateGameStateCache();
-                        Logger.Debug($"[RICS AI] Game state cache refreshed (interval: {aiSettings.AIChatBotGameStateUpdateIntervalMinutes} min)");
+                        aiChatBotStateUpdateTickCounter++;
+
+                        int ticksPerUpdate = aiSettings.AIChatBotGameStateUpdateIntervalMinutes * 2500;
+
+                        if (aiChatBotStateUpdateTickCounter >= ticksPerUpdate)
+                        {
+                            aiChatBotStateUpdateTickCounter = 0;
+                            _aiChatBotService?.UpdateGameStateCache();
+                        }
+                    }
+
+                    // === Process AI commands (very cheap check) ===
+                    // Only calls the actual processing method when there is work.
+                    // We process ONE command per tick to avoid performance spikes.
+                    if (_aiChatBotService?.HasPendingAICommands == true)
+                    {
+                        _aiChatBotService.ProcessPendingAICommands();
                     }
                 }
+
             }
         }
 
