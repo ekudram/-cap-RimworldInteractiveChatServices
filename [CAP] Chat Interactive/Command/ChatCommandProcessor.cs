@@ -17,14 +17,11 @@
 //
 // Processes chat messages and commands from viewers.
 using CAP_ChatInteractive.Commands.Cooldowns;
-using CAP_ChatInteractive.Commands.ModCommands;
 using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using TwitchLib.Api.Helix.Models.Moderation.CheckAutoModStatus;
-using TwitchLib.Api.Helix.Models.Users.GetUsers;
 using Verse;
 
 namespace CAP_ChatInteractive
@@ -86,6 +83,77 @@ namespace CAP_ChatInteractive
                 Logger.Error($"Error processing chat message: {ex.Message}");
                 // Send a generic error message to the user
                 // SendMessageToUser(message, "An error occurred while processing your message. Please try again.");
+            }
+        }
+
+        /// <summary>
+        /// Special path for the AI ChatBot (Masie) to execute commands.
+        /// Returns the result string instead of sending it to chat.
+        /// Bot Does not need a command cooldown.
+        /// Add settings for MOD command to the bot your make sure you bot does not know how to use them.
+        /// What the bot can do can be controlled by the Bots Knowledge base in its code.
+        /// </summary>
+        /// <param name="message"></param>
+        public static string ProcessAICommand(ChatMessageWrapper message)
+        {
+            if (message == null || string.IsNullOrWhiteSpace(message.Message))
+                return "Error: Empty command";
+
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings == null || !settings.AIChatBotActive || !settings.AIChatBotCanExecuteCommands)
+                return "Error: AI command execution is currently disabled";
+
+            try
+            {
+                Logger.Debug($"[RICS AI] Processing AI command from '{message.Username}': {message.Message}");
+
+                if (!IsGameReady())
+                    return "Error: Game is not ready yet";
+
+                var parts = message.Message.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 0)
+                    return "Error: No command found";
+
+                string commandText = parts[0].TrimStart('!', '$').ToLowerInvariant();
+                string[] args = parts.Skip(1).ToArray();
+
+                // Resolve aliases
+                commandText = ResolveCommandFromAlias(commandText);
+
+                if (!_commands.TryGetValue(commandText, out var command))
+                    return $"Error: Unknown command '{commandText}'";
+
+                var viewer = Viewers.GetViewer(message);
+                if (viewer == null)
+                    return "Error: Could not create viewer";
+
+                if (viewer.IsBanned && !message.Username.Equals("masie", StringComparison.OrdinalIgnoreCase))
+                    return "Error: Viewer is banned";
+
+                // Permission check (AI bot bypasses via HasPermission override)
+                if (!command.CanExecute(message))
+                    return $"Error: Insufficient permission for command '{commandText}'";
+
+
+                // Cooldowns are for Services to prevent chat spam in Twitch, Youtube, Kick, etc. Since Masie is an AI bot executing commands internally.
+                // Cooldown check, Bypass cooldowns for the AI bot (Masie) to allow rapid testing and execution, but you can choose to enforce if desired
+                //if (IsOnCooldown(message.Username, command))
+                //    return "Error: Command is on cooldown";
+
+                // Execute
+                string result = command.Execute(message, args) ?? "";
+
+                // Record cooldown usage for AI bot if you want to enforce cooldowns (currently bypassed)
+                // UpdateCooldown(message.Username, command);
+
+                Logger.Debug($"[RICS AI] AI command '{commandText}' executed. Result: {result}");
+
+                return string.IsNullOrWhiteSpace(result) ? "Command executed successfully (no output)" : result;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[RICS AI] Error executing AI command '{message.Message}': {ex.Message}");
+                return $"Error: {ex.Message}";
             }
         }
 
