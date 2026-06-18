@@ -290,7 +290,9 @@ namespace CAP_ChatInteractive
         // How often (in real minutes) we refresh the cached game state JSON that the external Python bot can poll via GET /gamestate.
         // Default 15 minutes keeps the data reasonably fresh for periodic "colony report" style interactions without hammering every few seconds.
         // Set to 0 to disable periodic updates entirely (the bot will still receive fresh state on explicit !ricsaichatbot commands).
-        public int AIChatBotGameStateUpdateIntervalMinutes = 15;
+
+        public int AIChatBotGameStateUpdateIntervalMinutes = 15;  // <--- Need to add to Dialog_GlobalSettings in the UI to be adjustable by users
+        public bool AIChatBotCanExecuteCommands = true; // Whether the AI chatbot is allowed to execute in-game commands (e.g. via special syntax in its response that RICS recognizes). This is a powerful feature that can enable deep integration and emergent storytelling, but it also carries risks if the bot generates unexpected commands. Use with caution and consider starting with this disabled until you are confident in the bot's behavior.
 
         // === Twitch Raids feature (Phase 1) ===
         public bool TwitchRaidsEnabled = false;           // global kill-switch
@@ -450,6 +452,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref AIChatBotSendGameState, "aiChatBotSendGameState", true);
             Scribe_Values.Look(ref AIChatBotSendChatHistory, "aiChatBotSendChatHistory", true);
             Scribe_Values.Look(ref AIChatBotGameStateUpdateIntervalMinutes, "aiChatBotGameStateUpdateIntervalMinutes", 15);
+            Scribe_Values.Look(ref AIChatBotCanExecuteCommands, "aiChatBotCanExecuteCommands", true);
 
             // Channel Points Reward Settings
             if (Scribe.mode == LoadSaveMode.LoadingVars)
