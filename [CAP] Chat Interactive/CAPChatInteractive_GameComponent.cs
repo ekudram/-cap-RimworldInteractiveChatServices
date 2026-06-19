@@ -39,6 +39,7 @@ namespace CAP_ChatInteractive
 
         private int karmaDecayTickCounter = 0;
         private int aiChatBotStateUpdateTickCounter = 0;
+        private int aiChatBotCommandProcessTickCounter = 0;
 
         private bool versionCheckDone = false;
         private bool raceSettingsInitialized = false;
@@ -122,52 +123,43 @@ namespace CAP_ChatInteractive
                 }
             }
 
-            // === THROTTLED UPDATES (every 60-120 ticks) ===
-            // Raid timer is now ONLY called when a raid join window is actually active.
-            // This completely eliminates the previous tick overhead when Twitch Raids are enabled
-            // but no raid has occurred (the main source of stutter).
-            if (tickCounter % 120 == 0)   // keep your current interval here
+            // === RAID TIMER (only runs when actually needed — keep this gated) ===
+            // This block is intentionally throttled and conditional so it adds zero overhead
+            // when Twitch Raids are enabled but no raid is currently happening.
+            if (tickCounter % 60 == 0)
             {
-                // Raid timer - only if enabled AND a raid join window is open
-                // (i.e. we actually received a raid notification and are still collecting joiners)
                 var twitch = CAPChatInteractiveMod.Instance?.TwitchService;
                 if (CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.TwitchRaidsEnabled == true &&
                     twitch?.IsRaidJoinWindowActive == true)
                 {
                     twitch.UpdateRaidJoinTimer();
                 }
-                // === AI CHATBOT GAME STATE CACHE + COMMAND PROCESSING ===
-                var aiSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            }
 
-                if (aiSettings?.AIChatBotActive == true)
+            // === AI CHATBOT FILE COMMAND PROCESSING (independent fast loop) ===
+            // Separate block so we can tune its frequency without affecting raid timing,
+            // and vice versa. Runs whenever AIChatBotActive is true.
+            var aiSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (aiSettings?.AIChatBotActive == true && _aiChatBotService != null)
+            {
+                aiChatBotCommandProcessTickCounter++;
+                if (aiChatBotCommandProcessTickCounter >= 10)   // ~6 times per second when active
                 {
-                    // Game state cache refresh (every X minutes)
-                    if (aiSettings.AIChatBotGameStateUpdateIntervalMinutes > 0)
-                    {
-                        aiChatBotStateUpdateTickCounter++;
-
-                        int ticksPerUpdate = aiSettings.AIChatBotGameStateUpdateIntervalMinutes * 2500;
-
-                        if (aiChatBotStateUpdateTickCounter >= ticksPerUpdate)
-                        {
-                            aiChatBotStateUpdateTickCounter = 0;
-
-                            // Process file-based AI commands (main thread only - stable)
-                            _aiChatBotService?.ProcessFileBasedAICommands();
-
-                            // _aiChatBotService?.UpdateGameStateCache(); Not safe for RImworlds Mono, crashes.
-                        }
-                    }
-
-                    // === Process AI commands (very cheap check) ===
-                    // Only calls the actual processing method when there is work.
-                    // We process ONE command per tick to avoid performance spikes.
-                    if (_aiChatBotService?.HasPendingAICommands == true)
-                    {
-                        _aiChatBotService.ProcessPendingAICommands();
-                    }
+                    aiChatBotCommandProcessTickCounter = 0;
+                    _aiChatBotService.ProcessFileBasedAICommands();
                 }
 
+                // Game state cache refresh stays on its own (much longer) interval
+                if (aiSettings.AIChatBotGameStateUpdateIntervalMinutes > 0)
+                {
+                    aiChatBotStateUpdateTickCounter++;
+                    int ticksPerUpdate = aiSettings.AIChatBotGameStateUpdateIntervalMinutes * 2500;
+                    if (aiChatBotStateUpdateTickCounter >= ticksPerUpdate)
+                    {
+                        aiChatBotStateUpdateTickCounter = 0;
+                        _aiChatBotService.UpdateGameStateCache();
+                    }
+                }
             }
         }
 
@@ -268,6 +260,14 @@ namespace CAP_ChatInteractive
                 {
                     Window_LiveChat.ToggleLiveChatWindow();
                 }
+            }
+            // === AI CHATBOT - also process file commands from Update (runs even when paused) ===
+            // This gives Masie responsiveness while the game is paused without duplicating heavy logic.
+            // The internal 120ms throttle in ProcessFileBasedAICommands() prevents busy work.
+            var aiSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (aiSettings?.AIChatBotActive == true && _aiChatBotService != null)
+            {
+                _aiChatBotService.ProcessFileBasedAICommands();
             }
         }
     }
