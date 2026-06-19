@@ -604,8 +604,8 @@ namespace CAP_ChatInteractive
         /// Saves the entire live RICS settings object (all service settings + global settings) to JSON.
         /// Creates a timestamped backup + updates the "Latest" quick-load file.
         /// Uses explicit JObject.FromObject on the four data sections only to avoid
-        /// Newtonsoft.Json reflection errors on RimWorld types such as Verse.TaggedString
-        /// (which implements IEnumerable and has a problematic Length property).
+        /// Newtonsoft.Json reflection errors on RimWorld types such as Verse.TaggedString.
+        /// After saving, prunes old backups so only the 5 most recent timestamped files remain.
         /// </summary>
         public static void SaveSettingsBackup(CAPChatInteractiveSettings settings)
         {
@@ -636,16 +636,9 @@ namespace CAP_ChatInteractive
                     ReferenceLoopHandling = ReferenceLoopHandling.Ignore
                 };
 
-                // === SAFE SERIALIZATION (the key fix) ===
-                // WHY: Serializing the whole ModSettings-derived object can trigger
-                // "Error getting value from 'Length' on 'Verse.TaggedString'" because
-                // TaggedString implements IEnumerable<char> and Json.NET tries to treat
-                // it as a collection. By building the root JObject ourselves from only
-                // the four data sections we control, we completely avoid the problematic
-                // RimWorld types and any hidden members from the ModSettings base class.
+                // === SAFE SERIALIZATION ===
                 var root = new JObject
                 {
-                    // Add additional settings for new services here as needed, but keep the same structure for consistency
                     ["TwitchSettings"] = JObject.FromObject(settings.TwitchSettings ?? new StreamServiceSettings(), JsonSerializer.Create(jsonSettings)),
                     ["YouTubeSettings"] = JObject.FromObject(settings.YouTubeSettings ?? new StreamServiceSettings(), JsonSerializer.Create(jsonSettings)),
                     ["KickSettings"] = JObject.FromObject(settings.KickSettings ?? new StreamServiceSettings(), JsonSerializer.Create(jsonSettings)),
@@ -656,15 +649,54 @@ namespace CAP_ChatInteractive
 
                 File.WriteAllText(filePath, json);
 
-                // Always keep a single "latest" file for the Load button (overwrites previous latest)
+                // Update latest quick-load file
                 string latestPath = Path.Combine(BackupFolderPath, "RICS_Settings_LatestBackup.json");
                 File.WriteAllText(latestPath, json);
 
                 Logger.Message($"[Backup] Settings backup saved to: {filePath}");
+
+                // === PRUNE TO KEEP ONLY 5 PAST BACKUPS ===
+                PruneOldBackups();
             }
             catch (Exception ex)
             {
                 Logger.Error($"[Backup] Error saving settings backup: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Keeps only the 5 most recent timestamped backup files (deletes older ones).
+        /// LatestBackup.json is never deleted.
+        /// Called automatically after every successful save.
+        /// </summary>
+        private static void PruneOldBackups()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(BackupFolderPath) || !Directory.Exists(BackupFolderPath))
+                    return;
+
+                var backupFiles = Directory.GetFiles(BackupFolderPath, "RICS_Settings_Backup_*.json")
+                    .OrderByDescending(f => f)  // Timestamped filenames sort lexicographically descending for newest-first
+                    .ToList();
+
+                // Keep only the newest 5, delete the rest
+                for (int i = 5; i < backupFiles.Count; i++)
+                {
+                    try
+                    {
+                        File.Delete(backupFiles[i]);
+                        Logger.Debug($"[Backup] Pruned old backup: {Path.GetFileName(backupFiles[i])}");
+                    }
+                    catch (Exception delEx)
+                    {
+                        Logger.Warning($"[Backup] Failed to delete old backup {Path.GetFileName(backupFiles[i])}: {delEx.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[Backup] Error pruning old backups: {ex.Message}");
             }
         }
 
