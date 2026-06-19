@@ -338,6 +338,8 @@ namespace CAP_ChatInteractive.AI
                     }
                 };
 
+                Logger.Debug("AI Cache Complete");
+
                 _cachedGameStateJson = JsonConvert.SerializeObject(fullState);
             }
             catch (Exception ex)
@@ -351,36 +353,61 @@ namespace CAP_ChatInteractive.AI
         /// Polled from GameComponentTick on the main thread.
         /// Processes any new command files dropped by the Python bot.
         /// Completely thread-safe. Uses safe RimWorld config folder paths.
+        /// Self-initializes paths if needed (more robust).
         /// </summary>
         public void ProcessFileBasedAICommands()
         {
-            // Safety guard - paths are only set after Start() is called
+            // This debug may cause Spam REmove when done testing with positive Results -- Captolamia
+            Logger.Debug("=== Start ProcessFileBasedAICommands() ===");
+
+            // === Self-initialize paths if they are missing (very important for robustness) ===
             if (string.IsNullOrEmpty(_aiCommandIncomingPath) || string.IsNullOrEmpty(_aiCommandOutgoingPath))
-                return;
+            {
+                try
+                {
+                    string baseConfigPath = Path.Combine(GenFilePaths.ConfigFolderPath, "CAP_ChatInteractive", "AI_Commands");
+                    _aiCommandBasePath = baseConfigPath;
+                    _aiCommandIncomingPath = Path.Combine(baseConfigPath, "incoming");
+                    _aiCommandOutgoingPath = Path.Combine(baseConfigPath, "outgoing");
+
+                    Directory.CreateDirectory(_aiCommandIncomingPath);
+                    Directory.CreateDirectory(_aiCommandOutgoingPath);
+
+                    Logger.Debug($"[RICS AI] Lazy-initialized AI command paths: {baseConfigPath}");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"[RICS AI] Failed to lazy-init command paths: {ex.Message}");
+                    return;
+                }
+            }
 
             try
             {
-                // Throttle to every ~500ms to avoid hammering the filesystem
-                if ((DateTime.Now - _lastFilePollTime).TotalMilliseconds < 500)
+                // Throttle to every ~500ms
+                if ((DateTime.Now - _lastFilePollTime).TotalMilliseconds < 120)
                     return;
 
                 _lastFilePollTime = DateTime.Now;
 
-                // Ensure directories exist (defensive)
                 if (!Directory.Exists(_aiCommandIncomingPath))
                     Directory.CreateDirectory(_aiCommandIncomingPath);
 
-                if (!Directory.Exists(_aiCommandOutgoingPath))
-                    Directory.CreateDirectory(_aiCommandOutgoingPath);
-
                 var files = Directory.GetFiles(_aiCommandIncomingPath, "*.json");
+
+                if (files.Length > 0)
+                {
+                    Logger.Debug($"[RICS AI] Found {files.Length} command file(s) in incoming folder");
+                }
+
                 foreach (var file in files)
                 {
+                    var sw = System.Diagnostics.Stopwatch.StartNew();   // NEW timing
                     try
                     {
                         string json = File.ReadAllText(file);
-                        dynamic data = JsonConvert.DeserializeObject(json);
-                        string command = data?.command?.ToString() ?? "";
+                        var data = JsonConvert.DeserializeObject<Newtonsoft.Json.Linq.JObject>(json);
+                        string command = data?["command"]?.ToString() ?? "";
 
                         if (string.IsNullOrWhiteSpace(command))
                         {
@@ -395,6 +422,8 @@ namespace CAP_ChatInteractive.AI
                             continue;
                         }
 
+                        Logger.Debug($"[RICS AI] Processing file command: {command}");
+
                         var aiMessage = new ChatMessageWrapper(
                             username: settings.AIChatBotName ?? "Masie",
                             message: command,
@@ -405,21 +434,21 @@ namespace CAP_ChatInteractive.AI
 
                         string result = ChatCommandProcessor.ProcessAICommand(aiMessage);
 
-                        // Write result using the safe outgoing path
                         string requestId = Path.GetFileNameWithoutExtension(file);
                         string resultPath = Path.Combine(_aiCommandOutgoingPath, requestId + ".json");
 
                         var resultObj = new { status = "ready", result = result };
                         File.WriteAllText(resultPath, JsonConvert.SerializeObject(resultObj));
 
-                        // Delete incoming file
                         File.Delete(file);
 
-                        Logger.Debug($"[RICS AI] File command processed: {command} → Result written");
+                        sw.Stop();
+                        Logger.Debug($"[RICS AI] File command processed in {sw.ElapsedMilliseconds} ms: {command}");
                     }
                     catch (Exception exFile)
                     {
-                        Logger.Warning($"[RICS AI] Failed to process command file {file}: {exFile.Message}");
+                        sw.Stop();
+                        Logger.Warning($"[RICS AI] Failed to process command file {file} after {sw.ElapsedMilliseconds} ms: {exFile.Message}");
                         try { File.Delete(file); } catch { }
                     }
                 }
