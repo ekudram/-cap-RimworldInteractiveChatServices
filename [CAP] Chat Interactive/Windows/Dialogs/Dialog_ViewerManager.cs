@@ -1,6 +1,6 @@
 ﻿// Dialog_ViewerManager.cs
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
+// This file is part of CAP Chat Interactive. aka: Rimworld Interactive Chat Service (RICS
 // 
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
@@ -15,6 +15,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // A dialog window for managing viewers in the chat interactive system
+
+
+using Newtonsoft.Json;
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -55,7 +58,7 @@ namespace CAP_ChatInteractive
 
         public Dialog_ViewerManager()
         {
-            doCloseButton = true;
+            doCloseButton = false;
             forcePause = true;
             absorbInputAroundWindow = true;
             // optionalTitle = "Viewer Management";
@@ -71,16 +74,76 @@ namespace CAP_ChatInteractive
                 FilterViewers();
             }
 
+            float bottomBarHeight = 50f; // Space for the button bar
+
             // Header
-            Rect headerRect = new Rect(0f, 0f, inRect.width, 70f); // Increased from 40f to 70f
+            Rect headerRect = new Rect(0f, 0f, inRect.width, 70f);
             DrawHeader(headerRect);
 
-            // Main content area
-            Rect contentRect = new Rect(0f, 75f, inRect.width, inRect.height - 75f - CloseButSize.y);
+            // Main content area — leave room at bottom for button bar
+            Rect contentRect = new Rect(0f, 75f, inRect.width, inRect.height - 75f - bottomBarHeight);
             DrawContent(contentRect);
 
             // Handle confirmations
             HandleConfirmations();
+
+            // ========== BOTTOM BUTTON BAR (Save Backup | Load Backup | Close) ==========
+            // WHY: Simple backup system (matching original Global Settings style). Uses reusable BackupUtility.
+            float btnH = 38f;
+            float btnW = 160f;
+            float gap = 10f;
+            float padding = 12f;
+            float currentY = inRect.yMax - bottomBarHeight + (bottomBarHeight - btnH) / 2f;
+
+            // Save Backup (quick timestamped)
+            Rect saveRect = new Rect(padding, currentY, btnW, btnH);
+            if (Widgets.ButtonText(saveRect, "Save Backup"))
+            {
+                string json = JsonConvert.SerializeObject(Viewers.All, Formatting.Indented);
+                BackupUtility.SaveQuickBackup("ViewerManager", json);
+                Messages.Message("Viewer data backup saved.", MessageTypeDefOf.NeutralEvent);
+            }
+
+            // Load Backup (latest timestamped)
+            float loadX = padding + btnW + gap;
+            Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(loadRect, "Load Backup"))
+            {
+                string json = BackupUtility.LoadLatestTimestampedBackup("ViewerManager");
+                if (!string.IsNullOrEmpty(json))
+                {
+                    try
+                    {
+                        var loaded = JsonConvert.DeserializeObject<List<Viewer>>(json);
+                        if (loaded != null)
+                        {
+                            Viewers.All.Clear();
+                            Viewers.All.AddRange(loaded);
+                            Viewers.SaveViewers();
+                            FilterViewers();
+
+                            Messages.Message("Viewer data loaded from backup.", MessageTypeDefOf.NeutralEvent);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"Failed to load viewer backup: {ex.Message}");
+                        Messages.Message("Failed to load backup (invalid data).", MessageTypeDefOf.RejectInput);
+                    }
+                }
+                else
+                {
+                    Messages.Message("No backups found for Viewer Manager.", MessageTypeDefOf.RejectInput);
+                }
+            }
+
+            // Close (right-aligned)
+            float closeX = inRect.xMax - btnW - padding;
+            Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(closeRect, "Close"))
+            {
+                this.Close();
+            }
         }
 
         public override void PostClose()
@@ -245,12 +308,14 @@ namespace CAP_ChatInteractive
             Rect headerRect = new Rect(rect.x, rect.y, rect.width, 30f);
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter; // Add this line
+            GUI.color = ColorLibrary.SubHeader;
             Widgets.Label(headerRect, "Viewers");
+            GUI.color = Color.white;
             Text.Anchor = TextAnchor.UpperLeft; // Reset to default
             Text.Font = GameFont.Small;
 
             // Viewer list - Match Traits approach exactly
-            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f);
+            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 31f);
             float rowHeight = 35f;
             Rect viewRect = new Rect(0f, 0f, listRect.width - 20f, filteredViewers.Count * rowHeight);
 
@@ -638,8 +703,6 @@ namespace CAP_ChatInteractive
             }
         }
 
-
-
         private void DrawEconomyRow(ref float y, float width, string label, int currentValue,
             ref int editAmount, ref string editBuffer, Action<int> onSet,
             int minValue, int maxValue, float leftPadding = 0f)
@@ -943,12 +1006,6 @@ namespace CAP_ChatInteractive
 
             // Use the internal method that takes the identifier directly
             return assignmentManager.GetAssignedPawnIdentifier(platformId);
-        }
-
-        private bool HasAssignedPawn(Viewer viewer)
-        {
-            var assignmentManager = Current.Game?.GetComponent<GameComponent_PawnAssignmentManager>();
-            return assignmentManager?.HasAssignedPawn(viewer.Username) ?? false;
         }
 
         private void UnassignPawn(Viewer viewer)

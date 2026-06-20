@@ -16,13 +16,12 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // A dialog window for configuring pawn races and xenotypes 
 using _CAP__Chat_Interactive.Utilities;
-using CAP_ChatInteractive;
+using Newtonsoft.Json;
 using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Xml;
 using UnityEngine;
 using Verse;
 
@@ -48,7 +47,7 @@ namespace CAP_ChatInteractive
 
         public Dialog_PawnRaceSettings()
         {
-            doCloseButton = true;
+            doCloseButton = false;
             forcePause = true;
             absorbInputAroundWindow = true;
             // optionalTitle = "Pawn Race & Xenotype Settings";
@@ -64,13 +63,100 @@ namespace CAP_ChatInteractive
                 FilterRaces();
             }
 
-            // Header - INCREASED HEIGHT to accommodate two rows
-            Rect headerRect = new Rect(0f, 0f, inRect.width, 60f); // Changed from 40f to 60f
+            float bottomBarHeight = 50f; // Space for the 6-button bar
+
+            // Header
+            Rect headerRect = new Rect(0f, 0f, inRect.width, 60f);
             DrawHeader(headerRect);
 
-            // Main content area - ADJUSTED START POSITION
-            Rect contentRect = new Rect(0f, 65f, inRect.width, inRect.height - 65f - CloseButSize.y); // Changed from 45f to 65f
+            // Main content area — leave room at bottom for button bar
+            Rect contentRect = new Rect(0f, 65f, inRect.width, inRect.height - 65f - bottomBarHeight);
             DrawContent(contentRect);
+
+            // ========== BOTTOM BUTTON BAR (Save Backup | Load Backup | Save As... | Load file | Delete file | Close) ==========
+            // WHY: Full themed backup system so streamers can save race configurations (GrimwarRaces, RimMagicRaces, etc.)
+            float btnH = 38f;
+            float btnW = 130f;
+            float gap = 6f;
+            float padding = 10f;
+            float currentY = inRect.yMax - bottomBarHeight + (bottomBarHeight - btnH) / 2f;
+
+            // Save Backup (quick timestamped)
+            Rect saveRect = new Rect(padding, currentY, btnW, btnH);
+            if (Widgets.ButtonText(saveRect, "Save Backup"))
+            {
+                string json = JsonConvert.SerializeObject(RaceSettingsManager.RaceSettings, Newtonsoft.Json.Formatting.Indented);
+                BackupUtility.SaveQuickBackup("PawnRaceSettings", json);
+                Messages.Message("Race settings backup saved.", MessageTypeDefOf.NeutralEvent);
+            }
+
+            // Load Backup (latest timestamped)
+            float loadX = padding + btnW + gap;
+            Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(loadRect, "Load Backup"))
+            {
+                string json = BackupUtility.LoadLatestTimestampedBackup("PawnRaceSettings");
+                if (!string.IsNullOrEmpty(json))
+                {
+                    try
+                    {
+                        var loaded = JsonConvert.DeserializeObject<Dictionary<string, RaceSettings>>(json);
+                        if (loaded != null)
+                        {
+                            RaceSettingsManager.RaceSettings.Clear();
+                            foreach (var kvp in loaded)
+                                RaceSettingsManager.RaceSettings[kvp.Key] = kvp.Value;
+
+                            RaceSettingsManager.SaveSettings();
+                            raceSettings = RaceSettingsManager.RaceSettings;
+                            FilterRaces();
+
+                            Messages.Message("Race settings loaded from backup.", MessageTypeDefOf.NeutralEvent);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"Failed to load race settings backup: {ex.Message}");
+                        Messages.Message("Failed to load backup (invalid data).", MessageTypeDefOf.RejectInput);
+                    }
+                }
+                else
+                {
+                    Messages.Message("No backups found for Race Settings.", MessageTypeDefOf.RejectInput);
+                }
+            }
+
+            // Save As... (uses Dialog_TextInput for custom name)
+            float saveAsX = loadX + btnW + gap;
+            Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(saveAsRect, "Save As..."))
+            {
+                ShowSaveAsMenu();
+            }
+
+            // Load file
+            float loadFileX = saveAsX + btnW + gap;
+            Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(loadFileRect, "Load file"))
+            {
+                ShowLoadFileMenu();
+            }
+
+            // Delete file (right next to Load file)
+            float deleteX = loadFileX + btnW + gap;
+            Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(deleteRect, "Delete file"))
+            {
+                ShowDeleteFileMenu();
+            }
+
+            // Close (right-aligned)
+            float closeX = inRect.xMax - btnW - padding;
+            Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(closeRect, "Close"))
+            {
+                this.Close();
+            }
         }
 
         private void DrawHeader(Rect rect)
@@ -259,7 +345,6 @@ namespace CAP_ChatInteractive
             DrawRaceDetails(detailsRect);
         }
 
-        // In Dialog_PawnSettings.cs - Update the DrawRaceList method
         private void DrawRaceList(Rect rect)
         {
             Widgets.DrawMenuSection(rect);
@@ -326,7 +411,7 @@ namespace CAP_ChatInteractive
             }
             Widgets.EndScrollView();
         }
-        // Draws the details panel for the selected Race, including settings and xenotype configuration
+
         private void DrawRaceDetails(Rect rect)
         {
             Widgets.DrawMenuSection(rect);
@@ -928,6 +1013,120 @@ namespace CAP_ChatInteractive
 
             // Optional: Log details
             Logger.Debug(message);
+        }
+
+        private void ShowSaveAsMenu()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>
+            {
+                new FloatMenuOption("Quick Timestamped Backup", () =>
+                {
+                    string json = JsonConvert.SerializeObject(RaceSettingsManager.RaceSettings, Newtonsoft.Json.Formatting.Indented);
+                    BackupUtility.SaveQuickBackup("PawnRaceSettings", json);
+                    Messages.Message("Quick timestamped backup saved.", MessageTypeDefOf.NeutralEvent);
+                }),
+                new FloatMenuOption("Save as Named Theme (custom name)", () =>
+                {
+                    string json = JsonConvert.SerializeObject(RaceSettingsManager.RaceSettings, Newtonsoft.Json.Formatting.Indented);
+
+                    Find.WindowStack.Add(new Dialog_TextInput(
+                        "Enter backup name (e.g. GrimwarRaces, RimMagic)",
+                        name =>
+                        {
+                            if (!string.IsNullOrWhiteSpace(name))
+                            {
+                                BackupUtility.SaveNamedBackup("PawnRaceSettings", name, json);
+                                Messages.Message($"Named backup saved as {name}.json", MessageTypeDefOf.NeutralEvent);
+                            }
+                            else
+                            {
+                                string fallback = "CustomRaces_" + DateTime.Now.ToString("yyyyMMdd_HHmm");
+                                BackupUtility.SaveNamedBackup("PawnRaceSettings", fallback, json);
+                                Messages.Message($"Saved with fallback name: {fallback}.json", MessageTypeDefOf.NeutralEvent);
+                            }
+                        }));
+                })
+            };
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void ShowLoadFileMenu()
+        {
+            var files = BackupUtility.GetAllBackupFiles("PawnRaceSettings");
+            if (files.Count == 0)
+            {
+                Messages.Message("No backup files found for Race Settings.", MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            foreach (var file in files)
+            {
+                options.Add(new FloatMenuOption(file, () =>
+                {
+                    string json = BackupUtility.LoadBackupFile("PawnRaceSettings", file);
+                    if (!string.IsNullOrEmpty(json))
+                    {
+                        try
+                        {
+                            var loaded = JsonConvert.DeserializeObject<Dictionary<string, RaceSettings>>(json);
+                            if (loaded != null)
+                            {
+                                RaceSettingsManager.RaceSettings.Clear();
+                                foreach (var kvp in loaded)
+                                    RaceSettingsManager.RaceSettings[kvp.Key] = kvp.Value;
+
+                                RaceSettingsManager.SaveSettings();
+                                raceSettings = RaceSettingsManager.RaceSettings;
+                                FilterRaces();
+
+                                Messages.Message($"Loaded backup: {file}", MessageTypeDefOf.NeutralEvent);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error($"Failed to load {file}: {ex.Message}");
+                            Messages.Message("Failed to load selected backup.", MessageTypeDefOf.RejectInput);
+                        }
+                    }
+                }));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void ShowDeleteFileMenu()
+        {
+            var files = BackupUtility.GetAllBackupFiles("PawnRaceSettings");
+            if (files.Count == 0)
+            {
+                Messages.Message("No backup files found for Race Settings.", MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            foreach (var file in files)
+            {
+                options.Add(new FloatMenuOption(file, () =>
+                {
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        $"Delete backup file?\n{file}\n\nThis cannot be undone.",
+                        () =>
+                        {
+                            bool deleted = BackupUtility.DeleteBackupFile("PawnRaceSettings", file);
+                            if (deleted)
+                            {
+                                Messages.Message($"Deleted: {file}", MessageTypeDefOf.NeutralEvent);
+                            }
+                        },
+                        true,
+                        "Delete Backup"
+                    ));
+                }));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
         }
 
         private void ValidateAllNumericFields()
