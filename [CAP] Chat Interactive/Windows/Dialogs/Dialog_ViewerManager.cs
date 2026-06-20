@@ -315,7 +315,7 @@ namespace CAP_ChatInteractive
             Text.Font = GameFont.Small;
 
             // Viewer list - Match Traits approach exactly
-            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 31f);
+            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f - 4f);
             float rowHeight = 35f;
             Rect viewRect = new Rect(0f, 0f, listRect.width - 20f, filteredViewers.Count * rowHeight);
 
