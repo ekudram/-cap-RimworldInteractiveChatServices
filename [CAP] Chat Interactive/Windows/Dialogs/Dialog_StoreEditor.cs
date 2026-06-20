@@ -34,6 +34,7 @@ DESIGN:
 ============================================================
 */
 using CAP_ChatInteractive.Store;
+using Newtonsoft.Json;
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -73,7 +74,7 @@ namespace CAP_ChatInteractive
         // Constructor
         public Dialog_StoreEditor()
         {
-            doCloseButton = true;
+            doCloseButton = false;
             forcePause = true;
             absorbInputAroundWindow = true;
 
@@ -96,13 +97,101 @@ namespace CAP_ChatInteractive
                 FilterItems();
             }
 
+            float bottomBarHeight = 50f; // Space for the 6-button bar
+
             // Header
-            Rect headerRect = new Rect(0f, 0f, inRect.width, 70f); // Increased from 40f to 70f
+            Rect headerRect = new Rect(0f, 0f, inRect.width, 70f);
             DrawHeader(headerRect);
 
-            // Main content area
-            Rect contentRect = new Rect(0f, 75f, inRect.width, inRect.height - 75f - CloseButSize.y);
+            // Main content area — leave room at bottom for button bar
+            Rect contentRect = new Rect(0f, 75f, inRect.width, inRect.height - 75f - bottomBarHeight);
             DrawContent(contentRect);
+
+            // ========== BOTTOM BUTTON BAR (Save Backup | Load Backup | Save As... | Load file | Delete file | Close) ==========
+            // WHY: Consistent with Command Manager & Events Editor. Uses reusable BackupUtility + Dialog_TextInput.
+            float btnH = 38f;
+            float btnW = 130f;
+            float gap = 6f;
+            float padding = 10f;
+            float currentY = inRect.yMax - bottomBarHeight + (bottomBarHeight - btnH) / 2f;
+
+            // Save Backup (quick timestamped)
+            Rect saveRect = new Rect(padding, currentY, btnW, btnH);
+            if (Widgets.ButtonText(saveRect, "Save Backup"))
+            {
+                string json = JsonConvert.SerializeObject(StoreInventory.AllStoreItems, Formatting.Indented);
+                BackupUtility.SaveQuickBackup("StoreEditor", json);
+                Messages.Message("Store backup saved (timestamped).", MessageTypeDefOf.NeutralEvent);
+            }
+
+            // Load Backup (latest timestamped)
+            float loadX = padding + btnW + gap;
+            Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(loadRect, "Load Backup"))
+            {
+                string json = BackupUtility.LoadLatestTimestampedBackup("StoreEditor");
+                if (!string.IsNullOrEmpty(json))
+                {
+                    try
+                    {
+                        var loaded = JsonConvert.DeserializeObject<Dictionary<string, StoreItem>>(json);
+                        if (loaded != null)
+                        {
+                            StoreInventory.AllStoreItems.Clear();
+                            foreach (var kvp in loaded)
+                                StoreInventory.AllStoreItems[kvp.Key] = kvp.Value;
+
+                            StoreInventory.SaveStoreToJson();
+                            BuildCategoryCounts();
+                            BuildModSourceCounts();
+                            FilterItems();
+
+                            Messages.Message("Store loaded from latest backup.", MessageTypeDefOf.NeutralEvent);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"Failed to apply store backup: {ex.Message}");
+                        Messages.Message("Failed to load backup (invalid data).", MessageTypeDefOf.RejectInput);
+                    }
+                }
+                else
+                {
+                    Messages.Message("No timestamped backups found for Store Editor.", MessageTypeDefOf.RejectInput);
+                }
+            }
+
+            // Save As... (uses Dialog_TextInput for custom name)
+            float saveAsX = loadX + btnW + gap;
+            Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(saveAsRect, "Save As..."))
+            {
+                ShowSaveAsMenu();
+            }
+
+            // Load file
+            float loadFileX = saveAsX + btnW + gap;
+            Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(loadFileRect, "Load file"))
+            {
+                ShowLoadFileMenu();
+            }
+
+            // Delete file (right next to Load file)
+            float deleteX = loadFileX + btnW + gap;
+            Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(deleteRect, "Delete file"))
+            {
+                ShowDeleteFileMenu();
+            }
+
+            // Close (right-aligned)
+            float closeX = inRect.xMax - btnW - padding;
+            Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(closeRect, "Close"))
+            {
+                this.Close();
+            }
         }
         // DrawHeader creates the top section of the window with title, search bar, and action buttons
         private void DrawHeader(Rect rect)
@@ -239,7 +328,7 @@ namespace CAP_ChatInteractive
             if (sortMethod == StoreSortMethod.ModSource)
             {
                 // secondarySortLabel = "Mod Source";
-                secondarySortLabel = "RICS.ModSource".Translate();  
+                secondarySortLabel = "RICS.ModSource".Translate();
                 secondarySortMode = StoreSortMethod.ModSource;
             }
             else
@@ -275,8 +364,8 @@ namespace CAP_ChatInteractive
 
             // Optional: show small indicator of what the button will switch to
             // string tooltip = sortMethod == StoreSortMethod.Category ? "Click to sort by Mod Source" : "Click to sort by Category";
-            string tooltip = sortMethod == StoreSortMethod.Category 
-                ? "RICS.SE.SortByModSourceTooltip".Translate() 
+            string tooltip = sortMethod == StoreSortMethod.Category
+                ? "RICS.SE.SortByModSourceTooltip".Translate()
                 : "RICS.SE.SortByCategoryTooltip".Translate();
             TooltipHandler.TipRegion(secondaryRect, tooltip);
 
@@ -350,7 +439,7 @@ namespace CAP_ChatInteractive
             foreach (var category in categories)
             {
                 // options.Add(new FloatMenuOption($"Enable {category} Items", () =>
-                options.Add(new FloatMenuOption($"RICS.SE.EnableCategory".Translate(category), () =>    
+                options.Add(new FloatMenuOption($"RICS.SE.EnableCategory".Translate(category), () =>
                 {
                     EnableCategoryItems(category);
                 }));
@@ -422,7 +511,7 @@ namespace CAP_ChatInteractive
 
             // Disable All option
             // options.Add(new FloatMenuOption("Disable All Items", () =>
-            options.Add(new FloatMenuOption("RICS.SE.DisableAll".Translate(), () => 
+            options.Add(new FloatMenuOption("RICS.SE.DisableAll".Translate(), () =>
             {
                 DisableAllItems();
             }));
@@ -502,52 +591,6 @@ namespace CAP_ChatInteractive
             FilterItems(); // Refresh the view
         }
 
-        private void EnableModSourceItems()
-        {
-            int enabledCount = 0;
-
-            foreach (var item in filteredItems)
-            {
-                if (!item.Enabled)
-                {
-                    item.Enabled = true;
-                    enabledCount++;
-                }
-            }
-
-            if (enabledCount > 0)
-            {
-                StoreInventory.SaveStoreToJson();
-                string modName = GetDisplayModName(selectedModSource);
-                // Messages.Message($"Enabled {enabledCount} items from '{modName}'", MessageTypeDefOf.PositiveEvent);
-                Messages.Message($"RICS.SE.EnabledModSource".Translate(enabledCount, modName), MessageTypeDefOf.PositiveEvent);
-                FilterItems(); // Refresh view
-            }
-        }
-
-        private void DisableModSourceItems()
-        {
-            int disabledCount = 0;
-
-            foreach (var item in filteredItems)
-            {
-                if (item.Enabled)
-                {
-                    item.Enabled = false;
-                    disabledCount++;
-                }
-            }
-
-            if (disabledCount > 0)
-            {
-                StoreInventory.SaveStoreToJson();
-                string modName = GetDisplayModName(selectedModSource);
-                // Messages.Message($"Disabled {disabledCount} items from '{modName}'", MessageTypeDefOf.NeutralEvent);
-                Messages.Message($"RICS.SE.DisabledModSource".Translate(disabledCount, modName), MessageTypeDefOf.NeutralEvent);
-                FilterItems(); // Refresh view
-            }
-        }
-
         private void DrawContent(Rect rect)
         {
             // Add 2px padding to the left side
@@ -567,7 +610,7 @@ namespace CAP_ChatInteractive
                 DrawCategoryList(listRect);
             }
             else
-            { 
+            {
                 DrawModSourcesList(listRect);
             }
 
@@ -714,15 +757,8 @@ namespace CAP_ChatInteractive
             {
                 float y = 0f;
 
-                // Custom sort: "All" first → Alphabetical
-                var orderedModSources = modSourceCounts.Keys
-                    .OrderBy(source =>
-                    {
-                        if (source == "All") return 0;
-                        return 1;
-                    })
-                    .ThenBy(source => source)
-                    .ToList();
+
+                var orderedModSources = UIUtilities.GetSortedModSourceKeys(modSourceCounts);
 
                 foreach (var source in orderedModSources)
                 {
@@ -733,6 +769,12 @@ namespace CAP_ChatInteractive
 
                     // Use truncation
                     string displayLabel = UIUtilities.Truncate(label, sourceButtonRect.width - 10f);
+
+                    // === Official Ludeon content highlight (Core + DLCs) ===
+                    if (UIUtilities.IsOfficialLudeonContent(source) && source != "All")
+                    {
+                        displayLabel = displayLabel.Colorize(ColorLibrary.SubHeader);
+                    }
 
                     // Visual feedback
                     if (selectedModSource == source)
@@ -801,7 +843,7 @@ namespace CAP_ChatInteractive
             // ────────────────────────────────────────
             // First: calculate final header height (same logic as before)
             float headerHeight = 30f; // count row
-            
+
             if (showBulkControls)
             {
                 headerHeight += 30f; // bulk controls row (flags + quantity)
@@ -823,7 +865,7 @@ namespace CAP_ChatInteractive
             Rect countRect = new Rect(rect.x, rect.y + currentY, rect.width, 30f);
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter;
-            GUI.color = ColorLibrary.SubHeader; 
+            GUI.color = ColorLibrary.SubHeader;
             // string headerText = $"Items ({filteredItems.Count})";
             string headerText = "RICS.SE.ItemsCount".Translate(filteredItems.Count);
             if (listViewType == StoreListViewType.Category && selectedCategory != "All")
@@ -1517,38 +1559,6 @@ namespace CAP_ChatInteractive
             Widgets.EndGroup();
         }
 
-        // This method resets all item prices in the selected category to the calculated default
-        // (uses StoreItem.CalculateBasePrice so unique weapons get proper high price).
-        private void ResetCategoryPrices()
-        {
-            int changedCount = 0;
-            foreach (var item in filteredItems)
-            {
-                var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
-                if (thingDef != null)
-                {
-                    int defaultPrice = StoreItem.CalculateBasePrice(thingDef);
-                    if (item.BasePrice != defaultPrice)
-                    {
-                        item.BasePrice = defaultPrice;
-                        changedCount++;
-                    }
-                }
-            }
-
-            if (changedCount > 0)
-            {
-                StoreInventory.SaveStoreToJson();
-                Messages.Message(
-                    "RICS.SE.ResetPricesMessage".Translate(
-                        changedCount.Named("count"),
-                        selectedCategory.Named("category")
-                    ),
-                    MessageTypeDefOf.PositiveEvent
-                );
-                SoundDefOf.Click.PlayOneShotOnCamera();
-            }
-        }
         // This method resets all item prices from the selected mod source to the calculated default
         // (uses StoreItem.CalculateBasePrice so unique weapons get proper high price).
         private void ResetModSourcePrices()
@@ -1578,6 +1588,39 @@ namespace CAP_ChatInteractive
                     "RICS.SE.ResetPricesModMessage".Translate(
                         changedCount.Named("count"),
                         modName.Named("modName")
+                    ),
+                    MessageTypeDefOf.PositiveEvent
+                );
+                SoundDefOf.Click.PlayOneShotOnCamera();
+            }
+        }
+
+        // This method resets all item prices in the selected category to the calculated default
+        // (uses StoreItem.CalculateBasePrice so unique weapons get proper high price).
+        private void ResetCategoryPrices()
+        {
+            int changedCount = 0;
+            foreach (var item in filteredItems)
+            {
+                var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
+                if (thingDef != null)
+                {
+                    int defaultPrice = StoreItem.CalculateBasePrice(thingDef);
+                    if (item.BasePrice != defaultPrice)
+                    {
+                        item.BasePrice = defaultPrice;
+                        changedCount++;
+                    }
+                }
+            }
+
+            if (changedCount > 0)
+            {
+                StoreInventory.SaveStoreToJson();
+                Messages.Message(
+                    "RICS.SE.ResetPricesMessage".Translate(
+                        changedCount.Named("count"),
+                        selectedCategory.Named("category")
                     ),
                     MessageTypeDefOf.PositiveEvent
                 );
@@ -1794,6 +1837,121 @@ namespace CAP_ChatInteractive
         private void ShowDefInfoWindow(ThingDef thingDef, StoreItem storeItem)
         {
             Find.WindowStack.Add(new DefInfoWindow(thingDef, storeItem));
+        }
+
+        private void ShowSaveAsMenu()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>
+            {
+                new FloatMenuOption("Quick Timestamped Backup", () =>
+                {
+                    string json = JsonConvert.SerializeObject(StoreInventory.AllStoreItems, Formatting.Indented);
+                    BackupUtility.SaveQuickBackup("StoreEditor", json);
+                    Messages.Message("Quick timestamped backup saved.", MessageTypeDefOf.NeutralEvent);
+                }),
+                new FloatMenuOption("Save as Named Theme (custom name)", () =>
+                {
+                    string json = JsonConvert.SerializeObject(StoreInventory.AllStoreItems, Formatting.Indented);
+
+                    Find.WindowStack.Add(new Dialog_TextInput(
+                        "Enter backup name (e.g. GrimwarStore, RimMagic)",
+                        name =>
+                        {
+                            if (!string.IsNullOrWhiteSpace(name))
+                            {
+                                BackupUtility.SaveNamedBackup("StoreEditor", name, json);
+                                Messages.Message($"Named backup saved as {name}.json", MessageTypeDefOf.NeutralEvent);
+                            }
+                            else
+                            {
+                                string fallback = "CustomStore_" + DateTime.Now.ToString("yyyyMMdd_HHmm");
+                                BackupUtility.SaveNamedBackup("StoreEditor", fallback, json);
+                                Messages.Message($"Saved with fallback name: {fallback}.json", MessageTypeDefOf.NeutralEvent);
+                            }
+                        }));
+                })
+            };
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void ShowLoadFileMenu()
+        {
+            var files = BackupUtility.GetAllBackupFiles("StoreEditor");
+            if (files.Count == 0)
+            {
+                Messages.Message("No backup files found for Store Editor.", MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            foreach (var file in files)
+            {
+                options.Add(new FloatMenuOption(file, () =>
+                {
+                    string json = BackupUtility.LoadBackupFile("StoreEditor", file);
+                    if (!string.IsNullOrEmpty(json))
+                    {
+                        try
+                        {
+                            var loaded = JsonConvert.DeserializeObject<Dictionary<string, StoreItem>>(json);
+                            if (loaded != null)
+                            {
+                                StoreInventory.AllStoreItems.Clear();
+                                foreach (var kvp in loaded)
+                                    StoreInventory.AllStoreItems[kvp.Key] = kvp.Value;
+
+                                StoreInventory.SaveStoreToJson();
+                                BuildCategoryCounts();
+                                BuildModSourceCounts();
+                                FilterItems();
+
+                                Messages.Message($"Loaded backup: {file}", MessageTypeDefOf.NeutralEvent);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error($"Failed to load {file}: {ex.Message}");
+                            Messages.Message("Failed to load selected backup.", MessageTypeDefOf.RejectInput);
+                        }
+                    }
+                }));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void ShowDeleteFileMenu()
+        {
+            var files = BackupUtility.GetAllBackupFiles("StoreEditor");
+            if (files.Count == 0)
+            {
+                Messages.Message("No backup files found for Store Editor.", MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            foreach (var file in files)
+            {
+                options.Add(new FloatMenuOption(file, () =>
+                {
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        $"Delete backup file?\n{file}\n\nThis cannot be undone.",
+                        () =>
+                        {
+                            bool deleted = BackupUtility.DeleteBackupFile("StoreEditor", file);
+                            if (deleted)
+                            {
+                                Messages.Message($"Deleted: {file}", MessageTypeDefOf.NeutralEvent);
+                            }
+                        },
+                        true,
+                        "Delete Backup"
+                    ));
+                }));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
         }
     }
     // Enums for sorting and view types
