@@ -647,7 +647,7 @@ namespace CAP_ChatInteractive
             }
 
             // Category list area
-            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f);
+            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f - 4f);
 
             // Safety: don't crash if no categories yet
             if (categoryCounts == null || categoryCounts.Count == 0)
@@ -741,7 +741,7 @@ namespace CAP_ChatInteractive
             }
 
             // Mod source list area
-            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f);
+            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f - 4f);
 
             // Safety: don't crash if no mod sources yet
             if (modSourceCounts == null || modSourceCounts.Count == 0)

@@ -365,7 +365,6 @@ namespace CAP_ChatInteractive
             Widgets.EndGroup();
         }
 
-        // Show cooldown menu
         private void ShowCooldownMenu()
         {
             List<FloatMenuOption> options = new List<FloatMenuOption>();
@@ -407,7 +406,6 @@ namespace CAP_ChatInteractive
             Find.WindowStack.Add(new FloatMenu(options));
         }
 
-        // Helper method to build filter description
         private string BuildFilterDescription()
         {
             string description = "";
@@ -432,35 +430,6 @@ namespace CAP_ChatInteractive
             return description;
         }
 
-        // NEW: Apply bulk cooldown to all incidents
-        // Future: Add filteredOnly parameter to apply only to filtered events
-        private void ApplyBulkCooldown(int days)
-        {
-            int count = 0;
-            foreach (var incident in IncidentsManager.AllBuyableIncidents.Values)
-            {
-                incident.CooldownDays = days;
-                // Also update the buffer if it exists
-                string bufferKey = $"Cooldown_{incident.DefName}";
-                if (numericBuffers.ContainsKey(bufferKey))
-                {
-                    numericBuffers[bufferKey] = days.ToString();
-                }
-                count++;
-            }
-
-            IncidentsManager.SaveIncidentsToJson();
-
-            string message = days == 0 ?
-                "RICS.Messages.SetNoCooldown".Translate(count) :
-                "RICS.Messages.SetCooldown".Translate(count, days, (days == 1 ? "RICS.DaysSingular" : "RICS.DaysPlural").Translate());
-
-            Messages.Message(message, MessageTypeDefOf.TaskCompletion);
-
-            // Refresh the view
-            FilterEvents();
-        }
-        // NEW: Open custom cooldown dialog
         private void OpenCustomCooldownDialog()
         {
             // Build filter description
@@ -553,7 +522,6 @@ namespace CAP_ChatInteractive
             Widgets.EndScrollView();
         }
 
-        // In Dialog_EventsEditor.cs, replace the entire DrawModSourcesList() function with this:
         private void DrawModSourcesList(Rect rect)
         {
             Widgets.DrawMenuSection(rect);
@@ -1022,7 +990,6 @@ namespace CAP_ChatInteractive
             return UIUtilities.GetSortedModSourceKeys(modSourceCounts);
         }
 
-        // Bulk operations (similar to weather editor)
         private void ApplyResetAllCooldowns(bool filteredOnly = false)
         {
             int count = 0;
@@ -1068,6 +1035,7 @@ namespace CAP_ChatInteractive
             Messages.Message("RICS.Messages.ResetCooldowns".Translate(count), MessageTypeDefOf.TaskCompletion);
             FilterEvents();
         }
+
         private void SetBulkCooldown(int days, bool filteredOnly = false, string filterDescription = "")
         {
             string targetDescription = filteredOnly ?
@@ -1083,6 +1051,7 @@ namespace CAP_ChatInteractive
                 () => ApplyBulkCooldown(days, filteredOnly)
             ));
         }
+
         private void ApplyBulkCooldown(int days, bool filteredOnly = false)
         {
             int count = 0;
@@ -1132,7 +1101,6 @@ namespace CAP_ChatInteractive
             FilterEvents();
         }
 
-        // Calculate default cooldown based on incident type (similar to your BuyableIncident logic)
         private int CalculateDefaultCooldown(BuyableIncident incident)
         {
             // This should match the logic in BuyableIncident.SetDefaultCooldown
