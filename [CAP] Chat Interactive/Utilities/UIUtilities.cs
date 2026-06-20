@@ -16,7 +16,9 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // General UI utility methods for the CAP Chat Interactive mod
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Verse;
 
@@ -347,6 +349,71 @@ namespace CAP_ChatInteractive
             string hex = ColorUtility.ToHtmlStringRGB(color);
             return $"<color=#{hex}>{text}</color>";
         }
+
+        // In UIUtilities.cs — add this block inside the UIUtilities static class
+        // (recommended: insert it after the last existing method, before the final })
+
+        #region === Official Ludeon Content Ordering (reusable across all editors) ===
+
+        /// <summary>
+        /// Official Ludeon content in chronological release order.
+        /// Used by Events Editor, Store Editor, Weather Editor, etc. to pin these at the top of mod source lists.
+        /// </summary>
+        public static readonly string[] OfficialLudeonOrder = new[]
+        {
+    "RimWorld",     // Core
+    "Royalty",
+    "Ideology",
+    "Biotech",
+    "Anomaly",
+    "Odyssey"
+};
+
+        /// <summary>
+        /// Returns true if the given key represents official Ludeon content (Core or any DLC).
+        /// </summary>
+        public static bool IsOfficialLudeonContent(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return false;
+            return OfficialLudeonOrder.Contains(key);
+        }
+
+        /// <summary>
+        /// Returns a sorted list of mod source keys suitable for display in editor sidebars.
+        /// Order: "All" → Official Ludeon content (release order) → Everything else (by count descending).
+        /// This is the single reusable method other dialogs should call.
+        /// </summary>
+        public static List<string> GetSortedModSourceKeys(Dictionary<string, int> sourceCounts)
+        {
+            if (sourceCounts == null || sourceCounts.Count == 0)
+                return new List<string>();
+
+            var result = new List<string>();
+
+            // 1. "All" always comes first
+            if (sourceCounts.ContainsKey("All"))
+                result.Add("All");
+
+            // 2. Official Ludeon content in release order
+            foreach (var official in OfficialLudeonOrder)
+            {
+                if (sourceCounts.ContainsKey(official) && !result.Contains(official))
+                    result.Add(official);
+            }
+
+            // 3. All remaining mods, sorted by count (descending) then name
+            var remaining = sourceCounts.Keys
+                .Where(k => k != "All" && !IsOfficialLudeonContent(k))
+                .OrderByDescending(k => sourceCounts[k])
+                .ThenBy(k => k, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            result.AddRange(remaining);
+
+            return result;
+        }
+
+        #endregion
     }
 
     /// <summary>
