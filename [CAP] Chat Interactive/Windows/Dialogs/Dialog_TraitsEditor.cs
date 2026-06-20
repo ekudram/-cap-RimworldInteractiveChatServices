@@ -16,12 +16,14 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //  A dialog window for editing buyable traits in the game
 
+using CAP_ChatInteractive.Traits;
+using Newtonsoft.Json;
+using RimWorld;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using RimWorld;
 using UnityEngine;
 using Verse;
-using CAP_ChatInteractive.Traits;
 
 namespace CAP_ChatInteractive
 {
@@ -46,7 +48,7 @@ namespace CAP_ChatInteractive
 
         public Dialog_TraitsEditor()
         {
-            doCloseButton = true;
+            doCloseButton = false;
             forcePause = true;
             absorbInputAroundWindow = true;
             ///optionalTitle = "Traits Editor";
@@ -63,13 +65,100 @@ namespace CAP_ChatInteractive
                 FilterTraits();
             }
 
+            float bottomBarHeight = 50f; // Space for the 6-button bar
+
             // Header - increased height to accommodate two rows (matching other dialogs)
-            Rect headerRect = new Rect(0f, 0f, inRect.width, 70f); // Increased from 40f to 70f
+            Rect headerRect = new Rect(0f, 0f, inRect.width, 70f);
             DrawHeader(headerRect);
 
-            // Main content area - adjusted position
-            Rect contentRect = new Rect(0f, 75f, inRect.width, inRect.height - 75f - CloseButSize.y); // Adjusted from 45f to 75f
+            // Main content area — leave room at bottom for button bar
+            Rect contentRect = new Rect(0f, 75f, inRect.width, inRect.height - 75f - bottomBarHeight);
             DrawContent(contentRect);
+
+            // ========== BOTTOM BUTTON BAR (Save Backup | Load Backup | Save As... | Load file | Delete file | Close) ==========
+            // WHY: Consistent with Command Manager, Events Editor, and Store Editor. Uses reusable BackupUtility + Dialog_TextInput.
+            float btnH = 38f;
+            float btnW = 130f;
+            float gap = 6f;
+            float padding = 10f;
+            float currentY = inRect.yMax - bottomBarHeight + (bottomBarHeight - btnH) / 2f;
+
+            // Save Backup (quick timestamped)
+            Rect saveRect = new Rect(padding, currentY, btnW, btnH);
+            if (Widgets.ButtonText(saveRect, "Save Backup"))
+            {
+                string json = JsonConvert.SerializeObject(TraitsManager.AllBuyableTraits, Formatting.Indented);
+                BackupUtility.SaveQuickBackup("TraitsEditor", json);
+                Messages.Message("Traits backup saved (timestamped).", MessageTypeDefOf.NeutralEvent);
+            }
+
+            // Load Backup (latest timestamped)
+            float loadX = padding + btnW + gap;
+            Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(loadRect, "Load Backup"))
+            {
+                string json = BackupUtility.LoadLatestTimestampedBackup("TraitsEditor");
+                if (!string.IsNullOrEmpty(json))
+                {
+                    try
+                    {
+                        var loaded = JsonConvert.DeserializeObject<Dictionary<string, BuyableTrait>>(json);
+                        if (loaded != null)
+                        {
+                            TraitsManager.AllBuyableTraits.Clear();
+                            foreach (var kvp in loaded)
+                                TraitsManager.AllBuyableTraits[kvp.Key] = kvp.Value;
+
+                            TraitsManager.SaveTraitsToJson();
+                            BuildModSourceCounts();
+                            FilterTraits();
+
+                            Messages.Message("Traits loaded from latest backup.", MessageTypeDefOf.NeutralEvent);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"Failed to apply traits backup: {ex.Message}");
+                        Messages.Message("Failed to load backup (invalid data).", MessageTypeDefOf.RejectInput);
+                    }
+                }
+                else
+                {
+                    Messages.Message("No timestamped backups found for Traits Editor.", MessageTypeDefOf.RejectInput);
+                }
+            }
+
+            // Save As... (uses Dialog_TextInput for custom name)
+            float saveAsX = loadX + btnW + gap;
+            Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(saveAsRect, "Save As..."))
+            {
+                ShowSaveAsMenu();
+            }
+
+            // Load file
+            float loadFileX = saveAsX + btnW + gap;
+            Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(loadFileRect, "Load file"))
+            {
+                ShowLoadFileMenu();
+            }
+
+            // Delete file (right next to Load file)
+            float deleteX = loadFileX + btnW + gap;
+            Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(deleteRect, "Delete file"))
+            {
+                ShowDeleteFileMenu();
+            }
+
+            // Close (right-aligned)
+            float closeX = inRect.xMax - btnW - padding;
+            Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(closeRect, "Close"))
+            {
+                this.Close();
+            }
         }
 
         private void DrawHeader(Rect rect)
@@ -261,6 +350,7 @@ namespace CAP_ChatInteractive
             DrawTraitsList(traitsRect);
         }
 
+        // In Dialog_TraitsEditor.cs — replace the entire DrawModSourcesList() method with this:
         private void DrawModSourcesList(Rect rect)
         {
             // Background with centered content
@@ -275,17 +365,24 @@ namespace CAP_ChatInteractive
             Text.Font = GameFont.Small;
 
             // Mod sources list with margins
-            Rect listRect = new Rect(rect.x + 10f, rect.y + 35f, rect.width - 20f, rect.height - 35f); // Reduced margins for wider buttons
-            Rect viewRect = new Rect(0f, 0f, listRect.width, modSourceCounts.Count * 30f); // removed -20f to use full width
-                                                                                           // Rect viewRect = new Rect(0f, 0f, listRect.width - 20f, modSourceCounts.Count * 30f);
+            Rect listRect = new Rect(rect.x + 10f, rect.y + 35f, rect.width - 20f, rect.height - 35f);
+            Rect viewRect = new Rect(0f, 0f, listRect.width, modSourceCounts.Count * 30f);
+
             Widgets.BeginScrollView(listRect, ref categoryScrollPosition, viewRect);
             {
                 float y = 0f;
-                foreach (var modSource in modSourceCounts.OrderByDescending(kvp => kvp.Value))
+
+                // === Use shared utility for consistent official Ludeon ordering (Core + DLCs first) ===
+                var orderedModSources = UIUtilities.GetSortedModSourceKeys(modSourceCounts);
+
+                foreach (var key in orderedModSources)
                 {
+                    if (!modSourceCounts.TryGetValue(key, out int count))
+                        continue;
+
                     Rect sourceButtonRect = new Rect(5f, y, viewRect.width - 10f, 28f);
 
-                    if (selectedModSource == modSource.Key)
+                    if (selectedModSource == key)
                     {
                         Widgets.DrawHighlightSelected(sourceButtonRect);
                     }
@@ -294,15 +391,21 @@ namespace CAP_ChatInteractive
                         Widgets.DrawHighlight(sourceButtonRect);
                     }
 
-                    string displayName = modSource.Key == "All" ? "All" : GetDisplayModName(modSource.Key);
-                    string label = $"{displayName} ({modSource.Value})";
+                    string displayName = key == "All" ? "All" : GetDisplayModName(key);
+                    string label = $"{displayName} ({count})";
+
+                    // === Official Ludeon content highlight (Core + DLCs) ===
+                    if (UIUtilities.IsOfficialLudeonContent(key) && key != "All")
+                    {
+                        label = label.Colorize(ColorLibrary.SubHeader);
+                    }
 
                     Text.Anchor = TextAnchor.MiddleCenter;
 
                     // Use truncation for mod source buttons
                     if (UIUtilities.ButtonWithTruncation(sourceButtonRect, label))
                     {
-                        selectedModSource = modSource.Key;
+                        selectedModSource = key;
                         FilterTraits();
                     }
 
@@ -481,27 +584,6 @@ namespace CAP_ChatInteractive
 
             TraitsManager.SaveTraitsToJson();
             Messages.Message($"Set Remove Price to {price} for {changedCount} traits", MessageTypeDefOf.PositiveEvent);
-        }
-
-        private void ResetDisplayedTraitsPrices()
-        {
-            int changedCount = 0;
-            foreach (var trait in filteredTraits)
-            {
-                int defaultAddPrice = GetProperDefaultPrice(trait, true);
-                int defaultRemovePrice = GetProperDefaultPrice(trait, false);
-
-                if (trait.AddPrice != defaultAddPrice || trait.RemovePrice != defaultRemovePrice)
-                {
-                    trait.AddPrice = defaultAddPrice;
-                    trait.RemovePrice = defaultRemovePrice;
-                    changedCount++;
-                }
-            }
-
-            TraitsManager.SaveTraitsToJson();
-            Messages.Message($"Reset {changedCount} traits to default prices", MessageTypeDefOf.PositiveEvent);
-            FilterTraits(); // Refresh the display
         }
 
         private void DrawTraitRow(Rect rect, BuyableTrait trait)
@@ -917,6 +999,120 @@ namespace CAP_ChatInteractive
             TraitsManager.SaveTraitsToJson();
             Messages.Message($"Disabled {disabledCount} {GetDisplayModName(modSource)} traits", MessageTypeDefOf.NeutralEvent);
             FilterTraits();
+        }
+
+        private void ShowSaveAsMenu()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>
+            {
+                new FloatMenuOption("Quick Timestamped Backup", () =>
+                {
+                    string json = JsonConvert.SerializeObject(TraitsManager.AllBuyableTraits, Formatting.Indented);
+                    BackupUtility.SaveQuickBackup("TraitsEditor", json);
+                    Messages.Message("Quick timestamped backup saved.", MessageTypeDefOf.NeutralEvent);
+                }),
+                new FloatMenuOption("Save as Named Theme (custom name)", () =>
+                {
+                    string json = JsonConvert.SerializeObject(TraitsManager.AllBuyableTraits, Formatting.Indented);
+
+                    Find.WindowStack.Add(new Dialog_TextInput(
+                        "Enter backup name (e.g. GrimwarTraits, RimMagic)",
+                        name =>
+                        {
+                            if (!string.IsNullOrWhiteSpace(name))
+                            {
+                                BackupUtility.SaveNamedBackup("TraitsEditor", name, json);
+                                Messages.Message($"Named backup saved as {name}.json", MessageTypeDefOf.NeutralEvent);
+                            }
+                            else
+                            {
+                                string fallback = "CustomTraits_" + DateTime.Now.ToString("yyyyMMdd_HHmm");
+                                BackupUtility.SaveNamedBackup("TraitsEditor", fallback, json);
+                                Messages.Message($"Saved with fallback name: {fallback}.json", MessageTypeDefOf.NeutralEvent);
+                            }
+                        }));
+                })
+            };
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void ShowLoadFileMenu()
+        {
+            var files = BackupUtility.GetAllBackupFiles("TraitsEditor");
+            if (files.Count == 0)
+            {
+                Messages.Message("No backup files found for Traits Editor.", MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            foreach (var file in files)
+            {
+                options.Add(new FloatMenuOption(file, () =>
+                {
+                    string json = BackupUtility.LoadBackupFile("TraitsEditor", file);
+                    if (!string.IsNullOrEmpty(json))
+                    {
+                        try
+                        {
+                            var loaded = JsonConvert.DeserializeObject<Dictionary<string, BuyableTrait>>(json);
+                            if (loaded != null)
+                            {
+                                TraitsManager.AllBuyableTraits.Clear();
+                                foreach (var kvp in loaded)
+                                    TraitsManager.AllBuyableTraits[kvp.Key] = kvp.Value;
+
+                                TraitsManager.SaveTraitsToJson();
+                                BuildModSourceCounts();
+                                FilterTraits();
+
+                                Messages.Message($"Loaded backup: {file}", MessageTypeDefOf.NeutralEvent);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error($"Failed to load {file}: {ex.Message}");
+                            Messages.Message("Failed to load selected backup.", MessageTypeDefOf.RejectInput);
+                        }
+                    }
+                }));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void ShowDeleteFileMenu()
+        {
+            var files = BackupUtility.GetAllBackupFiles("TraitsEditor");
+            if (files.Count == 0)
+            {
+                Messages.Message("No backup files found for Traits Editor.", MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            foreach (var file in files)
+            {
+                options.Add(new FloatMenuOption(file, () =>
+                {
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        $"Delete backup file?\n{file}\n\nThis cannot be undone.",
+                        () =>
+                        {
+                            bool deleted = BackupUtility.DeleteBackupFile("TraitsEditor", file);
+                            if (deleted)
+                            {
+                                Messages.Message($"Deleted: {file}", MessageTypeDefOf.NeutralEvent);
+                            }
+                        },
+                        true,
+                        "Delete Backup"
+                    ));
+                }));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
         }
 
         public override void PostClose()
