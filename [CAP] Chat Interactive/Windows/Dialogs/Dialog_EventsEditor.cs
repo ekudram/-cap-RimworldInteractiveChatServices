@@ -17,7 +17,9 @@
 // A dialog window for editing and managing chat-interactive events
 using _CAP__Chat_Interactive.Windows.Dialogs;
 using CAP_ChatInteractive.Incidents;
+using Newtonsoft.Json;
 using RimWorld;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -49,7 +51,7 @@ namespace CAP_ChatInteractive
 
         public Dialog_EventsEditor()
         {
-            doCloseButton = true;
+            doCloseButton = false;
             forcePause = true;
             absorbInputAroundWindow = true;
 
@@ -66,11 +68,100 @@ namespace CAP_ChatInteractive
                 FilterEvents();
             }
 
+            float bottomBarHeight = 50f; // Space for the 6-button bar
+
             Rect headerRect = new Rect(0f, 0f, inRect.width, 65f);
             DrawHeader(headerRect);
 
-            Rect contentRect = new Rect(0f, 70f, inRect.width, inRect.height - 70f - CloseButSize.y);
+            // Main content — leave room at bottom for button bar
+            Rect contentRect = new Rect(0f, 70f, inRect.width, inRect.height - 70f - bottomBarHeight);
             DrawContent(contentRect);
+
+            // ========== BOTTOM BUTTON BAR (Save Backup | Load Backup | Save As... | Load file | Delete file | Close) ==========
+            // WHY: Consistent with Command Manager. Uses reusable BackupUtility + Dialog_TextInput.
+            float btnH = 38f;
+            float btnW = 130f;
+            float gap = 6f;
+            float padding = 10f;
+            float currentY = inRect.yMax - bottomBarHeight + (bottomBarHeight - btnH) / 2f;
+
+            // Save Backup (quick timestamped)
+            Rect saveRect = new Rect(padding, currentY, btnW, btnH);
+            if (Widgets.ButtonText(saveRect, "Save Backup"))
+            {
+                string json = JsonConvert.SerializeObject(IncidentsManager.AllBuyableIncidents, Formatting.Indented);
+                BackupUtility.SaveQuickBackup("EventsEditor", json);
+                Messages.Message("Events backup saved (timestamped).", MessageTypeDefOf.NeutralEvent);
+            }
+
+            // Load Backup (latest timestamped)
+            float loadX = padding + btnW + gap;
+            Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(loadRect, "Load Backup"))
+            {
+                string json = BackupUtility.LoadLatestTimestampedBackup("EventsEditor");
+                if (!string.IsNullOrEmpty(json))
+                {
+                    try
+                    {
+                        var loaded = JsonConvert.DeserializeObject<Dictionary<string, BuyableIncident>>(json);
+                        if (loaded != null)
+                        {
+                            IncidentsManager.AllBuyableIncidents.Clear();
+                            foreach (var kvp in loaded)
+                                IncidentsManager.AllBuyableIncidents[kvp.Key] = kvp.Value;
+
+                            IncidentsManager.SaveIncidentsToJson();
+                            BuildModSourceCounts();
+                            BuildCategoryCounts();
+                            FilterEvents();
+
+                            Messages.Message("Events loaded from latest backup.", MessageTypeDefOf.NeutralEvent);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"Failed to apply events backup: {ex.Message}");
+                        Messages.Message("Failed to load backup (invalid data).", MessageTypeDefOf.RejectInput);
+                    }
+                }
+                else
+                {
+                    Messages.Message("No timestamped backups found for Events.", MessageTypeDefOf.RejectInput);
+                }
+            }
+
+            // Save As... (uses Dialog_TextInput for custom name)
+            float saveAsX = loadX + btnW + gap;
+            Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(saveAsRect, "Save As..."))
+            {
+                ShowSaveAsMenu();
+            }
+
+            // Load file
+            float loadFileX = saveAsX + btnW + gap;
+            Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(loadFileRect, "Load file"))
+            {
+                ShowLoadFileMenu();
+            }
+
+            // Delete file (right next to Load file)
+            float deleteX = loadFileX + btnW + gap;
+            Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(deleteRect, "Delete file"))
+            {
+                ShowDeleteFileMenu();
+            }
+
+            // Close (right-aligned)
+            float closeX = inRect.xMax - btnW - padding;
+            Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(closeRect, "Close"))
+            {
+                this.Close();
+            }
         }
 
         private void DrawHeader(Rect rect)
@@ -462,6 +553,7 @@ namespace CAP_ChatInteractive
             Widgets.EndScrollView();
         }
 
+        // In Dialog_EventsEditor.cs, replace the entire DrawModSourcesList() function with this:
         private void DrawModSourcesList(Rect rect)
         {
             Widgets.DrawMenuSection(rect);
@@ -486,11 +578,20 @@ namespace CAP_ChatInteractive
             Widgets.BeginScrollView(listRect, ref categoryScrollPosition, viewRect);
             {
                 float y = 0f;
-                foreach (var modSource in modSourceCounts.OrderByDescending(kvp => kvp.Value))
+
+                // === Custom sort: "All" first, then official Ludeon content in release order, then community mods by count ===
+                var sortedModSources = GetSortedModSourcesForDisplay();
+
+                foreach (var modSourceKey in sortedModSources)
                 {
+                    if (!modSourceCounts.ContainsKey(modSourceKey))
+                        continue;
+
+                    int count = modSourceCounts[modSourceKey];
+
                     Rect sourceButtonRect = new Rect(0f, y, listRect.xMax - 21f, 28f);
 
-                    if (selectedModSource == modSource.Key)
+                    if (selectedModSource == modSourceKey)
                     {
                         Widgets.DrawHighlightSelected(sourceButtonRect);
                     }
@@ -499,16 +600,23 @@ namespace CAP_ChatInteractive
                         Widgets.DrawHighlight(sourceButtonRect);
                     }
 
-                    string displayName = modSource.Key == "All" ? "All" : GetDisplayModName(modSource.Key);
+                    string displayName = modSourceKey == "All" ? "All" : GetDisplayModName(modSourceKey);
+
                     // Calculate max width for the text (button width minus some padding for the count)
-                    float textMaxWidth = sourceButtonRect.width - Text.CalcSize($" ({modSource.Value})").x - 10f;
+                    float textMaxWidth = sourceButtonRect.width - Text.CalcSize($" ({count})").x - 10f;
                     string truncatedName = UIUtilities.TruncateTextToWidth(displayName, textMaxWidth);
-                    string label = $"{truncatedName} ({modSource.Value})";
+                    string label = $"{truncatedName} ({count})";
+
+                    // Optional visual hint for official content
+                    if (UIUtilities.IsOfficialLudeonContent(modSourceKey) && modSourceKey != "All")
+                    {
+                        label = label.Colorize(ColorLibrary.SubHeader); // subtle blue-ish tint so official stuff stands out
+                    }
 
                     Text.Anchor = TextAnchor.MiddleLeft;
                     if (Widgets.ButtonText(sourceButtonRect, label))
                     {
-                        selectedModSource = modSource.Key;
+                        selectedModSource = modSourceKey;
                         FilterEvents();
                     }
                     Text.Anchor = TextAnchor.UpperLeft;
@@ -548,7 +656,7 @@ namespace CAP_ChatInteractive
                 return;
             }
 
-            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f);
+            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f - 4f); // -4f is to pull it off the bottom line just a bit.
             float rowHeight = 70f; // Slightly taller for events
 
             // Calculate visible indices with proper bounds checking
@@ -559,7 +667,7 @@ namespace CAP_ChatInteractive
             firstVisibleIndex = Mathf.Clamp(firstVisibleIndex, 0, Mathf.Max(0, filteredEvents.Count - 1));
             lastVisibleIndex = Mathf.Clamp(lastVisibleIndex, 0, Mathf.Max(0, filteredEvents.Count - 1));
 
-            Rect viewRect = new Rect(0f, 0f, listRect.width - 20f, filteredEvents.Count * rowHeight);
+            Rect viewRect = new Rect(0f, 0f, listRect.width - 20f, filteredEvents.Count * rowHeight ); 
 
             Widgets.BeginScrollView(listRect, ref scrollPosition, viewRect);
             {
@@ -907,6 +1015,11 @@ namespace CAP_ChatInteractive
                 "doom" => new Color(0.85f, 0.15f, 0.85f), // vivid purple-pink = "colony-ending doom"
                 _ => Color.yellow
             };
+        }
+
+        private List<string> GetSortedModSourcesForDisplay()
+        {
+            return UIUtilities.GetSortedModSourceKeys(modSourceCounts);
         }
 
         // Bulk operations (similar to weather editor)
@@ -1349,7 +1462,124 @@ namespace CAP_ChatInteractive
 
             Messages.Message(msg, MessageTypeDefOf.TaskCompletion);
         }
+
+        private void ShowSaveAsMenu()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>
+            {
+                new FloatMenuOption("Quick Timestamped Backup", () =>
+                {
+                    string json = JsonConvert.SerializeObject(IncidentsManager.AllBuyableIncidents, Formatting.Indented);
+                    BackupUtility.SaveQuickBackup("EventsEditor", json);
+                    Messages.Message("Quick timestamped backup saved.", MessageTypeDefOf.NeutralEvent);
+                }),
+                new FloatMenuOption("Save as Named Theme (custom name)", () =>
+                {
+                    string json = JsonConvert.SerializeObject(IncidentsManager.AllBuyableIncidents, Formatting.Indented);
+
+                    Find.WindowStack.Add(new Dialog_TextInput(
+                        "Enter backup name (e.g. GrimwarEvents, RimMagic)",
+                        name =>
+                        {
+                            if (!string.IsNullOrWhiteSpace(name))
+                            {
+                                BackupUtility.SaveNamedBackup("EventsEditor", name, json);
+                                Messages.Message($"Named backup saved as {name}.json", MessageTypeDefOf.NeutralEvent);
+                            }
+                            else
+                            {
+                                string fallback = "CustomEvents_" + DateTime.Now.ToString("yyyyMMdd_HHmm");
+                                BackupUtility.SaveNamedBackup("EventsEditor", fallback, json);
+                                Messages.Message($"Saved with fallback name: {fallback}.json", MessageTypeDefOf.NeutralEvent);
+                            }
+                        }));
+                })
+            };
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void ShowLoadFileMenu()
+        {
+            var files = BackupUtility.GetAllBackupFiles("EventsEditor");
+            if (files.Count == 0)
+            {
+                Messages.Message("No backup files found for Events Editor.", MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            foreach (var file in files)
+            {
+                options.Add(new FloatMenuOption(file, () =>
+                {
+                    string json = BackupUtility.LoadBackupFile("EventsEditor", file);
+                    if (!string.IsNullOrEmpty(json))
+                    {
+                        try
+                        {
+                            var loaded = JsonConvert.DeserializeObject<Dictionary<string, BuyableIncident>>(json);
+                            if (loaded != null)
+                            {
+                                IncidentsManager.AllBuyableIncidents.Clear();
+                                foreach (var kvp in loaded)
+                                    IncidentsManager.AllBuyableIncidents[kvp.Key] = kvp.Value;
+
+                                IncidentsManager.SaveIncidentsToJson();
+                                BuildModSourceCounts();
+                                BuildCategoryCounts();
+                                FilterEvents();
+
+                                Messages.Message($"Loaded backup: {file}", MessageTypeDefOf.NeutralEvent);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error($"Failed to load {file}: {ex.Message}");
+                            Messages.Message("Failed to load selected backup.", MessageTypeDefOf.RejectInput);
+                        }
+                    }
+                }));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void ShowDeleteFileMenu()
+        {
+            var files = BackupUtility.GetAllBackupFiles("EventsEditor");
+            if (files.Count == 0)
+            {
+                Messages.Message("No backup files found for Events Editor.", MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            foreach (var file in files)
+            {
+                options.Add(new FloatMenuOption(file, () =>
+                {
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        $"Delete backup file?\n{file}\n\nThis cannot be undone.",
+                        () =>
+                        {
+                            bool deleted = BackupUtility.DeleteBackupFile("EventsEditor", file);
+                            if (deleted)
+                            {
+                                Messages.Message($"Deleted: {file}", MessageTypeDefOf.NeutralEvent);
+                            }
+                        },
+                        true,
+                        "Delete Backup"
+                    ));
+                }));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
     }
+
 
     public enum EventSortMethod
     {
