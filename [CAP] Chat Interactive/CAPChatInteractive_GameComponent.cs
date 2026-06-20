@@ -143,7 +143,7 @@ namespace CAP_ChatInteractive
             if (aiSettings?.AIChatBotActive == true && _aiChatBotService != null)
             {
                 aiChatBotCommandProcessTickCounter++;
-                if (aiChatBotCommandProcessTickCounter >= 10)   // ~6 times per second when active
+                if (aiChatBotCommandProcessTickCounter >= 20)   // ~3 times per second when active
                 {
                     aiChatBotCommandProcessTickCounter = 0;
                     _aiChatBotService.ProcessFileBasedAICommands();
@@ -248,26 +248,35 @@ namespace CAP_ChatInteractive
         /// Runs every frame (like Update). Checks Ctrl+V globally to toggle live chat.
         /// Very cheap (only 1 GetKey call) and ignores input when typing.
         /// </summary>
+        /// <summary>
+        /// Runs every frame (like Update). Checks Ctrl+V globally to toggle live chat.
+        /// Also handles AI file commands when the game is paused (Tick() stops during pause).
+        /// </summary>
         public override void GameComponentUpdate()
         {
             base.GameComponentUpdate();
 
             if (ChatUtility.IsToggleHotkeyPressed())
             {
-                // Safety: never toggle while user is typing in any text field (prevents closing while pasting)
                 string focused = GUI.GetNameOfFocusedControl();
                 if (string.IsNullOrEmpty(focused) || !focused.Contains("Input"))
                 {
                     Window_LiveChat.ToggleLiveChatWindow();
                 }
             }
-            // === AI CHATBOT - also process file commands from Update (runs even when paused) ===
-            // This gives Masie responsiveness while the game is paused without duplicating heavy logic.
-            // The internal 120ms throttle in ProcessFileBasedAICommands() prevents busy work.
+
+            // === AI CHATBOT FILE COMMANDS - only when paused ===
+            // We keep the main processing loop in GameComponentTick() for normal gameplay.
+            // This fallback only runs when the game is paused so Masie can still react to commands/chat.
+            // The 120ms internal throttle in ProcessFileBasedAICommands() prevents busy work.
             var aiSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             if (aiSettings?.AIChatBotActive == true && _aiChatBotService != null)
             {
-                _aiChatBotService.ProcessFileBasedAICommands();
+                // Only process from Update when we're paused or not in a normal playing state
+                if (Current.ProgramState != ProgramState.Playing || Find.TickManager?.Paused == true)
+                {
+                    _aiChatBotService.ProcessFileBasedAICommands();
+                }
             }
         }
     }
