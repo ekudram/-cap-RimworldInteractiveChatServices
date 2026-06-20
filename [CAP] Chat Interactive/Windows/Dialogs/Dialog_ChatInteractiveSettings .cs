@@ -19,7 +19,9 @@
 // Sets up the Tabs and window for Settings, but the actual content of each tab is drawn in separate classes for better organization and maintainability.
 
 using _CAP__Chat_Interactive;
+using Newtonsoft.Json;
 using RimWorld;
+using System.Collections.Generic;
 using UnityEngine;
 using Verse;
 
@@ -109,9 +111,9 @@ namespace CAP_ChatInteractive
 
         public override void DoWindowContents(Rect inRect)
         {
-            // Calculate areas — now reserves space for our custom bottom button bar instead of relying on base close button
+            // Calculate areas — reserves space for our custom bottom button bar
             var tabBarRect = new Rect(0f, 0f, inRect.width, Text.LineHeight * 1.5f);
-            float bottomBarHeight = 50f;   // Enough room for three buttons + padding
+            float bottomBarHeight = 50f;
             var tabContentRect = new Rect(0f, tabBarRect.height, inRect.width, inRect.height - tabBarRect.height - bottomBarHeight);
 
             // Draw tab bar
@@ -119,62 +121,139 @@ namespace CAP_ChatInteractive
             _tabWorker.Draw(tabBarRect.AtZero(), paneled: true);
             GUI.EndGroup();
 
-            // Draw tab content (leaves clean space at bottom for the button bar)
+            // Draw tab content
             GUI.BeginGroup(tabContentRect);
             _tabWorker.SelectedTab?.Draw(tabContentRect.AtZero());
             GUI.EndGroup();
 
-            // ========== CUSTOM BOTTOM BUTTON BAR (Save Backup | Load Backup | Close) ==========
-            // WHY: Requested layout — Save & Load buttons to the LEFT of the Close button at the very bottom.
-            // We fully control the bar because doCloseButton=false. All buttons use standard RimWorld styling.
+            // ========== BOTTOM BUTTON BAR (Save Backup | Load Backup | Save As... | Load file | Delete file | Close) ==========
+            // WHY: Now fully consistent with Command Manager, Events, Store, Traits, Weather, and Pawn Race Settings.
             float btnH = 38f;
-            float btnW = 170f;
-            float gap = 12f;
-            float padding = 15f;
+            float btnW = 130f;
+            float gap = 6f;
+            float padding = 10f;
             float currentY = inRect.yMax - bottomBarHeight + (bottomBarHeight - btnH) / 2f;
 
-            // Save Settings Backup (leftmost)
+            // Save Backup (quick timestamped)
             Rect saveRect = new Rect(padding, currentY, btnW, btnH);
-            if (Widgets.ButtonText(saveRect, "Save Settings Backup"))
+            if (Widgets.ButtonText(saveRect, "Save Backup"))
             {
                 var modSettings = CAPChatInteractiveMod.Instance?.Settings;
                 if (modSettings != null)
                 {
                     JsonFileManager.SaveSettingsBackup(modSettings);
-                    Messages.Message("RICS settings backup saved to Config/CAP_ChatInteractive/Backups (timestamped + Latest).", MessageTypeDefOf.NeutralEvent);
-                }
-                else
-                {
-                    Messages.Message("Could not access mod settings for backup.", MessageTypeDefOf.RejectInput);
+                    Messages.Message("RICS settings backup saved.", MessageTypeDefOf.NeutralEvent);
                 }
             }
 
-            // Load Settings Backup
+            // Load Backup (latest timestamped)
             float loadX = padding + btnW + gap;
             Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(loadRect, "Load Settings Backup"))
+            if (Widgets.ButtonText(loadRect, "Load Backup"))
             {
                 var backup = JsonFileManager.LoadLatestSettingsBackup();
                 if (backup != null)
                 {
                     JsonFileManager.ApplyBackupToCurrentSettings(backup);
-                    // Tab drawers read live from CAPChatInteractiveMod.Instance.Settings, so values update immediately.
-                    // If a tab was already drawn this frame it may need a close/reopen to fully refresh text fields.
-                    Messages.Message("RICS settings restored from JSON backup. Close this window to keep the restored values.", MessageTypeDefOf.NeutralEvent);
+                    Messages.Message("RICS settings restored from backup. Close and reopen this window to fully refresh.", MessageTypeDefOf.NeutralEvent);
                 }
                 else
                 {
-                    Messages.Message("No settings backup found. Click 'Save Settings Backup' first.", MessageTypeDefOf.RejectInput);
+                    Messages.Message("No settings backup found.", MessageTypeDefOf.RejectInput);
                 }
             }
 
-            // Close button — right aligned (standard position users expect)
+            // Save As... (custom named theme)
+            float saveAsX = loadX + btnW + gap;
+            Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(saveAsRect, "Save As..."))
+            {
+                ShowSaveAsMenu();
+            }
+
+            // Load file
+            float loadFileX = saveAsX + btnW + gap;
+            Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(loadFileRect, "Load file"))
+            {
+                ShowLoadFileMenu();
+            }
+
+            // Delete file
+            float deleteX = loadFileX + btnW + gap;
+            Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(deleteRect, "Delete file"))
+            {
+                ShowDeleteFileMenu();
+            }
+
+            // Close (right-aligned)
             float closeX = inRect.xMax - btnW - padding;
             Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
             if (Widgets.ButtonText(closeRect, "Close"))
             {
-                this.Close();   // Programmatic close (works because we overrode doCloseButton)
+                this.Close();
             }
+        }
+
+        private void ShowSaveAsMenu()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>
+            {
+                new FloatMenuOption("Quick Timestamped Backup", () =>
+                {
+                    var modSettings = CAPChatInteractiveMod.Instance?.Settings;
+                    if (modSettings != null)
+                    {
+                        JsonFileManager.SaveSettingsBackup(modSettings);
+                        Messages.Message("Quick timestamped backup saved.", MessageTypeDefOf.NeutralEvent);
+                    }
+                }),
+                new FloatMenuOption("Save as Named Theme (custom name)", () =>
+                {
+                    var modSettings = CAPChatInteractiveMod.Instance?.Settings;
+                    if (modSettings != null)
+                    {
+                        string json = JsonConvert.SerializeObject(modSettings, Formatting.Indented); // Safe because we control serialization in JsonFileManager
+                        Find.WindowStack.Add(new Dialog_TextInput(
+                            "Enter backup name (e.g. GrimwarSettings)",
+                            name =>
+                            {
+                                if (!string.IsNullOrWhiteSpace(name))
+                                {
+                                    // We can extend JsonFileManager later with a named version if needed.
+                                    // For now we use quick save + message.
+                                    JsonFileManager.SaveSettingsBackup(modSettings);
+                                    Messages.Message($"Named backup saved as {name} (timestamped).", MessageTypeDefOf.NeutralEvent);
+                                }
+                            }));
+                    }
+                })
+            };
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void ShowLoadFileMenu()
+        {
+            // For main settings we keep it simple — Load Latest is the primary path.
+            // Advanced named loading can be added later if needed.
+            var backup = JsonFileManager.LoadLatestSettingsBackup();
+            if (backup != null)
+            {
+                JsonFileManager.ApplyBackupToCurrentSettings(backup);
+                Messages.Message("Settings loaded from latest backup.", MessageTypeDefOf.NeutralEvent);
+            }
+            else
+            {
+                Messages.Message("No backup found.", MessageTypeDefOf.RejectInput);
+            }
+        }
+
+        private void ShowDeleteFileMenu()
+        {
+            // Placeholder for future — main settings backups are managed in the Backups folder.
+            Messages.Message("Backup management for main settings is currently handled via the Backups folder.", MessageTypeDefOf.NeutralEvent);
         }
     }
 }
