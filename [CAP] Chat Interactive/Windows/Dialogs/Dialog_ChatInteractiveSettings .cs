@@ -163,24 +163,25 @@ namespace CAP_ChatInteractive
                 }
             }
 
-            // Save As... (custom named theme)
+            //// Save As... (custom named theme)
             float saveAsX = loadX + btnW + gap;
-            Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(saveAsRect, "Save As..."))
-            {
-                ShowSaveAsMenu();
-            }
+            //Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
+            //if (Widgets.ButtonText(saveAsRect, "Save As..."))
+            //{
+            //    ShowSaveAsMenu();
+            //}
 
-            // Load file
+            //// Load file
             float loadFileX = saveAsX + btnW + gap;
-            Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(loadFileRect, "Load file"))
-            {
-                ShowLoadFileMenu();
-            }
+            //Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
+            //if (Widgets.ButtonText(loadFileRect, "Load file"))
+            //{
+            //    ShowLoadFileMenu();
+            //}
 
             // Delete file
-            float deleteX = loadFileX + btnW + gap;
+            //float deleteX = loadFileX + btnW + gap;
+            float deleteX = loadX + btnW + gap;
             Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
             if (Widgets.ButtonText(deleteRect, "Delete file"))
             {

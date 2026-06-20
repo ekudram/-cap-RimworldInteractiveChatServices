@@ -1119,38 +1119,49 @@ We will though not be providing an AI Chat Bot ourselves, but we will be providi
 "
             },
             {"1.39",
-                @"===========================================================
+@"===========================================================
                          RICS 1.39 - Changelog
-                         Released: Month Day, Year
+                         Released: June0 20, 2026
 ===========================================================
 
 <b>MEMORANDUM</b>
 ─────────────────
-<b>IMPORTANT:</b> RICS v1.39 now includes manual ""Save Settings Backup"" and ""Load Settings Backup"" buttons at the bottom of the settings dialog (left of the Close button).
-These create timestamped JSON backups of your complete RICS configuration in Config/CAP_ChatInteractive/Backups.
-Use them as a safety net after major changes — this directly addresses the known RimWorld issue where large/complex mod settings sometimes fail to persist.
+<b>IMPORTANT:</b> RICS v1.39 now includes manual backup buttons at the bottom of the main RICS Settings window (left of the Close button).
+
+• <b>Save Backup</b> — Creates a timestamped JSON backup of your complete RICS configuration.
+• <b>Load Backup</b> — Restores from the latest backup.
+• <b>Save As...</b> — Save a named backup (e.g. Grimwar, RimMagic, etc.).
+• <b>Load file</b> & <b>Delete file</b> — Manage all your backups directly from the dialog.
+
+Backups are saved to:  
+`Config/CAP_ChatInteractive/Backups/`
+
+<b><COLOR=red>Security Notice:</COLOR></b> Never share your settings backup file with anyone. It contains sensitive information such as channel IDs and OAuth tokens.
+
+This feature was added as a safety net for the known RimWorld issue where large or complex mod settings sometimes fail to save properly.
 
 <b>UPDATED</b>
 ──────────────
 
 <b>FIXED</b>
 ────────────
-- Fixed an issue when wearing apparel that requires body parts that are missing.  Now properly blocks wearing the item and gives a message about missing body parts.
+- Fixed an issue when wearing apparel that requires body parts that are missing. Now properly blocks wearing the item and gives a clear message.
 - Fixed an issue where the Twitch Raid system was causing game stutter.
 
 <b>ADDED</b>
 ────────────
-- Added Save and Load buttons for backup JSON of RICS Settings.  Saves as a JSON.
-- Added new funcionality to !mypawn Gear command to show apperal on specific body parts.  For example, you can now do !mypawn gear head to see what is equipped on the head.
-- !mypawn gear <bodypart> will also show the material of the apparel.
+- Added full backup system (Save Backup, Load Backup, Save As..., Load file, Delete file) to the main RICS Settings dialog.
+- Added new functionality to the `!mypawn gear` command to show apparel on specific body parts (e.g. `!mypawn gear head`).
+- `!mypawn gear <bodypart>` now also shows the material of the apparel.
 
 <b>TRANSLATIONS</b>
 ───────────────────   
-- BuyItemCommandHandler.xml  Added new translation key for when an item is not wearable due to missing body parts.
- - <RICS.BICH.Return.MissingBodyPartForWear>Your pawn is missing the required body part(s) to wear {0}.</RICS.BICH.Return.MissingBodyPartForWear>  <!-- ADDED RICS v1.39 -->
+- BuyItemCommandHandler.xml — Added new translation key for when an item is not wearable due to missing body parts.
+  - `<RICS.BICH.Return.MissingBodyPartForWear>Your pawn is missing the required body part(s) to wear {0}.</RICS.BICH.Return.MissingBodyPartForWear>` <!-- ADDED RICS v1.39 -->
+
 - MyPawnCommandHandler.xml
- - <RICS.MPCH.GearPartHeader>Apparel covering {0}:</RICS.MPCH.GearPartHeader>
- - <RICS.MPCH.NoApparelCoveringPart>No apparel covering {0}.</RICS.MPCH.NoApparelCoveringPart>
+  - `<RICS.MPCH.GearPartHeader>Apparel covering {0}:</RICS.MPCH.GearPartHeader>`
+  - `<RICS.MPCH.NoApparelCoveringPart>No apparel covering {0}.</RICS.MPCH.NoApparelCoveringPart>`
 "
                 }
 
