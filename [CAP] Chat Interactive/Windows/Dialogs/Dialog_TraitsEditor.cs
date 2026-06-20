@@ -365,7 +365,7 @@ namespace CAP_ChatInteractive
             Text.Font = GameFont.Small;
 
             // Mod sources list with margins
-            Rect listRect = new Rect(rect.x + 10f, rect.y + 35f, rect.width - 20f, rect.height - 35f);
+            Rect listRect = new Rect(rect.x + 10f, rect.y + 35f, rect.width - 20f, rect.height - 35f - 4f);
             Rect viewRect = new Rect(0f, 0f, listRect.width, modSourceCounts.Count * 30f);
 
             Widgets.BeginScrollView(listRect, ref categoryScrollPosition, viewRect);
@@ -437,7 +437,7 @@ namespace CAP_ChatInteractive
             DrawGlobalPriceControls(priceControlsRect);
 
             // Traits list with increased row height
-            Rect listRect = new Rect(rect.x, rect.y + 80f, rect.width, rect.height - 80f); // Adjusted y position to account for price controls
+            Rect listRect = new Rect(rect.x, rect.y + 80f, rect.width, rect.height - 80f - 4f); // Adjusted y position to account for price controls
             float rowHeight = 130f; // Increased from 120f to 130f for better text display
 
             // FIX: Check if filteredTraits is empty to prevent index out of range

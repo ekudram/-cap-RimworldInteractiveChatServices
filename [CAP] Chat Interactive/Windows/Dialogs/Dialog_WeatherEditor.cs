@@ -361,18 +361,24 @@ namespace CAP_ChatInteractive
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
 
-            Rect listRect = new Rect(rect.x + 5f, rect.y + 35f, rect.width - 10f, rect.height - 35f);
+            Rect listRect = new Rect(rect.x + 5f, rect.y + 35f, rect.width - 10f, rect.height - 35f - 4f);
             Rect viewRect = new Rect(0f, 0f, listRect.width - 20f, modSourceCounts.Count * 30f);
 
             Widgets.BeginScrollView(listRect, ref categoryScrollPosition, viewRect);
             {
                 float y = 0f;
-                foreach (var modSource in modSourceCounts.OrderByDescending(kvp => kvp.Value))
-                {
-                    // Increased button width to fill available space better
-                    Rect sourceButtonRect = new Rect(0f, y, listRect.xMax - 21f, 28f); // Reduced width slightly for padding
 
-                    if (selectedModSource == modSource.Key)
+                // === Use shared utility for consistent official Ludeon ordering ===
+                var orderedModSources = UIUtilities.GetSortedModSourceKeys(modSourceCounts);
+
+                foreach (var key in orderedModSources)
+                {
+                    if (!modSourceCounts.TryGetValue(key, out int count))
+                        continue;
+
+                    Rect sourceButtonRect = new Rect(0f, y, listRect.xMax - 21f, 28f);
+
+                    if (selectedModSource == key)
                     {
                         Widgets.DrawHighlightSelected(sourceButtonRect);
                     }
@@ -381,18 +387,25 @@ namespace CAP_ChatInteractive
                         Widgets.DrawHighlight(sourceButtonRect);
                     }
 
-                    string displayName = modSource.Key == "All" ? "All" : GetDisplayModName(modSource.Key);
-                    string label = $"{displayName} ({modSource.Value})";
+                    string displayName = key == "All" ? "All" : GetDisplayModName(key);
+                    string label = $"{displayName} ({count})";
 
-                    // Use truncation for long mod names - ONLY USE THE TRUNCATED VERSION
+                    // === Official Ludeon content highlight (Core + DLCs) ===
+                    if (UIUtilities.IsOfficialLudeonContent(key) && key != "All")
+                    {
+                        label = label.Colorize(ColorLibrary.SubHeader);
+                    }
+
+                    // Use truncation for long mod names
                     string truncatedLabel = UIUtilities.TruncateTextToWidth(label, sourceButtonRect.width - 10f);
 
                     Text.Anchor = TextAnchor.MiddleLeft;
                     if (Widgets.ButtonText(sourceButtonRect, truncatedLabel))
                     {
-                        selectedModSource = modSource.Key;
+                        selectedModSource = key;
                         FilterWeather();
                     }
+
                     if (truncatedLabel != label)
                     {
                         TooltipHandler.TipRegion(sourceButtonRect, label);
@@ -430,7 +443,7 @@ namespace CAP_ChatInteractive
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
 
-            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f);
+            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f - 4f);
             float rowHeight = 80f;
 
             int firstVisibleIndex = Mathf.FloorToInt(scrollPosition.y / rowHeight);
