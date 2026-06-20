@@ -48,11 +48,11 @@ namespace CAP_ChatInteractive
 
         public Dialog_CommandManager()
         {
-            doCloseButton = true;
+            doCloseButton = false;   // WHY: We draw our own 5-button bar at bottom (Save Backup | Load Backup | Save As... | Load file | Close)
             forcePause = true;
             absorbInputAroundWindow = true;
             // optionalTitle = "Command Management"; Created in DrawHeader instead
-            settingsGlobalChat = CAPChatInteractiveMod.Instance.Settings.GlobalSettings; // <-- ADD THIS LINE
+            settingsGlobalChat = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
 
             LoadCommandSettings();
             FilterCommands();
@@ -66,13 +66,92 @@ namespace CAP_ChatInteractive
                 FilterCommands();
             }
 
+            float bottomBarHeight = 50f; // Space for the 5-button bar
+
             // Header - increased height for two rows
-            Rect headerRect = new Rect(0f, 0f, inRect.width, 70f); // Changed from 40f to 70f
+            Rect headerRect = new Rect(0f, 0f, inRect.width, 70f);
             DrawHeader(headerRect);
 
-            // Main content area - adjusted to start after the taller header
-            Rect contentRect = new Rect(0f, 75f, inRect.width, inRect.height - 75f - CloseButSize.y); // Changed from 90f to 75f
+            // Main content area — leave room at bottom for button bar
+            Rect contentRect = new Rect(0f, 75f, inRect.width, inRect.height - 75f - bottomBarHeight);
             DrawContent(contentRect);
+
+            // ========== BOTTOM BUTTON BAR (Save Backup | Load Backup | Save As... | Load file | Close) ==========
+            // WHY: Matches the Global Settings pattern the user requested. Uses the new reusable BackupUtility
+            // so the exact same buttons/logic can be dropped into Store, Traits, Incidents, Weather, RaceSettings, etc.
+            float btnH = 38f;
+            float btnW = 140f;
+            float gap = 8f;
+            float padding = 12f;
+            float currentY = inRect.yMax - bottomBarHeight + (bottomBarHeight - btnH) / 2f;
+
+            // Save Backup (quick timestamped)
+            Rect saveRect = new Rect(padding, currentY, btnW, btnH);
+            if (Widgets.ButtonText(saveRect, "Save Backup"))
+            {
+                string json = JsonConvert.SerializeObject(commandSettings, Formatting.Indented);
+                BackupUtility.SaveQuickBackup("CommandManager", json);
+                Messages.Message("Command settings quick backup saved (timestamped).", MessageTypeDefOf.NeutralEvent);
+            }
+
+            // Load Backup (latest timestamped)
+            float loadX = padding + btnW + gap;
+            Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(loadRect, "Load Backup"))
+            {
+                string json = BackupUtility.LoadLatestTimestampedBackup("CommandManager");
+                if (!string.IsNullOrEmpty(json))
+                {
+                    try
+                    {
+                        commandSettings = JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(json)
+                                         ?? new Dictionary<string, CommandSettings>();
+                        FilterCommands();
+                        Messages.Message("Command settings loaded from latest backup.", MessageTypeDefOf.NeutralEvent);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"Failed to apply loaded backup: {ex.Message}");
+                        Messages.Message("Failed to load backup (invalid JSON).", MessageTypeDefOf.RejectInput);
+                    }
+                }
+                else
+                {
+                    Messages.Message("No timestamped backups found for Command Manager.", MessageTypeDefOf.RejectInput);
+                }
+            }
+
+            // Save As... (opens FloatMenu of options; currently saves with sensible named default)
+            float saveAsX = loadX + btnW + gap;
+            Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(saveAsRect, "Save As..."))
+            {
+                ShowSaveAsMenu();
+            }
+
+            // Load file (shows all backups in FloatMenu — timestamped + any named/theme files)
+            float loadFileX = saveAsX + btnW + gap;
+            Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(loadFileRect, "Load file"))
+            {
+                ShowLoadFileMenu();
+            }
+
+            // Delete file (right next to Load file, with confirmation)
+            float deleteX = loadFileX + btnW + gap;
+            Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(deleteRect, "Delete file"))
+            {
+                ShowDeleteFileMenu();
+            }
+
+            // Close (right-aligned)
+            float closeX = inRect.xMax - btnW - padding;
+            Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(closeRect, "Close"))
+            {
+                this.Close();
+            }
         }
 
         public override void PostClose()
@@ -163,7 +242,7 @@ namespace CAP_ChatInteractive
             // Title row - Orange with underline
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.HeaderAccent;
-            Rect titleRect = new Rect(0f, 0f, 200f, 30f);
+            Rect titleRect = new Rect(0f, 0f, 240f, 30f);
             Widgets.Label(titleRect, "CAP.CommandManager.Title".Translate());
 
             // Draw underline
@@ -269,14 +348,16 @@ namespace CAP_ChatInteractive
             Rect headerRect = new Rect(rect.x, rect.y, rect.width, 30f);
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter;
+            GUI.color = ColorLibrary.SubHeader;
             Widgets.Label(headerRect, "CAP.CommandManager.Commands".Translate());
+            GUI.color = Color.white;
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
 
             // Command list
-            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f);
+            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f - 4);
             float rowHeight = 35f;
-            Rect viewRect = new Rect(0f, 0f, listRect.width - 20f, filteredCommands.Count * rowHeight);
+            Rect viewRect = new Rect(0f, 0f, listRect.width - 20f, (filteredCommands.Count * rowHeight - 4f) ); // -4f to pull the bottom up se we are not covering the box.
 
             Widgets.BeginScrollView(listRect, ref commandScrollPosition, viewRect);
             {
@@ -1440,6 +1521,115 @@ namespace CAP_ChatInteractive
                 Messages.Message(string.Format("CAP.CommandManager.ResetError".Translate(), ex.Message),
                  MessageTypeDefOf.NegativeEvent);
             }
+        }
+
+
+        private void ShowSaveAsMenu()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>
+            {
+                new FloatMenuOption("Quick Timestamped Backup", () =>
+                {
+                    string json = JsonConvert.SerializeObject(commandSettings, Formatting.Indented);
+                    BackupUtility.SaveQuickBackup("CommandManager", json);
+                    Messages.Message("Quick timestamped backup saved.", MessageTypeDefOf.NeutralEvent);
+                }),
+                new FloatMenuOption("Save as Named Theme (custom name)", () =>
+                {
+                    // Uses the new reusable Dialog_TextInput for true custom naming
+                    string json = JsonConvert.SerializeObject(commandSettings, Formatting.Indented);
+
+                    Find.WindowStack.Add(new Dialog_TextInput(
+                        "Enter backup name (e.g. Grimwar, RimMagic)",
+                        name =>
+                        {
+                            if (!string.IsNullOrWhiteSpace(name))
+                            {
+                                BackupUtility.SaveNamedBackup("CommandManager", name, json);
+                                Messages.Message($"Named backup saved as {name}.json", MessageTypeDefOf.NeutralEvent);
+                            }
+                            else
+                            {
+                                // Fallback if user enters nothing
+                                string fallback = "CustomTheme_" + DateTime.Now.ToString("yyyyMMdd_HHmm");
+                                BackupUtility.SaveNamedBackup("CommandManager", fallback, json);
+                                Messages.Message($"Saved with fallback name: {fallback}.json", MessageTypeDefOf.NeutralEvent);
+                            }
+                        }));
+                })
+            };
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void ShowLoadFileMenu()
+        {
+            var files = BackupUtility.GetAllBackupFiles("CommandManager");
+            if (files.Count == 0)
+            {
+                Messages.Message("No backup files found for Command Manager.", MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            foreach (var file in files)
+            {
+                options.Add(new FloatMenuOption(file, () =>
+                {
+                    string json = BackupUtility.LoadBackupFile("CommandManager", file);
+                    if (!string.IsNullOrEmpty(json))
+                    {
+                        try
+                        {
+                            commandSettings = JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(json)
+                                             ?? new Dictionary<string, CommandSettings>();
+                            FilterCommands();
+                            Messages.Message($"Loaded backup: {file}", MessageTypeDefOf.NeutralEvent);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error($"Failed to load {file}: {ex.Message}");
+                            Messages.Message("Failed to load selected backup.", MessageTypeDefOf.RejectInput);
+                        }
+                    }
+                }));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void ShowDeleteFileMenu()
+        {
+            var files = BackupUtility.GetAllBackupFiles("CommandManager");
+            if (files.Count == 0)
+            {
+                Messages.Message("No backup files found for Command Manager.", MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            foreach (var file in files)
+            {
+                options.Add(new FloatMenuOption(file, () =>
+                {
+                    // Confirmation before delete (good UX)
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        $"Delete backup file?\n{file}\n\nThis cannot be undone.",
+                        () =>
+                        {
+                            bool deleted = BackupUtility.DeleteBackupFile("CommandManager", file);
+                            if (deleted)
+                            {
+                                Messages.Message($"Deleted: {file}", MessageTypeDefOf.NeutralEvent);
+                            }
+                        },
+                        true,
+                        "Delete Backup"
+                    ));
+                }));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
         }
 
 
