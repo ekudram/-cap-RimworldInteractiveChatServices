@@ -237,6 +237,9 @@ namespace CAP_ChatInteractive.AI
                 int metalCount = 0;
                 int stoneBlockCount = 0;
 
+                int componentIndustrialCount = 0;
+                int componentSpacerCount = 0;
+
                 try
                 {
                     var resourceCounter = map.resourceCounter;
@@ -280,6 +283,11 @@ namespace CAP_ChatInteractive.AI
                             else if (def.defName == "Steel" || def.defName == "Plasteel") metalCount += count;
                             else if (def.defName.EndsWith("Block") || def.defName.Contains("Blocks")) stoneBlockCount += count;
 
+                            if (def.defName == "ComponentIndustrial")
+                                componentIndustrialCount += count;
+                            else if (def.defName == "ComponentSpacer")
+                                componentSpacerCount += count;
+
                             if (def.IsMedicine)
                             {
                                 string key = def.label?.CapitalizeFirst() ?? def.defName;
@@ -311,7 +319,7 @@ namespace CAP_ChatInteractive.AI
 
                 string foodStatus = mealsPerColonist > 18 ? "Abundant" : mealsPerColonist > 9 ? "Good" : "Low";
                 string medicineStatus = medsPerColonist > 12 ? "Good" : medsPerColonist > 4 ? "Okay" : "Low";
-
+                long absTicks = GenDate.TickGameToAbs(tickManager.TicksGame);
                 var fullState = new
                 {
                     status = "ok",
@@ -319,8 +327,7 @@ namespace CAP_ChatInteractive.AI
                     hour = GenDate.HourOfDay(tickManager.TicksGame, worldGrid.LongLatOf(tile).x),
                     colonists = colonistCount,
                     threatPoints = StorytellerUtility.DefaultThreatPointsNow(map),
-                    wealth = (int)(map.wealthWatcher?.WealthTotal ?? 0),
-                    season = GenDate.Season(tickManager.TicksGame, worldGrid.LongLatOf(tile)).ToString(),
+                    season = GenDate.Season(absTicks, worldGrid.LongLatOf(tile)).ToString(),
                     storyteller = Find.Storyteller?.def?.label ?? "Unknown",
                     food = new
                     {
@@ -330,6 +337,7 @@ namespace CAP_ChatInteractive.AI
                         breakdown = new { Meat = meatCount, Vegetables = vegetableCount, Fruit = fruitCount, Eggs = eggCount, Other = otherRawFoodCount }
                     },
                     materials = new { wood = woodCount, fabric = fabricCount, leather = leatherCount, wool = woolCount, metals = metalCount, stoneBlocks = stoneBlockCount },
+                    components = new { industrial = componentIndustrialCount, spacer = componentSpacerCount },
                     medicine = new { total = medicineTotal, status = medicineStatus, breakdown = medicineBreakdown },
                     colony = new
                     {
