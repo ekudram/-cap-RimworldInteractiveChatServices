@@ -19,6 +19,7 @@
 using Newtonsoft.Json;
 using RimWorld;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -66,7 +67,7 @@ namespace CAP_ChatInteractive.Commands.AICommands
             try
             {
                 var recentChat = ChatMessageLogger.GetRecentMessagesForAI(20);
-                var gameState = GetGameStateForAI();
+                var gameState = GetGameStateForAI(originalMessage);
 
                 var payload = new
                 {
@@ -105,12 +106,23 @@ namespace CAP_ChatInteractive.Commands.AICommands
             }
         }
 
-private object GetGameStateForAI()
+        private object GetGameStateForAI(ChatMessageWrapper originalMessage)
         {
+            // === Priority: Send detailed report about the viewer's own pawn if they have one ===
+            var assignmentManager = Current.Game?.GetComponent<GameComponent_PawnAssignmentManager>();
+            if (assignmentManager != null)
+            {
+                Pawn viewerPawn = assignmentManager.GetAssignedPawn(originalMessage);
+                if (viewerPawn != null)
+                {
+                    return BuildPawnReport(viewerPawn);
+                }
+            }
+
+            // Fallback: Normal colony game state
             var service = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>()?._aiChatBotService;
             if (service != null)
             {
-                // Use cached version (main-thread safe)
                 string json = service.GetCachedGameStateJson();
                 try
                 {
@@ -121,7 +133,131 @@ private object GetGameStateForAI()
                     return new { status = "ok", raw = json };
                 }
             }
+
             return new { status = "unavailable" };
+        }
+
+        /// <summary>
+        /// Builds a rich, bot-friendly report about a specific pawn.
+        /// Designed so Masie can naturally talk about the viewer's colonist.
+        /// </summary>
+        private object BuildPawnReport(Pawn pawn)
+        {
+            if (pawn == null)
+                return new { status = "no_pawn" };
+
+            // --- Traits (safe) ---
+            var traitsList = pawn.story?.traits?.allTraits?
+                .Where(t => !t.Suppressed)
+                .Select(t => new
+                {
+                    name = t.LabelCap,
+                    degree = t.Degree,
+                    description = t.CurrentData?.description ?? ""
+                })
+                .ToList();
+
+            // --- Skills (safe) ---
+            var skillsList = pawn.skills?.skills?
+                .Select(s => new
+                {
+                    skill = s.def.label,
+                    level = s.Level,
+                    passion = s.passion switch
+                    {
+                        Passion.None => "No passion",
+                        Passion.Minor => "Minor passion",
+                        Passion.Major => "Major passion",
+                        _ => "Very passionate"
+                    }
+                })
+                .ToList();
+
+            // --- Cause of death ---
+            string causeOfDeath = null;
+            if (pawn.Dead)
+            {
+                var lethalHediff = pawn.health?.hediffSet?.hediffs?
+                    .Where(h => h.def.isBad || (h.def.lethalSeverity > 0))
+                    .OrderByDescending(h => h.Severity)
+                    .FirstOrDefault();
+
+                causeOfDeath = lethalHediff?.def?.LabelCap.ToString() ?? "Unknown causes";
+            }
+
+            // --- Mood ---
+            var moodInfo = pawn.needs?.mood != null ? new
+            {
+                level = Math.Round(pawn.needs.mood.CurLevel, 2),
+                percentage = Math.Round(pawn.needs.mood.CurLevelPercentage * 100, 1),
+                description = pawn.needs.mood.MoodString
+            } : null;
+
+            var report = new
+            {
+                status = "pawn_report",
+                pawnName = pawn.Name?.ToStringFull ?? pawn.LabelShort,
+                ageBiological = pawn.ageTracker?.AgeBiologicalYears ?? 0,
+                ageChronological = pawn.ageTracker?.AgeChronologicalYears ?? 0,
+
+                race = new
+                {
+                    defName = pawn.def?.defName,
+                    label = pawn.def?.label
+                },
+
+                xenotype = pawn.genes?.Xenotype?.label
+                           ?? (pawn.genes?.CustomXenotype != null ? "Custom Xenotype" : "Baseliner"),
+
+                backstories = new
+                {
+                    childhood = pawn.story?.Childhood != null ? new
+                    {
+                        title = pawn.story.Childhood.title,
+                        description = pawn.story.Childhood.description
+                    } : null,
+                    adulthood = pawn.story?.Adulthood != null ? new
+                    {
+                        title = pawn.story.Adulthood.title,
+                        description = pawn.story.Adulthood.description
+                    } : null
+                },
+
+                // Fixed lines below
+                traits = traitsList?.Cast<object>().ToList() ?? new List<object>(),
+                skills = skillsList?.Cast<object>().ToList() ?? new List<object>(),
+
+                relationships = new
+                {
+                    spouse = pawn.relations?.GetFirstDirectRelationPawn(PawnRelationDefOf.Spouse)?.LabelShort ?? null,
+                    isMarried = pawn.relations?.GetFirstDirectRelationPawn(PawnRelationDefOf.Spouse) != null
+                },
+
+                health = new
+                {
+                    isDead = pawn.Dead,
+                    causeOfDeath = causeOfDeath,
+                    pain = Math.Round(pawn.health?.hediffSet?.PainTotal ?? 0f, 2),
+                    isDowned = pawn.Downed,
+                    summaryHealthPercent = Math.Round(pawn.health?.summaryHealth?.SummaryHealthPercent ?? 1f, 2)
+                },
+
+                mood = moodInfo,
+
+                equipment = new
+                {
+                    primaryWeapon = pawn.equipment?.Primary?.LabelCap.ToString() ?? "Unarmed",
+                    apparel = pawn.apparel?.WornApparel?
+                        .Select(a => a.LabelCap.ToString())
+                        .ToList() ?? new List<string>()
+                },
+
+                isColonist = pawn.IsColonist,
+                faction = pawn.Faction?.Name ?? "None",
+                ideo = pawn.Ideo?.name ?? "None"
+            };
+
+            return report;
         }
 
         private async Task<string> SendToAIBotAsync(string jsonPayload, CAPGlobalChatSettings settings)
