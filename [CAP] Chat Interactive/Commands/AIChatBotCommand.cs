@@ -38,18 +38,19 @@ namespace CAP_ChatInteractive.Commands.AICommands
         {
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             if (settings == null || !settings.AIChatBotActive)
-                return "AI storyteller is sleeping... Enable it in RICS settings.";
+                return "The AI ChatBot is currently disabled. Enable 'AI ChatBot Active' in the RICS mod settings.";
 
             if (!ChatCommandProcessor.IsGameReady())
-                return "Please wait until the colony is fully loaded.";
+                return "The colony is still loading. Please try again shortly.";
 
             string userInput = string.Join(" ", args).Trim();
             if (string.IsNullOrWhiteSpace(userInput))
-                return "Nya? What would you like to talk about?";
+                return "Please provide a message for the AI ChatBot.";
 
             string botName = settings.AIChatBotName ?? "AI Storyteller";
 
-            ChatMessageLogger.AddMessage(botName, "Thinking... *ear twitch*", "AI", isFromRICS: true);
+            // Generic "thinking" message — personality / cat sounds now come from the Python bot
+            ChatMessageLogger.AddMessage(botName, "Thinking...", "AI", isFromRICS: true);
 
             // Safe: Queue on main thread before going async
             LongEventHandler.QueueLongEvent(() =>
@@ -85,22 +86,22 @@ namespace CAP_ChatInteractive.Commands.AICommands
                 string jsonPayload = JsonConvert.SerializeObject(payload);
 
                 string response = await SendToAIBotAsync(jsonPayload, settings);
-
                 if (!string.IsNullOrWhiteSpace(response))
                 {
-                    string botName = settings.AIChatBotName ?? "Masie";
+                    string botName = settings.AIChatBotName ?? "AI Storyteller";
                     ChatMessageLogger.AddMessage(botName, response, "AI", isFromRICS: true);
                     ChatCommandProcessor.SendMessageToUsername(originalMessage.Username, response);
                 }
                 else
                 {
-                    ChatCommandProcessor.SendMessageToUsername(originalMessage.Username, "Nya~... I didn't catch that. Try again?");
+                    // Let the Python bot own personality — keep C# side neutral
+                    ChatCommandProcessor.SendMessageToUsername(originalMessage.Username, "The AI did not return a response. Please try again.");
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error($"[AI ChatBot Command] Error: {ex.Message}");
-                ChatCommandProcessor.SendMessageToUsername(originalMessage.Username, "Nya~... something went wrong with the connection!");
+                ChatCommandProcessor.SendMessageToUsername(originalMessage.Username, "An error occurred while contacting the AI ChatBot. Please try again later.");
             }
         }
 
@@ -125,6 +126,9 @@ private object GetGameStateForAI()
 
         private async Task<string> SendToAIBotAsync(string jsonPayload, CAPGlobalChatSettings settings)
         {
+            // Declare timeout here so it is visible in both try and catch blocks
+            int timeoutSeconds = 240; // Masie V6+ improved + voice queue → longer generation is safe
+
             try
             {
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
@@ -136,8 +140,8 @@ private object GetGameStateForAI()
 
                 Logger.Debug($"[AI ChatBot] Sending request to: {botUrl}");
 
-                // Very generous timeout for cold Ollama + TTS generation
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+                // Running inside a Task via LongEventHandler — waiting is acceptable.
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
 
                 var httpResponse = await _httpClient.PostAsync(botUrl, content, cts.Token);
 
@@ -155,8 +159,8 @@ private object GetGameStateForAI()
             }
             catch (TaskCanceledException)
             {
-                Logger.Warning("[AI ChatBot] Request timed out - Ollama/TTS slow on first call.");
-                return "Nya~... I'm thinking really hard right now! Try again in a few seconds?";
+                Logger.Warning($"[AI ChatBot] Request timed out after {timeoutSeconds}s (Ollama/TTS generation).");
+                return "The AI request timed out. Please try again in a moment.";
             }
             catch (Exception ex)
             {

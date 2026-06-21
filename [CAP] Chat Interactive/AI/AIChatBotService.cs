@@ -28,6 +28,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Verse;
+using static Mono.Security.X509.X520;
 
 namespace CAP_ChatInteractive.AI
 {
@@ -358,7 +359,7 @@ namespace CAP_ChatInteractive.AI
         public void ProcessFileBasedAICommands()
         {
             // This debug may cause Spam REmove when done testing with positive Results -- Captolamia
-            Logger.Debug("=== Start ProcessFileBasedAICommands() ===");
+            // Logger.Debug("=== Start ProcessFileBasedAICommands() ===");
 
             // === Self-initialize paths if they are missing (very important for robustness) ===
             if (string.IsNullOrEmpty(_aiCommandIncomingPath) || string.IsNullOrEmpty(_aiCommandOutgoingPath))
@@ -428,7 +429,7 @@ namespace CAP_ChatInteractive.AI
                             username: settings.AIChatBotName ?? "Masie",
                             message: command,
                             platform: "AiChatBot",
-                            platformUserId: "aichatbot-file",
+                            platformUserId: "aichatbot-file", // I think this needs to be a number
                             platformMessage: null
                         );
 

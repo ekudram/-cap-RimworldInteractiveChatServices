@@ -127,8 +127,14 @@ namespace CAP_ChatInteractive
                 if (viewer == null)
                     return "Error: Could not create viewer";
 
-                if (viewer.IsBanned && !message.Username.Equals("masie", StringComparison.OrdinalIgnoreCase))
-                    return "Error: Viewer is banned";
+                // === FIX: Register the AI bot's platform identity ===
+                // Without this, "aichatbot" never gets added to PlatformUserIds,
+                // so the bot relies on the fragile username-only fallback in HasPermission().
+                viewer.UpdateFromMessage(message);
+
+                // We will never ban our own local bot.  
+                //if (viewer.IsBanned && !message.Username.Equals("masie", StringComparison.OrdinalIgnoreCase))
+                //    return "Error: Viewer is banned";
 
                 // Permission check (AI bot bypasses via HasPermission override)
                 if (!command.CanExecute(message))
