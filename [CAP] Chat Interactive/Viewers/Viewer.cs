@@ -28,7 +28,6 @@
  * Community Preservation Modifications © 2025 Captolamia
  */
 
-using RimWorld.BaseGen;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -482,21 +481,28 @@ namespace CAP_ChatInteractive
         }
 
         /// <summary>
-        /// Gets the primary platform identifier for the user, prioritizing Twitch, YouTube, and Kick platform IDs if
-        /// available.
+        /// Gets the primary platform identifier for the user, prioritizing real streaming platforms (Twitch, YouTube, Kick)
+        /// followed by internal AI ChatBot / storyteller bots. Falls back to a username-based identifier if no platform ID exists.
         /// </summary>
-        /// <remarks>The method checks for a valid Twitch, YouTube, or Kick platform user ID in that order
-        /// of precedence. If none are found, it falls back to using the username. This ensures a consistent identifier
-        /// is always returned, even if some user data is missing or incomplete.</remarks>
-        /// <returns>A string representing the user's primary platform identifier in the format 'platform:id' (e.g.,
-        /// 'twitch:12345'). If no platform ID is available, returns 'username:{username}' with the username in
-        /// lowercase or 'unknown' if the username is not set.</returns>
+        /// <remarks>
+        /// The method checks platform IDs in the following order of precedence:
+        /// <list type="number">
+        /// <item>Twitch</item>
+        /// <item>YouTube</item>
+        /// <item>Kick</item>
+        /// <item>AI ChatBot / internal storyteller bots (key: "aichatbot")</item>
+        /// </list>
+        /// If none are found, it falls back to using the username. This ensures a consistent identifier is always returned,
+        /// even if some user data is missing or incomplete. The AI ChatBot uses its configured name as the platform ID
+        /// (e.g. "aichatbot:Masie") so it can be cleanly distinguished from regular viewers.
+        /// </remarks>
+        /// <returns>
+        /// A string representing the user's primary platform identifier in the format 'platform:id' 
+        /// (e.g. 'twitch:12345', 'aichatbot:Masie'). If no platform ID is available, returns 'username:{username}' 
+        /// with the username in lowercase, or 'username:unknown' if the username is not set.
+        /// </returns>
         public string GetPrimaryPlatformIdentifier()
         {
-            // WHY: Original could throw NullReferenceException if Username is null
-            // (possible via deserialization edge case, manual construction, or corrupt viewers.json).
-            // This guard + empty-ID check makes RemoveDuplicateViewers and all other ID lookups safe.
-            // Also future-proofs against empty platform ID strings being stored.
             string safeUsername = Username?.ToLowerInvariant() ?? "unknown";
 
             if (PlatformUserIds.TryGetValue("twitch", out string twitchId) && !string.IsNullOrEmpty(twitchId))
@@ -512,8 +518,6 @@ namespace CAP_ChatInteractive
 
             return $"username:{safeUsername}";
         }
-
-        // NEW: Check if this viewer matches a chat message (for platform ID verification)
 
         /// <summary>
         /// Determines whether the viewer matches the specified chat message based on platform user ID or username.
