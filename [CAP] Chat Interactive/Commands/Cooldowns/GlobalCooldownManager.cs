@@ -20,6 +20,7 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.UIElements;
 using Verse;
 
 namespace CAP_ChatInteractive.Commands.Cooldowns
@@ -213,13 +214,15 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             int totalEvents = data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
             return totalEvents < settings.EventsperCooldown;
         }
+        // In GlobalCooldownManager.cs, inside GlobalCooldownManager.RecordEventUse()
+
         public void RecordEventUse(string eventType)
         {
             if (string.IsNullOrEmpty(eventType)) return;
 
             eventType = eventType.ToLowerInvariant();
             if (eventType == "doom")
-                eventType = "bad";
+                eventType = "bad";   // doom shares the bad counter (existing behavior preserved)
 
             var record = GetOrCreateEventRecord(eventType);
             record.UsageDays.Add(CurrentGameDay);
@@ -227,10 +230,11 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             Logger.Debug($"Recorded event usage for type: {eventType} (doom normalized to bad)");
             Logger.Debug($"Current usage for {eventType}: {record.CurrentPeriodUses}");
 
-            // === NEW: Informative message for players (only shown when event actually fires) ===
-            
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings as CAPGlobalChatSettings;
-            if (settings != null && settings.EventCooldownsEnabled)
+            if (settings == null) return;
+
+            // === 1. Karma-type specific message (ONLY when KarmaTypeLimitsEnabled) ===
+            if (settings.KarmaTypeLimitsEnabled)
             {
                 int maxUses = eventType switch
                 {
@@ -243,7 +247,29 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
                 string displayType = eventType == "bad" ? "Bad/Doom" : char.ToUpperInvariant(eventType[0]) + eventType.Substring(1);
 
                 string message = $"Current {displayType} events this period: {record.CurrentPeriodUses}/{maxUses}";
-                Messages.Message(message, MessageTypeDefOf.PositiveEvent); // or CautionInput
+
+                MessageTypeDef msgType = eventType switch
+                {
+                    "good" => MessageTypeDefOf.PositiveEvent,
+                    "bad" => MessageTypeDefOf.NegativeEvent,
+                    "neutral" => MessageTypeDefOf.NeutralEvent,
+                    _ => MessageTypeDefOf.NeutralEvent
+                };
+
+                Messages.Message(message, msgType);
+            }
+
+            // === 2. Global event total (ALWAYS shown when EventCooldownsEnabled, even if karma-type limits are off) ===
+            if (settings.EventCooldownsEnabled)
+            {
+                int totalEvents = data.EventUsage.Values.Sum(r => r.CurrentPeriodUses);
+                int globalMax = settings.EventsperCooldown;
+
+                string globalMsg = globalMax > 0
+                    ? $"Current total events this period: {totalEvents}/{globalMax}"
+                    : $"Current total events this period: {totalEvents} (unlimited)";
+
+                Messages.Message(globalMsg, MessageTypeDefOf.NeutralEvent);
             }
         }
 
