@@ -425,11 +425,14 @@ namespace CAP_ChatInteractive.AI
 
                         Logger.Debug($"[RICS AI] Processing file command: {command}");
 
+                        // Create a synthetic message representing the AI ChatBot itself.
+                        // Using the bot's name as the platformUserId makes the entry in viewers.json
+                        // human-readable and allows multiple/future bots to be distinguished.
                         var aiMessage = new ChatMessageWrapper(
-                            username: settings.AIChatBotName ?? "Masie",
+                            username: settings.AIChatBotName ?? "AiChatBot",
                             message: command,
                             platform: "AiChatBot",
-                            platformUserId: "aichatbot-file", // I think this needs to be a number
+                            platformUserId: settings.AIChatBotName ?? "AiChatBot",
                             platformMessage: null
                         );
 
