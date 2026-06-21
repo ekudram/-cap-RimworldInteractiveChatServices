@@ -115,7 +115,7 @@ namespace CAP_ChatInteractive.Commands.AICommands
                 Pawn viewerPawn = assignmentManager.GetAssignedPawn(originalMessage);
                 if (viewerPawn != null)
                 {
-                    return BuildPawnReport(viewerPawn);
+                    return BuildPawnReport(viewerPawn, originalMessage.Username);
                 }
             }
 
@@ -141,7 +141,7 @@ namespace CAP_ChatInteractive.Commands.AICommands
         /// Builds a rich, bot-friendly report about a specific pawn.
         /// Designed so Masie can naturally talk about the viewer's colonist.
         /// </summary>
-        private object BuildPawnReport(Pawn pawn)
+        private object BuildPawnReport(Pawn pawn, string chatUsername = null)
         {
             if (pawn == null)
                 return new { status = "no_pawn" };
@@ -196,6 +196,7 @@ namespace CAP_ChatInteractive.Commands.AICommands
             var report = new
             {
                 status = "pawn_report",
+                chatUsername = chatUsername,                    // ← NEW
                 pawnName = pawn.Name?.ToStringFull ?? pawn.LabelShort,
                 ageBiological = pawn.ageTracker?.AgeBiologicalYears ?? 0,
                 ageChronological = pawn.ageTracker?.AgeChronologicalYears ?? 0,
@@ -223,7 +224,6 @@ namespace CAP_ChatInteractive.Commands.AICommands
                     } : null
                 },
 
-                // Fixed lines below
                 traits = traitsList?.Cast<object>().ToList() ?? new List<object>(),
                 skills = skillsList?.Cast<object>().ToList() ?? new List<object>(),
 
