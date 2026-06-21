@@ -411,6 +411,8 @@ namespace CAP_ChatInteractive
 
             // Update platform-specific roles from the message (badges, sponsor, etc.)
             UpdatePlatformRoles(message);
+
+            Viewers.SaveViewers();
         }
 
         private void UpdatePlatformRoles(ChatMessageWrapper message)
@@ -503,6 +505,10 @@ namespace CAP_ChatInteractive
                 return $"youtube:{youtubeId}";
             if (PlatformUserIds.TryGetValue("kick", out string kickId) && !string.IsNullOrEmpty(kickId))
                 return $"kick:{kickId}";
+
+            // AI ChatBot / internal storyteller bots
+            if (PlatformUserIds.TryGetValue("aichatbot", out string aiId) && !string.IsNullOrEmpty(aiId))
+                return $"aichatbot:{aiId}";
 
             return $"username:{safeUsername}";
         }
