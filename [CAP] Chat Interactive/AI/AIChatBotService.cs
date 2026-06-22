@@ -511,6 +511,50 @@ namespace CAP_ChatInteractive.AI
 
         public string GetCachedGameStateJson() => _cachedGameStateJson;
 
+        // In AIChatBotService.cs, inside class AIChatBotService
+
+        /// <summary>
+        /// Called when a letter is received by the LetterStack (storyteller incidents, viewer events, Anomaly, quests, etc.).
+        /// Writes a timestamped event file that the external Python bot can poll.
+        /// Message always starts with the configured AIChatBotName so the bot treats it as addressed to it.
+        /// </summary>
+        public void NotifyColonyEvent(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return;
+
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings == null || !settings.AIChatBotActive)
+                return;
+
+            try
+            {
+                // Ensure events folder exists (safe config path)
+                string eventsPath = Path.Combine(GenFilePaths.ConfigFolderPath, "CAP_ChatInteractive", "AI_Commands", "events");
+                Directory.CreateDirectory(eventsPath);
+
+                string requestId = $"event_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+                string filePath = Path.Combine(eventsPath, requestId + ".json");
+
+                var payload = new
+                {
+                    type = "colony_event",
+                    timestamp = DateTime.UtcNow.ToString("o"),
+                    message = message
+                };
+
+                string json = JsonConvert.SerializeObject(payload, Formatting.Indented);
+                File.WriteAllText(filePath, json);
+
+                Logger.Debug($"[RICS AI] Colony event notification written: {requestId}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[RICS AI] Failed to write colony event notification: {ex.Message}");
+                // Never crash the game over a notification
+            }
+        }
+
         public void Stop()
         {
             _isRunning = false;

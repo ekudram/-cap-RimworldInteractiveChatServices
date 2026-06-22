@@ -33,7 +33,7 @@ namespace CAP_ChatInteractive.Commands.AICommands
     {
         public override string Name => "ricsaichatbot";
 
-        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
+        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
 
         public override string Execute(ChatMessageWrapper message, string[] args)
         {
@@ -263,7 +263,7 @@ namespace CAP_ChatInteractive.Commands.AICommands
         private async Task<string> SendToAIBotAsync(string jsonPayload, CAPGlobalChatSettings settings)
         {
             // Declare timeout here so it is visible in both try and catch blocks
-            int timeoutSeconds = 240; // Masie V6+ improved + voice queue → longer generation is safe
+            int timeoutSeconds = 360; // Masie V6+ improved + voice queue → longer generation is safe
 
             try
             {

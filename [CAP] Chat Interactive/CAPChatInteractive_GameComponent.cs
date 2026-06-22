@@ -27,6 +27,7 @@ using CAP_ChatInteractive.Store;
 using CAP_ChatInteractive.Traits;
 using CAP_ChatInteractive.Utilities;
 using CAP_ChatInteractive.Windows;
+using RimWorld;
 using UnityEngine;
 using Verse;
 

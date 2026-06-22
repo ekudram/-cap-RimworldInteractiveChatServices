@@ -19,6 +19,7 @@
 
 using _CAP__Chat_Interactive.Interfaces;
 using CAP_ChatInteractive.Utilities;
+using HarmonyLib;
 using RimWorld;
 using System;   
 using System.IO;
@@ -47,6 +48,18 @@ namespace CAP_ChatInteractive
             Logger.Debug("CAPChatInteractiveMod constructor started");
 
             Settings = GetSettings<CAPChatInteractiveSettings>();
+
+            // ============================================================
+            // HARMONY INITIALIZATION - ADD THIS BLOCK
+            // ============================================================
+            // This must be called once. It will automatically apply every
+            // [HarmonyPatch] class in this assembly, including:
+            // - Patch_LetterStack_Notifications (AI ChatBot colony event notifications)
+            // - Any future core patches you add
+            var harmony = new Harmony("com.captolamia.rics");
+            harmony.PatchAll();
+            Logger.Debug("[RICS] Harmony patches applied (including AI letter notifications)");
+            // ============================================================
 
             // Ensure modVersion is set in saved settings if it's empty
             if (string.IsNullOrEmpty(Settings.GlobalSettings.modVersionSaved))
