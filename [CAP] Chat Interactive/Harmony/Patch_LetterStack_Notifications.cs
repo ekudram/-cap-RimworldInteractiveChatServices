@@ -38,8 +38,8 @@ namespace CAP_ChatInteractive.AI
                 {
                     body = ChatCommandProcessor.RemoveMarkupTags(choiceLetter.Text.ToString());
                     // Keep it reasonably short for the bot context window
-                    if (body.Length > 600)
-                        body = body.Substring(0, 600) + "...";
+                    if (body.Length > 2000)
+                        body = body.Substring(0, 2000) + "...";
                 }
 
                 string notification = $"{botName} this has occurred in the colony: {title}.";
