@@ -664,17 +664,16 @@ namespace CAP_ChatInteractive
 
             try
             {
-                // Adjust row height since we're removing description
-                // Left section: Name and meta info (mod + category)
-                Rect infoRect = new Rect(5f, 5f, rect.width - 400f, 60f); // Reduced height
+                // Left section: Name and meta info
+                Rect infoRect = new Rect(5f, 5f, rect.width - 500f, 60f);
                 DrawEventInfo(infoRect, incident);
 
-                // Middle section: Enable toggle and event type - moved up to align with cost controls
-                Rect toggleRect = new Rect(rect.width - 390f, 10f, 150f, 50f); // Moved up from 20f to 10f
+                // Middle section: Enabled + Cooldown (increased width & height)
+                Rect toggleRect = new Rect(rect.width - 500f, 8f, 250f, 58f);
                 DrawEventToggle(toggleRect, incident);
 
-                // Right section: Cost and Karma controls
-                Rect controlsRect = new Rect(rect.width - 230f, 10f, 225f, 70f); // Moved up from 10f to match
+                // Right section: Cost + Karma (unchanged for now)
+                Rect controlsRect = new Rect(rect.width - 230f, 10f, 225f, 70f);
                 DrawEventControls(controlsRect, incident);
             }
             finally
@@ -738,8 +737,8 @@ namespace CAP_ChatInteractive
         {
             Widgets.BeginGroup(rect);
 
-            // Enable checkbox - disable for unavailable events
-            Rect toggleRect = new Rect(0f, 0f, rect.width, 30f);
+            // === LINE 1: Enabled checkbox ===
+            Rect toggleRect = new Rect(0f, 0f, rect.width, 32f);
             bool enabledCurrent = incident.Enabled;
 
             if (!incident.IsAvailableForCommands)
@@ -759,130 +758,162 @@ namespace CAP_ChatInteractive
                 }
             }
 
-            // Create a horizontal layout for Karma Type and Cooldown
-            float y = 30f;
-            float sectionHeight = 25f;
-
-            // Karma Type (left side)
-            Rect karmaRect = new Rect(0f, y, rect.width * 0.4f, sectionHeight);
-            string karmaInfo = TranslateKarmaType(incident.KarmaType);
-            GUI.color = GetKarmaTypeColor(incident.KarmaType);
-            Widgets.Label(karmaRect, karmaInfo);
-            GUI.color = Color.white;
-
-            // Add tooltip for karma type
-            TooltipHandler.TipRegion(karmaRect, "RICS.EventToggle.KarmaTooltip".Translate(TranslateKarmaType(incident.KarmaType)));
-            // Cooldown Days (right side)
-            Rect cooldownRect = new Rect(karmaRect.xMax + 5f, y, rect.width * 0.6f - 5f, sectionHeight);
+            // === LINE 2: Cooldown row ===
+            Rect cooldownRect = new Rect(0f, 28f, rect.width, 26f);
             DrawCooldownControl(cooldownRect, incident);
+
+            // === Tooltip for the whole middle area (Enabled + Cooldown) ===
+            string tip = $"Cooldown window: {incident.CooldownDays} days\n" +
+                         $"Max uses allowed in window: {incident.UsesPerCooldownPeriod}\n\n" +
+                         "Set days to 0 for unlimited uses (∞).\n" +
+                         "Example: 7 days / 3 uses = this event can be triggered up to 3 times every 7 days.";
+
+            TooltipHandler.TipRegion(cooldownRect, tip);
 
             Widgets.EndGroup();
         }
 
-        // In Dialog_EventsEditor.cs, replace the entire DrawCooldownControl() method with this:
+        private void DrawKarmaButton(Rect rect, BuyableIncident incident)
+        {
+            string label = TranslateKarmaType(incident.KarmaType);
+            Color baseColor = GetKarmaTypeColor(incident.KarmaType);
+
+            // Slightly darker background for contrast
+            Color bgColor = new Color(
+                baseColor.r * 0.65f,
+                baseColor.g * 0.65f,
+                baseColor.b * 0.65f
+            );
+
+            Widgets.DrawBoxSolid(rect, bgColor);
+
+            // Draw the button text on top
+            if (Widgets.ButtonText(rect, label, drawBackground: false))
+            {
+                List<FloatMenuOption> options = new List<FloatMenuOption>
+        {
+            new FloatMenuOption("RICS.Good".Translate(), () => UpdateKarmaType(incident, "Good")),
+            new FloatMenuOption("RICS.Bad".Translate(), () => UpdateKarmaType(incident, "Bad")),
+            new FloatMenuOption("RICS.Neutral".Translate(), () => UpdateKarmaType(incident, "Neutral")),
+            new FloatMenuOption("RICS.Doom".Translate(), () => UpdateKarmaType(incident, "Doom"))
+        };
+                Find.WindowStack.Add(new FloatMenu(options));
+            }
+
+            TooltipHandler.TipRegion(rect, $"Karma Type: {label}\nClick to change");
+        }
+        private void DrawCompactCostControl(Rect rect, BuyableIncident incident)
+        {
+            Widgets.BeginGroup(rect);
+
+            Rect labelRect = new Rect(0f, 0f, 38f, rect.height);
+            Widgets.Label(labelRect, "Cost:");
+
+            string bufferKey = $"Cost_{incident.DefName}";
+            if (!numericBuffers.ContainsKey(bufferKey))
+                numericBuffers[bufferKey] = incident.BaseCost.ToString();
+
+            Rect inputRect = new Rect(40f, 0f, 42f, rect.height);
+            int costBuf = incident.BaseCost;
+            string bufStr = numericBuffers[bufferKey];
+            Widgets.TextFieldNumeric(inputRect, ref costBuf, ref bufStr, 0f, 1000000f);
+            numericBuffers[bufferKey] = bufStr;
+
+            if (costBuf != incident.BaseCost)
+            {
+                incident.BaseCost = costBuf;
+                IncidentsManager.SaveIncidentsToJson();
+            }
+
+            if (Widgets.ButtonText(new Rect(84f, 0f, 14f, rect.height), "R"))
+            {
+                incident.BaseCost = CalculateDefaultCost(incident);
+                numericBuffers[bufferKey] = incident.BaseCost.ToString();
+                IncidentsManager.SaveIncidentsToJson();
+            }
+
+            Widgets.EndGroup();
+        }
         private void DrawCooldownControl(Rect rect, BuyableIncident incident)
         {
             Widgets.BeginGroup(rect);
 
-            // WHY: Enhanced for new "X uses per Y days" system while keeping full backward compatibility.
-            // Default UsesPerCooldownPeriod=1 means old behavior ("once every N days").
-            // Compact layout shifts the whole right control group left to use the wasted space
-            // between long incident names and the settings buttons.
+            float x = 0f;
 
-            float currentX = 0f;
-            float labelW = 28f;      // Tighter than before → shifts everything left
-            float daysW = 38f;
-            float sepW = 12f;
-            float usesW = 32f;
-            float usesLabelW = 14f;
+            // "Cooldown" label
+            Rect labelRect = new Rect(x, 0f, 68f, rect.height);
+            Widgets.Label(labelRect, "Cooldown".Colorize(ColorLibrary.SubHeader));
+            x += 70f;
 
-            // Label "CD:"
-            Rect labelRect = new Rect(currentX, 0f, labelW, rect.height);
-            Widgets.Label(labelRect, "CD:".Colorize(ColorLibrary.SubHeader));
-            currentX += labelW + 2f;
+            // Days input
+            string daysKey = $"Cooldown_{incident.DefName}";
+            if (!numericBuffers.ContainsKey(daysKey))
+                numericBuffers[daysKey] = incident.CooldownDays.ToString();
 
-            // CooldownDays input
-            string daysBufferKey = $"Cooldown_{incident.DefName}";
-            if (!numericBuffers.ContainsKey(daysBufferKey))
-                numericBuffers[daysBufferKey] = incident.CooldownDays.ToString();
-
-            Rect daysInputRect = new Rect(currentX, 0f, daysW, rect.height);
-            currentX += daysW + 2f;
+            Rect daysRect = new Rect(x, 0f, 36f, rect.height);
+            x += 38f;
 
             if (incident.CooldownDays == 0)
             {
-                // Infinity button for unlimited uses
-                Rect infRect = new Rect(daysInputRect.x, daysInputRect.y, 22f, rect.height);
-                if (Widgets.ButtonText(infRect, "∞"))
+                if (Widgets.ButtonText(new Rect(daysRect.x, daysRect.y, 24f, rect.height), "∞"))
                 {
                     incident.CooldownDays = 1;
-                    numericBuffers[daysBufferKey] = "1";
+                    numericBuffers[daysKey] = "1";
                     IncidentsManager.SaveIncidentsToJson();
                 }
-                TooltipHandler.TipRegion(infRect, "RICS.NoCooldownInfiniteTooltip".Translate());
-                currentX = infRect.xMax + 4f;
+                TooltipHandler.TipRegion(new Rect(daysRect.x, daysRect.y, 24f, rect.height), "RICS.NoCooldownInfiniteTooltip".Translate());
             }
             else
             {
-                int daysBuf = incident.CooldownDays;
-                string daysBufStr = numericBuffers[daysBufferKey];
-                Widgets.TextFieldNumeric(daysInputRect, ref daysBuf, ref daysBufStr, 1f, 365f);
-                numericBuffers[daysBufferKey] = daysBufStr;
+                int d = incident.CooldownDays;
+                string buf = numericBuffers[daysKey];
+                Widgets.TextFieldNumeric(daysRect, ref d, ref buf, 1f, 365f);
+                numericBuffers[daysKey] = buf;
 
-                if (daysBuf != incident.CooldownDays)
+                if (d != incident.CooldownDays)
                 {
-                    incident.CooldownDays = daysBuf;
+                    incident.CooldownDays = d;
                     IncidentsManager.SaveIncidentsToJson();
                 }
-                currentX = daysInputRect.xMax + 2f;
             }
 
-            // Separator "/"
-            Rect sepRect = new Rect(currentX, 0f, sepW, rect.height);
-            Widgets.Label(sepRect, "/");
-            currentX += sepW;
+            // Separator
+            Widgets.Label(new Rect(x, 0f, 14f, rect.height), "/");
+            x += 14f;
 
-            // NEW: UsesPerCooldownPeriod input (the X in "X uses per period")
-            string usesBufferKey = $"UsesPerCD_{incident.DefName}";
-            if (!numericBuffers.ContainsKey(usesBufferKey))
-                numericBuffers[usesBufferKey] = incident.UsesPerCooldownPeriod.ToString();
+            // Uses input
+            string usesKey = $"UsesPerCD_{incident.DefName}";
+            if (!numericBuffers.ContainsKey(usesKey))
+                numericBuffers[usesKey] = incident.UsesPerCooldownPeriod.ToString();
 
-            Rect usesInputRect = new Rect(currentX, 0f, usesW, rect.height);
-            currentX += usesW + 1f;
+            Rect usesRect = new Rect(x, 0f, 30f, rect.height);
+            x += 32f;
 
-            int usesBuf = Mathf.Max(1, incident.UsesPerCooldownPeriod);
-            string usesBufStr = numericBuffers[usesBufferKey];
-            Widgets.TextFieldNumeric(usesInputRect, ref usesBuf, ref usesBufStr, 1f, 20f);
-            numericBuffers[usesBufferKey] = usesBufStr;
+            int u = Mathf.Max(1, incident.UsesPerCooldownPeriod);
+            string uBuf = numericBuffers[usesKey];
+            Widgets.TextFieldNumeric(usesRect, ref u, ref uBuf, 1f, 20f);
+            numericBuffers[usesKey] = uBuf;
 
-            if (usesBuf != incident.UsesPerCooldownPeriod)
+            if (u != incident.UsesPerCooldownPeriod)
             {
-                incident.UsesPerCooldownPeriod = usesBuf;
+                incident.UsesPerCooldownPeriod = u;
                 IncidentsManager.SaveIncidentsToJson();
             }
 
-            // Small "x" label
-            Rect xLabelRect = new Rect(currentX, 0f, usesLabelW, rect.height);
-            Widgets.Label(xLabelRect, "x");
-            currentX += usesLabelW + 4f;
+            // "per period" label
+            Widgets.Label(new Rect(x, 0f, 72f, rect.height), "per period");
 
-            // Quick reset button
-            Rect resetRect = new Rect(currentX, 0f, 18f, rect.height);
-            if (Widgets.ButtonText(resetRect, "R"))
+            // === Reset button - properly positioned on the far right ===
+            Rect resetBtn = new Rect(rect.width - 24f, 0f, 22f, rect.height);
+            if (Widgets.ButtonText(resetBtn, "R"))
             {
                 incident.CooldownDays = CalculateDefaultCooldown(incident);
                 incident.UsesPerCooldownPeriod = 1;
-                numericBuffers[daysBufferKey] = incident.CooldownDays.ToString();
-                numericBuffers[usesBufferKey] = "1";
+                numericBuffers[daysKey] = incident.CooldownDays.ToString();
+                numericBuffers[usesKey] = "1";
                 IncidentsManager.SaveIncidentsToJson();
             }
-            TooltipHandler.TipRegion(resetRect, "RICS.ResetCooldownToDefault".Translate());
-
-            // Master tooltip explaining the new system
-            string tooltip = $"Cooldown: {incident.CooldownDays} days / {incident.UsesPerCooldownPeriod} uses per period\n\n" +
-                             "Set days=0 for unlimited uses (old 'no cooldown' behavior).\n" +
-                             "UsesPerPeriod > 1 allows multiple triggers inside the window (e.g. 3 uses every 7 days).";
-            TooltipHandler.TipRegion(new Rect(0f, 0f, rect.width, rect.height), tooltip);
+            TooltipHandler.TipRegion(resetBtn, "Reset to default cooldown");
 
             Widgets.EndGroup();
         }
