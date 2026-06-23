@@ -22,7 +22,6 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using UnityEngine;
 using Verse;
 
@@ -780,98 +779,110 @@ namespace CAP_ChatInteractive
             Widgets.EndGroup();
         }
 
+        // In Dialog_EventsEditor.cs, replace the entire DrawCooldownControl() method with this:
         private void DrawCooldownControl(Rect rect, BuyableIncident incident)
         {
             Widgets.BeginGroup(rect);
 
-            // Label
-            Rect labelRect = new Rect(0f, 0f, 45f, rect.height);
-            Widgets.Label(labelRect, "RICS.CooldownControl.Label".Translate());
+            // WHY: Enhanced for new "X uses per Y days" system while keeping full backward compatibility.
+            // Default UsesPerCooldownPeriod=1 means old behavior ("once every N days").
+            // Compact layout shifts the whole right control group left to use the wasted space
+            // between long incident names and the settings buttons.
 
-            // Cooldown input field
-            Rect inputRect = new Rect(50f, 0f, 50f, rect.height);
+            float currentX = 0f;
+            float labelW = 28f;      // Tighter than before → shifts everything left
+            float daysW = 38f;
+            float sepW = 12f;
+            float usesW = 32f;
+            float usesLabelW = 14f;
 
-            // Create a unique buffer key for this incident's cooldown
-            string bufferKey = $"Cooldown_{incident.DefName}";
-            if (!numericBuffers.ContainsKey(bufferKey))
-            {
-                numericBuffers[bufferKey] = incident.CooldownDays.ToString();
-            }
+            // Label "CD:"
+            Rect labelRect = new Rect(currentX, 0f, labelW, rect.height);
+            Widgets.Label(labelRect, "CD:".Colorize(ColorLibrary.SubHeader));
+            currentX += labelW + 2f;
 
-            // Check if cooldown is 0 (infinite)
+            // CooldownDays input
+            string daysBufferKey = $"Cooldown_{incident.DefName}";
+            if (!numericBuffers.ContainsKey(daysBufferKey))
+                numericBuffers[daysBufferKey] = incident.CooldownDays.ToString();
+
+            Rect daysInputRect = new Rect(currentX, 0f, daysW, rect.height);
+            currentX += daysW + 2f;
+
             if (incident.CooldownDays == 0)
             {
-                // Draw infinity symbol button
-                Rect infinityRect = new Rect(inputRect.x, inputRect.y, 30f, 30f);
-
-                // Try to load infinity icon
-                Texture2D infinityIcon = ContentFinder<Texture2D>.Get("UI/Buttons/Infinity", false);
-                if (infinityIcon != null)
+                // Infinity button for unlimited uses
+                Rect infRect = new Rect(daysInputRect.x, daysInputRect.y, 22f, rect.height);
+                if (Widgets.ButtonText(infRect, "∞"))
                 {
-                    if (Widgets.ButtonImage(infinityRect, infinityIcon))
-                    {
-                        // Toggle to enable input
-                        incident.CooldownDays = 1;
-                        numericBuffers[bufferKey] = "1";
-                        IncidentsManager.SaveIncidentsToJson();
-                    }
-                    TooltipHandler.TipRegion(infinityRect, "RICS.NoCooldownInfiniteTooltip".Translate());
+                    incident.CooldownDays = 1;
+                    numericBuffers[daysBufferKey] = "1";
+                    IncidentsManager.SaveIncidentsToJson();
                 }
-                else
-                {
-                    // Fallback: Draw "∞" text
-                    if (Widgets.ButtonText(infinityRect, "∞"))
-                    {
-                        incident.CooldownDays = 1;
-                        numericBuffers[bufferKey] = "1";
-                        IncidentsManager.SaveIncidentsToJson();
-                    }
-                    TooltipHandler.TipRegion(infinityRect, "RICS.NoCooldownInfiniteTooltip".Translate());
-                }
+                TooltipHandler.TipRegion(infRect, "RICS.NoCooldownInfiniteTooltip".Translate());
+                currentX = infRect.xMax + 4f;
             }
             else
             {
-                // Use numeric input for non-zero cooldown
-                int cooldownBuffer = incident.CooldownDays;
-                string _numBufferString = numericBuffers[bufferKey];
+                int daysBuf = incident.CooldownDays;
+                string daysBufStr = numericBuffers[daysBufferKey];
+                Widgets.TextFieldNumeric(daysInputRect, ref daysBuf, ref daysBufStr, 1f, 365f);
+                numericBuffers[daysBufferKey] = daysBufStr;
 
-                // Use TextFieldNumeric with range limits
-                Widgets.TextFieldNumeric(inputRect, ref cooldownBuffer, ref _numBufferString, 0f, 1000f);
-                numericBuffers[bufferKey] = _numBufferString;
-
-                if (cooldownBuffer != incident.CooldownDays)
+                if (daysBuf != incident.CooldownDays)
                 {
-                    incident.CooldownDays = cooldownBuffer;
+                    incident.CooldownDays = daysBuf;
                     IncidentsManager.SaveIncidentsToJson();
                 }
-
-                // Add reset to infinity button
-                Rect infinityButtonRect = new Rect(inputRect.xMax + 5f, inputRect.y, 25f, rect.height);
-                Texture2D infinityIcon = ContentFinder<Texture2D>.Get("UI/Buttons/Infinity", false);
-                if (infinityIcon != null)
-                {
-                    if (Widgets.ButtonImage(infinityButtonRect, infinityIcon))
-                    {
-                        incident.CooldownDays = 0;
-                        numericBuffers[bufferKey] = "0";
-                        IncidentsManager.SaveIncidentsToJson();
-                    }
-                }
-                else
-                {
-                    if (Widgets.ButtonText(infinityButtonRect, "∞"))
-                    {
-                        incident.CooldownDays = 0;
-                        numericBuffers[bufferKey] = "0";
-                        IncidentsManager.SaveIncidentsToJson();
-                    }
-                }
-                TooltipHandler.TipRegion(infinityButtonRect, "RICS.ResetToNoCooldown".Translate());
+                currentX = daysInputRect.xMax + 2f;
             }
 
-            // Tooltip for the entire cooldown control
-            string cooldownTooltip = "RICS.CooldownDaysTooltip".Translate();
-            TooltipHandler.TipRegion(new Rect(labelRect.x, labelRect.y, rect.width, rect.height), cooldownTooltip);
+            // Separator "/"
+            Rect sepRect = new Rect(currentX, 0f, sepW, rect.height);
+            Widgets.Label(sepRect, "/");
+            currentX += sepW;
+
+            // NEW: UsesPerCooldownPeriod input (the X in "X uses per period")
+            string usesBufferKey = $"UsesPerCD_{incident.DefName}";
+            if (!numericBuffers.ContainsKey(usesBufferKey))
+                numericBuffers[usesBufferKey] = incident.UsesPerCooldownPeriod.ToString();
+
+            Rect usesInputRect = new Rect(currentX, 0f, usesW, rect.height);
+            currentX += usesW + 1f;
+
+            int usesBuf = Mathf.Max(1, incident.UsesPerCooldownPeriod);
+            string usesBufStr = numericBuffers[usesBufferKey];
+            Widgets.TextFieldNumeric(usesInputRect, ref usesBuf, ref usesBufStr, 1f, 20f);
+            numericBuffers[usesBufferKey] = usesBufStr;
+
+            if (usesBuf != incident.UsesPerCooldownPeriod)
+            {
+                incident.UsesPerCooldownPeriod = usesBuf;
+                IncidentsManager.SaveIncidentsToJson();
+            }
+
+            // Small "x" label
+            Rect xLabelRect = new Rect(currentX, 0f, usesLabelW, rect.height);
+            Widgets.Label(xLabelRect, "x");
+            currentX += usesLabelW + 4f;
+
+            // Quick reset button
+            Rect resetRect = new Rect(currentX, 0f, 18f, rect.height);
+            if (Widgets.ButtonText(resetRect, "R"))
+            {
+                incident.CooldownDays = CalculateDefaultCooldown(incident);
+                incident.UsesPerCooldownPeriod = 1;
+                numericBuffers[daysBufferKey] = incident.CooldownDays.ToString();
+                numericBuffers[usesBufferKey] = "1";
+                IncidentsManager.SaveIncidentsToJson();
+            }
+            TooltipHandler.TipRegion(resetRect, "RICS.ResetCooldownToDefault".Translate());
+
+            // Master tooltip explaining the new system
+            string tooltip = $"Cooldown: {incident.CooldownDays} days / {incident.UsesPerCooldownPeriod} uses per period\n\n" +
+                             "Set days=0 for unlimited uses (old 'no cooldown' behavior).\n" +
+                             "UsesPerPeriod > 1 allows multiple triggers inside the window (e.g. 3 uses every 7 days).";
+            TooltipHandler.TipRegion(new Rect(0f, 0f, rect.width, rect.height), tooltip);
 
             Widgets.EndGroup();
         }
@@ -1400,6 +1411,7 @@ namespace CAP_ChatInteractive
                 incident.KarmaType = fresh.KarmaType;
                 incident.EventCap = fresh.EventCap;
                 incident.CooldownDays = CalculateDefaultCooldown(incident); // or fresh.CooldownDays if you add it later
+                incident.UsesPerCooldownPeriod = 1;
                 incident.ShouldBeInStore = fresh.ShouldBeInStore;
                 incident.IsAvailableForCommands = fresh.IsAvailableForCommands;
 

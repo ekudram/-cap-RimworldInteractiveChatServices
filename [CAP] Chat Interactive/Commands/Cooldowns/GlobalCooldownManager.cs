@@ -320,54 +320,71 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             Logger.Debug($"After cleanup: {record.UsageDays.Count} uses remaining.");
         }
 
-        public bool CanUseIncident(string incidentDefName, int incidentCooldownDays, CAPGlobalChatSettings settings)
+        /// <summary>
+        /// Checks whether a specific incident can be triggered, supporting the new
+        /// "X uses every N days" system (UsesPerCooldownPeriod from BuyableIncident).
+        /// Fully backward compatible when usesPerPeriod = 1.
+        /// </summary>
+        public bool CanUseIncident(string incidentDefName, int incidentCooldownDays, int usesPerPeriod = 1, CAPGlobalChatSettings settings = null)
         {
-            Logger.Debug($"CanUseIncident: {incidentDefName}, IncidentCooldownDays: {incidentCooldownDays}");
+            if (settings == null)
+                settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+
+            Logger.Debug($"CanUseIncident: {incidentDefName}, CD={incidentCooldownDays}, UsesPer={usesPerPeriod}");
 
             CleanupOldRecords();
 
-            if (!settings.EventCooldownsEnabled)
+            if (settings != null && !settings.EventCooldownsEnabled)
             {
-                Logger.Debug("Event cooldowns disabled globally, allowing incident use");
+                Logger.Debug("Event cooldowns disabled globally → allowing");
                 return true;
             }
 
             if (incidentCooldownDays <= 0)
             {
-                Logger.Debug($"Incident {incidentDefName} has no cooldown");
+                Logger.Debug($"Incident {incidentDefName} has no cooldown (days=0) → allowing");
                 return true;
             }
 
+            if (usesPerPeriod <= 0) usesPerPeriod = 1;
+
             var record = GetOrCreateIncidentRecord(incidentDefName);
 
-            // === MAIN FIX: Proper same-day + multi-day cooldown check ===
-            if (record.LastUsedDay >= 0)  // Changed > 0 to >= 0
-            {
-                int daysSinceLastUse = CurrentGameDay - record.LastUsedDay;
+            CleanupOldIncidentUses(record, incidentCooldownDays);
 
-                if (daysSinceLastUse < incidentCooldownDays)
-                {
-                    Logger.Debug($"Incident {incidentDefName} was used {daysSinceLastUse} days ago (cooldown: {incidentCooldownDays}) → blocked");
-                    return false;
-                }
+            int usesInWindow = record.UsageDays?.Count(d => (CurrentGameDay - d) < incidentCooldownDays) ?? 0;
+
+            if (usesInWindow >= usesPerPeriod)
+            {
+                Logger.Debug($"Incident {incidentDefName} at {usesInWindow}/{usesPerPeriod} uses in last {incidentCooldownDays} days → BLOCKED");
+                return false;
             }
 
-            // Global + karma-type limits
-            string karmaType = GetKarmaTypeForIncident(incidentDefName);   // or better: use buyableIncident.KarmaType when possible
+            // Still enforce global + karma-type limits
+            string karmaType = GetKarmaTypeForIncident(incidentDefName);
             if (!CanUseEvent(karmaType, settings))
             {
                 Logger.Debug($"Global {karmaType} event limit reached → blocking {incidentDefName}");
                 return false;
             }
 
-            Logger.Debug($"Incident {incidentDefName} passed all checks");
+            Logger.Debug($"Incident {incidentDefName} allowed ({usesInWindow + 1}/{usesPerPeriod} in window)");
             return true;
         }
 
-        public void RecordIncidentUse(string incidentDefName)
+        public void RecordIncidentUse(string incidentDefName, int usesPerPeriod = 1)
         {
             var record = GetOrCreateIncidentRecord(incidentDefName);
+
+            if (record.UsageDays == null)
+                record.UsageDays = new List<int>();
+
+            record.UsageDays.Add(CurrentGameDay);
             record.LastUsedDay = CurrentGameDay;
+
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings != null)
+                CleanupOldIncidentUses(record, settings.EventCooldownDays > 0 ? settings.EventCooldownDays : 30);
 
             Logger.Debug($"Recorded incident use: {incidentDefName} on day {CurrentGameDay}");
         }
@@ -495,6 +512,16 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
         {
             if (cooldownDays == 0) return;
             record.PurchaseDays.RemoveAll(day => (GenDate.DaysPassed - day) >= cooldownDays);  // Changed > to >= (note: uses GenDate.DaysPassed directly here)
+        }
+
+        /// <summary>
+        /// Prunes usage days older than the cooldown window for incidents.
+        /// </summary>
+        private void CleanupOldIncidentUses(IncidentUsageRecord record, int cooldownDays)
+        {
+            if (cooldownDays <= 0 || record?.UsageDays == null) return;
+
+            record.UsageDays.RemoveAll(day => (CurrentGameDay - day) >= cooldownDays);
         }
     }
 }

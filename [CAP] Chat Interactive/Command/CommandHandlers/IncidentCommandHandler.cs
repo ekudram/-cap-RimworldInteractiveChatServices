@@ -88,7 +88,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     // === 2. Individual incident cooldown (only checked if global limits passed) ===
                     if (settings.EventCooldownsEnabled && buyableIncident.CooldownDays > 0)
                     {
-                        if (!cooldownManager.CanUseIncident(buyableIncident.DefName, buyableIncident.CooldownDays, settings))
+                        if (!cooldownManager.CanUseIncident(
+                                    buyableIncident.DefName,
+                                    buyableIncident.CooldownDays,
+                                    buyableIncident.UsesPerCooldownPeriod,   // ← NEW
+                                    settings))
                         {
                             int daysRemaining = GetRemainingCooldownDays(buyableIncident.DefName, buyableIncident.CooldownDays, cooldownManager);
                             string cooldownMessage = GetIndividualCooldownMessage(buyableIncident.Label, daysRemaining, buyableIncident.CooldownDays);
@@ -135,10 +139,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     if (cooldownManager != null)
                     {
                         if (settings.EventCooldownsEnabled && buyableIncident.CooldownDays > 0)
-                            cooldownManager.RecordIncidentUse(buyableIncident.DefName);
+                            cooldownManager.RecordIncidentUse(buyableIncident.DefName, buyableIncident.UsesPerCooldownPeriod); // ← pass it
 
                         string eventType = GetKarmaTypeForIncident(buyableIncident.KarmaType);
                         cooldownManager.RecordEventUse(eventType);
+
+
 
                         string logKey = (eventType.ToLowerInvariant() == "doom") ? "bad" : eventType.ToLowerInvariant();
                         var record = cooldownManager.data.EventUsage.GetValueOrDefault(logKey);

@@ -42,6 +42,14 @@ namespace CAP_ChatInteractive.Incidents
         public bool IsAvailableForCommands { get; set; } = true;
         public int CooldownDays { get; set; } = 0;
 
+        /// <summary>
+        /// Number of times this specific incident can be triggered within each CooldownDays window.
+        /// Default = 1 preserves the original "once every N days" behavior exactly.
+        /// Set higher (e.g. 3) to allow "3 uses every 7 days".
+        /// 0 or negative is clamped to 1 at runtime.
+        /// </summary>
+        public int UsesPerCooldownPeriod { get; set; } = 1;
+
         // Additional data
         public string ModSource { get; set; } = "RimWorld";
         /// <summary>

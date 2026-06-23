@@ -26,12 +26,17 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
     public class IncidentUsageRecord : IExposable
     {
         public string IncidentDefName;
-        public int LastUsedDay = -1;   // We only need this now
+        public int LastUsedDay = -1;
+
+        // Using a FIELD (not a property) — same pattern as the other *UsageRecord classes.
+        // Avoids known RimWorld/Mono collection serialization + ref bugs.
+        public List<int> UsageDays = new List<int>();
 
         public void ExposeData()
         {
             Scribe_Values.Look(ref IncidentDefName, "incidentDefName");
             Scribe_Values.Look(ref LastUsedDay, "lastUsedDay", -1);
+            Scribe_Collections.Look(ref UsageDays, "usageDays", LookMode.Value);
         }
     }
 
