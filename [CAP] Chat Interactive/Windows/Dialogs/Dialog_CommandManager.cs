@@ -1241,25 +1241,20 @@ namespace CAP_ChatInteractive
             height += 28f; // Max uses per cooldown period
 
             // RAID-SPECIFIC SETTINGS HEIGHT
+            // RAID-SPECIFIC SETTINGS HEIGHT
             if (selectedCommand != null && selectedCommand.commandText.ToLower() == "raid")
             {
-                height += 10f; // Extra spacing
-                height += 28f; // Raid header
-                height += 28f; // Default wager
-                height += 28f; // Min wager
-                height += 28f; // Max wager
-                height += 28f; // Raid types button
-                height += 28f; // Strategies button
+                height += 10f;           // Extra spacing before section
+                height += 28f;           // Header + Reset button row
+                height += 28f * 6;       // Default wager, Min wager, Max wager, Types button, Strategies button (+ small buffer)
             }
 
             // MILITARY AID-SPECIFIC SETTINGS HEIGHT
             if (selectedCommand != null && selectedCommand.commandText.ToLower() == "militaryaid")
             {
-                height += 10f; // Extra spacing
-                height += 28f; // Military aid header
-                height += 28f; // Default wager
-                height += 28f; // Min wager
-                height += 28f; // Max wager
+                height += 10f;           // Extra spacing before section
+                height += 28f;           // Header + Reset button row
+                height += 28f * 3;       // Default wager, Min wager, Max wager
             }
 
             // LOOTBOX-SPECIFIC SETTINGS HEIGHT
@@ -1663,7 +1658,7 @@ namespace CAP_ChatInteractive
             Widgets.Label(minWagerRect, "CAP.CommandManager.MilitaryAidMinWager".Translate());
             Rect minWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
             string minWagerBuffer = settings.MinMilitaryAidWager.ToString();
-            UIUtilities.TextFieldNumericFlexible(minWagerInputRect, ref settings.MinMilitaryAidWager, ref minWagerBuffer, 500, 5000);
+            UIUtilities.TextFieldNumericFlexible(minWagerInputRect, ref settings.MinMilitaryAidWager, ref minWagerBuffer, 50, 5000);
             y += sectionHeight;
 
             // Max wager
