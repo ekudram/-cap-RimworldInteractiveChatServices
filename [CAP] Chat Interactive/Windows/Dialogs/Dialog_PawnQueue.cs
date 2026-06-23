@@ -287,26 +287,35 @@ namespace CAP_ChatInteractive
 
         private void DrawQueueDetails(Rect rect)
         {
-            // Background
             Widgets.DrawMenuSection(rect);
 
-            if (selectedPawn == null)
+            float currentY = rect.y;
+            float gap = 8f;
+
+            if (selectedPawn != null)
             {
-                // No pawn selected message
-                Rect messageRect = new Rect(rect.x, rect.y, rect.width, rect.height);
+                // Taller header (was 250f) to fit up to 8 traits without vertical overflow into queue.
+                // WHY: 8 traits + backstories + labels ≈ 300f content height. We reserve bottom space
+                // inside DrawPawnHeader for the username/assign controls so they never get overlapped.
+                float pawnHeaderHeight = 370f;
+                Rect headerRect = new Rect(rect.x, currentY, rect.width, pawnHeaderHeight);
+                DrawPawnHeader(headerRect, selectedPawn);
+                currentY += pawnHeaderHeight + gap;
+            }
+            else
+            {
+                // Compact "select pawn" banner (keeps queue visible below it)
+                Rect messageRect = new Rect(rect.x, currentY, rect.width, 32f);
                 Text.Anchor = TextAnchor.MiddleCenter;
-                // Widgets.Label(messageRect, "Select a pawn to assign from queue");
                 Widgets.Label(messageRect, "RICS.Label.SelectPawnToAssign".Translate());
                 Text.Anchor = TextAnchor.UpperLeft;
-                return;
+                currentY += 40f;
             }
 
-            // Header with pawn info - increased height for bio card layout with assign section
-            Rect headerRect = new Rect(rect.x, rect.y, rect.width, 250f); // Increased from 220f to 250f
-            DrawPawnHeader(headerRect, selectedPawn);
-
-            // Queue list below - adjusted position
-            Rect queueRect = new Rect(rect.x, rect.y + 260f, rect.width, rect.height - 270f);
+            // === QUEUE LIST IS NOW ALWAYS DRAWN (fixes the reported "queue never shows" bug) ===
+            // When a pawn IS selected we intentionally start lower + use less total height
+            // (shortens the queue area) so the taller pawn details have room. This matches your request.
+            Rect queueRect = new Rect(rect.x, currentY, rect.width, rect.height - (currentY - rect.y) - 8f);
             DrawQueueList(queueRect);
         }
 
@@ -325,26 +334,32 @@ namespace CAP_ChatInteractive
             Rect portraitRect = new Rect(rect.x + 10f, rect.y + 10f, portraitSize, portraitSize);
             DrawSmallPawnPortrait(portraitRect, pawn);
 
-            // Left column (bio info)
-            Rect leftColRect = new Rect(portraitRect.xMax + 10f, currentY, leftColWidth, rect.height - 20f);
+            // === KEY FIX: Reserve bottom space for username input + assign button ===
+            // WHY: Prevents 5-8 trait lists from visually overlapping the TextField / Button.
+            // We give the bio/skills columns a safe height that stops well above the controls.
+            float bottomReserved = 45f; // username field + assign button + small gap
+            float colHeight = Mathf.Max(120f, rect.height - bottomReserved - 20f);
 
-            // Right column (skills)
-            Rect rightColRect = new Rect(leftColRect.xMax + 10f, currentY, rightColWidth, rect.height - 20f);
+            // Left column (bio info) — now safely sized
+            Rect leftColRect = new Rect(portraitRect.xMax + 10f, currentY, leftColWidth, colHeight);
 
-            // Draw left column content
+            // Right column (skills) — now safely sized
+            Rect rightColRect = new Rect(leftColRect.xMax + 10f, currentY, rightColWidth, colHeight);
+
+            // Draw left column content (name, race, backstories, traits)
             DrawPawnBioInfo(leftColRect, pawn, lineHeight);
 
-            // Draw right column content
+            // Draw right column content (skills)
             DrawPawnSkills(rightColRect, pawn, lineHeight);
 
-            // Username input and assign button at bottom
+            // Username input and assign button — always at very bottom of the header rect
+            // (now guaranteed not to be overlapped by trait text)
             Rect usernameRect = new Rect(leftColRect.x, rect.yMax - 35f, leftColWidth - 100f, 25f);
             selectedUsername = Widgets.TextField(usernameRect, selectedUsername);
 
             Rect assignRect = new Rect(usernameRect.xMax + 5f, usernameRect.y, 95f, 25f);
             if (Widgets.ButtonText(assignRect, "RICS.Assign".Translate()) && !string.IsNullOrEmpty(selectedUsername))
             {
-                // Use direct assignment instead of sending offer
                 AssignPawnDirectly(selectedUsername, selectedUserPlatformID, pawn);
             }
         }
