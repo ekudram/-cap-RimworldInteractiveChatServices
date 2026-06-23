@@ -653,87 +653,13 @@ namespace CAP_ChatInteractive
                 // RAID-SPECIFIC SETTINGS - Only show for raid command
                 if (selectedCommand.commandText.ToLower() == "raid")
                 {
-                    y += 10f; // Extra spacing
-
-                    Rect raidHeaderRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
-                    Widgets.Label(raidHeaderRect, "CAP.CommandManager.RaidSettings".Translate());
-                    y += sectionHeight;
-
-                    // Default wager
-                    Rect wagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(wagerRect, "CAP.CommandManager.DefaultWager".Translate());
-                    Rect wagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string wagerBuffer = settings.DefaultRaidWager.ToString();
-                    UIUtilities.TextFieldNumericFlexible(wagerInputRect, ref settings.DefaultRaidWager, ref wagerBuffer,
-                        settings.MinRaidWager, settings.MaxRaidWager);
-                    y += sectionHeight;
-
-                    // Wager range
-                    Rect minWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(minWagerRect, "CAP.CommandManager.MinWager".Translate());
-                    Rect minWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string minWagerBuffer = settings.MinRaidWager.ToString();
-                    UIUtilities.TextFieldNumericFlexible(minWagerInputRect, ref settings.MinRaidWager, ref minWagerBuffer, 100, 5000);
-                    y += sectionHeight;
-
-                    Rect maxWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(maxWagerRect, "CAP.CommandManager.MaxWager".Translate());
-                    Rect maxWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string maxWagerBuffer = settings.MaxRaidWager.ToString();
-                    UIUtilities.TextFieldNumericFlexible(maxWagerInputRect, ref settings.MaxRaidWager, ref maxWagerBuffer,
-                        settings.MinRaidWager, 50000);
-                    y += sectionHeight;
-
-                    // Allowed raid types button
-                    Rect raidTypesRect = new Rect(leftPadding + 10f, y, 200f, sectionHeight);
-                    if (Widgets.ButtonText(raidTypesRect, "CAP.CommandManager.ConfigureRaidTypes".Translate()))
-                    {
-                        Find.WindowStack.Add(new Dialog_RaidTypesEditor(settings));
-                    }
-                    y += sectionHeight;
-
-                    // Allowed strategies button  
-                    Rect strategiesRect = new Rect(leftPadding + 10f, y, 200f, sectionHeight);
-                    if (Widgets.ButtonText(strategiesRect, "CAP.CommandManager.ConfigureStrategies".Translate()))
-                    {
-                        Find.WindowStack.Add(new Dialog_RaidStrategiesEditor(settings));
-                    }
-                    y += sectionHeight;
+                    DrawRaidSpecificSettings(viewRect, settings, ref y);
                 }
 
                 // MILITARY AID-SPECIFIC SETTINGS - Only show for militaryaid command
                 if (selectedCommand.commandText.ToLower() == "militaryaid")
                 {
-                    y += 10f; // Extra spacing
-
-                    Rect militaryHeaderRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
-                    Widgets.Label(militaryHeaderRect, "CAP.CommandManager.MilitaryAidSettings".Translate().Colorize(ColorLibrary.SubHeader));
-                    y += sectionHeight;
-
-                    // Default wager
-                    Rect wagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(wagerRect, "CAP.CommandManager.MilitaryAidDefaultwager".Translate());
-                    Rect wagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string wagerBuffer = settings.DefaultMilitaryAidWager.ToString();
-                    UIUtilities.TextFieldNumericFlexible(wagerInputRect, ref settings.DefaultMilitaryAidWager, ref wagerBuffer,
-                        settings.MinMilitaryAidWager, settings.MaxMilitaryAidWager);
-                    y += sectionHeight;
-
-                    // Wager range
-                    Rect minWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(minWagerRect, "CAP.CommandManager.MilitaryAidMinWager".Translate());
-                    Rect minWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string minWagerBuffer = settings.MinMilitaryAidWager.ToString();
-                    UIUtilities.TextFieldNumericFlexible(minWagerInputRect, ref settings.MinMilitaryAidWager, ref minWagerBuffer, 500, 5000);
-                    y += sectionHeight;
-
-                    Rect maxWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(maxWagerRect, "CAP.CommandManager.MilitaryAidMaxWager".Translate());
-                    Rect maxWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string maxWagerBuffer = settings.MaxMilitaryAidWager.ToString();
-                    UIUtilities.TextFieldNumericFlexible(maxWagerInputRect, ref settings.MaxMilitaryAidWager, ref maxWagerBuffer,
-                        settings.MinMilitaryAidWager, 20000);
-                    y += sectionHeight;
+                    DrawMilitaryAidSpecificSettings(viewRect, settings, ref y);
                 }
 
                 // LOOTBOX-SPECIFIC SETTINGS - Only show for openlootboxes command
@@ -1414,8 +1340,6 @@ namespace CAP_ChatInteractive
             Find.WindowStack.Add(new FloatMenu(options));
         }
 
-
-
         private void FilterCommands()
         {
             lastSearch = searchQuery;
@@ -1632,7 +1556,125 @@ namespace CAP_ChatInteractive
             Find.WindowStack.Add(new FloatMenu(options));
         }
 
+        // ======================================================================
+        // NEW: Dedicated method for Raid command settings (easier to maintain)
+        // ======================================================================
+        private void DrawRaidSpecificSettings(Rect viewRect, CommandSettings settings, ref float y)
+        {
+            float sectionHeight = 28f;
+            float leftPadding = 15f;
 
+            y += 10f; // Extra spacing
+
+            Rect raidHeaderRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
+            Widgets.Label(raidHeaderRect, "CAP.CommandManager.RaidSettings".Translate());
+            y += sectionHeight;
+
+            // === RESET BUTTON ===
+            Rect resetRect = new Rect(viewRect.width - 180f, raidHeaderRect.y, 160f, sectionHeight - 2f);
+            if (Widgets.ButtonText(resetRect, "Reset to Recommended"))
+            {
+                settings.DefaultRaidWager = 500;
+                settings.MinRaidWager = 100;
+                settings.MaxRaidWager = 2500;
+                Messages.Message("Raid wagers reset to recommended values (500 / 100 / 2500).", MessageTypeDefOf.TaskCompletion);
+            }
+            TooltipHandler.TipRegion(resetRect, "Reset to new recommended pricing based on current viewer economy.");
+
+            // Default wager
+            Rect wagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+            Widgets.Label(wagerRect, "CAP.CommandManager.DefaultWager".Translate());
+            Rect wagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+            string wagerBuffer = settings.DefaultRaidWager.ToString();
+            UIUtilities.TextFieldNumericFlexible(wagerInputRect, ref settings.DefaultRaidWager, ref wagerBuffer,
+                settings.MinRaidWager, settings.MaxRaidWager);
+            y += sectionHeight;
+
+            // Min wager
+            Rect minWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+            Widgets.Label(minWagerRect, "CAP.CommandManager.MinWager".Translate());
+            Rect minWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+            string minWagerBuffer = settings.MinRaidWager.ToString();
+            UIUtilities.TextFieldNumericFlexible(minWagerInputRect, ref settings.MinRaidWager, ref minWagerBuffer, 100, 5000);
+            y += sectionHeight;
+
+            // Max wager
+            Rect maxWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+            Widgets.Label(maxWagerRect, "CAP.CommandManager.MaxWager".Translate());
+            Rect maxWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+            string maxWagerBuffer = settings.MaxRaidWager.ToString();
+            UIUtilities.TextFieldNumericFlexible(maxWagerInputRect, ref settings.MaxRaidWager, ref maxWagerBuffer,
+                settings.MinRaidWager, 50000);
+            y += sectionHeight;
+
+            // Allowed raid types button
+            Rect raidTypesRect = new Rect(leftPadding + 10f, y, 200f, sectionHeight);
+            if (Widgets.ButtonText(raidTypesRect, "CAP.CommandManager.ConfigureRaidTypes".Translate()))
+            {
+                Find.WindowStack.Add(new Dialog_RaidTypesEditor(settings));
+            }
+            y += sectionHeight;
+
+            // Allowed strategies button
+            Rect strategiesRect = new Rect(leftPadding + 10f, y, 200f, sectionHeight);
+            if (Widgets.ButtonText(strategiesRect, "CAP.CommandManager.ConfigureStrategies".Translate()))
+            {
+                Find.WindowStack.Add(new Dialog_RaidStrategiesEditor(settings));
+            }
+            y += sectionHeight;
+        }
+
+        // ======================================================================
+        // NEW: Dedicated method for Military Aid command settings
+        // ======================================================================
+        private void DrawMilitaryAidSpecificSettings(Rect viewRect, CommandSettings settings, ref float y)
+        {
+            float sectionHeight = 28f;
+            float leftPadding = 15f;
+
+            y += 10f; // Extra spacing
+
+            Rect militaryHeaderRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
+            Widgets.Label(militaryHeaderRect, "CAP.CommandManager.MilitaryAidSettings".Translate().Colorize(ColorLibrary.SubHeader));
+            y += sectionHeight;
+
+            // === RESET BUTTON ===
+            Rect resetRect = new Rect(viewRect.width - 180f, militaryHeaderRect.y, 160f, sectionHeight - 2f);
+            if (Widgets.ButtonText(resetRect, "Reset to Recommended"))
+            {
+                settings.DefaultMilitaryAidWager = 300;
+                settings.MinMilitaryAidWager = 50;
+                settings.MaxMilitaryAidWager = 1500;
+                Messages.Message("Military Aid wagers reset to recommended values (300 / 50 / 1500).", MessageTypeDefOf.TaskCompletion);
+            }
+            TooltipHandler.TipRegion(resetRect, "Reset to new recommended pricing based on current viewer economy.");
+
+            // Default wager
+            Rect wagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+            Widgets.Label(wagerRect, "CAP.CommandManager.MilitaryAidDefaultwager".Translate());
+            Rect wagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+            string wagerBuffer = settings.DefaultMilitaryAidWager.ToString();
+            UIUtilities.TextFieldNumericFlexible(wagerInputRect, ref settings.DefaultMilitaryAidWager, ref wagerBuffer,
+                settings.MinMilitaryAidWager, settings.MaxMilitaryAidWager);
+            y += sectionHeight;
+
+            // Min wager
+            Rect minWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+            Widgets.Label(minWagerRect, "CAP.CommandManager.MilitaryAidMinWager".Translate());
+            Rect minWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+            string minWagerBuffer = settings.MinMilitaryAidWager.ToString();
+            UIUtilities.TextFieldNumericFlexible(minWagerInputRect, ref settings.MinMilitaryAidWager, ref minWagerBuffer, 500, 5000);
+            y += sectionHeight;
+
+            // Max wager
+            Rect maxWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+            Widgets.Label(maxWagerRect, "CAP.CommandManager.MilitaryAidMaxWager".Translate());
+            Rect maxWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+            string maxWagerBuffer = settings.MaxMilitaryAidWager.ToString();
+            UIUtilities.TextFieldNumericFlexible(maxWagerInputRect, ref settings.MaxMilitaryAidWager, ref maxWagerBuffer,
+                settings.MinMilitaryAidWager, 20000);
+            y += sectionHeight;
+        }
 
         [DebugAction("CAP", "Delete JSON & Rebuild Commands", allowedGameStates = AllowedGameStates.Playing)]
         public static void DebugRebuildCommands()
