@@ -485,9 +485,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static float CalculateWagerMultiplier(int wager)
         {
-            // Scale wager to reasonable multiplier
-            // 1000 coins = 0.5x, 5000 coins = 1.0x, 20000 coins = 2.0x
-            return Mathf.Clamp(wager / 5000f, 0.5f, 2.0f);
+            // === NEW PRICING PHILOSOPHY (June 2026) ===
+            // Viewers earn ~10 base coins every 2 minutes when active (BaseCoinReward + role bonuses + karma).
+            // A "standard" raid (1.0x storyteller threat points) should be achievable with 30-60 minutes of active viewing.
+            //
+            // New scale (much more accessible than the old 5000-coin baseline):
+            //   250 coins  ≈ 0.6x  (small raid, good entry point)
+            //   500 coins  ≈ 1.0x  (standard/good raid)
+            //   1000 coins ≈ 1.8x
+            //   1500+ coins → 2.5x (max, big raid)
+            //
+            // This makes !raid feel like a fun, repeatable purchase instead of a once-per-stream luxury.
+            // We still clamp so extremely low wagers can't be useless and high rollers get a reward.
+            float normalized = wager / 500f;
+            return Mathf.Clamp(normalized, 0.6f, 2.5f);
         }
 
         private static RaidConfiguration ConfigureMechClusterRaid(IncidentParms parms, Map map, string strategy)

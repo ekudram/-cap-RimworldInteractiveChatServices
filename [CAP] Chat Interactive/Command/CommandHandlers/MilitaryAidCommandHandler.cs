@@ -176,7 +176,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     var parms = StorytellerUtility.DefaultParmsNow(IncidentCategoryDefOf.Misc, map);
                     parms.forced = true;
-                    
+
+                    // NEW: Scale incident strength based on wager (was missing before)
+                    float wagerMultiplier = CalculateMilitaryAidMultiplier(wager);
+                    parms.points = parms.points * wagerMultiplier;
+
                     var incident = new IncidentWorker_CallForAid();
                     incident.def = IncidentDefOf.RaidFriendly;
 
@@ -185,14 +189,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         bool executed = incident.TryExecute(parms);
                         if (executed && parms.faction != null)
                         {
-                            // Logger.Debug($"Military aid triggered successfully for {username} on map {map}");
                             string returnMessage = "RICS.MACH.SendingAid".Translate(parms.faction.Name);
-                            return new MilitaryAidResult(
-                                true,
-                                returnMessage,
-                                parms.faction
-                            // Don't include count for now
-                            );
+                            return new MilitaryAidResult(true, returnMessage, parms.faction);
                         }
                     }
                 }
@@ -242,6 +240,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             // Never return a negative or zero value for a good event
             return Mathf.Max(totalGain, 1f);
+        }
+
+        /// <summary>
+        /// Calculates how much to scale the military aid incident based on wager.
+        /// Bigger wagers = more reinforcements / stronger aid.
+        /// </summary>
+        private static float CalculateMilitaryAidMultiplier(int wager)
+        {
+            // === MILITARY AID PRICING (June 2026) ===
+            // Good event — slightly more generous than raid.
+            // 300 coins = 1.0x baseline (standard friendly reinforcement)
+            // Higher wagers send noticeably more pawns / better quality aid.
+            float normalized = wager / 300f;
+            return Mathf.Clamp(normalized, 0.7f, 2.2f);
         }
 
         [DebugAction("CAP", "Test Military Aid", allowedGameStates = AllowedGameStates.Playing)]

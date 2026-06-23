@@ -44,14 +44,19 @@ public class CommandSettings
     // fields for raid command
     public List<string> AllowedRaidTypes = new List<string>();
     public List<string> AllowedRaidStrategies = new List<string>();
-    public int DefaultRaidWager = 5000;
-    public int MinRaidWager = 1000;
-    public int MaxRaidWager = 20000;
+    // === UPDATED JUNE 2026 ===
+    // Old defaults (5000/1000/20000) were far too high for the current economy
+    // (viewers earn ~10 base coins every 2 minutes). New values make !raid usable.
+    public int DefaultRaidWager = 500;
+    public int MinRaidWager = 100;
+    public int MaxRaidWager = 2500;
 
-    // fields for militaryaid command
-    public int DefaultMilitaryAidWager = 1500;
-    public int MinMilitaryAidWager = 1000;
-    public int MaxMilitaryAidWager = 10000;
+    // === UPDATED JUNE 2026 ===
+    // Military aid is a GOOD event, so we are slightly more generous than raid.
+    // Bigger wagers should now feel meaningfully better (see MilitaryAidCommandHandler refactor).
+    public int DefaultMilitaryAidWager = 300;
+    public int MinMilitaryAidWager = 50;
+    public int MaxMilitaryAidWager = 1500;
 
     // Lootbox settings
     public int DefaultLootBoxSize = 1;
