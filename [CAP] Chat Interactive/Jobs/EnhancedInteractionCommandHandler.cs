@@ -128,8 +128,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        // In File EnhancedInteractionCommandHandler.cs, inside EnhancedInteractionCommandHandler.FindInteractionTarget()
-        // In File EnhancedInteractionCommandHandler.cs, inside EnhancedInteractionCommandHandler.FindInteractionTarget()
         private static Pawn FindInteractionTarget(Pawn initiator, InteractionDef interaction, string[] args)
         {
             // Animal-specific commands now search colony animals (named only)
@@ -241,8 +239,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return 0;
         }
 
-        // In File EnhancedInteractionCommandHandler.cs, inside EnhancedInteractionCommandHandler class
-        // Replace the existing GetPreferredBondedAnimal() with this:
         private static Pawn GetPreferredBondedAnimal(Pawn initiator)
         {
             if (initiator == null || initiator.relations == null)
@@ -290,7 +286,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return colonists.Count > 0 ? colonists.RandomElement() : null;
         }
 
-        // NEW: Named colony animals only (Faction.OfPlayer + has name) - used by !nuzzle and !animalchat
         private static Pawn FindAnimalByName(string name)
         {
             if (string.IsNullOrWhiteSpace(name)) return null;
@@ -303,7 +298,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                      p.Name.ToString().ToLowerInvariant().Contains(name.ToLowerInvariant()));
         }
 
-        // NEW: Random named colony animal (fallback when no target name given)
         private static Pawn FindRandomColonistAnimal(Pawn excludePawn)
         {
             var animals = PawnsFinder.AllMapsCaravansAndTravellingTransporters_Alive
@@ -327,7 +321,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return true;
         }
 
-        // Add this method inside the EnhancedInteractionCommandHandler class
         private static bool CanFlirt(Pawn initiator, Pawn target, out string refusalMessage)
         {
             refusalMessage = null;
@@ -344,7 +337,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return false;
             }
 
-            // Step 1: Basic checks (already partially in CanPawnsInteract, but add more)
+            // Step 1: Basic checks
             if (initiator.Dead || target.Dead)
             {
                 refusalMessage = $"{target.Name} is not available.";
@@ -363,12 +356,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 float targetMoodPct = targetMood.CurLevelPercentage;
 
-                // Hard refuse if target is in a very bad mood
-                if (targetMoodPct < 0.30f)  // Below 30% - near mental break
+                // Hard refuse if target is in a very bad mood (near mental break)
+                if (targetMoodPct < 0.30f)
                 {
                     refusalMessage = $"{target.Name} is feeling too down for this.";
 
-                    // Small mood hit to initiator for insensitive timing
+                    // Small mood hit to initiator for insensitive timing (50% chance)
                     var initiatorMood = initiator.needs.mood;
                     if (initiatorMood != null && Rand.Value < 0.5f)
                     {
@@ -376,8 +369,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                     return false;
                 }
-                // Soft refuse if target is stressed
-                else if (targetMoodPct < 0.40f && Rand.Value < 0.7f)  // 70% chance to refuse when stressed
+                // Soft refuse if target is stressed (70% chance)
+                else if (targetMoodPct < 0.40f && Rand.Value < 0.7f)
                 {
                     refusalMessage = $"{target.Name} isn't in the mood right now.";
                     return false;
@@ -387,36 +380,36 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Step 3: Opinion check (target's opinion of initiator)
             int opinion = target.relations.OpinionOf(initiator);
 
-            // Hard refuse if target dislikes initiator
-            if (opinion < -10)  // Strong dislike
+            if (opinion < -10) // Strong dislike → hard refuse
             {
                 refusalMessage = $"{target.Name} wants nothing to do with {initiator.Name}.";
                 return false;
             }
 
-            // Likely refuse if neutral-negative
-            if (opinion < 0 && Rand.Value < 0.8f)  // 80% chance to refuse
+            if (opinion < 0 && Rand.Value < 0.8f) // Neutral-negative → likely refuse
             {
                 refusalMessage = $"{target.Name} isn't interested.";
                 return false;
             }
 
-
-            // Unlikely but possible refusal for neutral opinion
-            if (opinion < 10 && Rand.Value < 0.3f)  // 30% chance to refuse
+            if (opinion < 10 && Rand.Value < 0.3f) // Neutral → unlikely but possible refuse
             {
                 refusalMessage = $"{target.Name} seems unsure about this.";
                 return false;
             }
 
-            // Step 4: Check for existing relationships (optional but recommended)
+            // Step 4: Check for existing relationships
+            // WHY: We only want to block "homewrecking" attempts on someone who is happily committed to ANOTHER person.
+            // If the initiator IS the target's current love partner (spouse/lover/fiancé), we must allow the interaction.
+            // Previously this block would incorrectly refuse ~60% of the time with "committed to {initiator.Name}",
+            // which is why !flirt on lover/spouse was failing even though FindInteractionTarget correctly preferred them.
             if (LovePartnerRelationUtility.HasAnyLovePartner(target))
             {
                 Pawn existingPartner = LovePartnerRelationUtility.ExistingMostLikedLovePartner(target, false);
-                if (existingPartner != null)
+                if (existingPartner != null && existingPartner != initiator) // <-- KEY FIX: skip if we are the partner
                 {
                     int partnerOpinion = target.relations.OpinionOf(existingPartner);
-                    if (partnerOpinion >= 15 && Rand.Value < 0.6f)  // 60% chance to refuse if happy with partner
+                    if (partnerOpinion >= 15 && Rand.Value < 0.6f) // 60% chance to refuse if happy with someone else
                     {
                         refusalMessage = $"{target.Name} is committed to {existingPartner.Name}.";
                         return false;
@@ -424,7 +417,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            // Step 5: Trait-based checks
+            // Step 5: Trait-based checks (still apply even to current partners)
             if (target.story != null && target.story.traits != null)
             {
                 // Psychopaths are less receptive to romance
@@ -442,7 +435,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            return true; // All checks passed
+            return true; // All checks passed — safe to queue the CAP_SocialVisit job
         }
 
         private class InteractionInfo
