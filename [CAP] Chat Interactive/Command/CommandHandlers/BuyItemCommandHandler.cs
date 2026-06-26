@@ -306,8 +306,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (requireEquippable || requireWearable || addToInventory)
                 {
+                    // Pass addToInventory through correctly so Backpack command routes to
+                    // HandleDirectPawnInteraction → pawn.inventory.innerContainer.TryAdd()
+                    // (instead of falling through to regular locker/drop-pod delivery).
                     deliveryResult = ItemDeliveryHelper.SpawnItemForPawn(thingDef, quantity, quality, material,
-                        viewerPawn, false, requireEquippable, requireWearable, preCreatedItem: finalItem);
+                        viewerPawn, addToInventory, requireEquippable, requireWearable, preCreatedItem: finalItem);
                 }
                 else
                 {
