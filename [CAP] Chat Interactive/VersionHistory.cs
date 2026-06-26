@@ -1163,7 +1163,44 @@ This feature was added as a safety net for the known RimWorld issue where large 
   - `<RICS.MPCH.GearPartHeader>Apparel covering {0}:</RICS.MPCH.GearPartHeader>`
   - `<RICS.MPCH.NoApparelCoveringPart>No apparel covering {0}.</RICS.MPCH.NoApparelCoveringPart>`
 "
-                }
+                },
+            {"1.40",
+@"===========================================================
+                         RICS 1.40 - Update
+                         Released: June 26, 2026
+===========================================================
+
+<b>MEMORANDUM</b>
+─────────────────
+This release includes all changes from June 21–23 plus the June 26 heal logic improvement. Major themes: AI/event notification system, extensive UI and editor quality-of-life refactors, raid & military aid rebalancing, multi-use cooldowns, social command fixes, and heal refund logic.
+
+<b>UPDATED / IMPROVED</b>
+──────────────
+• AI / Event system: Added AI event notification system via Harmony patch. Improved event usage and cooldown feedback messages.
+• UI & Editor quality of life: Multiple refactors across DebugRaces dialog, command UI height logic, event editor layout, command settings for raid/military aid, queue visibility, and pawn header layout. Increased letter body truncation limit to 2000 characters.
+• Raid & Military Aid: Rebalanced wager scaling. Added multi-use incident cooldowns (X uses per Y days). Lowered minimum wager to 50 coins for several commands.
+• Social commands: Fixed flirt command to allow flirting with current love partners.
+• Heal command: Refund coins when !healpawn results in no injuries healed. Improved overall heal logic and condition checking.
+• AI ChatBot & context: Improved robustness, messaging, platformUserId/name handling, viewer pawn prioritization, and added chatUsername to pawn reports.
+• Viewer persistence: Viewers data now saved immediately after chat message processing.
+• Game state support: Added component tracking and improved season calculation.
+
+<b>FIXED</b>
+────────────
+• Minor stability improvements in chat processing and AI-related paths.
+• Queue visibility and pawn header layout issues resolved.
+
+<b>ADDED</b>
+────────────
+• Multi-use incident cooldown system (configurable X uses per Y days).
+• AI event notification system.
+
+<b>TRANSLATIONS</b>
+───────────────────
+• Added new translation key in HealPawnCommandHandler:
+  `<RICS.HPCH.Return.NoInjuriesHealed>No injuries were healed on your pawn. Coins have been refunded.</RICS.HPCH.Return.NoInjuriesHealed>`
+"
+            }
 
 /*  Copy this template for future versions and fill in the details
 ===========================================================
