@@ -136,6 +136,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
             }
 
+
+
             int totalCost = injuriesToHeal * pricePerHeal;
 
             // Deduct coins and heal all affordable injuries
@@ -178,121 +180,133 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (viewerPawn == null)
             {
-                // return "You don't have a pawn assigned. Use !buy pawn first.";
                 return "RICS.HPCH.Return.NoPawn".Translate();
             }
 
             if (viewerPawn.Dead)
             {
-                // return "Your pawn is dead. Use !revivepawn first.";
                 return "RICS.HPCH.Return.PawnDead".Translate();
-
             }
 
             if (!HasInjuriesToHeal(viewerPawn))
             {
-                // return "Your pawn doesn't have any injuries to heal.";  ?? Nicer message?
                 return "RICS.HPCH.Return.NoInjuries".Translate();
             }
 
             int totalCost = pricePerHeal * quantity;
 
-            // Check if user can afford
             if (!StoreCommandHelper.CanUserAfford(messageWrapper, totalCost))
             {
-                // return $"You need {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)} to heal your pawn {quantity} time(s)! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
-                return "RICS.HPCH.Return.CantAffordMultiple".Translate(StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
-                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol), quantity);
+                return "RICS.HPCH.Return.CantAffordMultiple".Translate(
+                    StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol),
+                    quantity);
             }
 
-            // Deduct coins and heal
+            // Deduct coins first
             viewer.TakeCoins(totalCost);
+
+            // Perform the actual healing
             int injuriesHealed = ApplyHealing(viewerPawn, quantity);
-            // Award karma for the purchase
+
+            // === SAFETY NET: Refund if nothing was actually healed ===
+            // WHY: Prevents the reported bug where money is taken but 0 injuries are healed
+            // (can happen if the filter misses something or hediffs change between check and apply).
+            if (injuriesHealed == 0)
+            {
+                viewer.GiveCoins(totalCost);
+                Logger.Warning($"[RICS] HealSelf charged {totalCost} but healed 0 injuries for {messageWrapper.Username} — coins refunded.");
+                return "RICS.HPCH.Return.NoInjuriesHealed".Translate(); // Add this translation key if it doesn't exist yet
+            }
+
+            // Award karma only on successful healing
             AwardPurchaseKarma(viewer, totalCost, "healing");
 
-
-
-
-            // Record the purchase for cooldown tracking
+            // Record cooldown
             var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
             if (cooldownManager != null)
             {
-                cooldownManager.RecordItemPurchase("heal"); // or "heal" for healpawn
+                cooldownManager.RecordItemPurchase("heal");
             }
-            
 
-            // Send healing invoice
+            // Send invoice
             string invoiceLabel = $"💚 Rimazon Healing - {messageWrapper.Username}";
             string invoiceMessage = CreateHealingInvoice(messageWrapper.Username, messageWrapper.Username, injuriesHealed, totalCost, currencySymbol);
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
 
             Logger.Debug($"Heal self successful: {messageWrapper.Username} healed {injuriesHealed} injuries for {totalCost}{currencySymbol}");
-            // return $"💚 HEALING! Healed {injuriesHealed} injuries on your pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
-            return "RICS.HPCH.Return.HealSuccess".Translate(StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
-                StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol), injuriesHealed);
+
+            return "RICS.HPCH.Return.HealSuccess".Translate(
+                StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol),
+                injuriesHealed);
         }
 
         private static string HealSpecificUser(ChatMessageWrapper messageWrapper, Viewer viewer, string targetUsername, int pricePerHeal, string currencySymbol, int quantity)
         {
             int totalCost = pricePerHeal * quantity;
 
-            // Check if user can afford
             if (!StoreCommandHelper.CanUserAfford(messageWrapper, totalCost))
             {
-                // return $"You need {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)} to heal {targetUsername}'s pawn {quantity} time(s)! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
-                return "RICS.HPCH.Return.CantAffordMultipleTarget".Translate(StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
-                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol), targetUsername, quantity);
+                return "RICS.HPCH.Return.CantAffordMultipleTarget".Translate(
+                    StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol),
+                    targetUsername,
+                    quantity);
             }
 
-            // FIXED: Use the assignment manager directly to find the pawn by username
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
             var targetPawn = assignmentManager.GetAssignedPawn(targetUsername);
 
             if (targetPawn == null)
             {
-                // return $"{targetUsername} doesn't have a pawn assigned.";
                 return "RICS.HPCH.Return.TargetNoPawn".Translate(targetUsername);
             }
 
             if (targetPawn.Dead)
             {
-                // return $"{targetUsername}'s pawn is dead. Use !revivepawn first.";
                 return "RICS.HPCH.Return.TargetPawnDead".Translate(targetUsername);
             }
 
             if (!HasInjuriesToHeal(targetPawn))
             {
-                // return $"{targetUsername}'s pawn doesn't have any injuries to heal.";
                 return "RICS.HPCH.Return.TargetNoInjuries".Translate(targetUsername);
             }
 
-            // Deduct coins and heal
+            // Deduct coins first
             viewer.TakeCoins(totalCost);
+
+            // Perform healing
             int injuriesHealed = ApplyHealing(targetPawn, quantity);
 
+            // === SAFETY NET: Refund if nothing was actually healed ===
+            if (injuriesHealed == 0)
+            {
+                viewer.GiveCoins(totalCost);
+                Logger.Warning($"[RICS] HealSpecificUser charged {totalCost} but healed 0 injuries for {messageWrapper.Username} healing {targetUsername} — coins refunded.");
+                return "RICS.HPCH.Return.NoInjuriesHealed".Translate();
+            }
 
-            // Award karma for the purchase
             AwardPurchaseKarma(viewer, totalCost, "healing");
 
-            // Record the purchase for cooldown tracking
             var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
             if (cooldownManager != null)
             {
-                cooldownManager.RecordItemPurchase("heal"); // or "heal" for healpawn
+                cooldownManager.RecordItemPurchase("heal");
             }
 
-            // Send healing invoice
             string invoiceLabel = $"💚 Rimazon Healing - {messageWrapper.Username} → {targetUsername}";
             string invoiceMessage = CreateMultiUserHealingInvoice(messageWrapper.Username, targetUsername, injuriesHealed, totalCost, currencySymbol);
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
 
             Logger.Debug($"Heal specific user successful: {messageWrapper.Username} healed {targetUsername}'s pawn ({injuriesHealed} injuries) for {totalCost}{currencySymbol}");
-            // return $"💚 HEALING! Healed {injuriesHealed} injuries on {targetUsername}'s pawn for {StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol)}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
-            return "RICS.HPCH.Return.HealSuccessTarget".Translate(StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
-                StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol), injuriesHealed, targetUsername);
-        }
 
+            return "RICS.HPCH.Return.HealSuccessTarget".Translate(
+                StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
+                StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol),
+                injuriesHealed,
+                targetUsername);
+        }
         private static string HealAllPawns(ChatMessageWrapper messageWrapper, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
         {
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
@@ -364,15 +378,36 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol), totalInjuriesHealed, injuredPawns.Count);
         }
 
+        /// <summary>
+        /// Determines whether a hediff should be considered healable by the !healpawn service.
+        /// 
+        /// WHY: The vanilla Healer Mech Serum can heal brain scars/injuries even when 
+        /// h.def.everCurableByItem == false. This helper keeps the original logic but adds
+        /// an explicit exception for anything on the brain so that !healpawn matches real
+        /// serum behavior (as confirmed by user reports).
+        /// </summary>
+        private static bool IsHealableByService(Hediff h)
+        {
+            if (h?.def == null) return false;
+            if (!h.def.isBad || !h.Visible) return false;
+
+            if (h.def.everCurableByItem) return true;
+
+            // Special case: Brain injuries/scars
+            if (h.Part != null && h.Part.def == BodyPartDefOf.Head) return true;
+
+            return false;
+        }
+
         private static int CountHealableInjuries(Verse.Pawn pawn)
         {
-            return pawn.health.hediffSet.hediffs.Count(h => h.def.isBad && h.Visible && h.def.everCurableByItem);
+            return pawn.health.hediffSet.hediffs.Count(h => IsHealableByService(h));
         }
 
         private static int ApplyCompleteHealing(Verse.Pawn pawn)
         {
             var healableInjuries = pawn.health.hediffSet.hediffs
-                .Where(h => h.def.isBad && h.Visible && h.def.everCurableByItem)
+                .Where(h => IsHealableByService(h))   // <-- changed
                 .ToList();
 
             int injuriesHealed = 0;
@@ -383,7 +418,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Debug($"Healed injury: {injury.def.defName} on pawn {pawn.Name}");
             }
 
-            // Play healing sound (only once per pawn)
             if (injuriesHealed > 0)
             {
                 DefDatabase<SoundDef>.GetNamed("Ingest_Inject").PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
@@ -394,7 +428,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static bool HasInjuriesToHeal(Verse.Pawn pawn)
         {
-            return pawn.health.hediffSet.hediffs.Any(h => h.def.isBad && h.Visible && h.def.everCurableByItem);
+            return pawn.health.hediffSet.hediffs.Any(h => IsHealableByService(h));
         }
 
         private static int ApplyHealing(Verse.Pawn pawn, int quantity)
@@ -403,15 +437,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             for (int i = 0; i < quantity; i++)
             {
-                // Get all healable injuries
                 var healableInjuries = pawn.health.hediffSet.hediffs
-                    .Where(h => h.def.isBad && h.Visible && h.def.everCurableByItem)
+                    .Where(h => IsHealableByService(h))   // <-- changed
                     .ToList();
 
                 if (healableInjuries.Count == 0)
                     break;
 
-                // Heal a random injury
                 var injuryToHeal = healableInjuries.RandomElement();
                 pawn.health.RemoveHediff(injuryToHeal);
                 injuriesHealed++;
@@ -419,8 +451,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Debug($"Healed injury: {injuryToHeal.def.defName} on pawn {pawn.Name}");
             }
 
-            // Play healing sound
-            DefDatabase<SoundDef>.GetNamed("Ingest_Inject").PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+            if (injuriesHealed > 0)
+            {
+                DefDatabase<SoundDef>.GetNamed("Ingest_Inject").PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+            }
+
             return injuriesHealed;
         }
 
