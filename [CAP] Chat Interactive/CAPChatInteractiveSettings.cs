@@ -292,6 +292,7 @@ namespace CAP_ChatInteractive
         // Set to 0 to disable periodic updates entirely (the bot will still receive fresh state on explicit !ricsaichatbot commands).
 
         public int AIChatBotGameStateUpdateIntervalMinutes = 15;  // <--- Need to add to Dialog_GlobalSettings in the UI to be adjustable by users
+        public string AIChatBotGameStatePushEndpoint = "http://127.0.0.1:5000/gamestate_update"; // New in 1.39+ — where the external AI bot listens for pushed game state JSON (POST). Change if your bot runs on a different host/port.
         public bool AIChatBotCanExecuteCommands = true; // Whether the AI chatbot is allowed to execute in-game commands (e.g. via special syntax in its response that RICS recognizes). This is a powerful feature that can enable deep integration and emergent storytelling, but it also carries risks if the bot generates unexpected commands. Use with caution and consider starting with this disabled until you are confident in the bot's behavior.
 
         // === Twitch Raids feature (Phase 1) ===
@@ -452,6 +453,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref AIChatBotSendGameState, "aiChatBotSendGameState", true);
             Scribe_Values.Look(ref AIChatBotSendChatHistory, "aiChatBotSendChatHistory", true);
             Scribe_Values.Look(ref AIChatBotGameStateUpdateIntervalMinutes, "aiChatBotGameStateUpdateIntervalMinutes", 15);
+            Scribe_Values.Look(ref AIChatBotGameStatePushEndpoint, "aiChatBotGameStatePushEndpoint", "http://127.0.0.1:5000/gamestate_update");
             Scribe_Values.Look(ref AIChatBotCanExecuteCommands, "aiChatBotCanExecuteCommands", true);
 
             // Channel Points Reward Settings

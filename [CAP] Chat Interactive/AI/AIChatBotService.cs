@@ -511,7 +511,49 @@ namespace CAP_ChatInteractive.AI
 
         public string GetCachedGameStateJson() => _cachedGameStateJson;
 
-        // In AIChatBotService.cs, inside class AIChatBotService
+        /// <summary>
+        /// Pushes the current cached game state JSON to the external AI bot (Masie V9+) via POST to /gamestate_update.
+        /// Called periodically from GameComponentTick (on the configured AIChatBotGameStateUpdateIntervalMinutes).
+        /// Uses Task.Run so the HTTP I/O never blocks the main thread / tick.
+        /// Only pushes useful states (skips "no_game" / "no_map" / error). Graceful degradation on any network error.
+        /// WHY: V9 bot removed its internal timer — RICS now owns when colony reports are generated/spoken.
+        /// </summary>
+        public void PushCurrentGameStateToBot()
+        {
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings == null || !settings.AIChatBotActive)
+                return;
+
+            string pushUrl = settings.AIChatBotGameStatePushEndpoint;
+            if (string.IsNullOrWhiteSpace(pushUrl))
+                return;
+
+            string json = GetCachedGameStateJson();
+            if (string.IsNullOrWhiteSpace(json) ||
+                json == "{\"status\":\"no_game\"}" ||
+                json == "{\"status\":\"no_map\"}" ||
+                json.Contains("\"status\":\"error\""))
+                return; // nothing useful to report yet
+
+            // Fire-and-forget on background thread — safe because we only read the already-cached string + settings
+            Task.Run(() =>
+            {
+                try
+                {
+                    using (var client = new WebClient())
+                    {
+                        client.Headers[HttpRequestHeader.ContentType] = "application/json";
+                        client.UploadString(pushUrl, "POST", json);
+                        Logger.Debug($"[RICS AI] ✅ Pushed fresh game state to bot ({json.Length} bytes) → {pushUrl}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Never let a failed push crash or stutter the game
+                    Logger.Warning($"[RICS AI] Push to bot failed (non-fatal, will retry next interval): {ex.Message}");
+                }
+            });
+        }
 
         /// <summary>
         /// Called when a letter is received by the LetterStack (storyteller incidents, viewer events, Anomaly, quests, etc.).

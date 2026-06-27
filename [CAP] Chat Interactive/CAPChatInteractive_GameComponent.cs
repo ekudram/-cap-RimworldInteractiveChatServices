@@ -143,22 +143,25 @@ namespace CAP_ChatInteractive
             var aiSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             if (aiSettings?.AIChatBotActive == true && _aiChatBotService != null)
             {
-                aiChatBotCommandProcessTickCounter++;
-                if (aiChatBotCommandProcessTickCounter >= 20)   // ~3 times per second when active
-                {
-                    aiChatBotCommandProcessTickCounter = 0;
-                    _aiChatBotService.ProcessFileBasedAICommands();
-                }
+                // === Process file-based AI commands (main thread only - stable) ===
+                // This runs every ~2 seconds (cheap) so the Python bot can drop command files and get quick results.
+                _aiChatBotService.ProcessFileBasedAICommands();
 
-                // Game state cache refresh stays on its own (much longer) interval
+                // Game state cache refresh + push to external bot (every X minutes, user configurable)
+                // WHY: V9 Masie no longer has its own timer. RICS now controls when fresh colony reports are generated.
+                // UpdateGameStateCache + Push are safe here (main thread after LoadedGame/StartedNewGame, already wrapped in try/catch inside the service).
                 if (aiSettings.AIChatBotGameStateUpdateIntervalMinutes > 0)
                 {
                     aiChatBotStateUpdateTickCounter++;
+
                     int ticksPerUpdate = aiSettings.AIChatBotGameStateUpdateIntervalMinutes * 2500;
+
                     if (aiChatBotStateUpdateTickCounter >= ticksPerUpdate)
                     {
                         aiChatBotStateUpdateTickCounter = 0;
+
                         _aiChatBotService.UpdateGameStateCache();
+                        _aiChatBotService.PushCurrentGameStateToBot();
                     }
                 }
             }
@@ -239,6 +242,7 @@ namespace CAP_ChatInteractive
             // This guarantees the Python bot gets real colony data (colonists, food, medicine, threat, etc.)
             // on its very first /gamestate poll instead of waiting for the 15-minute timer.
             _aiChatBotService?.UpdateGameStateCache();
+            _aiChatBotService.PushCurrentGameStateToBot();
 
             Logger.Debug("AI ChatBot service initialized + initial game state cached");
         }
