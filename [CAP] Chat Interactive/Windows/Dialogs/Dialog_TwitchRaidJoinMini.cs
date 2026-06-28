@@ -65,23 +65,23 @@ namespace CAP_ChatInteractive.Windows
             // Title
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.HeaderAccent;
-            Widgets.Label(new Rect(0f, 6f, inRect.width, 26f), "TWITCH RAID");
+            Widgets.Label(new Rect(0f, 6f, inRect.width, 26f), "RICS.TwitchRaidJoin.Title".Translate());
 
             // Subtitle
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
-            Widgets.Label(new Rect(0f, 32f, inRect.width, 20f), $"@{raiderName} raided with ~{viewerCount} viewers");
+            Widgets.Label(new Rect(0f, 32f, inRect.width, 20f), "RICS.TwitchRaidJoin.RaiderInfo".Translate(raiderName, viewerCount));
 
             // Countdown (prominent, color coded)
             Text.Font = GameFont.Medium;
             GUI.color = timeLeft > 90f ? ColorLibrary.Success : (timeLeft > 30f ? Color.yellow : ColorLibrary.Danger);
-            Widgets.Label(new Rect(0f, 55f, inRect.width, 28f), $"{timeLeft:F0} seconds left to join!");
+            Widgets.Label(new Rect(0f, 55f, inRect.width, 28f), "RICS.TwitchRaidJoin.TimeLeft".Translate(timeLeft));
 
             // Joiner count
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
             int joined = GetJoinedCount();
-            Widgets.Label(new Rect(0f, 85f, inRect.width, 22f), $"{joined} raiders have joined so far");
+            Widgets.Label(new Rect(0f, 85f, inRect.width, 22f), "RICS.TwitchRaidJoin.RaidersSoFar".Translate(joined));
 
             // Buttons row
             float elapsed = 180f - timeLeft;
@@ -91,14 +91,14 @@ namespace CAP_ChatInteractive.Windows
             Rect expandRect = new Rect(inRect.width - 153f, inRect.height - 28f, 145f, 30f);
 
             GUI.color = buttonEnabled ? ColorLibrary.Danger : Color.gray;
-            if (Widgets.ButtonText(startRect, "START RAID!", active: buttonEnabled))
+            if (Widgets.ButtonText(startRect, "RICS.TwitchRaidJoin.StartRaidNow".Translate(), active: buttonEnabled))
             {
                 if (buttonEnabled)
                     TriggerAndClose();
             }
 
             GUI.color = ColorLibrary.Info;
-            if (Widgets.ButtonText(expandRect, "Expand"))
+            if (Widgets.ButtonText(expandRect, "RICS.TwitchRaidJoin.Expand".Translate()))
             {
                 Find.WindowStack.Add(new Dialog_TwitchRaidJoin(raiderName, viewerCount));
                 Close();

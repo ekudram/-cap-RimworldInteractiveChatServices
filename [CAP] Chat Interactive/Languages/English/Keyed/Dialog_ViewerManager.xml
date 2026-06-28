@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- Dialog_ViewerManager.cs Translations -->
+
+  <!-- Header and main labels -->
+  <RICS.ViewerManager.Viewers>Viewers</RICS.ViewerManager.Viewers>
+  <RICS.ViewerManager.Search>Search:</RICS.ViewerManager.Search>
+  <RICS.ViewerManager.MassActions>Mass Actions →</RICS.ViewerManager.MassActions>
+  <RICS.ViewerManager.Username>Username</RICS.ViewerManager.Username>
+  <RICS.ViewerManager.Coins>Coins</RICS.ViewerManager.Coins>
+  <RICS.ViewerManager.Karma>Karma</RICS.ViewerManager.Karma>
+
+  <!-- Details panel -->
+  <RICS.ViewerManager.SelectViewer>Select a viewer to see details</RICS.ViewerManager.SelectViewer>
+  <RICS.ViewerManager.PlatformIDs>Platform IDs:</RICS.ViewerManager.PlatformIDs>
+  <RICS.ViewerManager.NoPlatformIDs>No platform IDs - using username fallback</RICS.ViewerManager.NoPlatformIDs>
+  <RICS.ViewerManager.Economy>Economy:</RICS.ViewerManager.Economy>
+  <RICS.ViewerManager.Activity>Activity:</RICS.ViewerManager.Activity>
+  <RICS.ViewerManager.AssignedPawn>Assigned Pawn:</RICS.ViewerManager.AssignedPawn>
+  <RICS.ViewerManager.NoPawn>No pawn assigned in current game</RICS.ViewerManager.NoPawn>
+  <RICS.ViewerManager.DeadPawn>Assigned pawn is deceased</RICS.ViewerManager.DeadPawn>
+  <RICS.ViewerManager.ClearAssignment>Clear Assignment</RICS.ViewerManager.ClearAssignment>
+
+  <!-- User management -->
+  <RICS.ViewerManager.Banned>🚫 THIS VIEWER IS BANNED</RICS.ViewerManager.Banned>
+  <RICS.ViewerManager.Unban>UNBAN VIEWER</RICS.ViewerManager.Unban>
+  <RICS.ViewerManager.RemoveUser>REMOVE USER</RICS.ViewerManager.RemoveUser>
+  <RICS.ViewerManager.Ban>BAN VIEWER</RICS.ViewerManager.Ban>
+  <RICS.ViewerManager.UserManagement>User Management</RICS.ViewerManager.UserManagement>
+  <RICS.ViewerManager.PawnName>Name: {0}</RICS.ViewerManager.PawnName>
+  <RICS.ViewerManager.PawnRaceHealth>Race: {0}, Health: {1}</RICS.ViewerManager.PawnRaceHealth>
+  <RICS.ViewerManager.PawnLocation>Location: {0}</RICS.ViewerManager.PawnLocation>
+
+  <!-- Economy actions -->
+  <RICS.ViewerManager.Give>Give</RICS.ViewerManager.Give>
+  <RICS.ViewerManager.Take>Take</RICS.ViewerManager.Take>
+  <RICS.ViewerManager.Set>Set</RICS.ViewerManager.Set>
+
+  <!-- Confirmations and messages -->
+  <RICS.ViewerManager.UnassignConfirm>Unassign {0} from {1}?</RICS.ViewerManager.UnassignConfirm>
+  <RICS.ViewerManager.Unassigned>Unassigned {0} from {1}</RICS.ViewerManager.Unassigned>
+  <RICS.ViewerManager.Cleared>Cleared deceased pawn assignment for {0}</RICS.ViewerManager.Cleared>
+  <RICS.ViewerManager.Unbanned>{0} has been unbanned</RICS.ViewerManager.Unbanned>
+  <RICS.ViewerManager.BannedAndRemoved>{0} has been banned and pawn assignments removed</RICS.ViewerManager.BannedAndRemoved>
+  <RICS.ViewerManager.AwardConfirm>Award coins to all active viewers?</RICS.ViewerManager.AwardConfirm>
+  <RICS.ViewerManager.Awarded>Coins awarded to active viewers</RICS.ViewerManager.Awarded>
+  <RICS.ViewerManager.ResetCoinsConfirm>Reset ALL viewer coins to starting amount?</RICS.ViewerManager.ResetCoinsConfirm>
+  <RICS.ViewerManager.CoinsReset>All viewer coins reset</RICS.ViewerManager.CoinsReset>
+  <RICS.ViewerManager.ResetKarmaConfirm>Reset ALL viewer karma to starting amount?</RICS.ViewerManager.ResetKarmaConfirm>
+  <RICS.ViewerManager.KarmaReset>All viewer karma reset</RICS.ViewerManager.KarmaReset>
+  <RICS.ViewerManager.RemoveConfirm>Permanently remove {0} from the viewer list?\n\nThis will:\n• Remove all their data (coins, karma, history)\n</RICS.ViewerManager.RemoveConfirm>
+  <RICS.ViewerManager.AwardCoins>Award Coins to Active</RICS.ViewerManager.AwardCoins>
+  <RICS.ViewerManager.ResetCoins>Reset All Coins</RICS.ViewerManager.ResetCoins>
+  <RICS.ViewerManager.ResetKarma>Reset All Karma</RICS.ViewerManager.ResetKarma>
+  <RICS.ViewerManager.ViewStatistics>View Statistics</RICS.ViewerManager.ViewStatistics>
+  <RICS.ViewerManager.ResetCoinsConfirm>Reset ALL viewer coins to starting amount?</RICS.ViewerManager.ResetCoinsConfirm>
+  <RICS.ViewerManager.ResetKarmaConfirm>Reset ALL viewer karma to starting amount?</RICS.ViewerManager.ResetKarmaConfirm>
+  <RICS.ViewerManager.PortraitError>Portrait\nError</RICS.ViewerManager.PortraitError>
+
+  <!-- Ban confirmation -->
+  <RICS.ViewerManager.BanConfirm>Are you sure you want to ban {0}?\n\nThis will also remove any pawn assignments.</RICS.ViewerManager.BanConfirm>
+
+  <!-- Messages from code -->
+  <RICS.ViewerManager.BackupSaved>Viewer data backup saved.</RICS.ViewerManager.BackupSaved>
+  <RICS.ViewerManager.Loaded>Viewer data loaded from backup.</RICS.ViewerManager.Loaded>
+  <RICS.ViewerManager.FailedLoad>Failed to load backup (invalid data).</RICS.ViewerManager.FailedLoad>
+  <RICS.ViewerManager.NoBackups>No backups found for Viewer Manager.</RICS.ViewerManager.NoBackups>
+
+</LanguageData>

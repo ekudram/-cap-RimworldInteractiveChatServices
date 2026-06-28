@@ -101,7 +101,7 @@ namespace CAP_ChatInteractive
             {
                 string json = JsonConvert.SerializeObject(Viewers.All, Formatting.Indented);
                 BackupUtility.SaveQuickBackup("ViewerManager", json);
-                Messages.Message("Viewer data backup saved.", MessageTypeDefOf.NeutralEvent);
+                Messages.Message("RICS.ViewerManager.BackupSaved".Translate(), MessageTypeDefOf.NeutralEvent);
             }
 
             // Load Backup (latest timestamped)
@@ -122,25 +122,25 @@ namespace CAP_ChatInteractive
                             Viewers.SaveViewers();
                             FilterViewers();
 
-                            Messages.Message("Viewer data loaded from backup.", MessageTypeDefOf.NeutralEvent);
+                            Messages.Message("RICS.ViewerManager.Loaded".Translate(), MessageTypeDefOf.NeutralEvent);
                         }
                     }
                     catch (Exception ex)
                     {
                         Logger.Error($"Failed to load viewer backup: {ex.Message}");
-                        Messages.Message("Failed to load backup (invalid data).", MessageTypeDefOf.RejectInput);
+                        Messages.Message("RICS.ViewerManager.FailedLoad".Translate(), MessageTypeDefOf.RejectInput);
                     }
                 }
                 else
                 {
-                    Messages.Message("No backups found for Viewer Manager.", MessageTypeDefOf.RejectInput);
+                    Messages.Message("RICS.ViewerManager.NoBackups".Translate(), MessageTypeDefOf.RejectInput);
                 }
             }
 
             // Close (right-aligned)
             float closeX = inRect.xMax - btnW - padding;
             Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(closeRect, "Close"))
+            if (Widgets.ButtonText(closeRect, "RICS.Editor.Close".Translate()))
             {
                 this.Close();
             }
@@ -182,7 +182,7 @@ namespace CAP_ChatInteractive
             // Search bar with label - matching Store Editor
             Rect searchLabelRect = new Rect(0f, controlsY, 80f, controlsHeight);
             Text.Font = GameFont.Medium; // Medium font for the label
-            Widgets.Label(searchLabelRect, "Search:");
+            Widgets.Label(searchLabelRect, "RICS.ViewerManager.Search".Translate());
             Text.Font = GameFont.Small;
 
             Rect searchRect = new Rect(85f, controlsY, 250f, controlsHeight);
@@ -195,7 +195,7 @@ namespace CAP_ChatInteractive
             // Mass action button - adjusted position
             float buttonWidth = 110f;
             Rect actionsRect = new Rect(rect.width - buttonWidth, controlsY, buttonWidth, 30f);
-            if (Widgets.ButtonText(actionsRect, "Mass Actions →"))
+            if (Widgets.ButtonText(actionsRect, "RICS.ViewerManager.MassActions".Translate()))
             {
                 ShowMassActionsMenu();
             }
@@ -232,7 +232,7 @@ namespace CAP_ChatInteractive
             float x = 0f;
 
             // Sort by Username
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Username"))
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "RICS.ViewerManager.Username".Translate()))
             {
                 if (sortMethod == ViewerSortMethod.Username)
                     sortAscending = !sortAscending;
@@ -243,7 +243,7 @@ namespace CAP_ChatInteractive
             x += buttonWidth + spacing;
 
             // Sort by Coins
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Coins"))
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "RICS.ViewerManager.Coins".Translate()))
             {
                 if (sortMethod == ViewerSortMethod.Coins)
                     sortAscending = !sortAscending;
@@ -254,7 +254,7 @@ namespace CAP_ChatInteractive
             x += buttonWidth + spacing;
 
             // Sort by Karma
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "Karma"))
+            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "RICS.ViewerManager.Karma".Translate()))
             {
                 if (sortMethod == ViewerSortMethod.Karma)
                     sortAscending = !sortAscending;
@@ -270,17 +270,17 @@ namespace CAP_ChatInteractive
         {
             var options = new List<FloatMenuOption>
             {
-                new FloatMenuOption("Award Coins to Active", () => {
+                new FloatMenuOption("RICS.ViewerManager.AwardCoins".Translate(), () => {
                     showAwardCoinsConfirmation = true;
                 }, MenuOptionPriority.Low, null, null, 0, null, null, true, 0),
-                new FloatMenuOption("Reset All Coins", () => {
+                new FloatMenuOption("RICS.ViewerManager.ResetCoins".Translate(), () => {
                     showResetCoinsConfirmation = true;
                 }, MenuOptionPriority.Low, null, null, 0, null, null, true, 1),
-                new FloatMenuOption("Reset All Karma", () => {
+                new FloatMenuOption("RICS.ViewerManager.ResetKarma".Translate(), () => {
                     showResetKarmaConfirmation = true;
                 }, MenuOptionPriority.Low, null, null, 0, null, null, true, 2),
                 new FloatMenuOption("---", null, MenuOptionPriority.Default, null, null, 0, null, null, true, 3), // Separator with higher order
-                new FloatMenuOption("View Statistics", ShowStatistics, MenuOptionPriority.High, null, null, 0, null, null, true, 4)
+                new FloatMenuOption("RICS.ViewerManager.ViewStatistics".Translate(), ShowStatistics, MenuOptionPriority.High, null, null, 0, null, null, true, 4)
             };
 
             Find.WindowStack.Add(new FloatMenu(options));
@@ -309,7 +309,7 @@ namespace CAP_ChatInteractive
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleCenter; // Add this line
             GUI.color = ColorLibrary.SubHeader;
-            Widgets.Label(headerRect, "Viewers");
+            Widgets.Label(headerRect, "RICS.ViewerManager.Viewers".Translate());
             GUI.color = Color.white;
             Text.Anchor = TextAnchor.UpperLeft; // Reset to default
             Text.Font = GameFont.Small;
@@ -386,7 +386,7 @@ namespace CAP_ChatInteractive
                 // No viewer selected message
                 Rect messageRect = new Rect(rect.x, rect.y, rect.width, rect.height);
                 Text.Anchor = TextAnchor.MiddleCenter;
-                Widgets.Label(messageRect, "Select a viewer to see details");
+                Widgets.Label(messageRect, "RICS.ViewerManager.SelectViewer".Translate());
                 Text.Anchor = TextAnchor.UpperLeft;
                 return;
             }
@@ -433,7 +433,7 @@ namespace CAP_ChatInteractive
 
                 // Platform IDs section
                 Rect platformLabelRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
-                string platformLabel = "Platform IDs:";
+                string platformLabel = "RICS.ViewerManager.PlatformIDs".Translate();
                 if (selectedViewer.PlatformUserIds.Count == 0)
                 {
                     platformLabel += " ⚠ NO PLATFORM IDs (User may be invalid) remove this viewer";
@@ -469,14 +469,14 @@ namespace CAP_ChatInteractive
                 else
                 {
                     Rect noPlatformsRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
-                    Widgets.Label(noPlatformsRect, "No platform IDs - using username fallback");
+                    Widgets.Label(noPlatformsRect, "RICS.ViewerManager.NoPlatformIDs".Translate());
                     y += sectionHeight - 5f;
                 }
                 y += 10f;
 
                 // Economy section
                 Rect economyLabelRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
-                Widgets.Label(economyLabelRect, "Economy:");
+                Widgets.Label(economyLabelRect, "RICS.ViewerManager.Economy".Translate());
                 y += sectionHeight;
 
                 // Coins row
@@ -509,7 +509,7 @@ namespace CAP_ChatInteractive
 
                 // Activity section
                 Rect activityLabelRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
-                Widgets.Label(activityLabelRect, "Activity:");
+                Widgets.Label(activityLabelRect, "RICS.ViewerManager.Activity".Translate());
                 y += sectionHeight;
 
                 Rect messagesRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
@@ -539,7 +539,7 @@ namespace CAP_ChatInteractive
 
             // Section header
             Rect pawnHeaderRect = new Rect(leftPadding, y, width, sectionHeight);
-            Widgets.Label(pawnHeaderRect, "Assigned Pawn:");
+            Widgets.Label(pawnHeaderRect, "RICS.ViewerManager.AssignedPawn".Translate());
             y += sectionHeight;
             Logger.Debug($"Before: GetViewerPawn result for {selectedViewer.Username}:");
             Pawn viewerPawn = GetViewerPawn(selectedViewer);
@@ -596,14 +596,14 @@ namespace CAP_ChatInteractive
                 // Pawn name
                 Rect nameRect = new Rect(infoX, y, infoWidth, sectionHeight);
                 string pawnName = viewerPawn.Name?.ToStringFull ?? "Unnamed";
-                Widgets.Label(nameRect, $"Name: {pawnName}");
+                Widgets.Label(nameRect, "RICS.ViewerManager.PawnName".Translate(pawnName));
                 y += sectionHeight;
 
                 // Pawn type and status
                 Rect typeRect = new Rect(infoX, y, infoWidth, sectionHeight);
                 string pawnRace = viewerPawn.def.label.CapitalizeFirst(); // "human" becomes "Human"
                 string healthStatus = viewerPawn.health.summaryHealth.SummaryHealthPercent.ToStringPercent();
-                Widgets.Label(typeRect, $"Race: {pawnRace}, Health: {healthStatus}");
+                Widgets.Label(typeRect, "RICS.ViewerManager.PawnRaceHealth".Translate(pawnRace, healthStatus));
                 y += sectionHeight;
 
                 // Location
@@ -611,7 +611,7 @@ namespace CAP_ChatInteractive
                 string location = viewerPawn.Map?.Parent.Label ?? "World";
                 if (viewerPawn.Dead) location = "DECEASED";
                 else if (!viewerPawn.Spawned) location = "Off-map";
-                Widgets.Label(locationRect, $"Location: {location}");
+                Widgets.Label(locationRect, "RICS.ViewerManager.PawnLocation".Translate(location));
                 y += sectionHeight;
 
                 // Unassign button
@@ -636,19 +636,19 @@ namespace CAP_ChatInteractive
             {
                 // No pawn assigned
                 Rect noPawnRect = new Rect(leftPadding + 10f, y, width, sectionHeight);
-                Widgets.Label(noPawnRect, "No pawn assigned in current game");
+                Widgets.Label(noPawnRect, "RICS.ViewerManager.NoPawn".Translate());
                 y += sectionHeight;
 
                 // Show if they have a pawn in another game or if pawn is dead
                 if (viewerPawn != null && viewerPawn.Dead)
                 {
                     Rect deadPawnRect = new Rect(leftPadding + 10f, y, width, sectionHeight);
-                    Widgets.Label(deadPawnRect, "Assigned pawn is deceased");
+                    Widgets.Label(deadPawnRect, "RICS.ViewerManager.DeadPawn".Translate());
                     y += sectionHeight;
 
                     // Cleanup button for dead pawn
                     Rect cleanupRect = new Rect(leftPadding + 10f, y, 120f, sectionHeight);
-                    if (Widgets.ButtonText(cleanupRect, "Clear Assignment"))
+                    if (Widgets.ButtonText(cleanupRect, "RICS.ViewerManager.ClearAssignment".Translate()))
                     {
                         UnassignPawn(selectedViewer);
                         Messages.Message($"Cleared deceased pawn assignment for {selectedViewer.Username}", MessageTypeDefOf.NeutralEvent);
@@ -697,7 +697,7 @@ namespace CAP_ChatInteractive
                 // Fallback if portrait rendering fails
                 Widgets.DrawRectFast(rect, new Color(0.3f, 0.3f, 0.3f));
                 Text.Anchor = TextAnchor.MiddleCenter;
-                Widgets.Label(rect, "Portrait\nError");
+                Widgets.Label(rect, "RICS.ViewerManager.PortraitError".Translate());
                 Text.Anchor = TextAnchor.UpperLeft;
                 Logger.Warning($"Error drawing pawn portrait: {ex.Message}");
             }
@@ -728,7 +728,7 @@ namespace CAP_ChatInteractive
             float buttonsStartX = leftPadding + 200f + inputWidth + spacing;
 
             Rect giveRect = new Rect(buttonsStartX, y, buttonWidth, sectionHeight);
-            if (Widgets.ButtonText(giveRect, "Give") && editAmount > 0)
+            if (Widgets.ButtonText(giveRect, "RICS.ViewerManager.Give".Translate()) && editAmount > 0)
             {
                 int newValue = Mathf.Min(currentValue + editAmount, maxValue);
                 onSet?.Invoke(newValue);
@@ -738,7 +738,7 @@ namespace CAP_ChatInteractive
             }
 
             Rect takeRect = new Rect(buttonsStartX + buttonWidth + spacing, y, buttonWidth, sectionHeight);
-            if (Widgets.ButtonText(takeRect, "Take") && editAmount > 0)
+            if (Widgets.ButtonText(takeRect, "RICS.ViewerManager.Take".Translate()) && editAmount > 0)
             {
                 int newValue = Mathf.Max(currentValue - editAmount, minValue);
                 onSet?.Invoke(newValue);
@@ -748,7 +748,7 @@ namespace CAP_ChatInteractive
             }
 
             Rect setRect = new Rect(buttonsStartX + (buttonWidth + spacing) * 2, y, buttonWidth, sectionHeight);
-            if (Widgets.ButtonText(setRect, "Set") && editAmount >= minValue && editAmount <= maxValue)
+            if (Widgets.ButtonText(setRect, "RICS.ViewerManager.Set".Translate()) && editAmount >= minValue && editAmount <= maxValue)
             {
                 onSet?.Invoke(editAmount);
                 editAmount = 0;
@@ -798,39 +798,39 @@ namespace CAP_ChatInteractive
 
             if (selectedViewer.IsBanned)
             {
-                Widgets.Label(innerRect.TopHalf(), "🚫 THIS VIEWER IS BANNED");
+                Widgets.Label(innerRect.TopHalf(), "RICS.ViewerManager.Banned".Translate());
 
                 // Split the bottom half for two buttons
                 Rect unbanButtonRect = new Rect(innerRect.x, innerRect.y + innerRect.height / 2, innerRect.width / 2 - 5f, innerRect.height / 2);
                 Rect removeButtonRect = new Rect(innerRect.x + innerRect.width / 2 + 5f, innerRect.y + innerRect.height / 2, innerRect.width / 2 - 5f, innerRect.height / 2);
 
-                if (Widgets.ButtonText(unbanButtonRect, "UNBAN VIEWER"))
+                if (Widgets.ButtonText(unbanButtonRect, "RICS.ViewerManager.Unban".Translate()))
                 {
                     selectedViewer.IsBanned = false;
                     Viewers.SaveViewers();
                     Messages.Message($"{selectedViewer.Username} has been unbanned", MessageTypeDefOf.PositiveEvent);
                 }
 
-                if (Widgets.ButtonText(removeButtonRect, "REMOVE USER"))
+                if (Widgets.ButtonText(removeButtonRect, "RICS.ViewerManager.RemoveUser".Translate()))
                 {
                     showRemoveConfirmation = true;
                 }
             }
             else
             {
-                Widgets.Label(innerRect.TopHalf(), "User Management");
+                Widgets.Label(innerRect.TopHalf(), "RICS.ViewerManager.UserManagement".Translate());
 
                 // Split the bottom half for two buttons
                 Rect banButtonRect = new Rect(innerRect.x, innerRect.y + innerRect.height / 2, innerRect.width / 2 - 5f, innerRect.height / 2);
                 Rect removeButtonRect = new Rect(innerRect.x + innerRect.width / 2 + 5f, innerRect.y + innerRect.height / 2, innerRect.width / 2 - 5f, innerRect.height / 2);
 
-                if (Widgets.ButtonText(banButtonRect, "BAN VIEWER"))
+                if (Widgets.ButtonText(banButtonRect, "RICS.ViewerManager.Ban".Translate()))
                 {
                     showBanConfirmation = true;
-                    banConfirmationMessage = $"Are you sure you want to ban {selectedViewer.Username}?\n\nThis will also remove any pawn assignments.";
+                    banConfirmationMessage = "RICS.ViewerManager.BanConfirm".Translate(selectedViewer.Username);
                 }
 
-                if (Widgets.ButtonText(removeButtonRect, "REMOVE USER"))
+                if (Widgets.ButtonText(removeButtonRect, "RICS.ViewerManager.RemoveUser".Translate()))
                 {
                     showRemoveConfirmation = true;
                 }
@@ -865,7 +865,7 @@ namespace CAP_ChatInteractive
             if (showAwardCoinsConfirmation)
             {
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    "Award coins to all active viewers?",
+                    "RICS.ViewerManager.AwardConfirm".Translate(),
                     () => {
                         Viewers.AwardActiveViewersCoins();
                         Messages.Message("Coins awarded to active viewers", MessageTypeDefOf.PositiveEvent);
@@ -878,7 +878,7 @@ namespace CAP_ChatInteractive
             if (showResetCoinsConfirmation)
             {
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    "Reset ALL viewer coins to starting amount?",
+                    "RICS.ViewerManager.ResetCoinsConfirm".Translate(),
                     () => {
                         Viewers.ResetAllCoins();
                         Messages.Message("All viewer coins reset", MessageTypeDefOf.NeutralEvent);
@@ -891,7 +891,7 @@ namespace CAP_ChatInteractive
             if (showResetKarmaConfirmation)
             {
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    "Reset ALL viewer karma to starting amount?",
+                    "RICS.ViewerManager.ResetKarmaConfirm".Translate(),
                     () => {
                         Viewers.ResetAllKarma();
                         Messages.Message("All viewer karma reset", MessageTypeDefOf.NeutralEvent);
@@ -908,9 +908,7 @@ namespace CAP_ChatInteractive
                 string usernameToRemove = selectedViewer.Username;
 
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    $"Permanently remove {usernameToRemove} from the viewer list?\n\n" +
-                    "This will:\n" +
-                    "• Remove all their data (coins, karma, history)\n" +
+                    "RICS.ViewerManager.RemoveConfirm".Translate(usernameToRemove) +
                     "• Remove any pawn assignments\n" +
                     "• Cannot be undone!",
                     () => {

@@ -85,17 +85,17 @@ namespace CAP_ChatInteractive
 
             // Save Backup (quick timestamped)
             Rect saveRect = new Rect(padding, currentY, btnW, btnH);
-            if (Widgets.ButtonText(saveRect, "Save Backup"))
+            if (Widgets.ButtonText(saveRect, "RICS.Editor.SaveBackup".Translate()))
             {
                 string json = JsonConvert.SerializeObject(TraitsManager.AllBuyableTraits, Formatting.Indented);
                 BackupUtility.SaveQuickBackup("TraitsEditor", json);
-                Messages.Message("Traits backup saved (timestamped).", MessageTypeDefOf.NeutralEvent);
+                Messages.Message("RICS.TraitsEditor.BackupSaved".Translate(), MessageTypeDefOf.NeutralEvent);
             }
 
             // Load Backup (latest timestamped)
             float loadX = padding + btnW + gap;
             Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(loadRect, "Load Backup"))
+            if (Widgets.ButtonText(loadRect, "RICS.Editor.LoadBackup".Translate()))
             {
                 string json = BackupUtility.LoadLatestTimestampedBackup("TraitsEditor");
                 if (!string.IsNullOrEmpty(json))
@@ -113,25 +113,25 @@ namespace CAP_ChatInteractive
                             BuildModSourceCounts();
                             FilterTraits();
 
-                            Messages.Message("Traits loaded from latest backup.", MessageTypeDefOf.NeutralEvent);
+                            Messages.Message("RICS.TraitsEditor.Loaded".Translate(), MessageTypeDefOf.NeutralEvent);
                         }
                     }
                     catch (Exception ex)
                     {
                         Logger.Error($"Failed to apply traits backup: {ex.Message}");
-                        Messages.Message("Failed to load backup (invalid data).", MessageTypeDefOf.RejectInput);
+                        Messages.Message("RICS.TraitsEditor.FailedLoad".Translate(), MessageTypeDefOf.RejectInput);
                     }
                 }
                 else
                 {
-                    Messages.Message("No timestamped backups found for Traits Editor.", MessageTypeDefOf.RejectInput);
+                    Messages.Message("RICS.TraitsEditor.NoBackups".Translate(), MessageTypeDefOf.RejectInput);
                 }
             }
 
             // Save As... (uses Dialog_TextInput for custom name)
             float saveAsX = loadX + btnW + gap;
             Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(saveAsRect, "Save As..."))
+            if (Widgets.ButtonText(saveAsRect, "RICS.Editor.SaveAs".Translate()))
             {
                 ShowSaveAsMenu();
             }
@@ -139,7 +139,7 @@ namespace CAP_ChatInteractive
             // Load file
             float loadFileX = saveAsX + btnW + gap;
             Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(loadFileRect, "Load file"))
+            if (Widgets.ButtonText(loadFileRect, "RICS.Editor.LoadFile".Translate()))
             {
                 ShowLoadFileMenu();
             }
@@ -147,7 +147,7 @@ namespace CAP_ChatInteractive
             // Delete file (right next to Load file)
             float deleteX = loadFileX + btnW + gap;
             Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(deleteRect, "Delete file"))
+            if (Widgets.ButtonText(deleteRect, "RICS.Editor.DeleteFile".Translate()))
             {
                 ShowDeleteFileMenu();
             }
@@ -155,7 +155,7 @@ namespace CAP_ChatInteractive
             // Close (right-aligned)
             float closeX = inRect.xMax - btnW - padding;
             Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(closeRect, "Close"))
+            if (Widgets.ButtonText(closeRect, "RICS.Editor.Close".Translate()))
             {
                 this.Close();
             }
@@ -169,7 +169,7 @@ namespace CAP_ChatInteractive
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.HeaderAccent;
             Rect titleRect = new Rect(0f, 0f, 400f, 35f);
-            Widgets.Label(titleRect, "Traits Editor");
+            Widgets.Label(titleRect, "RICS.TraitsEditor.Title".Translate());
 
             // Draw underline
             Rect underlineRect = new Rect(titleRect.x, titleRect.yMax - 2f, titleRect.width, 2f);
@@ -185,7 +185,7 @@ namespace CAP_ChatInteractive
             // Search bar with label - matching other dialogs
             Rect searchLabelRect = new Rect(0f, controlsY, 80f, controlsHeight);
             Text.Font = GameFont.Medium; // Medium font for the label
-            Widgets.Label(searchLabelRect, "Search:");
+            Widgets.Label(searchLabelRect, "RICS.TraitsEditor.Search".Translate());
             Text.Font = GameFont.Small;
 
             Rect searchRect = new Rect(85f, controlsY, 250f, controlsHeight);
@@ -211,7 +211,7 @@ namespace CAP_ChatInteractive
             float x = 0f;
 
             // Use UIUtilities for buttons that might need truncation
-            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "Name"))
+            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "RICS.TraitsEditor.Name".Translate()))
             {
                 if (sortMethod == TraitsSortMethod.Name)
                     sortAscending = !sortAscending;
@@ -221,7 +221,7 @@ namespace CAP_ChatInteractive
             }
             x += buttonWidth + spacing;
 
-            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "Add Price"))
+            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "RICS.TraitsEditor.AddPrice".Translate()))
             {
                 if (sortMethod == TraitsSortMethod.AddPrice)
                     sortAscending = !sortAscending;
@@ -231,7 +231,7 @@ namespace CAP_ChatInteractive
             }
             x += buttonWidth + spacing;
 
-            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "Remove Price"))
+            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "RICS.TraitsEditor.RemovePrice".Translate()))
             {
                 if (sortMethod == TraitsSortMethod.RemovePrice)
                     sortAscending = !sortAscending;
@@ -241,7 +241,7 @@ namespace CAP_ChatInteractive
             }
             x += buttonWidth + spacing;
 
-            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "Source"))
+            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "RICS.TraitsEditor.Source".Translate()))
             {
                 if (sortMethod == TraitsSortMethod.ModSource)
                     sortAscending = !sortAscending;
@@ -265,22 +265,22 @@ namespace CAP_ChatInteractive
             float spacing = 5f;
             float x = 0f;
 
-            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "Reset Prices"))
+            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "RICS.TraitsEditor.ResetPrices".Translate()))
             {
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    "Reset all trait prices to default? This cannot be undone.",
+                    "RICS.TraitsEditor.ResetConfirm".Translate(),
                     () => ResetAllPrices()
                 ));
             }
             x += buttonWidth + spacing;
 
-            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "Enable →"))
+            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "RICS.TraitsEditor.EnableAll".Translate()))
             {
                 ShowEnableMenu();
             }
             x += buttonWidth + spacing;
 
-            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "Disable →"))
+            if (UIUtilities.ButtonWithTruncation(new Rect(x, 0f, buttonWidth, 30f), "RICS.TraitsEditor.DisableAll".Translate()))
             {
                 ShowDisableMenu();
             }

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- Dialog_TraitsEditor.cs Translations -->
+
+  <RICS.TraitsEditor.Title>Traits Editor</RICS.TraitsEditor.Title>
+  <RICS.TraitsEditor.Search>Search:</RICS.TraitsEditor.Search>
+  <RICS.TraitsEditor.Name>Name</RICS.TraitsEditor.Name>
+  <RICS.TraitsEditor.AddPrice>Add Price</RICS.TraitsEditor.AddPrice>
+  <RICS.TraitsEditor.RemovePrice>Remove Price</RICS.TraitsEditor.RemovePrice>
+  <RICS.TraitsEditor.Source>Source</RICS.TraitsEditor.Source>
+  <RICS.TraitsEditor.ResetPrices>Reset Prices</RICS.TraitsEditor.ResetPrices>
+  <RICS.TraitsEditor.ResetConfirm>Reset all trait prices to default? This cannot be undone.</RICS.TraitsEditor.ResetConfirm>
+  <RICS.TraitsEditor.EnableAll>Enable →</RICS.TraitsEditor.EnableAll>
+  <RICS.TraitsEditor.DisableAll>Disable →</RICS.TraitsEditor.DisableAll>
+  <RICS.TraitsEditor.EnableAllTraits>Enable All Traits</RICS.TraitsEditor.EnableAllTraits>
+  <RICS.TraitsEditor.EnableBySource>--- Enable by Source ---</RICS.TraitsEditor.EnableBySource>
+  
+  <!-- Messages -->
+  <RICS.TraitsEditor.BackupSaved>Traits backup saved (timestamped).</RICS.TraitsEditor.BackupSaved>
+  <RICS.TraitsEditor.Loaded>Traits loaded from latest backup.</RICS.TraitsEditor.Loaded>
+  <RICS.TraitsEditor.FailedLoad>Failed to load backup (invalid data).</RICS.TraitsEditor.FailedLoad>
+  <RICS.TraitsEditor.NoBackups>No timestamped backups found for Traits Editor.</RICS.TraitsEditor.NoBackups>
+
+</LanguageData>
