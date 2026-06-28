@@ -38,6 +38,15 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return "RICS.SFCCH.NoPawn".Translate();
             }
 
+            if (viewerPawn.Dead)
+            {
+                var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
+
+                string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                return "RICS.Return.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+            }
+
             if (viewerPawn.story == null)
             {
                 return "RICS.SFCCH.NoStory".Translate();
