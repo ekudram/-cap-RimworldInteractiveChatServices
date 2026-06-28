@@ -16,7 +16,8 @@
   <RICS.BICH.Return.InvalidMaterial>Material '{0}' is not valid for {1}.</RICS.BICH.Return.InvalidMaterial>
   <RICS.BICH.Return.CannotAfford>You need {0} to purchase {1}x {2}! You have {3}.</RICS.BICH.Return.CannotAfford>
   <RICS.BICH.Return.NoPawn>You need to have a pawn in the colony. Use !buy pawn first.</RICS.BICH.Return.NoPawn>
-  <RICS.BICH.Return.PawnDead>Your pawn is dead. You cannot equip/wear items.</RICS.BICH.Return.PawnDead>
+  <RICS.BICH.Return.PawnDead>Your pawn is dead. You cannot equip/wear/backpack items.</RICS.BICH.Return.PawnDead>
+  <RICS.BICH.Return.PawnDeadReason> {0}. Use !leave to release them, or !revivepawn.</RICS.BICH.Return.PawnDeadReason>
   <RICS.BICH.Return.GenericError>Error processing purchase. Please try again.</RICS.BICH.Return.GenericError>
   <RICS.BICH.Return.ItemNotEquippable>{0} is not available to be equipped.</RICS.BICH.Return.ItemNotEquippable>
   <RICS.BICH.Return.ItemNotWearable>{0} is not available to be worn.</RICS.BICH.Return.ItemNotWearable>

@@ -235,8 +235,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                     if (viewerPawn.Dead)
                     {
-                        // return "Your pawn is dead. You cannot equip/wear items.";
-                        return "RICS.BICH.Return.PawnDead".Translate();
+                        // WHY: Use the centralized death investigation system so we can tell the viewer
+                        // exactly why their pawn died, even if the body has already been destroyed.
+                        // This gives much better player experience than a generic "your pawn is dead" message.
+                        var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
+
+                        string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                        // return "Your pawn is dead. You cannot equip/wear items." + { deathDetails}. Use !leave to release them, or !revivepawn."
+                        return "RICS.BICH.Return.PawnDead".Translate() + "RICS.BICH.Return.PawnDeadReason".Translate(deathDetails) ;
                     }
 
                     // === BODY PART CHECK FOR APPAREL (critical safety net) ===`
