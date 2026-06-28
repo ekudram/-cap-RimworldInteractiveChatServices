@@ -36,12 +36,24 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             }
 
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-            if (assignmentManager == null)
-            {
-                return "RICS.MPCH.NoPawnAssigned".Translate(); // Translation key: RICS.MPCH.NoPawnAssigned
-            }
 
             Verse.Pawn pawn = assignmentManager.GetAssignedPawn(messageWrapper);
+
+            if (pawn == null)
+            {
+                return "RICS.Pawn.NoPawn".Translate();
+            }
+            // only if destroyed here
+            if (pawn.Destroyed)
+            {
+                // This gives much better player experience than a generic "your pawn is dead" message.
+                var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
+
+                string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+            }
+
             if (pawn == null || pawn.story == null)
             {
                 return "RICS.ADCH.NoStoryTracker".Translate(); // Translation key: RICS.ADCH.NoStoryTracker – "Pawn has no story component."

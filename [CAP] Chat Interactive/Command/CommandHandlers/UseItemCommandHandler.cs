@@ -90,7 +90,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (viewerPawn == null)
                 {
-                    return "RICS.UICH.NoPawn".Translate();
+                    return "RICS.Pawn.NoPawn".Translate();
                 }
 
                 bool isResurrectorSerum = storeItem.DefName == "MechSerumResurrector";
@@ -101,7 +101,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                     string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
 
-                    return "RICS.UICH.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+                    return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
                 }
 
                 if (isResurrectorSerum && viewerPawn.Dead)

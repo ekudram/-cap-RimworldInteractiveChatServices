@@ -9,7 +9,6 @@
   <RICS.UICH.NotUsable>{0} is not a usable item.</RICS.UICH.NotUsable>
   <RICS.UICH.ResearchRequired>{0} requires research that hasn't been completed yet.</RICS.UICH.ResearchRequired>
 
-  <RICS.UICH.NoPawn>You need to have a pawn in the colony to use items. Use !buy pawn first.</RICS.UICH.NoPawn>
   <RICS.UICH.PawnDead>Your pawn is dead. You cannot use items.</RICS.UICH.PawnDead>
   <RICS.UICH.BodyDestroyed>Your pawn's body has been completely destroyed and cannot be revived.</RICS.UICH.BodyDestroyed>
 

@@ -68,7 +68,6 @@
   <RICS.BPCH.MyPawn.HasPawn>Your pawn {0} is {1}. Health: {2}, Age: {3}, Traits: {4}/{5}</RICS.BPCH.MyPawn.HasPawn>
   <RICS.BPCH.MyPawn.Status.AliveAndInColony>alive and in colony</RICS.BPCH.MyPawn.Status.AliveAndInColony>
   <RICS.BPCH.MyPawn.Status.AliveNotInColony>alive but not in colony</RICS.BPCH.MyPawn.Status.AliveNotInColony>
-  <RICS.BPCH.MyPawn.NoPawn>You don't have an active pawn in the colony. Use !pawn to purchase one!</RICS.BPCH.MyPawn.NoPawn>
 
   <!-- Letters -->
   <RICS.BPCH.Letter.Title>Rimazon Pawn Delivery - {0}</RICS.BPCH.Letter.Title>

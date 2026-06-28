@@ -20,7 +20,6 @@
   <RICS.TCH.Add.Usage>Usage: !addtrait [trait_name] - Add a trait to your pawn.</RICS.TCH.Add.Usage>
 
   <RICS.TCH.Add.NoViewerData>Could not find your viewer data.</RICS.TCH.Add.NoViewerData>
-  <RICS.TCH.Add.NoPawn>You don't have an active pawn in the colony. Use !pawn to purchase one!</RICS.TCH.Add.NoPawn>
   <RICS.TCH.Add.PawnDead>Your pawn is dead.</RICS.TCH.Add.PawnDead>
 
   <RICS.TCH.Add.TraitNotFound>Trait '{0}' not found. Use !traits to see available traits.</RICS.TCH.Add.TraitNotFound>

@@ -85,12 +85,25 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         internal static string HandleDyeCommand(ChatMessageWrapper messageWrapper, string[] args)
         {
             // Get the viewer's pawn
-            Verse.Pawn viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
+
+            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+            Verse.Pawn viewerPawn = assignmentManager.GetAssignedPawn(messageWrapper);
+
             if (viewerPawn == null)
             {
-                // return "You need to have a pawn in the colony to dye their clothing or hair. Use !buy pawn first.";
-                return "RICS.DyeCommand.NoPawn".Translate();
+                return "RICS.Pawn.NoPawn".Translate();
             }
+            // only if destroyed here
+            if (viewerPawn.Destroyed)
+            {
+                // This gives much better player experience than a generic "your pawn is dead" message.
+                var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
+
+                string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+            }
+
 
             // Check for subcommand
             bool isHairDye = args.Length > 0 && args[0].ToLower() == "hair";

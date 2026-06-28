@@ -158,7 +158,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 Verse.Pawn viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
-                if (viewerPawn == null) return "RICS.SBCH.NoPawn".Translate();
+                if (viewerPawn == null) return "RICS.Pawn.NoPawn".Translate();
 
                 if (viewerPawn.Dead)
                 {
@@ -166,7 +166,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                     string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
 
-                    return "RICS.SBCH.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+                    return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
                 }
 
 
@@ -361,13 +361,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
             }
             // Get viewer's pawn
-            Verse.Pawn pawn = PawnItemHelper.GetViewerPawn(messageWrapper);
+            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+            Verse.Pawn pawn = assignmentManager.GetAssignedPawn(messageWrapper);
+
             if (pawn == null)
-                // return "You need to have a pawn in the colony to perform surgery. Use !buy pawn first.";
-                return "RICS.SBCH.NoPawn".Translate();
+            {
+                return "RICS.Pawn.NoPawn".Translate();
+            }
             if (pawn.Dead)
-                // return "Your pawn is dead. You cannot perform surgery.";
-                return "RICS.SBCH.PawnDead".Translate();
+            {
+                // This gives much better player experience than a generic "your pawn is dead" message.
+                var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
+
+                string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+            }
 
             // Body validation
             if (!IsSuitableForBodyChangingSurgery(pawn, out string restrictionReason))
@@ -493,11 +502,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             const int quantity = 1; // Fixed to 1 for misc surgeries
 
-            Verse.Pawn pawn = PawnItemHelper.GetViewerPawn(messageWrapper);
+            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+            Verse.Pawn pawn = assignmentManager.GetAssignedPawn(messageWrapper);
+
             if (pawn == null)
-                return "RICS.SBCH.NoPawn".Translate(); //"You need to have a pawn in the colony to perform surgery. Use !buy pawn first.";
-            if (pawn.Dead)
-                return "RICS.SBCH.PawnDead".Translate();  //"Your pawn is dead. You cannot perform surgery.";
+            {
+                return "RICS.Pawn.NoPawn".Translate();
+            }
+            // only if destroyed here
+            if (pawn.Destroyed)
+            {
+                // This gives much better player experience than a generic "your pawn is dead" message.
+                var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
+
+                string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+            }
 
             // Special handling for 'sterilize' → override key & name
             if (recipeKey == "STERILIZE")

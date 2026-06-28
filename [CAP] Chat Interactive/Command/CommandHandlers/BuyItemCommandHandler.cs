@@ -230,7 +230,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     if (viewerPawn == null)
                     {
                         // return "You need to have a pawn in the colony. Use !buy pawn first.";
-                        return "RICS.BICH.Return.NoPawn".Translate();
+                        return "RICS.Pawn.NoPawn".Translate();
                     }
 
                     if (viewerPawn.Dead)
@@ -239,7 +239,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                         string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
 
-                        return "RICS.BICH.Return.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+                        return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
                     }
 
                     // === BODY PART CHECK FOR APPAREL (critical safety net) ===`

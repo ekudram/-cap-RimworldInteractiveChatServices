@@ -109,7 +109,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (viewerPawn == null)
             {
                 // return "You don't have a pawn assigned. Use !buy pawn first.";
-                return "RICS.HPCH.Return.NoPawn".Translate();
+                return "RICS.Pawn.NoPawn".Translate();
             }
 
 
@@ -184,7 +184,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (viewerPawn == null)
             {
-                return "RICS.HPCH.Return.NoPawn".Translate();
+                return "RICS.Pawn.NoPawn".Translate();
             }
 
             if (viewerPawn.Dead)

@@ -1096,7 +1096,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             else
             {
                 // return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
-                return "RICS.BPCH.MyPawn.NoPawn".Translate();
+                return "RICS.Pawn.NoPawn".Translate();
             }
         }
 

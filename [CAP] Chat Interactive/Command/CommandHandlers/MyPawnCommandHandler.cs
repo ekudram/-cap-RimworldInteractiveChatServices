@@ -19,6 +19,7 @@
 
 
 
+using _CAP__Chat_Interactive.Command.CommandHelpers;
 using RimWorld;
 using System;
 using System.Collections;
@@ -45,14 +46,26 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
                 if (assignmentManager == null)
                 {
-                    return "RICS.MPCH.NoPawnAssigned".Translate(); // graceful fallback
+                    return "RICS.Pawn.NoPawn".Translate(); // graceful fallback
                 }
 
                 Pawn pawn = assignmentManager.GetAssignedPawn(messageWrapper);
-                if (pawn == null || pawn.Destroyed)
+
+                if (pawn == null)
                 {
-                    return "RICS.MPCH.NoPawnAssigned".Translate();
+                    // return "You need to have a pawn in the colony. Use !buy pawn first.";
+                    return "RICS.Pawn.NoPawn".Translate();
                 }
+                // Only Destroyed Here
+                if (pawn.Destroyed)
+                {
+                    var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
+
+                    string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                    return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+                }
+
 
                 // Route to sub-handler
                 switch (subCommand?.ToLowerInvariant())
