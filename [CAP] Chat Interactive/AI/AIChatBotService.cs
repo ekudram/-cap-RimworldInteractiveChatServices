@@ -222,9 +222,13 @@ namespace CAP_ChatInteractive.AI
                 int mealsCount = 0;
                 int rawFoodCount = 0;
                 int meatCount = 0;
+                int fishCount = 0;           // NEW - separated for AI cat bot flavor
+                int milkCount = 0;           // NEW - core item, cats love milk reports
                 int vegetableCount = 0;
                 int fruitCount = 0;
                 int eggCount = 0;
+                int babyFoodCount = 0;       // NEW - Biotech only
+                int hemogenCount = 0;        // NEW - Biotech hemogen packs (vampire colonies)
                 int otherRawFoodCount = 0;
 
                 var medicineBreakdown = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -254,25 +258,109 @@ namespace CAP_ChatInteractive.AI
                             if (def.ingestible != null)
                             {
                                 var foodType = def.ingestible.foodType;
-                                if ((foodType & FoodTypeFlags.Meal) != 0 || (foodType & FoodTypeFlags.Processed) != 0)
+
+                                // === CATEGORY-BASED CLASSIFICATION (more reliable for modded content) ===
+                                // Priority order: Meals → Fish → Meat → Milk → Eggs → BabyFood → Hemogen → Fruit → Vegetables → Other
+                                // This gives Masie (the AI cat bot) specific numbers for fish and milk, which she enjoys commenting on.
+                                var cats = def.thingCategories ?? new List<ThingCategoryDef>();
+
+                                bool isMeal = cats.Any(c => c.defName.Equals("Meals", StringComparison.OrdinalIgnoreCase)) ||
+                                              (foodType & FoodTypeFlags.Meal) != 0 || (foodType & FoodTypeFlags.Processed) != 0;
+
+                                if (isMeal)
                                 {
-                                    mealsCount += count; continue;
+                                    mealsCount += count;
+                                    continue;
                                 }
+
                                 if (def.IsNutritionGivingIngestible)
                                 {
-                                    if ((foodType & FoodTypeFlags.Meat) != 0) meatCount += count;
-                                    else if ((foodType & FoodTypeFlags.VegetableOrFruit) != 0)
+                                    // === FISH (separate from Meat so the cat bot can be dramatic about it) ===
+                                    bool isFish = cats.Any(c => c.defName.Equals("Fish", StringComparison.OrdinalIgnoreCase)) ||
+                                                  def.defName.IndexOf("Fish", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                                    if (isFish)
                                     {
-                                        if (def.defName.IndexOf("Fruit", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                            def.defName.IndexOf("Berry", StringComparison.OrdinalIgnoreCase) >= 0)
-                                            fruitCount += count;
-                                        else vegetableCount += count;
+                                        fishCount += count;
+                                        continue;
                                     }
-                                    else if ((foodType & FoodTypeFlags.AnimalProduct) != 0)
+
+                                    // === MEAT (now excludes fish) ===
+                                    bool isMeat = cats.Any(c => c.defName.Equals("Meat", StringComparison.OrdinalIgnoreCase)) ||
+                                                  (foodType & FoodTypeFlags.Meat) != 0;
+
+                                    if (isMeat)
                                     {
-                                        if (def.defName.IndexOf("Egg", StringComparison.OrdinalIgnoreCase) >= 0) eggCount += count;
-                                        else otherRawFoodCount += count;
+                                        meatCount += count;
+                                        continue;
                                     }
+
+                                    // === MILK (core item - cats care about this) ===
+                                    if (def.defName.Equals("Milk", StringComparison.OrdinalIgnoreCase) ||
+                                        (cats.Any(c => c.defName.Equals("AnimalProduct", StringComparison.OrdinalIgnoreCase)) &&
+                                         def.defName.IndexOf("Milk", StringComparison.OrdinalIgnoreCase) >= 0))
+                                    {
+                                        milkCount += count;
+                                        continue;
+                                    }
+
+                                    // === EGGS ===
+                                    bool isEgg = cats.Any(c => c.defName.StartsWith("Eggs", StringComparison.OrdinalIgnoreCase)) ||
+                                                 ((foodType & FoodTypeFlags.AnimalProduct) != 0 &&
+                                                  def.defName.IndexOf("Egg", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                                    if (isEgg)
+                                    {
+                                        eggCount += count;
+                                        continue;
+                                    }
+
+                                    // === BABY FOOD (Biotech DLC) ===
+                                    if (ModsConfig.BiotechActive &&
+                                        (def.defName.IndexOf("BabyFood", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                         cats.Any(c => c.defName.Equals("Foods", StringComparison.OrdinalIgnoreCase)) &&
+                                         def.defName.IndexOf("Baby", StringComparison.OrdinalIgnoreCase) >= 0))
+                                    {
+                                        babyFoodCount += count;
+                                        continue;
+                                    }
+
+                                    // === HEMOGEN PACK (Biotech - important for vampire colonies) ===
+                                    if (ModsConfig.BiotechActive &&
+                                        def.defName.Equals("HemogenPack", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        hemogenCount += count;
+                                        continue;
+                                    }
+
+                                    // === FRUIT ===
+                                    bool isFruit = cats.Any(c => c.defName.Equals("Fruit", StringComparison.OrdinalIgnoreCase) ||
+                                                                 c.defName.Equals("RawFruits", StringComparison.OrdinalIgnoreCase) ||
+                                                                 c.defName.IndexOf("Fruit", StringComparison.OrdinalIgnoreCase) >= 0) ||
+                                                   (foodType & FoodTypeFlags.VegetableOrFruit) != 0 &&
+                                                   (def.defName.IndexOf("Fruit", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                    def.defName.IndexOf("Berry", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                                    if (isFruit)
+                                    {
+                                        fruitCount += count;
+                                        continue;
+                                    }
+
+                                    // === VEGETABLES ===
+                                    bool isVegetable = (foodType & FoodTypeFlags.VegetableOrFruit) != 0 ||
+                                                       cats.Any(c => c.defName.Equals("Vegetables", StringComparison.OrdinalIgnoreCase) ||
+                                                                     c.defName.Equals("PlantFoodRaw", StringComparison.OrdinalIgnoreCase));
+
+                                    if (isVegetable)
+                                    {
+                                        vegetableCount += count;
+                                        continue;
+                                    }
+
+                                    // === EVERYTHING ELSE RAW ===
+                                    // (Kibble, Pemmican, InsectJelly, Chocolate, Hay, generic AnimalProduct, etc.)
+                                    otherRawFoodCount += count;
                                 }
                             }
 
