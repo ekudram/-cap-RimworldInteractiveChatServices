@@ -120,11 +120,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (pawn == null)
                 {
-                    return "RICS.TCH.Add.NoPawn".Translate();
+                    return "RICS.TCH.Add.NoPawn".Translate() ;
                 }
+
                 if (pawn.Dead)
                 {
-                    return "RICS.TCH.Add.PawnDead".Translate();
+                    // This gives much better player experience than a generic "your pawn is dead" message.
+                    var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
+
+                    string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                    return "RICS.TCH.Add.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
                 }
 
                 string traitName = string.Join(" ", args).ToLowerInvariant();
@@ -222,7 +228,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 if (pawn.Dead)
                 {
-                    return "RICS.TCH.Add.PawnDead".Translate();  // reuse existing translation
+                    // This gives much better player experience than a generic "your pawn is dead" message.
+                    var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
+
+                    string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                    return "RICS.TCH.Add.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
                 }
 
                 string traitName = string.Join(" ", args).ToLowerInvariant();
@@ -310,7 +321,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 if (pawn.Dead)
                 {
-                    return "RICS.TCH.Add.PawnDead".Translate();  // reuse existing translation
+                    // This gives much better player experience than a generic "your pawn is dead" message.
+                    var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
+
+                    string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                    return "RICS.TCH.Add.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
                 }
 
                 string oldTraitName = ParseTraitNames(args, out string newTraitName);
@@ -480,7 +496,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 if (pawn.Dead)
                 {
-                    return "RICS.TCH.Add.PawnDead".Translate();  // reuse existing translation
+                    // This gives much better player experience than a generic "your pawn is dead" message.
+                    var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
+
+                    string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                    return "RICS.TCH.Add.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
                 }
 
                 // Step 1: Find and validate all requested traits
