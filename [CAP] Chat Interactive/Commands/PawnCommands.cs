@@ -171,28 +171,29 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return "RICS.CC.leave.nopawn".Translate();
             }
 
-            // Get the pawn info before unassigning for the message
             Verse.Pawn pawn = assignmentManager.GetAssignedPawn(messageWrapper);
-            //string pawnName = pawn?.Name?.ToStringShort ?? "your pawn";
             string pawnName = pawn?.Name?.ToStringShort ?? "RICS.CC.leave.yourpawn".Translate();
 
-            //string pawnStatus = (pawn == null || pawn.Dead) ? " (deceased)" : "";
-            string pawnStatus = (pawn == null || pawn.Dead) ? "RICS.CC.leave.deceased".Translate() : "";
+            var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
 
-            // Handle live pawn departure
+            string statusPart = "";
+            if (deathInfo.IsDead)
+            {
+                statusPart = $" ({deathInfo.BodyStatus}";
+                if (!string.IsNullOrEmpty(deathInfo.CauseOfDeath))
+                    statusPart += $" — {deathInfo.CauseOfDeath}";
+                statusPart += ")";
+            }
+
             if (pawn != null && !pawn.Dead && pawn.Spawned)
             {
                 PreparePawnForDeparture(pawn);
             }
 
-            // Release the pawn
             assignmentManager.UnassignPawn(messageWrapper);
-
-            // Send storytelling letter
             SendDepartureLetter(messageWrapper.Username, pawn, pawnName);
 
-            // return $"✅ You have released {pawnName}{pawnStatus}. You can now get a new pawn with !pawn command.";
-            return "RICS.CC.leave.successs".Translate(pawnName, pawnStatus);
+            return "RICS.CC.leave.successs".Translate(pawnName, statusPart);
         }
 
         private void PreparePawnForDeparture(Verse.Pawn pawn)
