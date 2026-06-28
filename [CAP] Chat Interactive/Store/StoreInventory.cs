@@ -534,7 +534,7 @@ namespace CAP_ChatInteractive.Store
                         }
 
                         // Basic tradeable criteria
-                        return t.BaseMarketValue > 0f &&
+                        return t.BaseMarketValue > 0f &&   // <-- This maybe blocking some Anomoly items.
                                !t.IsCorpse &&
                                t.defName != "Human" &&
                                (t.FirstThingCategory != null || t.race != null);
