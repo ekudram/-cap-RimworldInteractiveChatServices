@@ -112,10 +112,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return "RICS.HPCH.Return.NoPawn".Translate();
             }
 
+
             if (viewerPawn.Dead)
             {
-                // return "Your pawn is dead. Use !revivepawn first.";
-                return "RICS.HPCH.Return.PawnDead".Translate();
+                var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
+
+                string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                return "RICS.HPCH.Return.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
             }
 
             if (!HasInjuriesToHeal(viewerPawn))
@@ -185,7 +189,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (viewerPawn.Dead)
             {
-                return "RICS.HPCH.Return.PawnDead".Translate();
+                var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
+
+                string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                return "RICS.HPCH.Return.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
             }
 
             if (!HasInjuriesToHeal(viewerPawn))

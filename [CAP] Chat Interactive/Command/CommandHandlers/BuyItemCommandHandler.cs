@@ -235,9 +235,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                     if (viewerPawn.Dead)
                     {
-                        // WHY: Use the centralized death investigation system so we can tell the viewer
-                        // exactly why their pawn died, even if the body has already been destroyed.
-                        // This gives much better player experience than a generic "your pawn is dead" message.
                         var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
 
                         string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"

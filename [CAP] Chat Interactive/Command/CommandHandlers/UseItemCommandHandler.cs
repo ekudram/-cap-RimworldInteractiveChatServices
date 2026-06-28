@@ -97,7 +97,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (viewerPawn.Dead && !isResurrectorSerum)
                 {
-                    return "RICS.UICH.PawnDead".Translate();
+                    var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
+
+                    string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                    return "RICS.UICH.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
                 }
 
                 if (isResurrectorSerum && viewerPawn.Dead)

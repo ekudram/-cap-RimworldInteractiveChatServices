@@ -159,7 +159,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 Verse.Pawn viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
                 if (viewerPawn == null) return "RICS.SBCH.NoPawn".Translate();
-                if (viewerPawn.Dead) return "RICS.SBCH.PawnDead".Translate();
+
+                if (viewerPawn.Dead)
+                {
+                    var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
+
+                    string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                    return "RICS.SBCH.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+                }
+
 
                 if (!int.TryParse(quantityStr, out int quantity) || quantity < 1) quantity = 1;
                 int surgeryQuantityLimit = Math.Max(storeItem.QuantityLimit, 2);
