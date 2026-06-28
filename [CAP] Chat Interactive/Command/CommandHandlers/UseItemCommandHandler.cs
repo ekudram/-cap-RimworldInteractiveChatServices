@@ -238,42 +238,35 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         public static bool CannotResurrectPawn(Verse.Pawn pawn)
         {
             if (pawn == null || !pawn.Dead)
-            {
-                return true; // Not a valid dead pawn
-            }
+                return true;
 
-            // Quick check: if pawn was fully discarded (vanilla marks destroyed pawns)
             if (pawn.Discarded)
             {
                 Logger.Debug($"Pawn {pawn.Name} is discarded (permanently destroyed)");
                 return true;
             }
 
-            // Check if corpse exists and is accessible (spawned on a map)
             Corpse corpse = pawn.Corpse;
-            if (corpse == null || corpse.Destroyed || corpse.Map == null)
+            if (corpse == null)
             {
-                // No corpse OR corpse destroyed OR not on map (buried/off-map/multi-map issue)
-                if (corpse == null)
-                {
-                    Logger.Debug($"Pawn {pawn.Name} has no corpse reference - likely completely destroyed or buried");
-                }
-                else if (corpse.Map == null)
-                {
-                    Logger.Debug($"Pawn {pawn.Name} corpse exists but not on map (buried in grave/sarcophagus or off-map)");
-                }
+                Logger.Debug($"Pawn {pawn.Name} has no corpse reference - likely completely destroyed, eaten, or buried");
                 return true;
             }
 
-            // Extra safety: ensure corpse is on current map (for multi-map colonies)
+            if (corpse.Destroyed || corpse.Map == null)
+            {
+                Logger.Debug($"Pawn {pawn.Name} corpse is destroyed or not on any map (buried/off-map)");
+                return true;
+            }
+
+            // Multi-map colony safety
             if (corpse.Map != Find.CurrentMap)
             {
                 Logger.Debug($"Pawn {pawn.Name} corpse is on another map");
                 return true;
             }
 
-            // If we reach here: corpse exists, spawned, on current map → resurrectable
-            return false;
+            return false; // Corpse exists and is valid on current map → can resurrect
         }
 
         public static bool IsPawnCompletelyDestroyed(Verse.Pawn pawn)
