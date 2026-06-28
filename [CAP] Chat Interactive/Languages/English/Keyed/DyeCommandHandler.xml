@@ -12,4 +12,11 @@
   <RICS.DyeCommand.HairSuccess>Successfully dyed hair to {0}.</RICS.DyeCommand.HairSuccess>
   <RICS.DyeCommand.ApparelSuccess>Successfully dyed {0} piece(s) of clothing to {1}.</RICS.DyeCommand.ApparelSuccess>
 
+  <!-- Special messages when dyeing a dead pawn -->
+  <RICS.DyeCommand.HairSuccessDead>Successfully dyed the hair of your deceased colonist to {0}.</RICS.DyeCommand.HairSuccessDead>
+  <RICS.DyeCommand.ApparelSuccessDead>Successfully dyed {0} piece(s) of clothing on your deceased colonist to {1}.</RICS.DyeCommand.ApparelSuccessDead>
+
+  <!-- Dark humor note appended to dead pawn success messages -->
+  <RICS.DyeCommand.DeadPawnNote> {0}. Sorry for your loss — we've prepared them for the funeral.</RICS.DyeCommand.DeadPawnNote>
+
 </LanguageData>

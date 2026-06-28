@@ -84,8 +84,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         /// <returns>A string message indicating the result of the command.</returns>
         internal static string HandleDyeCommand(ChatMessageWrapper messageWrapper, string[] args)
         {
-            // Get the viewer's pawn
-
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
             Verse.Pawn viewerPawn = assignmentManager.GetAssignedPawn(messageWrapper);
 
@@ -93,7 +91,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             {
                 return "RICS.Pawn.NoPawn".Translate();
             }
-            // only if destroyed here
             if (viewerPawn.Destroyed)
             {
                 // This gives much better player experience than a generic "your pawn is dead" message.
@@ -102,6 +99,15 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
 
                 return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+            }
+            // Capture death state early (we still allow dyeing)
+            bool isDead = viewerPawn.Dead;
+            string deathMessage = "";
+
+            if (isDead)
+            {
+                var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
+                deathMessage = " " + "RICS.DyeCommand.DeadPawnNote".Translate(deathInfo.ToString());
             }
 
 
@@ -145,11 +151,11 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             if (isHairDye)
             {
-                return HandleHairDye(viewerPawn, color.Value, colorInput);
+                return HandleHairDye(viewerPawn, color.Value, colorInput, isDead, deathMessage);
             }
             else
             {
-                return HandleApparelDye(viewerPawn, color.Value, colorInput);
+                return HandleApparelDye(viewerPawn, color.Value, colorInput, isDead, deathMessage);
             }
         }
 
@@ -281,27 +287,23 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         /// <param name="colorInput"></param>
         /// <returns></returns>
         // In DyeCommandHandler.cs, inside DyeCommandHandler.HandleHairDye(Verse.Pawn pawn, Color color, string colorInput = null)
-        private static string HandleHairDye(Verse.Pawn pawn, Color color, string colorInput = null)
+        private static string HandleHairDye(Verse.Pawn pawn, Color color, string colorInput, bool isDead, string deathMessage = "")
         {
             if (pawn.story == null || pawn.story.hairDef == null)
             {
                 return "RICS.DyeCommand.NoHair".Translate();
             }
 
-            // Log before setting
-            Logger.Debug($"[CAP] Setting hair color to R:{color.r:F2} G:{color.g:F2} B:{color.b:F2} from input: {colorInput}");
-
-            // === CORE FIX ===
-            // 1. Set the color (vanilla)
             pawn.story.HairColor = color;
-
-            // 2. Force immediate visual update
             ForceHairGraphicsUpdate(pawn);
 
-            // Log after setting
-            Logger.Debug($"[CAP] Hair color now: R:{pawn.story.HairColor.r:F2} G:{pawn.story.HairColor.g:F2} B:{pawn.story.HairColor.b:F2}");
-
             string colorName = GetColorNameForResponse(color, colorInput);
+
+            if (isDead)
+            {
+                return "RICS.DyeCommand.HairSuccessDead".Translate(colorName) + deathMessage;
+            }
+
             return "RICS.DyeCommand.HairSuccess".Translate(colorName);
         }
 
@@ -345,19 +347,22 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         /// <param name="color"></param>
         /// <param name="colorInput"></param>
         /// <returns>Returns a string message indicating the result of the dye operation.</returns>
-        private static string HandleApparelDye(Verse.Pawn pawn, Color color, string colorInput = null)
+        private static string HandleApparelDye(Verse.Pawn pawn, Color color, string colorInput, bool isDead, string deathMessage = "")
         {
-            // Apply dye to appropriate apparel
             int dyedCount = ApplyDyeToApparel(pawn, color);
 
             if (dyedCount == 0)
             {
-                // return "No dyeable clothing found on your pawn.";
                 return "RICS.DyeCommand.NoDyeableClothing".Translate();
             }
 
             string colorName = GetColorNameForResponse(color, colorInput);
-            // return $"Successfully dyed {dyedCount} piece(s) of clothing to {colorName}.";
+
+            if (isDead)
+            {
+                return "RICS.DyeCommand.ApparelSuccessDead".Translate(dyedCount, colorName) + deathMessage;
+            }
+
             return "RICS.DyeCommand.ApparelSuccess".Translate(dyedCount, colorName);
         }
 
