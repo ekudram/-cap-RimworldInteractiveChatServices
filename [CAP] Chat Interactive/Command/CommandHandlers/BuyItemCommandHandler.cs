@@ -242,8 +242,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                         string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
 
-                        // return "Your pawn is dead. You cannot equip/wear items." + { deathDetails}. Use !leave to release them, or !revivepawn."
-                        return "RICS.BICH.Return.PawnDead".Translate() + "RICS.BICH.Return.PawnDeadReason".Translate(deathDetails) ;
+                        return "RICS.BICH.Return.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
                     }
 
                     // === BODY PART CHECK FOR APPAREL (critical safety net) ===`
