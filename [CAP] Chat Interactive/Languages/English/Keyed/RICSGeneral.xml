@@ -40,6 +40,7 @@
   <RICS.Multiplier>Multiplier</RICS.Multiplier>
   <!-- New for 1.41 -->
   <RICS.Return.PawnDeadReason> {0}. Use !leave to release them, or !revivepawn.</RICS.Return.PawnDeadReason>
+  <RICS.Pawn.Dead>Your pawn is dead.</RICS.Pawn.Dead>
   
   <RICS.Enabled>Enabled</RICS.Enabled>
   <RICS.Disabled>Disabled</RICS.Disabled>
