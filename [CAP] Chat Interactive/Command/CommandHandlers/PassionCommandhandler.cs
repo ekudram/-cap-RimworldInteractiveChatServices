@@ -41,7 +41,13 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                     return "RICS.PASSION.NoAssignedPawn".Translate();
 
                 if (pawn.Dead)
-                    return "RICS.PASSION.PawnDead".Translate();
+                {
+                    var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
+
+                    string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+
+                    return "RICS.PASSION.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+                }
 
                 if (args.Length > 0 && args[0].ToLower() == "list")
                 {
