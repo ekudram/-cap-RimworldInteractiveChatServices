@@ -29,6 +29,7 @@
 
 using _CAP__Chat_Interactive.Utilities;
 using RimWorld;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -424,6 +425,184 @@ namespace CAP_ChatInteractive
             var deadWorldPawn = Find.WorldPawns.AllPawnsDead.FirstOrDefault(p => p.ThingID == thingId);
             return deadWorldPawn;
         }
+
+        /// <summary>
+        /// Carries both the cause of death and the current body status.
+        /// This allows commands to give accurate feedback even when the physical body no longer exists.
+        /// </summary>
+        public struct PawnDeathInfo
+        {
+            public bool IsDead;
+            public bool BodyExists;
+            public string CauseOfDeath;
+            public string BodyStatus;
+
+            public override string ToString()
+            {
+                if (!IsDead)
+                    return "Alive";
+
+                string status = BodyExists ? "Deceased (body remains)" : "Deceased (body destroyed or missing)";
+                if (!string.IsNullOrEmpty(CauseOfDeath))
+                    return $"{status} — {CauseOfDeath}";
+                return status;
+            }
+        }
+
+        /// <summary>
+        /// Main method — returns rich death information for a Pawn.
+        /// Even if the body has been destroyed, we still attempt to read the cause from hediff data
+        /// (especially useful for dead world pawns whose corpses were removed).
+        /// </summary>
+        public static PawnDeathInfo GetPawnDeathInfo(Pawn pawn)
+        {
+            if (pawn == null)
+            {
+                return new PawnDeathInfo
+                {
+                    IsDead = true,
+                    BodyExists = false,
+                    CauseOfDeath = "Unknown",
+                    BodyStatus = "Completely missing from records"
+                };
+            }
+
+            bool isDead = pawn.Dead;
+            bool bodyExists = !pawn.Destroyed;
+
+            string cause = "";
+            string bodyStatus;
+
+            if (!isDead)
+            {
+                bodyStatus = "Alive";
+            }
+            else
+            {
+                // === Always try to extract cause of death, even if body is gone ===
+                // Dead world pawns can retain their hediff list after the corpse is destroyed.
+                cause = ExtractDeathCauseFromHediffs(pawn);
+
+                if (bodyExists)
+                {
+                    bodyStatus = "Deceased (body remains)";
+                }
+                else
+                {
+                    bodyStatus = string.IsNullOrEmpty(cause)
+                        ? "Deceased (body destroyed or missing)"
+                        : "Deceased (body destroyed or missing)";
+                }
+            }
+
+            return new PawnDeathInfo
+            {
+                IsDead = isDead,
+                BodyExists = bodyExists,
+                CauseOfDeath = cause,
+                BodyStatus = bodyStatus
+            };
+        }
+
+        /// <summary>
+        /// Convenience overload using ThingID (reuses your existing FindPawnByThingId).
+        /// </summary>
+        public static PawnDeathInfo GetPawnDeathInfo(string thingId)
+        {
+            if (string.IsNullOrEmpty(thingId))
+            {
+                return new PawnDeathInfo
+                {
+                    IsDead = true,
+                    BodyExists = false,
+                    CauseOfDeath = "Unknown",
+                    BodyStatus = "No identifier provided"
+                };
+            }
+
+            Pawn pawn = FindPawnByThingId(thingId);
+            return GetPawnDeathInfo(pawn);
+        }
+
+        /// <summary>
+        /// Internal helper that extracts the most likely cause of death from hediffs.
+        /// Separated for clarity and reuse.
+        /// </summary>
+        private static string ExtractDeathCauseFromHediffs(Pawn pawn)
+        {
+            try
+            {
+                var hediffSet = pawn.health?.hediffSet;
+                if (hediffSet == null || hediffSet.hediffs == null || hediffSet.hediffs.Count == 0)
+                    return "mysterious or unknown causes";
+
+                Hediff mostSevereBad = null;
+                float highestSeverity = -1f;
+
+                foreach (var hediff in hediffSet.hediffs)
+                {
+                    if (hediff?.def == null || !hediff.def.isBad)
+                        continue;
+
+                    if (hediff.def.lethalSeverity > 0f && hediff.Severity >= hediff.def.lethalSeverity)
+                    {
+                        mostSevereBad = hediff;
+                        break;
+                    }
+
+                    if (hediff.Severity > highestSeverity)
+                    {
+                        highestSeverity = hediff.Severity;
+                        mostSevereBad = hediff;
+                    }
+                }
+
+                if (mostSevereBad != null)
+                {
+                    string cause = mostSevereBad.LabelCap ?? mostSevereBad.def.label ?? "fatal condition";
+
+                    if (mostSevereBad is Hediff_Injury injury && injury.sourceDef != null)
+                        cause += $" caused by {injury.sourceDef.label}";
+
+                    return cause;
+                }
+
+                // Fallback using correct 1.6 void API
+                List<Hediff_Injury> injuries = new List<Hediff_Injury>();
+                hediffSet.GetHediffs(ref injuries);
+
+                var lastInjury = injuries.OrderByDescending(i => i.ageTicks).FirstOrDefault();
+                if (lastInjury != null)
+                {
+                    string cause = lastInjury.LabelCap ?? lastInjury.def?.label ?? "fatal injuries";
+                    if (lastInjury.sourceDef != null)
+                        cause += $" caused by {lastInjury.sourceDef.label}";
+                    return cause;
+                }
+
+                return "mysterious or unknown causes";
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error extracting death cause for {pawn.ThingID}: {ex.Message}");
+                return "unknown causes (investigation error)";
+            }
+        }
+
+        /// <summary>
+        /// Simple string version for quick chat/letter use (combines body status + cause).
+        /// Kept for convenience / backward compatibility with older calls.
+        /// </summary>
+        public static string GetPawnDeathReason(Pawn pawn)
+        {
+            return GetPawnDeathInfo(pawn).ToString();
+        }
+
+        public static string GetPawnDeathReason(string thingId)
+        {
+            return GetPawnDeathInfo(thingId).ToString();
+        }
+
 
         public List<Pawn> GetAllViewerPawns()
         {
