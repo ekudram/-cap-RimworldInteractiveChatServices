@@ -402,6 +402,8 @@ namespace CAP_ChatInteractive.AI
                 }
                 catch { /* partial failure is ok */ }
 
+                rawFoodCount = meatCount + fishCount + milkCount + vegetableCount + fruitCount + eggCount + babyFoodCount + hemogenCount + otherRawFoodCount;
+
                 float mealsPerColonist = (float)mealsCount / colonistCount;
                 float medsPerColonist = (float)medicineTotal / colonistCount;
 
@@ -422,7 +424,18 @@ namespace CAP_ChatInteractive.AI
                         meals = mealsCount,
                         rawFood = rawFoodCount,
                         status = foodStatus,
-                        breakdown = new { Meat = meatCount, Vegetables = vegetableCount, Fruit = fruitCount, Eggs = eggCount, Other = otherRawFoodCount }
+                        breakdown = new
+                        {
+                            Meat = meatCount,
+                            Fish = fishCount,           // NEW - Masie can now be dramatic about fish
+                            Milk = milkCount,           // NEW - core item cats care about
+                            Vegetables = vegetableCount,
+                            Fruit = fruitCount,
+                            Eggs = eggCount,
+                            BabyFood = babyFoodCount,   // NEW - Biotech
+                            Hemogen = hemogenCount,     // NEW - Biotech (vampire colonies)
+                            Other = otherRawFoodCount
+                        }
                     },
                     materials = new { wood = woodCount, fabric = fabricCount, leather = leatherCount, wool = woolCount, metals = metalCount, stoneBlocks = stoneBlockCount },
                     components = new { industrial = componentIndustrialCount, spacer = componentSpacerCount },
