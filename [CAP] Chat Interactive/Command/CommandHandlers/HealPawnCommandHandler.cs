@@ -451,7 +451,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string GetHediffDescription(Hediff h)
         {
             if (h?.def == null)
-                return "unknown injury";
+                return "RICS.HPCH.Return.UnknownInjury".Translate();
 
             string injuryName = h.def.label ?? "injury";
 

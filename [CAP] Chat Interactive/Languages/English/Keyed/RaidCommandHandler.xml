@@ -23,6 +23,7 @@
 	<RICS.Raid.SuccessMessage>🎯 Raid incoming! {0} spent {1}{2} to summon a {3} raid.</RICS.Raid.SuccessMessage>
 	<RICS.Raid.FailureNoDeduction>{0} No {1} were deducted.</RICS.Raid.FailureNoDeduction>
 	<RICS.Raid.GenericError>Error calling raid. Please try again.</RICS.Raid.GenericError>
+	<RICS.Raid.NoValidMaps>No player home maps found.</RICS.Raid.NoValidMaps>
 
 	<!-- Raid description fragments (used in letters / messages) -->
 

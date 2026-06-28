@@ -13,6 +13,7 @@
 
   <RICS.SBCH.NoPawn>You need to have a pawn in the colony to perform surgery. Use !buy pawn first.</RICS.SBCH.NoPawn>
   <RICS.SBCH.PawnDead>Your pawn is dead. You cannot get this surgery.</RICS.SBCH.PawnDead>
+  <RICS.SBCH.LactatingBlocked>This pawn is lactating.</RICS.SBCH.LactatingBlocked>
   <RICS.SBCH.Sorry>Sorry, this surgery cannot be performed: {0}</RICS.SBCH.Sorry>
 
   <RICS.SBCH.NoProcedure>No surgical procedure found for {0} on your pawn.</RICS.SBCH.NoProcedure>

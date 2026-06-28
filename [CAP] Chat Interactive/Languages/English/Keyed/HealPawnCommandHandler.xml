@@ -19,6 +19,8 @@
   <RICS.HPCH.Return.HealMassSuccess>💚 COMPLETE HEALING! Healed all {2} injuries across {3} pawns for {0}! Remaining: {1}</RICS.HPCH.Return.HealMassSuccess>
   <!-- New 1.40 -->
   <RICS.HPCH.Return.NoInjuriesHealed>No injuries were healed. Your coins have been refunded.</RICS.HPCH.Return.NoInjuriesHealed>
+  <RICS.HPCH.Return.PawnDead>Your pawn is deceased.</RICS.HPCH.Return.PawnDead>
+  <RICS.HPCH.Return.UnknownInjury>unknown injury</RICS.HPCH.Return.UnknownInjury>
  
   <!-- Invoice Titles -->
   <RICS.HPCH.Invoice.HealingTitle>RIMAZON HEALING SERVICE</RICS.HPCH.Invoice.HealingTitle>

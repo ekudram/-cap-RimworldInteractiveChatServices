@@ -6,6 +6,7 @@
   <RICS.UICH.Usage>Usage: !use [item] [quantity]</RICS.UICH.Usage>
 
   <RICS.UICH.ItemNotFound>Item '{0}' not found in Rimazon.</RICS.UICH.ItemNotFound>
+  <RICS.UICH.ItemDefMissing>Error: Item definition for '{0}' not found.</RICS.UICH.ItemDefMissing>
   <RICS.UICH.NotUsable>{0} is not a usable item.</RICS.UICH.NotUsable>
   <RICS.UICH.ResearchRequired>{0} requires research that hasn't been completed yet.</RICS.UICH.ResearchRequired>
 

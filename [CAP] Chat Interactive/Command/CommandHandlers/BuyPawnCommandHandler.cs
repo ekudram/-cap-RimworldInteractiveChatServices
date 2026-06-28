@@ -246,7 +246,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error handling buy pawn command: {ex}");
-                return "Error purchasing pawn. Check log and copy stack trace for developer!";
+                return "RICS.BPCH.Error.Purchase".Translate();
             }
         }
 
@@ -883,7 +883,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error parsing pawn command: {ex}");
-                return "Error parsing command. Usage: !pawn [race] [xenotype] [gender] [age]";
+                return "RICS.BPCH.ParseError".Translate();
             }
         }
 

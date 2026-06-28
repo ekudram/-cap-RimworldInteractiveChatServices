@@ -98,7 +98,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"Error leaving pawn queue: {ex}");
-                return "Error leaving pawn queue. Please try again."; // keep fallback simple or use a generic key
+                return "RICS.PQCH.Error.LeaveQueue".Translate(); // keep fallback simple or use a generic key
             }
         }
 

@@ -46,6 +46,7 @@
   <RICS.BPCH.RaceNotFound.Suggestion>Did you mean: {0}?</RICS.BPCH.RaceNotFound.Suggestion>
   <RICS.BPCH.RaceNotFound.UseList>Use !races to see available races.</RICS.BPCH.RaceNotFound.UseList>
   <RICS.BPCH.ParseError>Error parsing command. Usage: !pawn [race] [xenotype] [gender] [age]</RICS.BPCH.ParseError>
+  <RICS.BPCH.Error.Purchase>Error purchasing pawn. Check log and copy stack trace for developer!</RICS.BPCH.Error.Purchase>
 
   <!-- List Commands - FIXED: Removed {2} placeholder -->
   <RICS.BPCH.NoRacesAvailable>No races available for purchase.</RICS.BPCH.NoRacesAvailable>
