@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- Dialog_TwitchSettings.cs Translations -->
+
+  <RICS.TwitchSettings.Title>Twitch Settings</RICS.TwitchSettings.Title>
+
+  <!-- Labels -->
+  <RICS.TwitchSettings.EnableIntegration>Enable Twitch Integration</RICS.TwitchSettings.EnableIntegration>
+  <RICS.TwitchSettings.ChannelName>Channel Name:</RICS.TwitchSettings.ChannelName>
+  <RICS.TwitchSettings.BotUsername>Bot Username:</RICS.TwitchSettings.BotUsername>
+  <RICS.TwitchSettings.AccessToken>Access Token:</RICS.TwitchSettings.AccessToken>
+  <RICS.TwitchSettings.AutoConnect>Auto-connect on startup</RICS.TwitchSettings.AutoConnect>
+  <RICS.TwitchSettings.StatusConnected>Status: &lt;color=green&gt;Connected&lt;/color&gt;</RICS.TwitchSettings.StatusConnected>
+  <RICS.TwitchSettings.StatusDisconnected>Status: &lt;color=red&gt;Disconnected&lt;/color&gt;</RICS.TwitchSettings.StatusDisconnected>
+
+  <!-- Buttons -->
+  <RICS.TwitchSettings.PasteToken>Paste Token from Clipboard</RICS.TwitchSettings.PasteToken>
+  <RICS.TwitchSettings.GetToken>Get Twitch Access Token</RICS.TwitchSettings.GetToken>
+  <RICS.TwitchSettings.Connect>Connect</RICS.TwitchSettings.Connect>
+  <RICS.TwitchSettings.Disconnect>Disconnect</RICS.TwitchSettings.Disconnect>
+
+  <!-- Messages -->
+  <RICS.TwitchSettings.TokenPasted>Twitch token pasted from clipboard!</RICS.TwitchSettings.TokenPasted>
+  <RICS.TwitchSettings.ClipboardEmpty>Clipboard is empty!</RICS.TwitchSettings.ClipboardEmpty>
+  <RICS.TwitchSettings.Connecting>Attempting to connect to Twitch...</RICS.TwitchSettings.Connecting>
+
+  <!-- Tooltips -->
+  <RICS.TwitchSettings.ChannelNameTooltip>Your Twitch channel name\nThis is what appears in your stream URL</RICS.TwitchSettings.ChannelNameTooltip>
+  <RICS.TwitchSettings.BotUsernameTooltip>Your Twitch bot account username\nCan be same as your channel</RICS.TwitchSettings.BotUsernameTooltip>
+  <RICS.TwitchSettings.AccessTokenTooltip>Your Twitch OAuth token\nGet this from Twitch Token Generator</RICS.TwitchSettings.AccessTokenTooltip>
+
+  <!-- Help / Instructions -->
+  <RICS.TwitchSettings.GetTokenMessage>This will open Twitch Token Generator in your browser.\n\n&lt;b&gt;Instructions:&lt;/b&gt;\n• Login with your Twitch account\n• Select 'Bot Chat Token'\n• Copy the generated token\n• Paste it in your settings file manually\n\nOpen Twitch Token Generator?</RICS.TwitchSettings.GetTokenMessage>
+  <RICS.TwitchSettings.OpenBrowser>Open Browser</RICS.TwitchSettings.OpenBrowser>
+  <RICS.TwitchSettings.Cancel>Cancel</RICS.TwitchSettings.Cancel>
+
+</LanguageData>

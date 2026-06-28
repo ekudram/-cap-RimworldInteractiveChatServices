@@ -83,7 +83,7 @@ namespace CAP_ChatInteractive
 
             // Save Backup (quick timestamped)
             Rect saveRect = new Rect(padding, currentY, btnW, btnH);
-            if (Widgets.ButtonText(saveRect, "Save Backup"))
+            if (Widgets.ButtonText(saveRect, "RICS.Editor.SaveBackup".Translate()))
             {
                 string json = JsonConvert.SerializeObject(RaceSettingsManager.RaceSettings, Newtonsoft.Json.Formatting.Indented);
                 BackupUtility.SaveQuickBackup("PawnRaceSettings", json);

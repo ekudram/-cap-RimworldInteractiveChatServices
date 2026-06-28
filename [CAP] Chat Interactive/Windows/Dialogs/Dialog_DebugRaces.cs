@@ -49,7 +49,7 @@ public class Dialog_DebugRaces : Window
         doCloseButton = true;
         forcePause = true;
         absorbInputAroundWindow = true;
-        optionalTitle = "RICS Race Debug - Available vs Excluded";
+        optionalTitle = "RICS.DebugRaces.Title".Translate();
 
         // Gather current data from the single source of truth
         RefreshData();

@@ -193,7 +193,7 @@ namespace CAP_ChatInteractive
 
                 // Label
                 Rect labelRect = new Rect(padding, padding, labelWidth, 30f);
-                Widgets.Label(labelRect, "Label:");
+                Widgets.Label(labelRect, "RICS.EventsDefInfo.Label".Translate());
 
                 // Text input field - narrower
                 Rect inputRect = new Rect(labelRect.xMax + padding, padding, inputWidth, 30f);
@@ -217,7 +217,7 @@ namespace CAP_ChatInteractive
                 {
                     // Save button
                     Rect saveButtonRect = new Rect(inputRect.xMax + padding, padding, buttonWidth, 30f);
-                    if (Widgets.ButtonText(saveButtonRect, "Save"))
+                    if (Widgets.ButtonText(saveButtonRect, "RICS.EventsDefInfo.Save".Translate()))
                     {
                         incident.Label = newLabel;
                         IncidentsManager.SaveIncidentsToJson();
@@ -226,7 +226,7 @@ namespace CAP_ChatInteractive
 
                     // Optional: Cancel/reset button
                     Rect cancelButtonRect = new Rect(saveButtonRect.xMax + 5f, padding, buttonWidth, 30f);
-                    if (Widgets.ButtonText(cancelButtonRect, "Reset"))
+                    if (Widgets.ButtonText(cancelButtonRect, "RICS.EventsDefInfo.Reset".Translate()))
                     {
                         // Reset to original label from IncidentDef if available
                         IncidentDef incidentDef = DefDatabase<IncidentDef>.GetNamedSilentFail(incident.DefName);
@@ -243,13 +243,13 @@ namespace CAP_ChatInteractive
                     // Show info when no changes - now has enough space
                     Rect infoRect = new Rect(inputRect.xMax + padding, padding, 120f, 30f);
                     GUI.color = Color.gray;
-                    Widgets.Label(infoRect, "Edit to save");
+                    Widgets.Label(infoRect, "RICS.EventsDefInfo.EditToSave".Translate());
                     GUI.color = Color.white;
                 }
 
                 // Tooltip explaining this feature
                 TooltipHandler.TipRegion(new Rect(padding, padding, rect.width - padding * 2, 30f),
-                    "Customize the display name for this event. Changes are saved to JSON and will be used in the chat store.");
+                    "RICS.EventsDefInfo.LabelTooltip".Translate());
             }
             finally
             {
@@ -260,14 +260,14 @@ namespace CAP_ChatInteractive
         // Helper methods to match the main dialog
         private string GetDisplayModName(string modSource)
         {
-            if (modSource == "Core") return "RimWorld";
+            if (modSource == "Core") return "RICS.EventsDefInfo.RimWorld".Translate();
             if (modSource.Contains(".")) return modSource.Split('.')[0];
             return modSource;
         }
 
         private string GetDisplayCategoryName(string categoryName)
         {
-            if (string.IsNullOrEmpty(categoryName)) return "Uncategorized";
+            if (string.IsNullOrEmpty(categoryName)) return "RICS.EventsDefInfo.Uncategorized".Translate();
             return categoryName;
         }
     }

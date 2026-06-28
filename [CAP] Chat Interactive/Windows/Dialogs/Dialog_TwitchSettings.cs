@@ -36,7 +36,7 @@ namespace CAP_ChatInteractive
             closeOnCancel = true;
 
             // Set proper window size
-            optionalTitle = "Twitch Settings";
+            optionalTitle = "RICS.TwitchSettings.Title".Translate();
             forceCatchAcceptAndCancelEventEvenIfUnfocused = true;
         }
 
@@ -45,21 +45,21 @@ namespace CAP_ChatInteractive
             var listing = new Listing_Standard();
             listing.Begin(inRect);
 
-            listing.CheckboxLabeled("Enable Twitch Integration", ref _settings.Enabled);
+            listing.CheckboxLabeled("RICS.TwitchSettings.EnableIntegration".Translate(), ref _settings.Enabled);
             listing.Gap(12f);
 
-            listing.Label("Channel Name:");
-            TooltipHandler.TipRegion(listing.GetRect(0f), "Your Twitch channel name\nThis is what appears in your stream URL");
+            listing.Label("RICS.TwitchSettings.ChannelName".Translate());
+            TooltipHandler.TipRegion(listing.GetRect(0f), "RICS.TwitchSettings.ChannelNameTooltip".Translate());
             _settings.ChannelName = listing.TextEntry(_settings.ChannelName);
             listing.Gap(12f);
 
-            listing.Label("Bot Username:");
-            TooltipHandler.TipRegion(listing.GetRect(0f), "Your Twitch bot account username\nCan be same as your channel");
+            listing.Label("RICS.TwitchSettings.BotUsername".Translate());
+            TooltipHandler.TipRegion(listing.GetRect(0f), "RICS.TwitchSettings.BotUsernameTooltip".Translate());
             _settings.BotUsername = listing.TextEntry(_settings.BotUsername);
             listing.Gap(12f);
             // Secure token field with tooltip
-            listing.Label("Access Token:");
-            TooltipHandler.TipRegion(listing.GetRect(0f), "Your Twitch OAuth token\nGet this from Twitch Token Generator");
+            listing.Label("RICS.TwitchSettings.AccessToken".Translate());
+            TooltipHandler.TipRegion(listing.GetRect(0f), "RICS.TwitchSettings.AccessTokenTooltip".Translate());
 
             // Use a separate variable for the input field
             string tokenInput = listing.TextEntry(_settings.AccessToken);
@@ -69,7 +69,7 @@ namespace CAP_ChatInteractive
                 _settings.AccessToken = tokenInput;
             }
 
-            if (listing.ButtonText("Paste Token from Clipboard"))
+            if (listing.ButtonText("RICS.TwitchSettings.PasteToken".Translate()))
             {
                 string clipboardText = GUIUtility.systemCopyBuffer?.Trim();
                 if (!string.IsNullOrEmpty(clipboardText))
@@ -80,52 +80,46 @@ namespace CAP_ChatInteractive
                         clipboardText = "oauth:" + clipboardText;
                     }
                     _settings.AccessToken = clipboardText;
-                    Messages.Message("Twitch token pasted from clipboard!", MessageTypeDefOf.PositiveEvent);
+                    Messages.Message("RICS.TwitchSettings.TokenPasted".Translate(), MessageTypeDefOf.PositiveEvent);
                 }
                 else
                 {
-                    Messages.Message("Clipboard is empty!", MessageTypeDefOf.NegativeEvent);
+                    Messages.Message("RICS.TwitchSettings.ClipboardEmpty".Translate(), MessageTypeDefOf.NegativeEvent);
                 }
             }
 
             listing.Gap(12f);
 
             // Help button for token generation
-            if (listing.ButtonText("Get Twitch Access Token"))
+            if (listing.ButtonText("RICS.TwitchSettings.GetToken".Translate()))
             {
-                string message = "This will open Twitch Token Generator in your browser.\n\n" +
-                                "<b>Instructions:</b>\n" +
-                                "• Login with your Twitch account\n" +
-                                "• Select 'Bot Chat Token'\n" +
-                                "• Copy the generated token\n" +
-                                "• Paste it in your settings file manually\n\n" +
-                                "Open Twitch Token Generator?";
+                string message = "RICS.TwitchSettings.GetTokenMessage".Translate();
 
-                Find.WindowStack.Add(new Dialog_MessageBox(message, "Open Browser",
+                Find.WindowStack.Add(new Dialog_MessageBox(message, "RICS.TwitchSettings.OpenBrowser".Translate(),
                     () => Application.OpenURL("https://twitchtokengenerator.com/"),
-                    "Cancel", null, null, true));
+                    "RICS.TwitchSettings.Cancel".Translate(), null, null, true));
             }
 
             listing.Gap(12f);
-            listing.CheckboxLabeled("Auto-connect on startup", ref _settings.AutoConnect);
+            listing.CheckboxLabeled("RICS.TwitchSettings.AutoConnect".Translate(), ref _settings.AutoConnect);
 
             // Connection status and controls
             listing.Gap();
             if (_settings.IsConnected)
             {
-                listing.Label("Status: <color=green>Connected</color>");
-                if (listing.ButtonText("Disconnect"))
+                listing.Label("RICS.TwitchSettings.StatusConnected".Translate());
+                if (listing.ButtonText("RICS.TwitchSettings.Disconnect".Translate()))
                 {
                     CAPChatInteractiveMod.Instance.TwitchService.Disconnect();
                 }
             }
             else
             {
-                listing.Label("Status: <color=red>Disconnected</color>");
-                if (listing.ButtonText("Connect") && _settings.CanConnect)
+                listing.Label("RICS.TwitchSettings.StatusDisconnected".Translate());
+                if (listing.ButtonText("RICS.TwitchSettings.Connect".Translate()) && _settings.CanConnect)
                 {
                     CAPChatInteractiveMod.Instance.TwitchService.Connect();
-                    Messages.Message("Attempting to connect to Twitch...", MessageTypeDefOf.SilentInput);
+                    Messages.Message("RICS.TwitchSettings.Connecting".Translate(), MessageTypeDefOf.SilentInput);
                 }
             }
 

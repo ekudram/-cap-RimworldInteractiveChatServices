@@ -65,14 +65,14 @@ namespace CAP_ChatInteractive
             float buttonGap = 20f;
 
             Rect okRect = new Rect(inRect.width / 2 - buttonWidth - buttonGap / 2, buttonY, buttonWidth, 30f);
-            if (Widgets.ButtonText(okRect, "OK"))
+            if (Widgets.ButtonText(okRect, "RICS.Dialog.OK".Translate()))
             {
                 onAccept?.Invoke(inputText?.Trim() ?? "");
                 this.Close();
             }
 
             Rect cancelRect = new Rect(inRect.width / 2 + buttonGap / 2, buttonY, buttonWidth, 30f);
-            if (Widgets.ButtonText(cancelRect, "Cancel"))
+            if (Widgets.ButtonText(cancelRect, "RICS.Dialog.Cancel".Translate()))
             {
                 this.Close();
             }

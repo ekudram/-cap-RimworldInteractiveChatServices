@@ -41,7 +41,7 @@ namespace CAP_ChatInteractive
             doCloseButton = true;
             forcePause = true;
             absorbInputAroundWindow = true;
-            optionalTitle = "YouTube OAuth 2.0 Setup";
+            optionalTitle = "RICS.EditClientSecrets.Title".Translate();
         }
 
         public override void DoWindowContents(Rect inRect)

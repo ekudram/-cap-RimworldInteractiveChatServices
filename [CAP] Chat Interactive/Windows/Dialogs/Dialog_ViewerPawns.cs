@@ -35,7 +35,7 @@ namespace CAP_ChatInteractive
             doCloseButton = true;
             forcePause = true;
             absorbInputAroundWindow = true;
-            optionalTitle = "Pawn Assignment Debug Info";
+            optionalTitle = "RICS.ViewerPawns.Title".Translate();
 
             assignmentManager = Current.Game?.GetComponent<GameComponent_PawnAssignmentManager>();
         }

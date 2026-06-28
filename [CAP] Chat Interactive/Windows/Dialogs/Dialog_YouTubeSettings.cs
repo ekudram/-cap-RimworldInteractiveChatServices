@@ -37,7 +37,7 @@ namespace CAP_ChatInteractive
             closeOnCancel = true;
 
             // Set proper window size
-            optionalTitle = "YouTube Settings";
+            optionalTitle = "RICS.YouTubeSettings.Title".Translate();
             forceCatchAcceptAndCancelEventEvenIfUnfocused = true;
         }
 
@@ -47,7 +47,7 @@ namespace CAP_ChatInteractive
             listing.Begin(inRect);
 
             // Enable/Disable toggle
-            listing.CheckboxLabeled("Enable YouTube Integration", ref _settings.Enabled);
+            listing.CheckboxLabeled("RICS.YouTubeSettings.EnableIntegration".Translate(), ref _settings.Enabled);
             listing.Gap(12f);
 
             // Channel ID with Find button on same line
@@ -56,25 +56,24 @@ namespace CAP_ChatInteractive
             Rect channelFieldRect = new Rect(channelLabelRect.xMax + 10f, channelRect.y, 200f, 30f);
             Rect channelButtonRect = new Rect(channelFieldRect.xMax + 10f, channelRect.y, 120f, 30f);
 
-            Widgets.Label(channelLabelRect, "Channel ID:");
+            Widgets.Label(channelLabelRect, "RICS.YouTubeSettings.ChannelID".Translate());
             _settings.ChannelName = Widgets.TextField(channelFieldRect, _settings.ChannelName);
-            if (Widgets.ButtonText(channelButtonRect, "Find ID"))
+            if (Widgets.ButtonText(channelButtonRect, "RICS.YouTubeSettings.FindID".Translate()))
             {
                 Find.WindowStack.Add(new Dialog_MessageBox(
-                    "This will open a tool to find your YouTube Channel ID.\n\n" +
-                    "Open Channel ID Finder?",
-                    "Open Tool", () => Application.OpenURL("https://commentpicker.com/youtube-channel-id.php"),
-                    "Cancel", null, null, true
+                    "RICS.YouTubeSettings.FindIDHelp".Translate(),
+                    "RICS.YouTubeSettings.OpenTool".Translate(), () => Application.OpenURL("https://commentpicker.com/youtube-channel-id.php"),
+                    "RICS.YouTubeSettings.Cancel".Translate(), null, null, true
                 ));
             }
-            TooltipHandler.TipRegion(channelRect, "Your unique YouTube Channel ID (starts with UC...)");
+            TooltipHandler.TipRegion(channelRect, "RICS.YouTubeSettings.ChannelIDTooltip".Translate());
 
             listing.Gap(12f);
 
             // Bot Username
-            listing.Label("Bot Username:");
+            listing.Label("RICS.YouTubeSettings.BotUsername".Translate());
             _settings.BotUsername = listing.TextEntry(_settings.BotUsername);
-            TooltipHandler.TipRegion(listing.GetRect(0f), "Your YouTube channel display name");
+            TooltipHandler.TipRegion(listing.GetRect(0f), "RICS.YouTubeSettings.BotUsernameTooltip".Translate());
             listing.Gap(12f);
 
             // API Key with buttons on same line - FIXED VERSION
@@ -84,26 +83,26 @@ namespace CAP_ChatInteractive
             Rect apiKeyPasteRect = new Rect(apiKeyFieldRect.xMax + 10f, apiKeyRect.y, 80f, 30f);
             Rect apiKeyGetRect = new Rect(apiKeyPasteRect.xMax + 10f, apiKeyRect.y, 80f, 30f);
 
-            Widgets.Label(apiKeyLabelRect, "API Key:");
+            Widgets.Label(apiKeyLabelRect, "RICS.YouTubeSettings.APIKey".Translate());
 
             // Display asterisks but don't overwrite the actual token
             string displayText = string.IsNullOrEmpty(_settings.AccessToken) ? "" : new string('*', 16);
             Widgets.TextField(apiKeyFieldRect, displayText); // Just display, don't assign
 
-            if (Widgets.ButtonText(apiKeyPasteRect, "Paste"))
+            if (Widgets.ButtonText(apiKeyPasteRect, "RICS.YouTubeSettings.Paste".Translate()))
             {
                 string clipboardText = GUIUtility.systemCopyBuffer?.Trim();
                 if (!string.IsNullOrEmpty(clipboardText))
                 {
                     _settings.AccessToken = clipboardText;
-                    Messages.Message("API key pasted!", MessageTypeDefOf.PositiveEvent);
+                    Messages.Message("RICS.YouTubeSettings.APIKeyPasted".Translate(), MessageTypeDefOf.PositiveEvent);
                 }
                 else
                 {
                     Messages.Message("Clipboard empty!", MessageTypeDefOf.NegativeEvent);
                 }
             }
-            if (Widgets.ButtonText(apiKeyGetRect, "Get"))
+            if (Widgets.ButtonText(apiKeyGetRect, "RICS.YouTubeSettings.GetKey".Translate()))
             {
                 Find.WindowStack.Add(new Dialog_MessageBox(
                     "This will open Google Cloud Console.\n\nOpen console?",

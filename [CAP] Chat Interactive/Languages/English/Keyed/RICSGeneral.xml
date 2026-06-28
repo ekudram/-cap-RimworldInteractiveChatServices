@@ -129,5 +129,17 @@ Changes take effect immediately for new purchases.]]>
 • Legendary: 500%]]>
   </RICS.Tooltip.ResetMultipliers>
 
+  <!-- Generic Dialog Buttons -->
+  <RICS.Dialog.OK>OK</RICS.Dialog.OK>
+  <RICS.Dialog.Cancel>Cancel</RICS.Dialog.Cancel>
+  
+  <!-- Common Editor Buttons -->
+  <RICS.Editor.SaveBackup>Save Backup</RICS.Editor.SaveBackup>
+  <RICS.Editor.LoadBackup>Load Backup</RICS.Editor.LoadBackup>
+  <RICS.Editor.SaveAs>Save As...</RICS.Editor.SaveAs>
+  <RICS.Editor.LoadFile>Load file</RICS.Editor.LoadFile>
+  <RICS.Editor.DeleteFile>Delete file</RICS.Editor.DeleteFile>
+  <RICS.Editor.Close>Close</RICS.Editor.Close>
+  <RICS.Editor.Search>Search:</RICS.Editor.Search>
   
 </LanguageData>

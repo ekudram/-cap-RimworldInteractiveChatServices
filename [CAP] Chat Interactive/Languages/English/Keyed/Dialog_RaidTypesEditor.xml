@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- Dialog_RaidTypesEditor.cs Translations -->
+
+  <RICS.RaidTypesEditor.Title>Configure Raid Types</RICS.RaidTypesEditor.Title>
+  <RICS.RaidTypesEditor.AllowedHeader>Allowed Raid Types</RICS.RaidTypesEditor.AllowedHeader>
+  <RICS.RaidTypesEditor.Description>Check which raid types viewers can use. Unchecked types will be disabled.</RICS.RaidTypesEditor.Description>
+
+</LanguageData>

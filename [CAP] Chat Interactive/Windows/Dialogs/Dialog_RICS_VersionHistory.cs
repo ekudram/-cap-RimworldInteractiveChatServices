@@ -65,7 +65,7 @@ namespace CAP_ChatInteractive
             Rect headerRect = new Rect(rect.x + 5f, rect.y + 5f, rect.width - 10f, 35f);
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.SubHeader;
-            Widgets.Label(headerRect, "Version History");
+            Widgets.Label(headerRect, "RICS.VersionHistory.Title".Translate());
             GUI.color = Color.white;    
 
             // Version list (exactly like your mod sources column)
@@ -97,14 +97,14 @@ namespace CAP_ChatInteractive
 
             if (string.IsNullOrEmpty(selectedVersion))
             {
-                Widgets.Label(new Rect(rect.x + 20f, rect.y + 20f, rect.width - 40f, 60f), "Select a version on the left.");
+                Widgets.Label(new Rect(rect.x + 20f, rect.y + 20f, rect.width - 40f, 60f), "RICS.VersionHistory.SelectVersion".Translate());
                 return;
             }
 
             // Version header
             Rect headerRect = new Rect(rect.x + 15f, rect.y + 8f, rect.width - 30f, 40f);
             Text.Font = GameFont.Medium;
-            Widgets.Label(headerRect, $"Version {selectedVersion}");
+            Widgets.Label(headerRect, "RICS.VersionHistory.VersionPrefix".Translate(selectedVersion));
 
             // Notes area (scrollable, handles long changelogs)
             if (VersionHistory.UpdateNotes.TryGetValue(selectedVersion, out string notes))

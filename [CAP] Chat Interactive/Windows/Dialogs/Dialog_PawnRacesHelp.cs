@@ -43,7 +43,7 @@ namespace CAP_ChatInteractive
             Rect titleRect = new Rect(0f, 0f, inRect.width, 35f);
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.HeaderAccent;
-            Widgets.Label(titleRect, "Pawn Race Settings Help");
+            Widgets.Label(titleRect, "RICS.PawnRacesHelp.Title".Translate());
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
 

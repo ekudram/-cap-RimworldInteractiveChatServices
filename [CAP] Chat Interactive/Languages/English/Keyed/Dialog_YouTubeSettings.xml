@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- Dialog_YouTubeSettings.cs Translations -->
+
+  <RICS.YouTubeSettings.Title>YouTube Settings</RICS.YouTubeSettings.Title>
+
+  <!-- Labels and Buttons -->
+  <RICS.YouTubeSettings.EnableIntegration>Enable YouTube Integration</RICS.YouTubeSettings.EnableIntegration>
+  <RICS.YouTubeSettings.ChannelID>Channel ID:</RICS.YouTubeSettings.ChannelID>
+  <RICS.YouTubeSettings.FindID>Find ID</RICS.YouTubeSettings.FindID>
+  <RICS.YouTubeSettings.BotUsername>Bot Username:</RICS.YouTubeSettings.BotUsername>
+  <RICS.YouTubeSettings.APIKey>API Key:</RICS.YouTubeSettings.APIKey>
+  <RICS.YouTubeSettings.Paste>Paste</RICS.YouTubeSettings.Paste>
+  <RICS.YouTubeSettings.GetKey>Get Key</RICS.YouTubeSettings.GetKey>
+
+  <!-- Messages -->
+  <RICS.YouTubeSettings.APIKeyPasted>API key pasted!</RICS.YouTubeSettings.APIKeyPasted>
+
+  <!-- Tooltips and Help -->
+  <RICS.YouTubeSettings.ChannelIDTooltip>Your unique YouTube Channel ID (starts with UC...)</RICS.YouTubeSettings.ChannelIDTooltip>
+  <RICS.YouTubeSettings.BotUsernameTooltip>Your YouTube channel display name</RICS.YouTubeSettings.BotUsernameTooltip>
+  <RICS.YouTubeSettings.FindIDHelp>This will open a tool to find your YouTube Channel ID.\n\nOpen Channel ID Finder?</RICS.YouTubeSettings.FindIDHelp>
+  <RICS.YouTubeSettings.OpenTool>Open Tool</RICS.YouTubeSettings.OpenTool>
+  <RICS.YouTubeSettings.Cancel>Cancel</RICS.YouTubeSettings.Cancel>
+
+</LanguageData>

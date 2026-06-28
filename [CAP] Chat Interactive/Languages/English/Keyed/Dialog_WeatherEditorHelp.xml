@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- Dialog_WeatherEditorHelp.cs Translations -->
+  
+  <RICS.WeatherEditorHelp.Title>Weather Editor Help</RICS.WeatherEditorHelp.Title>
+  
+  <!-- Sections from the help content - can be expanded -->
+  <RICS.WeatherEditorHelp.Overview><b>Weather Editor Overview</b>
+The Weather Editor allows you to configure which weather types are available for purchase via chat commands, and set their prices and karma types.</RICS.WeatherEditorHelp.Overview>
+  
+</LanguageData>

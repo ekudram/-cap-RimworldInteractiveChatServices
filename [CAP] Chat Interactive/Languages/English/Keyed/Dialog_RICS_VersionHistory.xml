@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- Dialog_RICS_VersionHistory.cs Translations -->
+
+  <RICS.VersionHistory.Title>Version History</RICS.VersionHistory.Title>
+  <RICS.VersionHistory.SelectVersion>Select a version on the left.</RICS.VersionHistory.SelectVersion>
+  <RICS.VersionHistory.VersionPrefix>Version {0}</RICS.VersionHistory.VersionPrefix>
+
+</LanguageData>

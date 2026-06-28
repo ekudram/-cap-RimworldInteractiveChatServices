@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- EventsDefInfoWindow.cs Translations -->
+  
+  <RICS.EventsDefInfo.Label>Label:</RICS.EventsDefInfo.Label>
+  <RICS.EventsDefInfo.Save>Save</RICS.EventsDefInfo.Save>
+  <RICS.EventsDefInfo.Reset>Reset</RICS.EventsDefInfo.Reset>
+  <RICS.EventsDefInfo.EditToSave>Edit to save</RICS.EventsDefInfo.EditToSave>
+  
+  <RICS.EventsDefInfo.RimWorld>RimWorld</RICS.EventsDefInfo.RimWorld>
+  <RICS.EventsDefInfo.Uncategorized>Uncategorized</RICS.EventsDefInfo.Uncategorized>
+  
+  <RICS.EventsDefInfo.LabelTooltip>Customize the display name for this event. Changes are saved to JSON and will be used in the chat store.</RICS.EventsDefInfo.LabelTooltip>
+  
+</LanguageData>

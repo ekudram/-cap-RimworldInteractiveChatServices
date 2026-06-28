@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- Dialog_WeatherEditor.cs Translations -->
+  
+  <RICS.WeatherEditor.Title>Weather Editor</RICS.WeatherEditor.Title>
+  
+  <!-- Bottom Bar Buttons -->
+  <RICS.WeatherEditor.SaveBackup>Save Backup</RICS.WeatherEditor.SaveBackup>
+  <RICS.WeatherEditor.LoadBackup>Load Backup</RICS.WeatherEditor.LoadBackup>
+  <RICS.WeatherEditor.SaveAs>Save As...</RICS.WeatherEditor.SaveAs>
+  <RICS.WeatherEditor.LoadFile>Load file</RICS.WeatherEditor.LoadFile>
+  <RICS.WeatherEditor.DeleteFile>Delete file</RICS.WeatherEditor.DeleteFile>
+  <RICS.WeatherEditor.Close>Close</RICS.WeatherEditor.Close>
+  
+  <!-- Messages -->
+  <RICS.WeatherEditor.BackupSaved>Weather backup saved (timestamped).</RICS.WeatherEditor.BackupSaved>
+  <RICS.WeatherEditor.Loaded>Weather loaded from latest backup.</RICS.WeatherEditor.Loaded>
+  <RICS.WeatherEditor.FailedToLoad>Failed to load backup (invalid data).</RICS.WeatherEditor.FailedToLoad>
+  <RICS.WeatherEditor.NoBackups>No timestamped backups found for Weather Editor.</RICS.WeatherEditor.NoBackups>
+  
+  <!-- Header -->
+  <RICS.WeatherEditor.ModSources>Mod Sources</RICS.WeatherEditor.ModSources>
+  
+  <!-- Labels -->
+  <RICS.WeatherEditor.Cost>Cost:</RICS.WeatherEditor.Cost>
+  <RICS.WeatherEditor.Karma>Karma:</RICS.WeatherEditor.Karma>
+  <RICS.WeatherEditor.Enabled>Enabled</RICS.WeatherEditor.Enabled>
+  
+</LanguageData>

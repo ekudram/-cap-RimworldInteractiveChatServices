@@ -43,19 +43,19 @@ namespace CAP_ChatInteractive
             doCloseButton = true;
             forcePause = true;
             absorbInputAroundWindow = true;
-            optionalTitle = "Configure Raid Types";
+            optionalTitle = "RICS.RaidTypesEditor.Title".Translate();
         }
 
         public override void DoWindowContents(Rect inRect)
         {
             // Header
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(0f, 0f, inRect.width, 30f), "Allowed Raid Types");
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 30f), "RICS.RaidTypesEditor.AllowedHeader".Translate());
             Text.Font = GameFont.Small;
 
             // Description
             Widgets.Label(new Rect(0f, 35f, inRect.width, 40f),
-                "Check which raid types viewers can use. Unchecked types will be disabled.");
+                "RICS.RaidTypesEditor.Description".Translate());
 
             // List of raid types
             Rect listRect = new Rect(0f, 80f, inRect.width, inRect.height - 80f - CloseButSize.y);

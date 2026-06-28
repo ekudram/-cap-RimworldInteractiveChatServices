@@ -69,13 +69,13 @@ namespace CAP_ChatInteractive.Windows
             // Title - leave space for Compact button on the right
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.HeaderAccent;
-            Widgets.Label(new Rect(0f, 10f, inRect.width - 125f, 35f), "TWITCH RAID INCOMING!");
+            Widgets.Label(new Rect(0f, 10f, inRect.width - 125f, 35f), "RICS.TwitchRaidJoin.Title".Translate());
 
             // Compact View button (top-right)
 
             GUI.color = Color.white;
             Rect compactRect = new Rect(inRect.width - 150f, 8f, 150f, 30f);
-            if (Widgets.ButtonText(compactRect, "Compact View"))
+            if (Widgets.ButtonText(compactRect, "RICS.TwitchRaidJoin.CompactView".Translate()))
             {
                 Find.WindowStack.Add(new Dialog_TwitchRaidJoinMini(raiderName, viewerCount));
                 Close();
@@ -96,13 +96,13 @@ namespace CAP_ChatInteractive.Windows
             // Note about Twitch delay (brief, readable, normal size)
             Text.Font = GameFont.Small;
             GUI.color = Color.gray;
-            Widgets.Label(new Rect(0f, 110f, inRect.width, 18f), "Note: Twitch can take up to 3 minutes for all raiders to join.");
+            Widgets.Label(new Rect(0f, 110f, inRect.width, 18f), "RICS.TwitchRaidJoin.Note".Translate());
             GUI.color = Color.white;
 
             // Live list header (shifted down for note)
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
-            Widgets.Label(new Rect(12f, 130f, inRect.width - 24f, 25f), $"Raiders so far ({currentRaiders.Count}):");
+            Widgets.Label(new Rect(12f, 130f, inRect.width - 24f, 25f), "RICS.TwitchRaidJoin.RaidersSoFar".Translate(currentRaiders.Count));
 
             // === SCROLLABLE LIST (height reduced to fit note) ===
             Rect listRect = new Rect(12f, 156f, inRect.width - 24f, 155f);
@@ -129,7 +129,7 @@ namespace CAP_ChatInteractive.Windows
 
             Rect buttonRect = new Rect(inRect.width / 2 - 100f, inRect.height - 48f, 200f, 38f);
 
-            if (Widgets.ButtonText(buttonRect, "START RAID NOW!", active: buttonEnabled))
+            if (Widgets.ButtonText(buttonRect, "RICS.TwitchRaidJoin.StartRaidNow".Translate(), active: buttonEnabled))
             {
                 if (buttonEnabled)
                     CloseAndTriggerRaid();
