@@ -24,6 +24,10 @@
 
   <RICS.RPCH.GenericError>Error processing revive command. Please try again.</RICS.RPCH.GenericError>
 
+  <!-- Revive Pawn - Cannot Resurrect messages -->
+  <RICS.RPCH.CannotResurrectSelf>Your pawn is {0}. {1} Resurrection is not possible.</RICS.RPCH.CannotResurrectSelf>
+  <RICS.RPCH.CannotResurrectTarget>{0}'s pawn is {1}. {2} Resurrection is not possible.</RICS.RPCH.CannotResurrectTarget>
+
   <!-- Rimazon invoice fragments -->
 
   <RICS.RPCH.InvoiceSelfLabel>💖 Rimazon Resurrection - {0}</RICS.RPCH.InvoiceSelfLabel>
