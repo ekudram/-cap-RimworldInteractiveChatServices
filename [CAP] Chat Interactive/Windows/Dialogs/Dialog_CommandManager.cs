@@ -87,17 +87,17 @@ namespace CAP_ChatInteractive
 
             // Save Backup (quick timestamped)
             Rect saveRect = new Rect(padding, currentY, btnW, btnH);
-            if (Widgets.ButtonText(saveRect, "Save Backup"))
+            if (Widgets.ButtonText(saveRect, "RICS.Editor.SaveBackup".Translate()))
             {
                 string json = JsonConvert.SerializeObject(commandSettings, Formatting.Indented);
                 BackupUtility.SaveQuickBackup("CommandManager", json);
-                Messages.Message("Command settings quick backup saved (timestamped).", MessageTypeDefOf.NeutralEvent);
+                Messages.Message("RICS.Editor.BackupSaved".Translate(), MessageTypeDefOf.NeutralEvent);
             }
 
             // Load Backup (latest timestamped)
             float loadX = padding + btnW + gap;
             Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(loadRect, "Load Backup"))
+            if (Widgets.ButtonText(loadRect, "RICS.Editor.LoadBackup".Translate()))
             {
                 string json = BackupUtility.LoadLatestTimestampedBackup("CommandManager");
                 if (!string.IsNullOrEmpty(json))
@@ -107,24 +107,24 @@ namespace CAP_ChatInteractive
                         commandSettings = JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(json)
                                          ?? new Dictionary<string, CommandSettings>();
                         FilterCommands();
-                        Messages.Message("Command settings loaded from latest backup.", MessageTypeDefOf.NeutralEvent);
+                        Messages.Message("RICS.Editor.Loaded".Translate(), MessageTypeDefOf.NeutralEvent);
                     }
                     catch (Exception ex)
                     {
                         Logger.Error($"Failed to apply loaded backup: {ex.Message}");
-                        Messages.Message("Failed to load backup (invalid JSON).", MessageTypeDefOf.RejectInput);
+                        Messages.Message("RICS.Editor.FailedLoad".Translate(), MessageTypeDefOf.RejectInput);
                     }
                 }
                 else
                 {
-                    Messages.Message("No timestamped backups found for Command Manager.", MessageTypeDefOf.RejectInput);
+                    Messages.Message("RICS.Editor.NoBackups".Translate(), MessageTypeDefOf.RejectInput);
                 }
             }
 
             // Save As... (opens FloatMenu of options; currently saves with sensible named default)
             float saveAsX = loadX + btnW + gap;
             Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(saveAsRect, "Save As..."))
+            if (Widgets.ButtonText(saveAsRect, "RICS.Editor.SaveAs".Translate()))
             {
                 ShowSaveAsMenu();
             }
@@ -132,7 +132,7 @@ namespace CAP_ChatInteractive
             // Load file (shows all backups in FloatMenu — timestamped + any named/theme files)
             float loadFileX = saveAsX + btnW + gap;
             Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(loadFileRect, "Load file"))
+            if (Widgets.ButtonText(loadFileRect, "RICS.Editor.LoadFile".Translate()))
             {
                 ShowLoadFileMenu();
             }
@@ -140,7 +140,7 @@ namespace CAP_ChatInteractive
             // Delete file (right next to Load file, with confirmation)
             float deleteX = loadFileX + btnW + gap;
             Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(deleteRect, "Delete file"))
+            if (Widgets.ButtonText(deleteRect, "RICS.Editor.DeleteFile".Translate()))
             {
                 ShowDeleteFileMenu();
             }
@@ -148,7 +148,7 @@ namespace CAP_ChatInteractive
             // Close (right-aligned)
             float closeX = inRect.xMax - btnW - padding;
             Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(closeRect, "Close"))
+            if (Widgets.ButtonText(closeRect, "RICS.Editor.Close".Translate()))
             {
                 this.Close();
             }

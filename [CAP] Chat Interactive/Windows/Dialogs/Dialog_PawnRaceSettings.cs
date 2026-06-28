@@ -93,7 +93,7 @@ namespace CAP_ChatInteractive
             // Load Backup (latest timestamped)
             float loadX = padding + btnW + gap;
             Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(loadRect, "Load Backup"))
+            if (Widgets.ButtonText(loadRect, "RICS.Editor.LoadBackup".Translate()))
             {
                 string json = BackupUtility.LoadLatestTimestampedBackup("PawnRaceSettings");
                 if (!string.IsNullOrEmpty(json))
@@ -129,7 +129,7 @@ namespace CAP_ChatInteractive
             // Save As... (uses Dialog_TextInput for custom name)
             float saveAsX = loadX + btnW + gap;
             Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(saveAsRect, "Save As..."))
+            if (Widgets.ButtonText(saveAsRect, "RICS.Editor.SaveAs".Translate()))
             {
                 ShowSaveAsMenu();
             }
@@ -137,7 +137,7 @@ namespace CAP_ChatInteractive
             // Load file
             float loadFileX = saveAsX + btnW + gap;
             Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(loadFileRect, "Load file"))
+            if (Widgets.ButtonText(loadFileRect, "RICS.Editor.LoadFile".Translate()))
             {
                 ShowLoadFileMenu();
             }
@@ -145,7 +145,7 @@ namespace CAP_ChatInteractive
             // Delete file (right next to Load file)
             float deleteX = loadFileX + btnW + gap;
             Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(deleteRect, "Delete file"))
+            if (Widgets.ButtonText(deleteRect, "RICS.Editor.DeleteFile".Translate()))
             {
                 ShowDeleteFileMenu();
             }
@@ -153,7 +153,7 @@ namespace CAP_ChatInteractive
             // Close (right-aligned)
             float closeX = inRect.xMax - btnW - padding;
             Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(closeRect, "Close"))
+            if (Widgets.ButtonText(closeRect, "RICS.Editor.Close".Translate()))
             {
                 this.Close();
             }
@@ -492,7 +492,7 @@ namespace CAP_ChatInteractive
                 // Basic Info section
                 Rect basicLabelRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
                 Text.Font = GameFont.Medium;
-                Widgets.Label(basicLabelRect, "Basic Information");
+                Widgets.Label(basicLabelRect, "RICS.PawnRaceSettings.BasicInfo".Translate());
                 Text.Font = GameFont.Small;
                 y += sectionHeight;
 
@@ -537,14 +537,14 @@ namespace CAP_ChatInteractive
                 // Settings section
                 Rect settingsLabelRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
                 Text.Font = GameFont.Medium;
-                Widgets.Label(settingsLabelRect, "Settings");
+                Widgets.Label(settingsLabelRect, "RICS.PawnRaceSettings.Settings".Translate());
                 Text.Font = GameFont.Small;
                 y += sectionHeight;
 
                 // Enabled checkbox and Base Price - same row
                 Rect enabledRect = new Rect(leftPadding, y, columnWidth - 10f, sectionHeight);
                 bool currentEnabled = settings.Enabled;
-                Widgets.CheckboxLabeled(enabledRect, "Enabled", ref currentEnabled);
+                Widgets.CheckboxLabeled(enabledRect, "RICS.PawnRaceSettings.Enabled".Translate(), ref currentEnabled);
                 if (currentEnabled != settings.Enabled)
                 {
                     settings.Enabled = currentEnabled;
@@ -552,7 +552,7 @@ namespace CAP_ChatInteractive
                 }
 
                 Rect priceLabelRect = new Rect(leftPadding + columnWidth, y, 100f, sectionHeight);
-                Widgets.Label(priceLabelRect, "Base Price:");
+                Widgets.Label(priceLabelRect, "RICS.PawnRaceSettings.BasePrice".Translate());
                 Rect priceInputRect = new Rect(leftPadding + columnWidth + 100f, y, 80f, sectionHeight);
                 int currentPrice = settings.BasePrice;
                 string priceBuffer = currentPrice.ToString();
@@ -665,7 +665,7 @@ namespace CAP_ChatInteractive
                 {
                     Rect xenotypeLabelRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
                     Text.Font = GameFont.Medium;
-                    Widgets.Label(xenotypeLabelRect, "Xenotype Prices");
+                    Widgets.Label(xenotypeLabelRect, "RICS.PawnRaceSettings.XenotypePrices".Translate());
                     Text.Font = GameFont.Small;
                     y += sectionHeight;
 
@@ -682,9 +682,9 @@ namespace CAP_ChatInteractive
                         Rect priceHeaderRect = new Rect(leftPadding + columnWidth + 90f, y, 120f, sectionHeight);
 
                         Text.Font = GameFont.Tiny;
-                        Widgets.Label(xenotypeHeaderRect, "Xenotype");
-                        Widgets.Label(enabledHeaderRect, "Enabled");
-                        Widgets.Label(priceHeaderRect, "Price (silver)");
+                        Widgets.Label(xenotypeHeaderRect, "RICS.PawnRaceSettings.Xenotype".Translate());
+                        Widgets.Label(enabledHeaderRect, "RICS.PawnRaceSettings.Enabled".Translate());
+                        Widgets.Label(priceHeaderRect, "RICS.PawnRaceSettings.PriceSilver".Translate());
                         Text.Font = GameFont.Small;
                         y += sectionHeight;
 
@@ -795,7 +795,7 @@ namespace CAP_ChatInteractive
                     {
                         // No allowed xenotypes
                         Rect noXenotypeRect = new Rect(leftPadding, y, viewRect.width - leftPadding, sectionHeight);
-                        Widgets.Label(noXenotypeRect, "No xenotypes allowed for this race (HAR restrictions apply)");
+                        Widgets.Label(noXenotypeRect, "RICS.PawnRaceSettings.NoXenotypes".Translate());
                         y += sectionHeight;
                     }
                 }

@@ -3,5 +3,15 @@
   <!-- Dialog_ViewerPawns.cs Translations -->
 
   <RICS.ViewerPawns.Title>Pawn Assignment Debug Info</RICS.ViewerPawns.Title>
+  <RICS.ViewerPawns.FixAssignments>Fix Assignments</RICS.ViewerPawns.FixAssignments>
+  <RICS.ViewerPawns.Status>Status</RICS.ViewerPawns.Status>
+  <RICS.ViewerPawns.NotFound>❌ NOT FOUND</RICS.ViewerPawns.NotFound>
+  <RICS.ViewerPawns.Deceased>💀 DECEASED</RICS.ViewerPawns.Deceased>
+  <RICS.ViewerPawns.Active>✅ ACTIVE</RICS.ViewerPawns.Active>
+  <RICS.ViewerPawns.PlatformID>Platform ID</RICS.ViewerPawns.PlatformID>
+  <RICS.ViewerPawns.ThingID>Pawn ThingID</RICS.ViewerPawns.ThingID>
+  <RICS.ViewerPawns.NotFound>❌ NOT FOUND</RICS.ViewerPawns.NotFound>
+  <RICS.ViewerPawns.Deceased>💀 DECEASED</RICS.ViewerPawns.Deceased>
+  <RICS.ViewerPawns.Active>✅ ACTIVE</RICS.ViewerPawns.Active>
 
 </LanguageData>

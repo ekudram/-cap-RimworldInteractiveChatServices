@@ -360,7 +360,7 @@ namespace CAP_ChatInteractive
             Rect headerRect = new Rect(rect.x, rect.y, rect.width, 30f);
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.UpperCenter;
-            Widgets.Label(headerRect, "Mod Sources");
+            Widgets.Label(headerRect, "RICS.TraitsEditor.ModSources".Translate());
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
 
@@ -446,7 +446,7 @@ namespace CAP_ChatInteractive
                 Rect noResultsRect = new Rect(listRect.x, listRect.y, listRect.width, 50f);
                 Text.Anchor = TextAnchor.MiddleCenter;
                 GUI.color = Color.gray;
-                Widgets.Label(noResultsRect, "No traits match your search criteria");
+                Widgets.Label(noResultsRect, "RICS.TraitsEditor.NoTraitsMatch".Translate());
                 GUI.color = Color.white;
                 Text.Anchor = TextAnchor.UpperLeft;
                 return;
@@ -494,13 +494,13 @@ namespace CAP_ChatInteractive
 
                 // Add Price Controls
                 Rect addLabelRect = new Rect(startX, 0f, 80f, 30f);
-                Widgets.Label(addLabelRect, "Add All:");
+                Widgets.Label(addLabelRect, "RICS.TraitsEditor.AddAll".Translate());
 
                 Rect addInputRect = new Rect(startX + 85f, 0f, 80f, 30f);
                 UIUtilities.TextFieldNumericFlexible(addInputRect, ref addAllPriceValue, ref addAllPriceBuffer, 0, 1000000);
 
                 Rect addButtonRect = new Rect(startX + 170f, 0f, 110f, 30f); // Width: 110f for "Set Add Price"
-                if (Widgets.ButtonText(addButtonRect, "Set Add Price"))
+                if (Widgets.ButtonText(addButtonRect, "RICS.TraitsEditor.SetAddPrice".Translate()))
                 {
                     if (addAllPriceValue >= 0)
                     {
@@ -523,7 +523,7 @@ namespace CAP_ChatInteractive
                 UIUtilities.TextFieldNumericFlexible(removeInputRect, ref removeAllPriceValue, ref removeAllPriceBuffer, 0, 1000000);
 
                 Rect removeButtonRect = new Rect(startX + 480f, 0f, 140f, 30f); // Width: 120f for "Set Remove Price" (moved right by 5px)
-                if (Widgets.ButtonText(removeButtonRect, "Set Remove Price"))
+                if (Widgets.ButtonText(removeButtonRect, "RICS.TraitsEditor.SetRemovePrice".Translate()))
                 {
                     if (removeAllPriceValue >= 0)
                     {
@@ -736,7 +736,7 @@ namespace CAP_ChatInteractive
 
             Rect bypassRect = new Rect(0f, y, rect.width, toggleHeight);
             bool bypassCurrent = trait.BypassLimit;
-            Widgets.CheckboxLabeled(bypassRect, "Bypass Limit", ref bypassCurrent);
+            Widgets.CheckboxLabeled(bypassRect, "RICS.TraitsEditor.BypassLimit".Translate(), ref bypassCurrent);
             if (bypassCurrent != trait.BypassLimit)
             {
                 trait.BypassLimit = bypassCurrent;

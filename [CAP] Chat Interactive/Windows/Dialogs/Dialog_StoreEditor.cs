@@ -117,7 +117,7 @@ namespace CAP_ChatInteractive
 
             // Save Backup (quick timestamped)
             Rect saveRect = new Rect(padding, currentY, btnW, btnH);
-            if (Widgets.ButtonText(saveRect, "Save Backup"))
+            if (Widgets.ButtonText(saveRect, "RICS.Editor.SaveBackup".Translate()))
             {
                 string json = JsonConvert.SerializeObject(StoreInventory.AllStoreItems, Formatting.Indented);
                 BackupUtility.SaveQuickBackup("StoreEditor", json);
@@ -127,7 +127,7 @@ namespace CAP_ChatInteractive
             // Load Backup (latest timestamped)
             float loadX = padding + btnW + gap;
             Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(loadRect, "Load Backup"))
+            if (Widgets.ButtonText(loadRect, "RICS.Editor.LoadBackup".Translate()))
             {
                 string json = BackupUtility.LoadLatestTimestampedBackup("StoreEditor");
                 if (!string.IsNullOrEmpty(json))
@@ -164,7 +164,7 @@ namespace CAP_ChatInteractive
             // Save As... (uses Dialog_TextInput for custom name)
             float saveAsX = loadX + btnW + gap;
             Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(saveAsRect, "Save As..."))
+            if (Widgets.ButtonText(saveAsRect, "RICS.Editor.SaveAs".Translate()))
             {
                 ShowSaveAsMenu();
             }
@@ -172,7 +172,7 @@ namespace CAP_ChatInteractive
             // Load file
             float loadFileX = saveAsX + btnW + gap;
             Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(loadFileRect, "Load file"))
+            if (Widgets.ButtonText(loadFileRect, "RICS.Editor.LoadFile".Translate()))
             {
                 ShowLoadFileMenu();
             }
@@ -180,7 +180,7 @@ namespace CAP_ChatInteractive
             // Delete file (right next to Load file)
             float deleteX = loadFileX + btnW + gap;
             Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(deleteRect, "Delete file"))
+            if (Widgets.ButtonText(deleteRect, "RICS.Editor.DeleteFile".Translate()))
             {
                 ShowDeleteFileMenu();
             }
@@ -188,7 +188,7 @@ namespace CAP_ChatInteractive
             // Close (right-aligned)
             float closeX = inRect.xMax - btnW - padding;
             Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(closeRect, "Close"))
+            if (Widgets.ButtonText(closeRect, "RICS.Editor.Close".Translate()))
             {
                 this.Close();
             }

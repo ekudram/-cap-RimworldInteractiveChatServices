@@ -56,7 +56,7 @@ namespace CAP_ChatInteractive
 
             // Fix button
             Rect fixButtonRect = new Rect(inRect.width - 150f, 35f, 140f, 30f);
-            if (Widgets.ButtonText(fixButtonRect, "Fix Assignments"))
+            if (Widgets.ButtonText(fixButtonRect, "RICS.ViewerPawns.FixAssignments".Translate()))
             {
                 assignmentManager.FixAllPawnAssignments();
                 // Refresh the window to show updated data
@@ -116,15 +116,15 @@ namespace CAP_ChatInteractive
 
             // Platform ID header
             Rect platformHeader = new Rect(rect.x + 5f, rect.y, platformWidth - 10f, rect.height);
-            Widgets.Label(platformHeader, "Platform ID");
+            Widgets.Label(platformHeader, "RICS.ViewerPawns.PlatformID".Translate());
 
             // ThingID header
             Rect thingIdHeader = new Rect(rect.x + platformWidth, rect.y, thingIdWidth - 10f, rect.height);
-            Widgets.Label(thingIdHeader, "Pawn ThingID");
+            Widgets.Label(thingIdHeader, "RICS.ViewerPawns.ThingID".Translate());
 
             // Status header
             Rect statusHeader = new Rect(rect.x + platformWidth + thingIdWidth, rect.y, statusWidth - 10f, rect.height);
-            Widgets.Label(statusHeader, "Status");
+            Widgets.Label(statusHeader, "RICS.ViewerPawns.Status".Translate());
 
             Text.Anchor = TextAnchor.UpperLeft;
             GUI.color = Color.white;
@@ -163,17 +163,17 @@ namespace CAP_ChatInteractive
             if (pawn == null)
             {
                 GUI.color = Color.red;
-                Widgets.Label(statusRect, "❌ NOT FOUND");
+                Widgets.Label(statusRect, "RICS.ViewerPawns.NotFound".Translate());
             }
             else if (pawn.Dead)
             {
                 GUI.color = Color.yellow;
-                Widgets.Label(statusRect, "💀 DECEASED");
+                Widgets.Label(statusRect, "RICS.ViewerPawns.Deceased".Translate());
             }
             else
             {
                 GUI.color = Color.green;
-                Widgets.Label(statusRect, "✅ ACTIVE");
+                Widgets.Label(statusRect, "RICS.ViewerPawns.Active".Translate());
             }
 
             Text.Anchor = TextAnchor.UpperLeft;

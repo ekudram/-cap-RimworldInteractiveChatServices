@@ -136,7 +136,7 @@ namespace CAP_ChatInteractive
 
             // Save Backup (quick timestamped)
             Rect saveRect = new Rect(padding, currentY, btnW, btnH);
-            if (Widgets.ButtonText(saveRect, "Save Backup"))
+            if (Widgets.ButtonText(saveRect, "RICS.Editor.SaveBackup".Translate()))
             {
                 var modSettings = CAPChatInteractiveMod.Instance?.Settings;
                 if (modSettings != null)
@@ -149,7 +149,7 @@ namespace CAP_ChatInteractive
             // Load Backup (latest timestamped)
             float loadX = padding + btnW + gap;
             Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(loadRect, "Load Backup"))
+            if (Widgets.ButtonText(loadRect, "RICS.Editor.LoadBackup".Translate()))
             {
                 var backup = JsonFileManager.LoadLatestSettingsBackup();
                 if (backup != null)
@@ -183,7 +183,7 @@ namespace CAP_ChatInteractive
             //float deleteX = loadFileX + btnW + gap;
             float deleteX = loadX + btnW + gap;
             Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(deleteRect, "Delete file"))
+            if (Widgets.ButtonText(deleteRect, "RICS.Editor.DeleteFile".Translate()))
             {
                 ShowDeleteFileMenu();
             }
@@ -191,7 +191,7 @@ namespace CAP_ChatInteractive
             // Close (right-aligned)
             float closeX = inRect.xMax - btnW - padding;
             Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(closeRect, "Close"))
+            if (Widgets.ButtonText(closeRect, "RICS.Editor.Close".Translate()))
             {
                 this.Close();
             }

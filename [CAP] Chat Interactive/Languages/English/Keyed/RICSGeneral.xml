@@ -132,6 +132,8 @@ Changes take effect immediately for new purchases.]]>
   <!-- Generic Dialog Buttons -->
   <RICS.Dialog.OK>OK</RICS.Dialog.OK>
   <RICS.Dialog.Cancel>Cancel</RICS.Dialog.Cancel>
+  <RICS.Dialog.Confirm>Confirm</RICS.Dialog.Confirm>
+  <RICS.Editor.Cost>Cost</RICS.Editor.Cost>
   
   <!-- Common Editor Buttons -->
   <RICS.Editor.SaveBackup>Save Backup</RICS.Editor.SaveBackup>
@@ -141,5 +143,20 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Editor.DeleteFile>Delete file</RICS.Editor.DeleteFile>
   <RICS.Editor.Close>Close</RICS.Editor.Close>
   <RICS.Editor.Search>Search:</RICS.Editor.Search>
+  <RICS.Editor.BackupSaved>Command settings quick backup saved (timestamped).</RICS.Editor.BackupSaved>
+  <RICS.Editor.Loaded>Command settings loaded from latest backup.</RICS.Editor.Loaded>
+  <RICS.Editor.FailedLoad>Failed to load backup (invalid JSON).</RICS.Editor.FailedLoad>
+  <RICS.Editor.NoBackups>No timestamped backups found for Command Manager.</RICS.Editor.NoBackups>
+  <RICS.Editor.EventsBackupSaved>Events backup saved (timestamped).</RICS.Editor.EventsBackupSaved>
+  <RICS.Editor.EventsLoaded>Events loaded from latest backup.</RICS.Editor.EventsLoaded>
+  <RICS.Editor.EventsFailedLoad>Failed to load backup (invalid data).</RICS.Editor.EventsFailedLoad>
+  <RICS.Editor.EventsNoBackups>No timestamped backups found for Events.</RICS.Editor.EventsNoBackups>
+  <RICS.Editor.QuickBackupSaved>Quick timestamped backup saved.</RICS.Editor.QuickBackupSaved>
+  <RICS.Editor.NamedBackupSaved>Named backup saved as {0}.json</RICS.Editor.NamedBackupSaved>
+  <RICS.Editor.NoBackupFiles>No backup files found for Events Editor.</RICS.Editor.NoBackupFiles>
+  <RICS.Editor.LoadedBackup>Loaded backup: {0}</RICS.Editor.LoadedBackup>
+  <RICS.Editor.FailedSelected>Failed to load selected backup.</RICS.Editor.FailedSelected>
+  <RICS.Updates.CriticalMigration>IMPORTANT: Critical Migration Required!</RICS.Updates.CriticalMigration>
+  <RICS.EditClientSecrets.OAuthWarning>⚠ WARNING: YouTube OAuth may require Google verification (days/weeks)</RICS.EditClientSecrets.OAuthWarning>
   
 </LanguageData>

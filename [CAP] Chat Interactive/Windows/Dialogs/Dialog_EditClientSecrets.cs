@@ -70,7 +70,7 @@ namespace CAP_ChatInteractive
                 // Warning
                 Rect warningRect = new Rect(0f, y, mainViewRect.width, 40f);
                 GUI.color = Color.red;
-                Widgets.Label(warningRect, "⚠ WARNING: YouTube OAuth may require Google verification (days/weeks)");
+                Widgets.Label(warningRect, "RICS.EditClientSecrets.OAuthWarning".Translate());
                 GUI.color = Color.white;
                 y += 45f;
 

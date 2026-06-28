@@ -56,6 +56,7 @@
   <RICS.ViewerManager.ResetCoinsConfirm>Reset ALL viewer coins to starting amount?</RICS.ViewerManager.ResetCoinsConfirm>
   <RICS.ViewerManager.ResetKarmaConfirm>Reset ALL viewer karma to starting amount?</RICS.ViewerManager.ResetKarmaConfirm>
   <RICS.ViewerManager.PortraitError>Portrait\nError</RICS.ViewerManager.PortraitError>
+  <RICS.ViewerManager.UnassignPawn>Unassign Pawn</RICS.ViewerManager.UnassignPawn>
 
   <!-- Ban confirmation -->
   <RICS.ViewerManager.BanConfirm>Are you sure you want to ban {0}?\n\nThis will also remove any pawn assignments.</RICS.ViewerManager.BanConfirm>

@@ -86,7 +86,7 @@ namespace CAP_ChatInteractive
                 Text.Font = GameFont.Medium;
                 GUI.color = Color.red;
                 Text.Anchor = TextAnchor.MiddleCenter;
-                Widgets.Label(warningRect, "IMPORTANT: Critical Migration Required!");
+                Widgets.Label(warningRect, "RICS.Updates.CriticalMigration".Translate());
                 Text.Anchor = TextAnchor.UpperLeft;
                 GUI.color = Color.white;
                 Text.Font = GameFont.Small;

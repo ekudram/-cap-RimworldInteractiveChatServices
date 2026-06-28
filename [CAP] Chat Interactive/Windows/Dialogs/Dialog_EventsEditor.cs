@@ -86,17 +86,17 @@ namespace CAP_ChatInteractive
 
             // Save Backup (quick timestamped)
             Rect saveRect = new Rect(padding, currentY, btnW, btnH);
-            if (Widgets.ButtonText(saveRect, "Save Backup"))
+            if (Widgets.ButtonText(saveRect, "RICS.Editor.SaveBackup".Translate()))
             {
                 string json = JsonConvert.SerializeObject(IncidentsManager.AllBuyableIncidents, Formatting.Indented);
                 BackupUtility.SaveQuickBackup("EventsEditor", json);
-                Messages.Message("Events backup saved (timestamped).", MessageTypeDefOf.NeutralEvent);
+                Messages.Message("RICS.Editor.EventsBackupSaved".Translate(), MessageTypeDefOf.NeutralEvent);
             }
 
             // Load Backup (latest timestamped)
             float loadX = padding + btnW + gap;
             Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(loadRect, "Load Backup"))
+            if (Widgets.ButtonText(loadRect, "RICS.Editor.LoadBackup".Translate()))
             {
                 string json = BackupUtility.LoadLatestTimestampedBackup("EventsEditor");
                 if (!string.IsNullOrEmpty(json))
@@ -115,25 +115,25 @@ namespace CAP_ChatInteractive
                             BuildCategoryCounts();
                             FilterEvents();
 
-                            Messages.Message("Events loaded from latest backup.", MessageTypeDefOf.NeutralEvent);
+                            Messages.Message("RICS.Editor.EventsLoaded".Translate(), MessageTypeDefOf.NeutralEvent);
                         }
                     }
                     catch (Exception ex)
                     {
                         Logger.Error($"Failed to apply events backup: {ex.Message}");
-                        Messages.Message("Failed to load backup (invalid data).", MessageTypeDefOf.RejectInput);
+                        Messages.Message("RICS.Editor.EventsFailedLoad".Translate(), MessageTypeDefOf.RejectInput);
                     }
                 }
                 else
                 {
-                    Messages.Message("No timestamped backups found for Events.", MessageTypeDefOf.RejectInput);
+                    Messages.Message("RICS.Editor.EventsNoBackups".Translate(), MessageTypeDefOf.RejectInput);
                 }
             }
 
             // Save As... (uses Dialog_TextInput for custom name)
             float saveAsX = loadX + btnW + gap;
             Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(saveAsRect, "Save As..."))
+            if (Widgets.ButtonText(saveAsRect, "RICS.Editor.SaveAs".Translate()))
             {
                 ShowSaveAsMenu();
             }
@@ -141,7 +141,7 @@ namespace CAP_ChatInteractive
             // Load file
             float loadFileX = saveAsX + btnW + gap;
             Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(loadFileRect, "Load file"))
+            if (Widgets.ButtonText(loadFileRect, "RICS.Editor.LoadFile".Translate()))
             {
                 ShowLoadFileMenu();
             }
@@ -149,7 +149,7 @@ namespace CAP_ChatInteractive
             // Delete file (right next to Load file)
             float deleteX = loadFileX + btnW + gap;
             Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(deleteRect, "Delete file"))
+            if (Widgets.ButtonText(deleteRect, "RICS.Editor.DeleteFile".Translate()))
             {
                 ShowDeleteFileMenu();
             }
@@ -157,7 +157,7 @@ namespace CAP_ChatInteractive
             // Close (right-aligned)
             float closeX = inRect.xMax - btnW - padding;
             Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(closeRect, "Close"))
+            if (Widgets.ButtonText(closeRect, "RICS.Editor.Close".Translate()))
             {
                 this.Close();
             }
@@ -898,7 +898,7 @@ namespace CAP_ChatInteractive
 
             // Label
             Rect labelRect = new Rect(0f, 0f, 60f, 25f);
-            Widgets.Label(labelRect, "Cost".Translate() + ":"); ;
+            Widgets.Label(labelRect, "RICS.Editor.Cost".Translate() + ":");
 
             // Cost input
             Rect inputRect = new Rect(65f, 0f, 80f, 25f);
@@ -1427,7 +1427,7 @@ namespace CAP_ChatInteractive
                 {
                     string json = JsonConvert.SerializeObject(IncidentsManager.AllBuyableIncidents, Formatting.Indented);
                     BackupUtility.SaveQuickBackup("EventsEditor", json);
-                    Messages.Message("Quick timestamped backup saved.", MessageTypeDefOf.NeutralEvent);
+                    Messages.Message("RICS.Editor.QuickBackupSaved".Translate(), MessageTypeDefOf.NeutralEvent);
                 }),
                 new FloatMenuOption("Save as Named Theme (custom name)", () =>
                 {
@@ -1440,7 +1440,7 @@ namespace CAP_ChatInteractive
                             if (!string.IsNullOrWhiteSpace(name))
                             {
                                 BackupUtility.SaveNamedBackup("EventsEditor", name, json);
-                                Messages.Message($"Named backup saved as {name}.json", MessageTypeDefOf.NeutralEvent);
+                                Messages.Message("RICS.Editor.NamedBackupSaved".Translate(name), MessageTypeDefOf.NeutralEvent);
                             }
                             else
                             {
@@ -1460,7 +1460,7 @@ namespace CAP_ChatInteractive
             var files = BackupUtility.GetAllBackupFiles("EventsEditor");
             if (files.Count == 0)
             {
-                Messages.Message("No backup files found for Events Editor.", MessageTypeDefOf.RejectInput);
+                Messages.Message("RICS.Editor.NoBackupFiles".Translate(), MessageTypeDefOf.RejectInput);
                 return;
             }
 
@@ -1486,13 +1486,13 @@ namespace CAP_ChatInteractive
                                 BuildCategoryCounts();
                                 FilterEvents();
 
-                                Messages.Message($"Loaded backup: {file}", MessageTypeDefOf.NeutralEvent);
+                                Messages.Message("RICS.Editor.LoadedBackup".Translate(file), MessageTypeDefOf.NeutralEvent);
                             }
                         }
                         catch (Exception ex)
                         {
                             Logger.Error($"Failed to load {file}: {ex.Message}");
-                            Messages.Message("Failed to load selected backup.", MessageTypeDefOf.RejectInput);
+                            Messages.Message("RICS.Editor.FailedSelected".Translate(), MessageTypeDefOf.RejectInput);
                         }
                     }
                 }));
@@ -1506,7 +1506,7 @@ namespace CAP_ChatInteractive
             var files = BackupUtility.GetAllBackupFiles("EventsEditor");
             if (files.Count == 0)
             {
-                Messages.Message("No backup files found for Events Editor.", MessageTypeDefOf.RejectInput);
+                Messages.Message("RICS.Editor.NoBackupFiles".Translate(), MessageTypeDefOf.RejectInput);
                 return;
             }
 

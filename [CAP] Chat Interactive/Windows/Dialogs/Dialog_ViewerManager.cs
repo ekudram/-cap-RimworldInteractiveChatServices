@@ -616,7 +616,7 @@ namespace CAP_ChatInteractive
 
                 // Unassign button
                 Rect unassignRect = new Rect(infoX, y, 120f, sectionHeight);
-                if (Widgets.ButtonText(unassignRect, "Unassign Pawn"))
+                if (Widgets.ButtonText(unassignRect, "RICS.ViewerManager.UnassignPawn".Translate()))
                 {
                     Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
                         $"Unassign {pawnName} from {selectedViewer.Username}?\nThis will allow them to buy a new pawn.",
@@ -1085,7 +1085,7 @@ namespace CAP_ChatInteractive
             // Confirm button - centered below input
             float buttonWidth = 100f;
             Rect buttonRect = new Rect((inRect.width - buttonWidth) / 2f, currentY, buttonWidth, 35f);
-            if (Widgets.ButtonText(buttonRect, "Confirm"))
+            if (Widgets.ButtonText(buttonRect, "RICS.Dialog.Confirm".Translate()))
             {
                 onConfirm?.Invoke(currentValue);
                 this.Close();

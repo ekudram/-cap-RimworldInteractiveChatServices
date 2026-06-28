@@ -134,7 +134,7 @@ namespace CAP_ChatInteractive
             Rect oauthStatusRect = new Rect(oauthButtonRect.xMax + 10f, oauthRect.y, 120f, 30f);
             Rect oauthWarningRect = new Rect(oauthRect.x, oauthRect.y + 25f, oauthRect.width, 20f);
 
-            Widgets.Label(oauthLabelRect, "OAuth Config:");
+            Widgets.Label(oauthLabelRect, "RICS.YouTubeSettings.OAuthConfig".Translate());
             if (Widgets.ButtonText(oauthButtonRect, clientSecretsExists ? "Edit" : "Create"))
             {
                 Find.WindowStack.Add(new Dialog_EditClientSecrets());
@@ -143,22 +143,22 @@ namespace CAP_ChatInteractive
             if (clientSecretsExists)
             {
                 GUI.color = Color.green;
-                Widgets.Label(oauthStatusRect, "✓ Ready");
+                Widgets.Label(oauthStatusRect, "RICS.YouTubeSettings.OAuthReady".Translate());
                 GUI.color = Color.white;
 
                 // Warning about verification
                 GUI.color = Color.yellow;
-                Widgets.Label(oauthWarningRect, "⚠ May require Google verification");
+                Widgets.Label(oauthWarningRect, "RICS.YouTubeSettings.OAuthWarning".Translate());
                 GUI.color = Color.white;
             }
             else
             {
                 GUI.color = Color.yellow;
-                Widgets.Label(oauthStatusRect, "✗ No OAuth");
+                Widgets.Label(oauthStatusRect, "RICS.YouTubeSettings.OAuthNo".Translate());
                 GUI.color = Color.white;
 
                 // Info about fallback
-                Widgets.Label(oauthWarningRect, "Chat reading still works without OAuth");
+                Widgets.Label(oauthWarningRect, "RICS.YouTubeSettings.ChatReadNote".Translate());
             }
             TooltipHandler.TipRegion(oauthRect, "OAuth 2.0 for sending messages (may require Google verification)");
 

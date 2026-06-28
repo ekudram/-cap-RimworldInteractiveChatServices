@@ -20,5 +20,11 @@
   <RICS.TraitsEditor.Loaded>Traits loaded from latest backup.</RICS.TraitsEditor.Loaded>
   <RICS.TraitsEditor.FailedLoad>Failed to load backup (invalid data).</RICS.TraitsEditor.FailedLoad>
   <RICS.TraitsEditor.NoBackups>No timestamped backups found for Traits Editor.</RICS.TraitsEditor.NoBackups>
+  <RICS.TraitsEditor.BypassLimit>Bypass Limit</RICS.TraitsEditor.BypassLimit>
+  <RICS.TraitsEditor.ModSources>Mod Sources</RICS.TraitsEditor.ModSources>
+  <RICS.TraitsEditor.NoTraitsMatch>No traits match your search criteria</RICS.TraitsEditor.NoTraitsMatch>
+  <RICS.TraitsEditor.AddAll>Add All:</RICS.TraitsEditor.AddAll>
+  <RICS.TraitsEditor.SetAddPrice>Set Add Price</RICS.TraitsEditor.SetAddPrice>
+  <RICS.TraitsEditor.SetRemovePrice>Set Remove Price</RICS.TraitsEditor.SetRemovePrice>
 
 </LanguageData>

@@ -22,5 +22,10 @@
   <RICS.YouTubeSettings.FindIDHelp>This will open a tool to find your YouTube Channel ID.\n\nOpen Channel ID Finder?</RICS.YouTubeSettings.FindIDHelp>
   <RICS.YouTubeSettings.OpenTool>Open Tool</RICS.YouTubeSettings.OpenTool>
   <RICS.YouTubeSettings.Cancel>Cancel</RICS.YouTubeSettings.Cancel>
+  <RICS.YouTubeSettings.OAuthConfig>OAuth Config:</RICS.YouTubeSettings.OAuthConfig>
+  <RICS.YouTubeSettings.OAuthReady>✓ Ready</RICS.YouTubeSettings.OAuthReady>
+  <RICS.YouTubeSettings.OAuthWarning>⚠ May require Google verification</RICS.YouTubeSettings.OAuthWarning>
+  <RICS.YouTubeSettings.OAuthNo>✗ No OAuth</RICS.YouTubeSettings.OAuthNo>
+  <RICS.YouTubeSettings.ChatReadNote>Chat reading still works without OAuth</RICS.YouTubeSettings.ChatReadNote>
 
 </LanguageData>
