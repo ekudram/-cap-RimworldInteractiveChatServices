@@ -39,7 +39,7 @@
   <RICS.ResetAllToDefaults>Reset ALL to defaults</RICS.ResetAllToDefaults>
   <RICS.ResetAllToDefaults.Dialog>Reset ALL event cooldowns to default? This cannot be undone.</RICS.ResetAllToDefaults.Dialog>
   <RICS.Custom>Custom...</RICS.Custom>
-  <RICS.CooldownControl.Label>CD:</RICS.CooldownControl.Label>  <!-- CD: for Cooldown -->
+  <RICS.CooldownControl.Label>Cooldown:</RICS.CooldownControl.Label>  <!-- CD: for Cooldown -->
   <RICS.EventsEditor.ResetCooldownTooltip>Reset to default cooldown</RICS.EventsEditor.ResetCooldownTooltip>
 
   <!-- Lists -->

@@ -32,7 +32,6 @@
   <RICS.MPCH.OverallStatus>📊 Overall Status: {0}</RICS.MPCH.OverallStatus>
   <RICS.MPCH.BleedoutIn>Bleedout in {0}!</RICS.MPCH.BleedoutIn>
   <RICS.MPCH.NeedsMedical>⚠️ Needs medical attention!</RICS.MPCH.NeedsMedical>
-  <RICS.MPCH.HealthError>Error retrieving health information.</RICS.MPCH.HealthError>
 
   <!-- Gear -->
   <RICS.MPCH.GearHeader>🎒 Gear Report:</RICS.MPCH.GearHeader>

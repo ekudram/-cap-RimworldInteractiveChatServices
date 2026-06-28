@@ -766,7 +766,7 @@ namespace CAP_ChatInteractive
             string tip = $"Cooldown window: {incident.CooldownDays} days\n" +
                          $"Max uses allowed in window: {incident.UsesPerCooldownPeriod}\n\n" +
                          "Set days to 0 for unlimited uses (∞).\n" +
-                         "Example: 7 days / 3 uses = this event can be triggered up to 3 times every 7 days.";
+                         "Example: 7 uses / 3 days = this event can be triggered up to 3 times every 7 days.";
 
             TooltipHandler.TipRegion(cooldownRect, tip);
 
@@ -781,7 +781,7 @@ namespace CAP_ChatInteractive
 
             // "Cooldown" label (consistent with other sub-headers in this dialog)
             Rect labelRect = new Rect(x, 0f, 68f, rect.height);
-            Widgets.Label(labelRect, "RICS.Cooldown".Translate().Colorize(ColorLibrary.SubHeader));
+            Widgets.Label(labelRect, "RICS.CooldownControl.Label".Translate());
             x += 72f;
 
             // === NEW CLEAR ORDER: "X times every Y days" (natural Western reading) ===
@@ -807,9 +807,9 @@ namespace CAP_ChatInteractive
                 IncidentsManager.SaveIncidentsToJson();
             }
 
-            // " times every " connector (keeps it compact but unambiguous)
-            float connectorWidth = Text.CalcSize(" times every ").x;
-            Widgets.Label(new Rect(x, 0f, connectorWidth, rect.height), " times every ");
+            // " every " connector (keeps it compact but unambiguous)
+            float connectorWidth = Text.CalcSize(" every ").x;
+            Widgets.Label(new Rect(x, 0f, connectorWidth, rect.height), " every ");
             x += connectorWidth + 2f;
 
             // 2. Days input (or ∞ button when no cooldown)

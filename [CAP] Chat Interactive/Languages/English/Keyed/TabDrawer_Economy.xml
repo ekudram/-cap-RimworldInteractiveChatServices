@@ -16,7 +16,6 @@
   <RICS.Economy.StartingKarma>Starting Karma:</RICS.Economy.StartingKarma>
   <RICS.Economy.MinimumKarma>Minimum Karma:</RICS.Economy.MinimumKarma>
   <RICS.Economy.MaximumKarma>Maximum Karma:</RICS.Economy.MaximumKarma>
-  <RICS.Economy.ActiveViewerMinutes>Active Viewer Minutes:</RICS.Economy.ActiveViewerMinutes>
 
   <!-- Field Descriptions -->
   <RICS.Economy.StartingCoinsDesc>Initial coins for new viewers</RICS.Economy.StartingCoinsDesc>
