@@ -77,8 +77,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (!viewerPawn.Dead)
                 return "RICS.RPCH.AlreadyAlive".Translate();
 
+            // Mechanical check first
             if (UseItemCommandHandler.CannotResurrectPawn(viewerPawn))
-                return "RICS.RPCH.BodyDestroyed".Translate();
+            {
+                var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
+                return "RICS.RPCH.CannotResurrectSelf".Translate(deathInfo.BodyStatus, deathInfo.CauseOfDeath);
+            }
 
             if (!StoreCommandHelper.CanUserAfford(user, price))
             {
@@ -127,7 +131,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return "RICS.RPCH.TargetAlreadyAlive".Translate(targetUsername);
 
             if (UseItemCommandHandler.CannotResurrectPawn(targetPawn))
-                return "RICS.RPCH.TargetBodyDestroyed".Translate(targetUsername);
+            {
+                var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(targetPawn);
+                return "RICS.RPCH.CannotResurrectTarget".Translate(targetUsername, deathInfo.BodyStatus, deathInfo.CauseOfDeath);
+            }
 
             viewer.TakeCoins(price);
             UseItemCommandHandler.ResurrectPawn(targetPawn);
