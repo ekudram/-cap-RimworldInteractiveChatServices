@@ -38,6 +38,8 @@
   <RICS.DISABLED>DISABLED</RICS.DISABLED>
   <RICS.Reset>Reset</RICS.Reset>
   <RICS.Multiplier>Multiplier</RICS.Multiplier>
+  <!-- New for 1.41 -->
+  <RICS.Return.PawnDeadReason> {0}. Use !leave to release them, or !revivepawn.</RICS.Return.PawnDeadReason>
   
   <RICS.Enabled>Enabled</RICS.Enabled>
   <RICS.Disabled>Disabled</RICS.Disabled>
