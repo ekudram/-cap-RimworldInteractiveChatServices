@@ -773,118 +773,25 @@ namespace CAP_ChatInteractive
             Widgets.EndGroup();
         }
 
-        private void DrawKarmaButton(Rect rect, BuyableIncident incident)
-        {
-            string label = TranslateKarmaType(incident.KarmaType);
-            Color baseColor = GetKarmaTypeColor(incident.KarmaType);
-
-            // Slightly darker background for contrast
-            Color bgColor = new Color(
-                baseColor.r * 0.65f,
-                baseColor.g * 0.65f,
-                baseColor.b * 0.65f
-            );
-
-            Widgets.DrawBoxSolid(rect, bgColor);
-
-            // Draw the button text on top
-            if (Widgets.ButtonText(rect, label, drawBackground: false))
-            {
-                List<FloatMenuOption> options = new List<FloatMenuOption>
-        {
-            new FloatMenuOption("RICS.Good".Translate(), () => UpdateKarmaType(incident, "Good")),
-            new FloatMenuOption("RICS.Bad".Translate(), () => UpdateKarmaType(incident, "Bad")),
-            new FloatMenuOption("RICS.Neutral".Translate(), () => UpdateKarmaType(incident, "Neutral")),
-            new FloatMenuOption("RICS.Doom".Translate(), () => UpdateKarmaType(incident, "Doom"))
-        };
-                Find.WindowStack.Add(new FloatMenu(options));
-            }
-
-            TooltipHandler.TipRegion(rect, $"Karma Type: {label}\nClick to change");
-        }
-        private void DrawCompactCostControl(Rect rect, BuyableIncident incident)
-        {
-            Widgets.BeginGroup(rect);
-
-            Rect labelRect = new Rect(0f, 0f, 38f, rect.height);
-            Widgets.Label(labelRect, "Cost:");
-
-            string bufferKey = $"Cost_{incident.DefName}";
-            if (!numericBuffers.ContainsKey(bufferKey))
-                numericBuffers[bufferKey] = incident.BaseCost.ToString();
-
-            Rect inputRect = new Rect(40f, 0f, 42f, rect.height);
-            int costBuf = incident.BaseCost;
-            string bufStr = numericBuffers[bufferKey];
-            Widgets.TextFieldNumeric(inputRect, ref costBuf, ref bufStr, 0f, 1000000f);
-            numericBuffers[bufferKey] = bufStr;
-
-            if (costBuf != incident.BaseCost)
-            {
-                incident.BaseCost = costBuf;
-                IncidentsManager.SaveIncidentsToJson();
-            }
-
-            if (Widgets.ButtonText(new Rect(84f, 0f, 14f, rect.height), "R"))
-            {
-                incident.BaseCost = CalculateDefaultCost(incident);
-                numericBuffers[bufferKey] = incident.BaseCost.ToString();
-                IncidentsManager.SaveIncidentsToJson();
-            }
-
-            Widgets.EndGroup();
-        }
         private void DrawCooldownControl(Rect rect, BuyableIncident incident)
         {
             Widgets.BeginGroup(rect);
 
             float x = 0f;
 
-            // "Cooldown" label
+            // "Cooldown" label (consistent with other sub-headers in this dialog)
             Rect labelRect = new Rect(x, 0f, 68f, rect.height);
-            Widgets.Label(labelRect, "Cooldown".Colorize(ColorLibrary.SubHeader));
-            x += 70f;
+            Widgets.Label(labelRect, "RICS.Cooldown".Translate().Colorize(ColorLibrary.SubHeader));
+            x += 72f;
 
-            // Days input
-            string daysKey = $"Cooldown_{incident.DefName}";
-            if (!numericBuffers.ContainsKey(daysKey))
-                numericBuffers[daysKey] = incident.CooldownDays.ToString();
+            // === NEW CLEAR ORDER: "X times every Y days" (natural Western reading) ===
+            // WHY: Previous "days / uses per period" was backwards and confusing.
+            // Now reads left-to-right as "3 times every 7 days" which matches how players think about cooldowns.
 
-            Rect daysRect = new Rect(x, 0f, 36f, rect.height);
-            x += 38f;
-
-            if (incident.CooldownDays == 0)
-            {
-                if (Widgets.ButtonText(new Rect(daysRect.x, daysRect.y, 24f, rect.height), "∞"))
-                {
-                    incident.CooldownDays = 1;
-                    numericBuffers[daysKey] = "1";
-                    IncidentsManager.SaveIncidentsToJson();
-                }
-                TooltipHandler.TipRegion(new Rect(daysRect.x, daysRect.y, 24f, rect.height), "RICS.NoCooldownInfiniteTooltip".Translate());
-            }
-            else
-            {
-                int d = incident.CooldownDays;
-                string buf = numericBuffers[daysKey];
-                Widgets.TextFieldNumeric(daysRect, ref d, ref buf, 1f, 365f);
-                numericBuffers[daysKey] = buf;
-
-                if (d != incident.CooldownDays)
-                {
-                    incident.CooldownDays = d;
-                    IncidentsManager.SaveIncidentsToJson();
-                }
-            }
-
-            // Separator
-            Widgets.Label(new Rect(x, 0f, 14f, rect.height), "/");
-            x += 14f;
-
-            // Uses input
+            // 1. Uses input (number of times)
             string usesKey = $"UsesPerCD_{incident.DefName}";
             if (!numericBuffers.ContainsKey(usesKey))
-                numericBuffers[usesKey] = incident.UsesPerCooldownPeriod.ToString();
+                numericBuffers[usesKey] = Mathf.Max(1, incident.UsesPerCooldownPeriod).ToString();
 
             Rect usesRect = new Rect(x, 0f, 30f, rect.height);
             x += 32f;
@@ -900,10 +807,56 @@ namespace CAP_ChatInteractive
                 IncidentsManager.SaveIncidentsToJson();
             }
 
-            // "per period" label
-            Widgets.Label(new Rect(x, 0f, 72f, rect.height), "per period");
+            // " times every " connector (keeps it compact but unambiguous)
+            float connectorWidth = Text.CalcSize(" times every ").x;
+            Widgets.Label(new Rect(x, 0f, connectorWidth, rect.height), " times every ");
+            x += connectorWidth + 2f;
 
-            // === Reset button - properly positioned on the far right ===
+            // 2. Days input (or ∞ button when no cooldown)
+            string daysKey = $"Cooldown_{incident.DefName}";
+            if (!numericBuffers.ContainsKey(daysKey))
+                numericBuffers[daysKey] = incident.CooldownDays.ToString();
+
+            Rect daysRect = new Rect(x, 0f, 36f, rect.height);
+            x += 38f;
+
+            if (incident.CooldownDays == 0)
+            {
+                // ∞ button for "no cooldown"
+                if (Widgets.ButtonText(new Rect(daysRect.x, daysRect.y, 28f, rect.height), "∞"))
+                {
+                    incident.CooldownDays = 1;
+                    numericBuffers[daysKey] = "1";
+                    IncidentsManager.SaveIncidentsToJson();
+                }
+                TooltipHandler.TipRegion(new Rect(daysRect.x, daysRect.y, 28f, rect.height),
+                    "RICS.NoCooldownInfiniteTooltip".Translate());
+            }
+            else
+            {
+                int d = incident.CooldownDays;
+                string buf = numericBuffers[daysKey];
+                Widgets.TextFieldNumeric(daysRect, ref d, ref buf, 1f, 365f);
+                numericBuffers[daysKey] = buf;
+
+                if (d != incident.CooldownDays)
+                {
+                    incident.CooldownDays = d;
+                    IncidentsManager.SaveIncidentsToJson();
+                }
+            }
+
+            // Trailing " days" label (or special case when ∞)
+            if (incident.CooldownDays == 0)
+            {
+                Widgets.Label(new Rect(x, 0f, 80f, rect.height), " (no cooldown)");
+            }
+            else
+            {
+                Widgets.Label(new Rect(x, 0f, 40f, rect.height), " days");
+            }
+
+            // === Reset button (far right, consistent with Cost reset) ===
             Rect resetBtn = new Rect(rect.width - 24f, 0f, 22f, rect.height);
             if (Widgets.ButtonText(resetBtn, "R"))
             {
@@ -913,7 +866,7 @@ namespace CAP_ChatInteractive
                 numericBuffers[usesKey] = "1";
                 IncidentsManager.SaveIncidentsToJson();
             }
-            TooltipHandler.TipRegion(resetBtn, "Reset to default cooldown");
+            TooltipHandler.TipRegion(resetBtn, "RICS.EventsEditor.ResetCooldownTooltip".Translate());
 
             Widgets.EndGroup();
         }
@@ -1014,17 +967,6 @@ namespace CAP_ChatInteractive
         {
             incident.KarmaType = karmaType;
             IncidentsManager.SaveIncidentsToJson();
-        }
-
-        private Color GetKarmaTypeColor(string karmaType)
-        {
-            return karmaType?.ToLowerInvariant() switch
-            {
-                "good" => Color.green,
-                "bad" => Color.red,
-                "doom" => new Color(0.85f, 0.15f, 0.85f), // vivid purple-pink = "colony-ending doom"
-                _ => Color.yellow
-            };
         }
 
         private List<string> GetSortedModSourcesForDisplay()
@@ -1379,6 +1321,7 @@ namespace CAP_ChatInteractive
                 _ => 2
             };
         }
+
         private void SaveOriginalSettings()
         {
             originalSettings.Clear();
@@ -1387,6 +1330,7 @@ namespace CAP_ChatInteractive
                 originalSettings[incident.DefName] = (incident.BaseCost, incident.KarmaType);
             }
         }
+
         private void ResetAllPrices()
         {
             foreach (var incident in IncidentsManager.AllBuyableIncidents.Values)
@@ -1396,6 +1340,7 @@ namespace CAP_ChatInteractive
             IncidentsManager.SaveIncidentsToJson();
             FilterEvents();
         }
+
         public override void PostClose()
         {
             IncidentsManager.SaveIncidentsToJsonPostClose();
