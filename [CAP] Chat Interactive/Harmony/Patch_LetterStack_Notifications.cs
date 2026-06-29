@@ -3,6 +3,7 @@
 // Part of RICS (Rimworld Interactive Chat Services) — AGPLv3
 
 using HarmonyLib;
+using RimWorld;
 using Verse;
 
 namespace CAP_ChatInteractive.AI
@@ -59,9 +60,9 @@ namespace CAP_ChatInteractive.AI
 
     /// <summary>
     /// Postfix on Pawn.Kill to catch deaths for the AI bot.
-    /// We batch them in the GameComponent (throttled every ~5s) so we don't spam every tick.
-    /// This lets the bot react to individual deaths and detect raid situations from volume.
-    /// Includes map info so the bot can tell if the home colony is under attack.
+    /// Builds intuitive death info: animal vs pawn, faction (for pawns/animals), killer (instigator + damage), map context,
+    /// and special note when a player-faction animal is euthanized/slaughtered for meat and fur.
+    /// Messages are batched in GameComponent (throttled) for raid detection from volume + home map.
     /// </summary>
     [HarmonyPatch(typeof(Pawn))]
     [HarmonyPatch(nameof(Pawn.Kill))]
@@ -79,27 +80,112 @@ namespace CAP_ChatInteractive.AI
                 if (settings == null || !settings.AIChatBotActive)
                     return;
 
-                string name = __instance.LabelShortCap ?? __instance.Name?.ToStringShort ?? "Unknown pawn";
+                Pawn pawn = __instance;
+                string name = pawn.LabelShortCap ?? pawn.Name?.ToStringShort ?? "Unknown";
 
+                // Map context (keep the phrases for existing batch raid detection logic in GameComponent)
                 string mapLabel = "an unknown location";
                 string mapContext = "";
-                Map pawnMap = __instance.Map;
+                Map pawnMap = pawn.Map;
                 if (pawnMap != null && pawnMap.Parent != null)
                 {
                     mapLabel = pawnMap.Parent.Label ?? pawnMap.Parent.def.label ?? "a map";
-                    if (pawnMap.IsPlayerHome)
-                        mapContext = " (on the home colony map)";
-                    else
-                        mapContext = " (on a remote map)";
+                    mapContext = pawnMap.IsPlayerHome ? " (home colony map)" : " (remote map)";
                 }
 
-                string cause = "unknown causes";
-                if (dinfo.HasValue && dinfo.Value.Def != null)
-                    cause = dinfo.Value.Def.label;
-                else if (exactCulprit != null && exactCulprit.def != null)
-                    cause = exactCulprit.def.label;
+                // Determine intuitive type: pawn vs animal (per request)
+                string entityKind = "Pawn";
+                if (pawn.RaceProps != null)
+                {
+                    if (pawn.RaceProps.Animal)
+                        entityKind = "Animal";
+                    else if (pawn.RaceProps.Humanlike)
+                        entityKind = "Pawn";
+                    else
+                        entityKind = "Creature";
+                }
 
-                string message = $"{name} has died on {mapLabel} from {cause}{mapContext}";
+                // Faction context if present (player or other)
+                string factionPart = "";
+                if (pawn.Faction != null)
+                {
+                    if (pawn.Faction == Faction.OfPlayer || pawn.Faction.IsPlayer)
+                        factionPart = " (player faction)";
+                    else
+                        factionPart = $" ({pawn.Faction.Name ?? pawn.Faction.def?.label ?? "unknown faction"})";
+                }
+
+                // Killer / cause extraction: prefer instigator (who/what killed it) + damage
+                string killerDetail = "";
+                Thing instigator = dinfo.HasValue ? dinfo.Value.Instigator : null;
+                DamageDef dmgDef = dinfo.HasValue ? dinfo.Value.Def : null;
+
+                if (instigator is Pawn killerPawn)
+                {
+                    string killerFaction = (killerPawn.Faction == Faction.OfPlayer || (killerPawn.Faction?.IsPlayer ?? false))
+                        ? "player faction"
+                        : (killerPawn.Faction?.Name ?? killerPawn.Faction?.def?.label ?? "neutral/hostile");
+                    killerDetail = $" was killed by {killerPawn.LabelShortCap ?? "a pawn"} ({killerFaction})";
+                    if (dmgDef != null)
+                        killerDetail += $" ({dmgDef.label})";
+                }
+                else if (instigator != null)
+                {
+                    string instName = instigator.LabelShortCap ?? instigator.def?.label ?? "something";
+                    killerDetail = $" was killed by {instName}";
+                    if (dmgDef != null)
+                        killerDetail += $" ({dmgDef.label})";
+                }
+                else if (exactCulprit != null && exactCulprit.def != null)
+                {
+                    killerDetail = $" has died from {exactCulprit.def.label}";
+                }
+                else if (dmgDef != null)
+                {
+                    killerDetail = $" has died from {dmgDef.label}";
+                }
+                else
+                {
+                    killerDetail = " has died from unknown causes";
+                }
+
+                // Special intuitive note for euthanized/slaughtered player-faction animals (for meat and fur)
+                string slaughterNote = "";
+                bool isPlayerFactionAnimal = pawn.IsAnimal &&
+                    (pawn.Faction == Faction.OfPlayer || (pawn.Faction?.IsPlayer ?? false));
+
+                if (isPlayerFactionAnimal)
+                {
+                    bool looksSlaughtered =
+                        (dinfo.HasValue && dinfo.Value.Def == DamageDefOf.ExecutionCut) ||
+                        (dinfo.HasValue && dmgDef != null &&
+                            (dmgDef.defName.IndexOf("Cut", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             dmgDef.defName.IndexOf("Stab", System.StringComparison.OrdinalIgnoreCase) >= 0)) ||
+                        (instigator is Pawn ip && ip.Faction == Faction.OfPlayer && ip.RaceProps != null && ip.RaceProps.Humanlike);
+
+                    if (looksSlaughtered)
+                    {
+                        // Produce clean intuitive phrasing for the special case requested:
+                        // note euthanized + player faction animal + slaughtered for meat and fur
+                        string killerBy = "";
+                        if (instigator is Pawn ip2)
+                        {
+                            string ipf = (ip2.Faction == Faction.OfPlayer || (ip2.Faction?.IsPlayer ?? false)) ? "player faction" : (ip2.Faction?.Name ?? ip2.Faction?.def?.label ?? "player");
+                            killerBy = $" by {ip2.LabelShortCap ?? "a colonist"} ({ipf})";
+                            if (dmgDef != null) killerBy += $" ({dmgDef.label})";
+                        }
+                        killerDetail = $" was euthanized (slaughtered for meat and fur){killerBy}";
+                        slaughterNote = "";
+                    }
+                }
+
+                // Build intuitive message: context of what died + faction + killer + special slaughter note
+                // Examples (what the bot receives in colony_event):
+                //   "Animal Muffalo (player faction) was euthanized (slaughtered for meat and fur) by Bob (player faction) (cut) on Map (home colony map)"
+                //   "Pawn Alice (player faction) was killed by Raider (hostiles) (bullet) on Map (home colony map)"
+                //   "Animal Wolf has died from infection on Remote (remote map)"
+                //   "Pawn Enemy (pirates) was killed by Colonist (player faction) (cut) on ... (home colony map)"
+                string message = $"{entityKind} {name}{factionPart}{killerDetail} on {mapLabel}{mapContext}{slaughterNote}";
 
                 var gameComp = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>();
                 gameComp?.RecordDeath(message);

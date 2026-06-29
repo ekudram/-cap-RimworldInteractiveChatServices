@@ -180,7 +180,8 @@ namespace CAP_ChatInteractive
 
             // === THROTTLED DEATH REPORTS TO AI BOT ===
             // Not every tick. Flush every ~5 seconds (300 ticks) if there are deaths.
-            // If many deaths, infer raid situation and include map context.
+            // The per-death strings (from patch) now include: animal/pawn, faction, killer (who + how), map, + slaughter note.
+            // Volume + home-map triggers simple raid inference.
             if (aiSettings?.AIChatBotActive == true && _aiChatBotService != null)
             {
                 int currentTick = Find.TickManager?.TicksGame ?? 0;
@@ -197,7 +198,7 @@ namespace CAP_ChatInteractive
                         summary += " — This looks like a major raid or combat situation!";
                     }
 
-                    // Check if any deaths on home map (from the message we built in the patch)
+                    // Check if any deaths on home map (substring still present in new richer messages)
                     bool onHome = deaths.Any(d => d.Contains("home colony map"));
 
                     if (onHome && deaths.Count >= 3)
