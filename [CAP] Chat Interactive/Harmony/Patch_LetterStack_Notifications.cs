@@ -56,4 +56,58 @@ namespace CAP_ChatInteractive.AI
             }
         }
     }
+
+    /// <summary>
+    /// Postfix on Pawn.Kill to catch deaths for the AI bot.
+    /// We batch them in the GameComponent (throttled every ~5s) so we don't spam every tick.
+    /// This lets the bot react to individual deaths and detect raid situations from volume.
+    /// Includes map info so the bot can tell if the home colony is under attack.
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn))]
+    [HarmonyPatch(nameof(Pawn.Kill))]
+    public static class Patch_Pawn_Kill_DeathNotifications
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn __instance, DamageInfo? dinfo, Hediff exactCulprit)
+        {
+            try
+            {
+                if (__instance == null || !__instance.Dead)
+                    return;
+
+                var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (settings == null || !settings.AIChatBotActive)
+                    return;
+
+                string name = __instance.LabelShortCap ?? __instance.Name?.ToStringShort ?? "Unknown pawn";
+
+                string mapLabel = "an unknown location";
+                string mapContext = "";
+                Map pawnMap = __instance.Map;
+                if (pawnMap != null && pawnMap.Parent != null)
+                {
+                    mapLabel = pawnMap.Parent.Label ?? pawnMap.Parent.def.label ?? "a map";
+                    if (pawnMap.IsPlayerHome)
+                        mapContext = " (on the home colony map)";
+                    else
+                        mapContext = " (on a remote map)";
+                }
+
+                string cause = "unknown causes";
+                if (dinfo.HasValue && dinfo.Value.Def != null)
+                    cause = dinfo.Value.Def.label;
+                else if (exactCulprit != null && exactCulprit.def != null)
+                    cause = exactCulprit.def.label;
+
+                string message = $"{name} has died on {mapLabel} from {cause}{mapContext}";
+
+                var gameComp = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>();
+                gameComp?.RecordDeath(message);
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Warning($"[RICS AI] Death notification postfix failed (non-fatal): {ex.Message}");
+            }
+        }
+    }
 }

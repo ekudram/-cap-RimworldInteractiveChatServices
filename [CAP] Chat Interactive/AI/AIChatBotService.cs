@@ -103,6 +103,10 @@ namespace CAP_ChatInteractive.AI
 
             try
             {
+                // Clean up any previous listener on this service (or to release the prefix if somehow leaked).
+                // This helps when Start() is called multiple times or after a failed previous attempt.
+                Stop();
+
                 // === SAFE PATH INITIALIZATION ===
                 // Always create folders inside RimWorld's official config directory
                 string baseConfigPath = Path.Combine(GenFilePaths.ConfigFolderPath, "CAP_ChatInteractive", "AI_Commands");
@@ -701,9 +705,23 @@ namespace CAP_ChatInteractive.AI
         public void Stop()
         {
             _isRunning = false;
-            _cts?.Cancel();
-            _listener?.Stop();
-            _listener?.Close();
+            try
+            {
+                _cts?.Cancel();
+            }
+            catch { }
+            try
+            {
+                _listener?.Stop();
+            }
+            catch { }
+            try
+            {
+                _listener?.Close();
+            }
+            catch { }
+            _cts = null;
+            _listener = null;
         }
 
         public void ExposeData() { }

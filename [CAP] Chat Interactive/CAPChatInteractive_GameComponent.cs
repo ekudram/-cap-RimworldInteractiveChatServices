@@ -52,6 +52,15 @@ namespace CAP_ChatInteractive
         // AI ChatBot Service
         public AIChatBotService _aiChatBotService;
 
+        // For batched death reports to AI bot (throttled, not every tick)
+        private readonly List<string> recentDeaths = new List<string>();
+        private int lastDeathFlushTick = 0;
+        private const int DEATH_FLUSH_INTERVAL = 300; // ~5 real seconds, reasonable throttle
+
+        // Static reference to the active AI service so we can properly stop the HttpListener
+        // when loading a new game (prevents "another listener for port 17888" error).
+        private static AIChatBotService _activeAIChatBotService;
+
 
         public CAPChatInteractive_GameComponent(Game game)
         {
@@ -165,6 +174,42 @@ namespace CAP_ChatInteractive
                     }
                 }
             }
+
+            // === THROTTLED DEATH REPORTS TO AI BOT ===
+            // Not every tick. Flush every ~5 seconds (300 ticks) if there are deaths.
+            // If many deaths, infer raid situation and include map context.
+            if (aiSettings?.AIChatBotActive == true && _aiChatBotService != null)
+            {
+                int currentTick = Find.TickManager?.TicksGame ?? 0;
+                if (currentTick - lastDeathFlushTick >= DEATH_FLUSH_INTERVAL && recentDeaths.Count > 0)
+                {
+                    lastDeathFlushTick = currentTick;
+
+                    var deaths = recentDeaths.ToList();
+                    recentDeaths.Clear();
+
+                    string summary = string.Join(" | ", deaths.Take(8)); // limit spam
+                    if (deaths.Count >= 4)
+                    {
+                        summary += " — This looks like a major raid or combat situation!";
+                    }
+
+                    // Check if any deaths on home map (from the message we built in the patch)
+                    bool onHome = deaths.Any(d => d.Contains("home colony map"));
+
+                    if (onHome && deaths.Count >= 3)
+                    {
+                        summary += ". The colony is being raided!";
+                    }
+                    else if (deaths.Count >= 3)
+                    {
+                        summary += ". Heavy losses — we may be raiding or in combat on another map.";
+                    }
+
+                    string botName = aiSettings.AIChatBotName ?? "Masie";
+                    _aiChatBotService.NotifyColonyEvent($"{botName}, deaths reported: {summary}");
+                }
+            }
         }
 
         private void InitializeAll()
@@ -233,9 +278,22 @@ namespace CAP_ChatInteractive
         private void InitializeAIChatBot()
         {
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
-            if (settings?.AIChatBotActive != true) return;
+            if (settings?.AIChatBotActive != true)
+            {
+                // AI is off — make sure any previous listener is stopped
+                _activeAIChatBotService?.Stop();
+                _activeAIChatBotService = null;
+                _aiChatBotService = null;
+                return;
+            }
 
-            _aiChatBotService ??= new AIChatBotService();
+            // Always stop any previous listener first. This releases the http://127.0.0.1:17888/ prefix
+            // so a fresh HttpListener can bind. Prevents the "another listener for ..." error when
+            // loading a new save or restarting the game while AIChatBot is enabled.
+            _activeAIChatBotService?.Stop();
+
+            _aiChatBotService = new AIChatBotService();
+            _activeAIChatBotService = _aiChatBotService;
             _aiChatBotService.Start();
 
             // Force an immediate game state cache update now that we know a game is loaded.
@@ -245,6 +303,15 @@ namespace CAP_ChatInteractive
             _aiChatBotService.PushCurrentGameStateToBot();
 
             Logger.Debug("AI ChatBot service initialized + initial game state cached");
+        }
+
+        public void RecordDeath(string deathMessage)
+        {
+            if (string.IsNullOrWhiteSpace(deathMessage)) return;
+            recentDeaths.Add(deathMessage);
+            // Cap the list to prevent memory bloat during massive raids
+            if (recentDeaths.Count > 50)
+                recentDeaths.RemoveAt(0);
         }
 
 
@@ -283,6 +350,16 @@ namespace CAP_ChatInteractive
                     _aiChatBotService.ProcessFileBasedAICommands();
                 }
             }
+        }
+
+        public override void GameEnd()
+        {
+            base.GameEnd();
+
+            // Make sure the AI listener is stopped when leaving the game (return to menu, etc.)
+            _activeAIChatBotService?.Stop();
+            _activeAIChatBotService = null;
+            _aiChatBotService = null;
         }
     }
 }
