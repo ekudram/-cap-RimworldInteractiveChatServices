@@ -421,4 +421,19 @@
     **DISABLED**
   </RICS.CC.common.store.disabled>
 
+  <!-- Storyteller Command -->
+  <RICS.CC.storyteller.none>
+    No active storyteller.
+  </RICS.CC.storyteller.none>
+
+  <RICS.CC.storyteller>
+    {0}: {1} | {2}: {3}
+  </RICS.CC.storyteller>
+
+  <!-- Optional labels for better localization -->
+  <RICS.CC.storyteller.label>Storyteller</RICS.CC.storyteller.label>
+  <RICS.CC.storyteller.difficulty>Difficulty</RICS.CC.storyteller.difficulty>
+
+  <RICS.CC.storyteller.unknown>Unknown</RICS.CC.storyteller.unknown>
+
 </LanguageData>
