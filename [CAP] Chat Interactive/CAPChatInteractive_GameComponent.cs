@@ -30,6 +30,9 @@ using CAP_ChatInteractive.Windows;
 using RimWorld;
 using UnityEngine;
 using Verse;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace CAP_ChatInteractive
 {
@@ -350,16 +353,6 @@ namespace CAP_ChatInteractive
                     _aiChatBotService.ProcessFileBasedAICommands();
                 }
             }
-        }
-
-        public override void GameEnd()
-        {
-            base.GameEnd();
-
-            // Make sure the AI listener is stopped when leaving the game (return to menu, etc.)
-            _activeAIChatBotService?.Stop();
-            _activeAIChatBotService = null;
-            _aiChatBotService = null;
         }
     }
 }
