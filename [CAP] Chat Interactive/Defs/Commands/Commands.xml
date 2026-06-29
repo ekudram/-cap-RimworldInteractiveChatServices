@@ -181,7 +181,20 @@
     <enabled>true</enabled>
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Colonists</commandClass>
     <requiresMod>true</requiresMod>
-    <commandDescription>Returns a list of the factions in current game.</commandDescription>
+    <commandDescription>Returns the number of colonists, viewer pawns and animals.</commandDescription>
+    <permissionLevel>everyone</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>Storyteller</defName>
+    <commandText>storyteller</commandText>
+    <label>Storyteller</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Storyteller</commandClass>
+    <requiresMod>false</requiresMod>
+    <commandDescription>Returns the name of the current storyteller and difficulty level.</commandDescription>
     <permissionLevel>everyone</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
