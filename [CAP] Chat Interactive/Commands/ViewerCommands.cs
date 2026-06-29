@@ -768,5 +768,31 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
+    public class Storyteller : ChatCommand
+    {
+        public override string Name => "storyteller";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            var storyteller = Find.Storyteller ?? Current.Game?.storyteller;
+            if (storyteller?.def == null)
+            {
+                return "RICS.CC.storyteller.none".Translate();
+            }
+
+            string name = storyteller.def.label?.CapitalizeFirst() 
+                ?? storyteller.def.defName 
+                ?? "RICS.CC.storyteller.unknown".Translate();
+
+            string difficulty = storyteller.difficultyDef?.label?.CapitalizeFirst() 
+                ?? storyteller.difficultyDef?.defName 
+                ?? "RICS.CC.storyteller.unknown".Translate();
+
+            string stLabel = "RICS.CC.storyteller.label".Translate();
+            string diffLabel = "RICS.CC.storyteller.difficulty".Translate();
+
+            return "RICS.CC.storyteller".Translate(stLabel, name, diffLabel, difficulty);
+        }
+    }
 
 }
