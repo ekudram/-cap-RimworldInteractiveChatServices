@@ -97,9 +97,9 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
             // Dynamic summary of ALL key karma settings (exactly 218 chars with default values)
             // Uses live settings so admins can tune without touching code or translations
-            return $"Karma ({settings.MinKarma:F0}-{settings.MaxKarma:F0}): Decay {settings.KarmaDecayRate:P0} every {settings.KarmaDecayIntervalMinutes}min (floor {settings.KarmaMinDecayFloor}). " +
-                   $"Good+{settings.KarmaGainPerGoodEvent} Neut+{settings.KarmaGainPerNeutralEvent} Bad-{settings.KarmaLossPerBadEvent} Doom-{settings.KarmaLossPerDoomEvent}. " +
-                   $"Store +{settings.KarmaPerStoreItem:0.##}%/item | Event×{settings.KarmaEventPriceMultiplier:0.##}. Higher = better coin rewards!";
+            return $"Karma ({settings.MinKarma:F0} - {settings.MaxKarma:F0}): Decay {settings.KarmaDecayRate:P0} every {settings.KarmaDecayIntervalMinutes} min (floor {settings.KarmaMinDecayFloor}). " +
+                   $"Good +{settings.KarmaGainPerGoodEvent} Neut +{settings.KarmaGainPerNeutralEvent} Bad -{settings.KarmaLossPerBadEvent} Doom -{settings.KarmaLossPerDoomEvent}. " +
+                   $"Store +{settings.KarmaPerStoreItem:0.##}% per item | Event x {settings.KarmaEventPriceMultiplier:0.##}. Higher = better coin rewards!";
         }
     }
 
@@ -703,7 +703,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             // B) Take the first/best match (simpler)
             // Here we go with A) — show grouped counts
 
-            var results = new System.Text.StringBuilder();
+            var resultLines = new System.Collections.Generic.List<string>();
 
             foreach (var def in matchingDefs.OrderBy(d => d.label))
             {
@@ -713,22 +713,19 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
                 if (count > 0)
                 {
-                    results.AppendLine("RICS.CC.storage.line".Translate(count.ToString(), def.label) + " | ");
-                    // results.AppendLine($"{count}× {def.label}");
+                    resultLines.Add("RICS.CC.storage.line".Translate(count.ToString("N0"), def.label));
                 }
             }
 
-            if (results.Length == 0)
+            if (resultLines.Count == 0)
             {
                 return "RICS.CC.storage.defsButZero".Translate(searchName);
-                // return $"Found matching definitions for '{searchName}', but none in storage right now.";
             }
 
             string header = matchingDefs.Count == 1
                 ? "RICS.CC.storage.headerOne".Translate() : "RICS.CC.storage.headerMultiple".Translate(matchingDefs.Count, searchName);
-            // : $"Found {matchingDefs.Count} matching item types for '{searchName}':";
 
-            string resultsStr = results.ToString().TrimEnd(' ', '|');
+            string resultsStr = string.Join(" | ", resultLines);
             return header + " " + resultsStr;
         }
     }

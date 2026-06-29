@@ -106,7 +106,7 @@
 
   <RICS.TCH.Set.TraitDefMissing>Error: Trait definition for '{0}' not found.</RICS.TCH.Set.TraitDefMissing>
 
-  <RICS.TCH.Set.NotEnoughCoins>You need {0}{1} to set traits, but you only have {2}{1}.</RICS.TCH.Set.NotEnoughCoins>
+  <RICS.TCH.Set.NotEnoughCoins>You need {0} {1} to set traits, but you only have {2} {1}.</RICS.TCH.Set.NotEnoughCoins>
 
   <RICS.TCH.Set.Success>✅ Set new traits: {0} for {1}{2}</RICS.TCH.Set.Success>
 
@@ -135,8 +135,8 @@
   <RICS.TCH.TraitInfo.Commonality>Commonality: {0:F1}%</RICS.TCH.TraitInfo.Commonality>
   <RICS.TCH.TraitInfo.Conflicts>Conflicts with: {0}</RICS.TCH.TraitInfo.Conflicts>
   <RICS.TCH.TraitInfo.ExcludedFrom>Excluded from: {0}</RICS.TCH.TraitInfo.ExcludedFrom>
-  <RICS.TCH.TraitInfo.BuyPrice>Buy price: {0}{1}</RICS.TCH.TraitInfo.BuyPrice>
-  <RICS.TCH.TraitInfo.SellPrice>Sell price: {0}{1}</RICS.TCH.TraitInfo.SellPrice>
+  <RICS.TCH.TraitInfo.BuyPrice>Buy price: {0} {1}</RICS.TCH.TraitInfo.BuyPrice>
+  <RICS.TCH.TraitInfo.SellPrice>Sell price: {0} {1}</RICS.TCH.TraitInfo.SellPrice>
   <RICS.TCH.TraitInfo.NoConflicts>No conflicts</RICS.TCH.TraitInfo.NoConflicts>
   <RICS.TCH.TraitInfo.NoExclusions>No exclusions</RICS.TCH.TraitInfo.NoExclusions>
 

@@ -218,7 +218,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
                 {
                     if (finalItem != null) finalItem.Destroy(); // cleanup
-                    return $"You need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} to purchase {quantity}x {itemName}! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                    return $"You need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} to purchase {quantity} {itemName}! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
                 }
 
                 // Get viewer's pawn for equip/wear/backpack commands
@@ -387,7 +387,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Debug($"Final LookTargets: {lookTargets?.ToString() ?? "null"}");
 
                 // Log success
-                Logger.Debug($"Purchase successful: {messageWrapper.Username} bought {quantity}x {itemName} for {finalPrice} {currencySymbol}");
+                Logger.Debug($"Purchase successful: {messageWrapper.Username} bought {quantity} {itemName} for {finalPrice} {currencySymbol}");
 
                 // Send appropriate letter notification
                 string itemLabel = thingDef?.LabelCap ?? itemName;
@@ -453,7 +453,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                 addToInventory ? "RICS.BICH.Return.Action.AddedToInventory".Translate() :
                                 "RICS.BICH.Return.Action.Delivered".Translate();
 
-                // return $"Purchased {quantity}x {itemName} for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} and {action}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                // return $"Purchased {quantity} {itemName} for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} and {action}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
                 return "RICS.BICH.Return.Success".Translate(quantity, itemName, StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol), action, StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
             }
             catch (Exception ex)
@@ -502,7 +502,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (lockerCount > 0 && dropPodCount > 0)
             {
                 // fallback path (split invoice is normally used, but kept for safety)
-                deliveryDesc = $"Mixed Delivery\n• Locker Delivery: x{lockerCount}\n• Drop Pod Delivery: x{dropPodCount}";
+                deliveryDesc = $"Mixed Delivery\n• Locker Delivery: {lockerCount}\n• Drop Pod Delivery: {dropPodCount}";
             }
             else if (lockerCount > 0)
             {
@@ -547,7 +547,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             string body = "RICS.BICH.Letter.Body.Standard".Translate(
                 username,                    // {0}
                 itemName,                    // {1}
-                quantity.ToString(),         // {2}  → produces correct "Item: Cowboy hat x2"
+                quantity.ToString(),         // {2}  → produces correct "Item: Cowboy hat 2"
                 deliverySection,             // {3}  → "Standard Drop Pod\nQuality: Masterwork\n..."
                 price.ToString("N0"),        // {4}
                 currencySymbol               // {5}

@@ -18,7 +18,7 @@
 
   <RICS.ICH.RETURN.IncidentCooldownReset>❌ {0} is on cooldown (resets every {1} days)</RICS.ICH.RETURN.IncidentCooldownReset>
 
-  <RICS.ICH.RETURN.EventTypeLimitReached>❌ {0} event limit reached! ({1}/{2} used this period)</RICS.ICH.RETURN.EventTypeLimitReached>
+  <RICS.ICH.RETURN.EventTypeLimitReached>❌ {0} event limit reached! ({1} / {2} used this period)</RICS.ICH.RETURN.EventTypeLimitReached>
 
   <RICS.ICH.RETURN.DoomEventPurchased>💀 DOOM EVENT PURCHASED: {0}!</RICS.ICH.RETURN.DoomEventPurchased>
 

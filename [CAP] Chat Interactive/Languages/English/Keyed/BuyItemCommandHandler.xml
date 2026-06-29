@@ -14,7 +14,7 @@
   <RICS.BICH.Return.DefNotFound>Error: Item definition not found.</RICS.BICH.Return.DefNotFound>
   <RICS.BICH.Return.BannedRace>Item '{0}' is a banned race and cannot be purchased.</RICS.BICH.Return.BannedRace>
   <RICS.BICH.Return.InvalidMaterial>Material '{0}' is not valid for {1}.</RICS.BICH.Return.InvalidMaterial>
-  <RICS.BICH.Return.CannotAfford>You need {0} to purchase {1}x {2}! You have {3}.</RICS.BICH.Return.CannotAfford>
+  <RICS.BICH.Return.CannotAfford>You need {0} to purchase {1} {2}! You have {3}.</RICS.BICH.Return.CannotAfford>
   <RICS.BICH.Return.PawnDead>Your pawn is dead. You cannot equip/wear/backpack items.</RICS.BICH.Return.PawnDead>
   <RICS.BICH.Return.GenericError>Error processing purchase. Please try again.</RICS.BICH.Return.GenericError>
   <RICS.BICH.Return.ItemNotEquippable>{0} is not available to be equipped.</RICS.BICH.Return.ItemNotEquippable>
@@ -23,7 +23,7 @@
   <RICS.BICH.Return.MissingBodyPartForWear>Your pawn is missing the required body part(s) to wear {0}.</RICS.BICH.Return.MissingBodyPartForWear>  <!-- ADDED RICS v1.39 -->
   
   <!-- Success message (used in final return) -->
-  <RICS.BICH.Return.Success>Purchased {0}x {1} for {2} and {3}! Remaining: {4}.</RICS.BICH.Return.Success>
+  <RICS.BICH.Return.Success>Purchased {0} {1} for {2} and {3}! Remaining: {4}.</RICS.BICH.Return.Success>
 
   <!-- Success action types (for the {3} placeholder above) -->
   <RICS.BICH.Return.Action.AddedToInventory>added to your pawn's inventory</RICS.BICH.Return.Action.AddedToInventory>
@@ -50,10 +50,10 @@
     RIMAZON INVOICE
     ====================
     Customer: {0}
-    Item: {1} x{2}
+    Item: {1} {2}
     Delivery: {3}
     ====================
-    Total: {4}{5}
+    Total: {4} {5}
     ====================
     Thank you for shopping with Rimazon!
     Satisfaction guaranteed or your coins back!
@@ -61,15 +61,15 @@
 
   <!-- Delivery method lines for standard invoice (inserted at {3}) -->
   <RICS.BICH.Letter.Delivery.Locker>
-    Delivery: Locker Delivery (x{0})
+    Delivery: Locker Delivery ({0})
   </RICS.BICH.Letter.Delivery.Locker>
   <RICS.BICH.Letter.Delivery.DropPod>
     Delivery: Standard Drop Pod
   </RICS.BICH.Letter.Delivery.DropPod>
   <RICS.BICH.Letter.Delivery.Mixed>
     Delivery: Mixed Delivery
-    • Locker Delivery: x{0}
-    • Drop Pod Delivery: x{1}
+    • Locker Delivery: {0}
+    • Drop Pod Delivery: {1}
   </RICS.BICH.Letter.Delivery.Mixed>
 
   <!-- Quality line (optional) -->
@@ -86,11 +86,11 @@
   <RICS.BICH.Letter.Body.Locker>
     === LOCKER DELIVERY INVOICE ===
     Customer: {0}
-    Item: {1} x{2}
+    Item: {1} {2}
     ====================
     Delivery: Locker Delivery
     Status: Delivered ✅
-    Total: 0{3}
+    Total: 0 {3}
     ====================
 
     {4}
@@ -98,20 +98,20 @@
 
   <!-- Pricing breakdown lines (inserted in the middle of invoice) -->
   <RICS.BICH.Letter.Pricing.Locker>
-    Locker Delivery (x{0}): 0{1}
+    Locker Delivery ({0}): 0 {1}
   </RICS.BICH.Letter.Pricing.Locker>
   <RICS.BICH.Letter.Pricing.DropPod>
-    Drop Pod Delivery (x{0}): {1}{2}
+    Drop Pod Delivery ({0}): {1} {2}
   </RICS.BICH.Letter.Pricing.DropPod>
   <RICS.BICH.Letter.Pricing.Total>
-    Total: {0}{1}
+    Total: {0} {1}
   </RICS.BICH.Letter.Pricing.Total>
 
   <!-- Invoice Body - Drop Pod Delivery Only -->
   <RICS.BICH.Letter.Body.DropPod>
     === DROP POD DELIVERY INVOICE ===
     Customer: {0}
-    Item: {1} x{2}
+    Item: {1} {2}
     ====================
     {3}{4}Delivery: Standard Drop Pod
     Status: Delivered ✅
@@ -132,10 +132,10 @@
     RIMAZON {0}
     ====================
     Customer: {1}
-    Item: {2} x{3}
+    Item: {2} {3}
     Service: Direct {0}
     ====================
-    Total: {4}{5}
+    Total: {4} {5}
     ====================
     Thank you for using Rimazon {0}!
     {6}
@@ -166,7 +166,7 @@
 
   <!-- Common lines -->
   <RICS.BICH.Letter.Split.CustomerLine>Customer: {0}</RICS.BICH.Letter.Split.CustomerLine>
-  <RICS.BICH.Letter.Split.ItemLine>Item: {0} x{1}</RICS.BICH.Letter.Split.ItemLine>
+  <RICS.BICH.Letter.Split.ItemLine>Item: {0} {1}</RICS.BICH.Letter.Split.ItemLine>
   <RICS.BICH.Letter.Split.Separator>====================</RICS.BICH.Letter.Split.Separator>
 
   <!-- Delivery method lines -->
@@ -181,8 +181,8 @@
   <RICS.BICH.Letter.Split.MaterialLine>Material: {0}</RICS.BICH.Letter.Split.MaterialLine>
 
   <!-- Total lines -->
-  <RICS.BICH.Letter.Split.TotalFree>Total: 0{0}</RICS.BICH.Letter.Split.TotalFree>
-  <RICS.BICH.Letter.Split.TotalLine>Total: {0}{1}</RICS.BICH.Letter.Split.TotalLine>
+  <RICS.BICH.Letter.Split.TotalFree>Total: 0 {0}</RICS.BICH.Letter.Split.TotalFree>
+  <RICS.BICH.Letter.Split.TotalLine>Total: {0} {1}</RICS.BICH.Letter.Split.TotalLine>
 
   <!-- Footer -->
   <RICS.BICH.Letter.Split.Footer>
@@ -198,10 +198,10 @@
     RIMAZON {0}
     ====================
     Customer: {1}
-    Item: {2} x{3}
+    Item: {2} {3}
     Service: Direct {0}
     ====================
-    Total: {4}{5}
+    Total: {4} {5}
     ====================
     Thank you for using Rimazon {0}!
     {6}
@@ -215,7 +215,7 @@
     RIMAZON PET DELIVERY
     ====================
     Customer: {0}
-    Pet: {1} x{2}
+    Pet: {1} {2}
     Service: Live Animal Delivery
     ====================
     Total: {3}{4}

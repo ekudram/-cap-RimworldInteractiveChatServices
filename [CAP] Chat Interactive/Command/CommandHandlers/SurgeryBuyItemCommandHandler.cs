@@ -178,7 +178,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
                 {
-                    return $"You need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} for {quantity}x {itemName} surgery! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                    return $"You need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} for {quantity} {itemName} surgery! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
                 }
 
                 var recipe = FindSurgeryRecipeForImplant(thingDef, viewerPawn);
@@ -272,7 +272,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     bodyParts.Take(quantity).ToList(), combinedResult);
                 MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, surgeryLookTargets);
 
-                // Logger.Debug($"Surgery scheduled: {messageWrapper.Username} scheduled {quantity}x {itemName} for {finalPrice}{currencySymbol}");
+                // Logger.Debug($"Surgery scheduled: {messageWrapper.Username} scheduled {quantity} {itemName} for {finalPrice}{currencySymbol}");
 
                 string deliveryMessage = combinedResult.PrimaryMethod switch
                 {

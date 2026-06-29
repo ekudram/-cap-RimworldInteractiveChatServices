@@ -19,7 +19,7 @@
   <RICS.SBCH.NoProcedure>No surgical procedure found for {0} on your pawn.</RICS.SBCH.NoProcedure>
   <RICS.SBCH.NoBodyParts>No suitable body parts found for {0} surgery. Available: {1}. Try specifying left/right.</RICS.SBCH.NoBodyParts>
   <RICS.SBCH.NoBodyPartsNotSpecified>No suitable body parts found.</RICS.SBCH.NoBodyPartsNotSpecified>
-  <RICS.SBCH.SuccessScheduled>Scheduled {0}x {1} surgery for {2}! Implant {3} please give them to the doctor. Remaining: {4}.</RICS.SBCH.SuccessScheduled>
+  <RICS.SBCH.SuccessScheduled>Scheduled {0} {1} surgery for {2}! Implant {3} please give them to the doctor. Remaining: {4}.</RICS.SBCH.SuccessScheduled>
 
   <!-- Special surgery handlers -->
   <RICS.SBCH.GenderSwapCannotAfford>You need {0} for gender swap surgery! You have {1}.</RICS.SBCH.GenderSwapCannotAfford>
@@ -76,13 +76,13 @@
   
   <RICS.SBCH.InvoiceHeader>RIMAZON SURGERY SERVICE\n====================</RICS.SBCH.InvoiceHeader>
   <RICS.SBCH.InvoiceCustomer>Customer: {0}</RICS.SBCH.InvoiceCustomer>
-  <RICS.SBCH.InvoiceProcedure>Procedure: {0} x{1}</RICS.SBCH.InvoiceProcedure>
+  <RICS.SBCH.InvoiceProcedure>Procedure: {0} {1}</RICS.SBCH.InvoiceProcedure>
   <RICS.SBCH.InvoiceBodyParts>Body Parts: {0}</RICS.SBCH.InvoiceBodyParts>
   <RICS.SBCH.InvoiceDeliveryLocker>Delivery: Rimazon Locker\nLocation: Locker Delivery</RICS.SBCH.InvoiceDeliveryLocker>
   <RICS.SBCH.InvoiceDeliveryDropPod>Delivery: Standard Drop Pod\nLocation: Drop Pod Delivery</RICS.SBCH.InvoiceDeliveryDropPod>
-  <RICS.SBCH.InvoiceDeliveryMixed>Delivery: Mixed Delivery\n  • Locker: x{0}\n  • Drop Pod: x{1}</RICS.SBCH.InvoiceDeliveryMixed>
+  <RICS.SBCH.InvoiceDeliveryMixed>Delivery: Mixed Delivery\n  • Locker: {0}\n  • Drop Pod: {1}</RICS.SBCH.InvoiceDeliveryMixed>
   <RICS.SBCH.InvoiceDeliveryColony>Delivery: Colony Delivery</RICS.SBCH.InvoiceDeliveryColony>
-  <RICS.SBCH.InvoiceTotal>Total: {0:N0}{1}</RICS.SBCH.InvoiceTotal>
+  <RICS.SBCH.InvoiceTotal>Total: {0:N0} {1}</RICS.SBCH.InvoiceTotal>
   <RICS.SBCH.InvoiceFooter>====================\nThank you for using Rimazon Surgery!</RICS.SBCH.InvoiceFooter>
   <RICS.SBCH.InvoiceImplantsLocker>Implants delivered to your Rimazon Locker.\nSurgery scheduled with colony doctors.</RICS.SBCH.InvoiceImplantsLocker>
   <RICS.SBCH.InvoiceImplantsDropPod>Implants delivered via drop pod.\nSurgery scheduled with colony doctors.</RICS.SBCH.InvoiceImplantsDropPod>

@@ -370,8 +370,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
         public static string FormatCurrencyMessage(int amount, string currencySymbol)
         {
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            return $"{amount}" + " - " + $"{currencySymbol}";
+            return $"{amount:N0} {currencySymbol}";
         }
 
         // Debug

@@ -1007,7 +1007,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 int count = implantGroup.Count();
 
                 if (count > 1)
-                    report.AppendLine($" ◦ {implantName} x{count}");
+                    report.AppendLine($" ◦ {implantName} {count}");
                 else
                     report.AppendLine($" ◦ {implantName}");
             }

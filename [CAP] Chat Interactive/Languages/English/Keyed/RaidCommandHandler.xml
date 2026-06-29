@@ -5,12 +5,12 @@
 
 	<RICS.Raid.ErrorViewerData>Error: Could not find your viewer data.</RICS.Raid.ErrorViewerData>
 
-	<RICS.Raid.GlobalLimitReached>❌ Global event limit reached! ({0}/{1} used this period)</RICS.Raid.GlobalLimitReached>
-	<RICS.Raid.BadLimitReached>❌ BAD event limit reached! ({0}/{1} used this period)</RICS.Raid.BadLimitReached>
+	<RICS.Raid.GlobalLimitReached>❌ Global event limit reached! ({0} / {1} used this period)</RICS.Raid.GlobalLimitReached>
+	<RICS.Raid.BadLimitReached>❌ BAD event limit reached! ({0} / {1} used this period)</RICS.Raid.BadLimitReached>
 	<RICS.Raid.OnCooldown>❌ Raid command is on cooldown.</RICS.Raid.OnCooldown>
 
 	<RICS.Raid.WagerInvalid>Wager must be between {0} and {1}{2}.</RICS.Raid.WagerInvalid>
-	<RICS.Raid.NotEnoughCoins>You need {0}{1} to call a raid! You have {2}{1}.</RICS.Raid.NotEnoughCoins>
+	<RICS.Raid.NotEnoughCoins>You need {0} {1} to call a raid! You have {2} {1}.</RICS.Raid.NotEnoughCoins>
 
 	<RICS.Raid.TypeNotAllowed>Raid type '{0}' is not allowed. Allowed types: {1}</RICS.Raid.TypeNotAllowed>
 	<RICS.Raid.StrategyNotAllowed>Strategy '{0}' is not allowed. Allowed strategies: {1}</RICS.Raid.StrategyNotAllowed>

@@ -166,7 +166,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     report.AppendLine("RICS.MPCH.InventoryHeader".Translate());
                     foreach (var item in notableItems)
                     {
-                        string stackInfo = item.stackCount > 1 ? $" x{item.stackCount}" : "";
+                        string stackInfo = item.stackCount > 1 ? $" {item.stackCount}" : "";
                         report.AppendLine($"  • {MyPawnCommandHandler.StripTags(item.LabelCap)}{stackInfo}");
                     }
                 }

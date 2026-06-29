@@ -12,8 +12,8 @@
   <RICS.HPCH.Return.CantAfford>Need {0} to heal (you have {1})! 💚</RICS.HPCH.Return.CantAfford>
   <RICS.HPCH.Return.HealPartialSuccess>💚 COMPLETE HEALING! Healed {2} injuries for {0}! {3} remain (low funds). Balance: {1}</RICS.HPCH.Return.HealPartialSuccess>
   <RICS.HPCH.Return.HealSuccess>💚 HEALING! Healed {2} injuries for {0}! Remaining: {1}</RICS.HPCH.Return.HealSuccess>
-  <RICS.HPCH.Return.CantAffordMultiple>Need {0} to heal ×{2}! You have {1}</RICS.HPCH.Return.CantAffordMultiple>
-  <RICS.HPCH.Return.CantAffordMultipleTarget>Need {0} to heal {2}'s pawn ×{3}! You have {1}</RICS.HPCH.Return.CantAffordMultipleTarget>
+  <RICS.HPCH.Return.CantAffordMultiple>Need {0} to heal {2}! You have {1}</RICS.HPCH.Return.CantAffordMultiple>
+  <RICS.HPCH.Return.CantAffordMultipleTarget>Need {0} to heal {2}'s pawn {3}! You have {1}</RICS.HPCH.Return.CantAffordMultipleTarget>
   <RICS.HPCH.Return.HealSuccessTarget>💚 HEALING! Healed {2} injuries on {3}'s pawn for {0}! Remaining: {1}</RICS.HPCH.Return.HealSuccessTarget>
   <RICS.HPCH.Return.CantAffordMassHeal>Need {0} to heal {2} injuries across {3} pawns! You have {1}</RICS.HPCH.Return.CantAffordMassHeal>
   <RICS.HPCH.Return.HealMassSuccess>💚 COMPLETE HEALING! Healed all {2} injuries across {3} pawns for {0}! Remaining: {1}</RICS.HPCH.Return.HealMassSuccess>

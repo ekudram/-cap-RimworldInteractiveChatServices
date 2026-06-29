@@ -65,7 +65,7 @@
   </RICS.CC.pricecheck.errorquality>
 
   <RICS.CC.pricecheck.success>
-    💰 Price Check: {0}{1} {2} {3} = {4} {5}
+    💰 Price Check: {0} {1} {2} {3} = {4} {5}
   </RICS.CC.pricecheck.success>
   
   <!-- Surgery Command-->
@@ -132,7 +132,7 @@
   </RICS.CC.leave.nopawn>
 
   <RICS.CC.leave.successs>
-    ✅ You have released {0}{1}. You can now get a new pawn with !pawn command.
+    ✅ You have released {0} {1}. You can now get a new pawn with !pawn command.
   </RICS.CC.leave.successs>
 
   <RICS.CC.leave.yourpawn>
@@ -174,7 +174,7 @@
   </RICS.CC.bal.line3>
 
   <RICS.CC.bal.line4>
-    Rate: ~{0} {1}/hour
+    Rate: ~{0} {1} per hour
   </RICS.CC.bal.line4>
 
   <RICS.CC.bal.activeRemaining>
@@ -251,11 +251,11 @@
   
   <!-- ModSettings -->
   <RICS.CC.modsettings.currencysettings>
-    👋 v: {0}{1}/2 min | Karma Max: {2} 🎯
+    👋 v: {0} {1} every 2 min | Karma Max: {2} 🎯
   </RICS.CC.modsettings.currencysettings>
   
   <RICS.CC.modsettings.eventsOn>
-    Events: {0}/{1}d
+    Events: {0} / {1} d
   </RICS.CC.modsettings.eventsOn>
 
   <RICS.CC.modsettings.eventsOff>
@@ -337,7 +337,7 @@
   </RICS.CC.storage.headerMultiple>
 
   <RICS.CC.storage.line>
-    {0}× {1}
+    {0} {1}
   </RICS.CC.storage.line>
 
   <RICS.CC.storage.defsButZero>

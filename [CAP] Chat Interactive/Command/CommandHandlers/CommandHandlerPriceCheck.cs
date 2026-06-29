@@ -97,7 +97,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     material
                 );
                 // Build core response (unchanged translation)
-                string quantityStr = parsed.Quantity > 1 ? $"{parsed.Quantity}x " : "";
+                string quantityStr = parsed.Quantity > 1 ? $"{parsed.Quantity} " : "";
                 string qualityStr = quality.HasValue
                     ? quality.Value.ToString().ToLower()
                     : (thingDef.HasComp(typeof(CompQuality)) ? "normal" : "");

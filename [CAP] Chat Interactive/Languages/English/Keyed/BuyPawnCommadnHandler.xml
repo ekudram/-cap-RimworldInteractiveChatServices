@@ -17,13 +17,13 @@
   <RICS.BPCH.CustomXenotypesDisabled>Custom xenotypes are not allowed for {0}.</RICS.BPCH.CustomXenotypesDisabled>
 
   <!-- Price -->
-  <RICS.BPCH.InsufficientFunds>You need {0}{1} to purchase a {2} pawn! You have {3}{1}.</RICS.BPCH.InsufficientFunds>
+  <RICS.BPCH.InsufficientFunds>You need {0} {1} to purchase a {2} pawn! You have {3} {1}.</RICS.BPCH.InsufficientFunds>
 
   <!-- Game State -->
   <RICS.BPCH.GameNotReady>Game not ready for pawn purchase (no colony, in menu, etc.)</RICS.BPCH.GameNotReady>
 
   <!-- Success - FIXED: Added missing parameters -->
-  <RICS.BPCH.PurchaseSuccess>Successfully purchased {0}{1} pawn for {2:N0}{3}! Welcome to the colony, {4}!</RICS.BPCH.PurchaseSuccess>
+  <RICS.BPCH.PurchaseSuccess>Successfully purchased {0} {1} pawn for {2:N0} {3}! Welcome to the colony, {4}!</RICS.BPCH.PurchaseSuccess>
 
   <!-- Generation Failures -->
   <RICS.BPCH.NoHomeMap>No player home maps found.</RICS.BPCH.NoHomeMap>

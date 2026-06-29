@@ -5,7 +5,7 @@
 
   <!-- Viewer / general errors -->
   <RICS.MACH.ViewerDataNotFound>Could not find your viewer data.</RICS.MACH.ViewerDataNotFound>
-  <RICS.MACH.InsufficientFunds>You need {0}{1} to call for military aid! You have {2}{1}.</RICS.MACH.InsufficientFunds>
+  <RICS.MACH.InsufficientFunds>You need {0} {1} to call for military aid! You have {2} {1}.</RICS.MACH.InsufficientFunds>
   <RICS.MACH.GameNotReady>Game not ready for military aid (no colony, in menu, etc.).</RICS.MACH.GameNotReady>
   <RICS.MACH.CommandOnCooldown>Military aid command is on cooldown.</RICS.MACH.CommandOnCooldown>
   <RICS.MACH.GlobalEventLimitReached>❌ Global event limit reached! ({0}/{1} used this period)</RICS.MACH.GlobalEventLimitReached>

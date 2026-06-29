@@ -6,9 +6,9 @@
   <RICS.WCH.UnknownWeather>Unknown weather type: {0}. Available: {1}...</RICS.WCH.UnknownWeather>
   <RICS.WCH.WeatherDisabled>The {0} weather type is currently disabled.</RICS.WCH.WeatherDisabled>
   <RICS.WCH.GlobalEventLimitReached>❌ Global event limit reached! ({0}/{1} used this period)</RICS.WCH.GlobalEventLimitReached>
-  <RICS.WCH.KarmaTypeLimitReached>❌ {0} event limit reached! ({1}/{2} used this period)</RICS.WCH.KarmaTypeLimitReached>
+  <RICS.WCH.KarmaTypeLimitReached>❌ {0} event limit reached! ({1} / {2} used this period)</RICS.WCH.KarmaTypeLimitReached>
   <RICS.WCH.CommandOnCooldown>❌ Weather command is on cooldown.</RICS.WCH.CommandOnCooldown>
-  <RICS.WCH.InsufficientFunds>You need {0}{1} for {2}!</RICS.WCH.InsufficientFunds>
+  <RICS.WCH.InsufficientFunds>You need {0} {1} for {2}!</RICS.WCH.InsufficientFunds>
   
 
   <!-- Success messages -->
