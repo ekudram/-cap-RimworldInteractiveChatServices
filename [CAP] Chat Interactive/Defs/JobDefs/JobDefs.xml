@@ -7,4 +7,11 @@
     <reportString>Visiting {0}</reportString>
     <playerInterruptible>true</playerInterruptible>
   </JobDef>
+
+  <JobDef>
+    <defName>CAP_EmptyLocker</defName>
+    <driverClass>CAP_ChatInteractive.JobDriver_EmptyLocker</driverClass>
+    <reportString>Emptying locker</reportString>
+    <playerInterruptible>true</playerInterruptible>
+  </JobDef>
 </Defs>

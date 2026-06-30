@@ -24,6 +24,7 @@ namespace CAP_ChatInteractive
     public static class JobDefOf_CAP
     {
         public static JobDef CAP_SocialVisit;
+        public static JobDef CAP_EmptyLocker;
 
         static JobDefOf_CAP()
         {

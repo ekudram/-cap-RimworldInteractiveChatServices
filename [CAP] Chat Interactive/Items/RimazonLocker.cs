@@ -100,6 +100,12 @@ namespace CAP_ChatInteractive
     {
         public string customName = null;
 
+        /// <summary>
+        /// If true, pawns may be assigned the "push button to empty" job (basic flick-style job).
+        /// Default false so streamers aren't surprised by pawns randomly clearing delivery lockers.
+        /// </summary>
+        public bool allowPawnsToEmpty = false;
+
         // === Add these properties: ===
         //private ThingOwner innerContainer;
         private ThingOwner<Thing> innerContainer;
@@ -261,6 +267,14 @@ namespace CAP_ChatInteractive
                 settings.Priority = StoragePriority.Unstored;
                 //Logger.Debug($"[RICS Locker] Priority forced to Unstored at {Position} | Stacks: {innerContainer.Count}/{MaxStacks}");
             }
+
+            UpdateEmptyDesignation();
+        }
+
+        public override void TickRare()
+        {
+            base.TickRare();
+            UpdateEmptyDesignation();
         }
 
         //  === IHaulDestination
@@ -282,6 +296,7 @@ namespace CAP_ChatInteractive
             base.ExposeData();
 
             Scribe_Values.Look(ref customName, "customName");
+            Scribe_Values.Look(ref allowPawnsToEmpty, "allowPawnsToEmpty", false);
 
             // Important: pass "this" as the IThingHolder so RimWorld wires the owner correctly on load
             Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
@@ -449,6 +464,7 @@ namespace CAP_ChatInteractive
                             {
                                 MoteMaker.ThrowText(DrawPos + new Vector3(0f, 0f, 0.25f), Map, "Delivery Received", Color.white, 2f);
                             }
+                            UpdateEmptyDesignation();
                             return true;
                         }
                         else
@@ -542,6 +558,17 @@ namespace CAP_ChatInteractive
                     action = () => SafeEjectAllContents()
                 };
             }
+
+            // === NEW: Gizmo to toggle whether pawns can push button to empty this locker ===
+            // Default off. Uses the vanilla switch/flick graphic.
+            yield return new Command_Toggle
+            {
+                defaultLabel = "Allow pawn to empty locker.",
+                defaultDesc = "If on, pawns can be given a basic job (like a light switch) to push the button and empty the locker contents nearby.",
+                icon = ContentFinder<Texture2D>.Get("UI/Commands/Flick", true),
+                isActive = () => allowPawnsToEmpty,
+                toggleAction = () => { allowPawnsToEmpty = !allowPawnsToEmpty; UpdateEmptyDesignation(); }
+            };
         }
 
 
@@ -584,6 +611,7 @@ namespace CAP_ChatInteractive
                 }
 
                 // Logger.Debug($"SafeEjectAllContents: After ejection, container count = {innerContainer.Count}");
+                UpdateEmptyDesignation();
             }
             catch (Exception ex)
             {
@@ -708,6 +736,27 @@ namespace CAP_ChatInteractive
         }
 
         /// <summary>
+        /// Ensures a Flick designation is present so that the (patched) WorkGiver_Flick will
+        /// assign our CAP_EmptyLocker job to pawns. Triggered when contents change or setting changes.
+        /// </summary>
+        public void UpdateEmptyDesignation()
+        {
+            if (!Spawned || Map == null) return;
+
+            bool shouldBeDesignated = allowPawnsToEmpty && innerContainer.Count > 0;
+            var existing = Map.designationManager.DesignationOn(this, DesignationDefOf.Flick);
+
+            if (shouldBeDesignated && existing == null)
+            {
+                Map.designationManager.AddDesignation(new Designation(this, DesignationDefOf.Flick));
+            }
+            else if (!shouldBeDesignated && existing != null)
+            {
+                existing.Delete();
+            }
+        }
+
+        /// <summary>
         /// Ejects ONE specific item from the locker to a nearby valid cell.
         /// Called from the new per-item eject button in Dialog_LockerContents.
         /// Reuses the exact same FindValidDropCell + TryDrop pattern already used by
@@ -736,6 +785,7 @@ namespace CAP_ChatInteractive
                 if (dropped && Spawned && Map != null)
                 {
                     MoteMaker.ThrowText(this.DrawPos + new Vector3(0f, 0f, 0.25f), Map, "Ejected", Color.white, 1.5f);
+                    UpdateEmptyDesignation();
                 }
             }
             catch (Exception ex)
