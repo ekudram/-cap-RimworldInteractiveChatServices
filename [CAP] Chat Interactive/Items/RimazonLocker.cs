@@ -569,7 +569,7 @@ namespace CAP_ChatInteractive
             {
                 defaultLabel = "Allow pawn to empty locker.",
                 defaultDesc = "If on, pawns can be given a basic job (like a light switch) to push the button and empty the locker contents nearby.",
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/Flick", true),
+                icon = ContentFinder<Texture2D>.Get("UI/Commands/RICS_PAWN_Eject", true),
                 isActive = () => allowPawnsToEmpty,
                 toggleAction = () => { allowPawnsToEmpty = !allowPawnsToEmpty; UpdateEmptyDesignation(); }
             };

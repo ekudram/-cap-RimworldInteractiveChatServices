@@ -213,7 +213,23 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
 
             // ───────────────────────────────────────────────
-            // 1. Highest priority: explicitly named "drop spot" thing (case-insensitive)
+            // 0. Highest priority: dedicated Rimazon Drop Marker (new proper item)
+            //    Place this marker (from the provided Amazon R graphic) to control where
+            //    drop pods land when lockers are full.
+            // ───────────────────────────────────────────────
+            ThingDef markerDef = DefDatabase<ThingDef>.GetNamedSilentFail("RimazonDropMarker");
+            if (markerDef != null)
+            {
+                Building marker = map.listerBuildings.AllBuildingsColonistOfDef(markerDef).FirstOrDefault(b => b.Spawned && !b.Destroyed);
+                if (marker != null)
+                {
+                    //Logger.Debug($"Using Rimazon Drop Marker at {marker.Position}");
+                    return marker.Position;
+                }
+            }
+
+            // ───────────────────────────────────────────────
+            // 1. Legacy: explicitly named "drop spot" thing (case-insensitive)
             // ───────────────────────────────────────────────
             var allThings = map.listerThings.AllThings;
             var dropSpotThing = allThings

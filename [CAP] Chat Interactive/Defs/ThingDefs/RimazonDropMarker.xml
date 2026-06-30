@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <ThingDef ParentName="BuildingBase">
+    <defName>RimazonDropMarker</defName>
+    <label>rimazon drop marker</label>
+    <description>A ground marker used by RICS to direct delivery drop pods. When your Rimazon Lockers are full, pods will try to land near this spot instead of at a random location. Select the marker to preview the drop radius.
+
+Does not require power or resources. Not purchasable.</description>
+    <thingClass>CAP_ChatInteractive.Building_RimazonDropMarker</thingClass>
+    <category>Building</category>
+    <graphicData>
+      <texPath>Things/Building/Misc/RimazonDropMarker</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <drawSize>(1.6,1.6)</drawSize>
+    </graphicData>
+    <size>(1,1)</size>
+    <rotatable>false</rotatable>
+    <passability>PassThroughOnly</passability>
+    <fillPercent>0</fillPercent>
+    <coversFloor>false</coversFloor>
+    <blockWind>false</blockWind>
+    <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+    <filthLeaving />
+
+    <statBases>
+      <MaxHitPoints>50</MaxHitPoints>
+      <WorkToBuild>50</WorkToBuild>
+      <Flammability>0</Flammability>
+      <Beauty>0</Beauty>
+      <MarketValue>0</MarketValue>
+      <Mass>1</Mass>
+    </statBases>
+
+    <!-- No resources required to build -->
+    <!-- <costList></costList> -->
+
+    <altitudeLayer>BuildingLow</altitudeLayer>
+    <thingCategories>
+      <li>BuildingsMisc</li>
+    </thingCategories>
+    <designationCategory>Misc</designationCategory>
+    <uiOrder>2499</uiOrder>
+    <selectable>true</selectable>
+    <neverMultiSelect>true</neverMultiSelect>
+
+    <!-- No power, no special comps -->
+    <!-- This is purely a location marker for RICS drop logic -->
+
+    <building>
+      <!-- Not a storage building -->
+    </building>
+  </ThingDef>
+
+</Defs>
