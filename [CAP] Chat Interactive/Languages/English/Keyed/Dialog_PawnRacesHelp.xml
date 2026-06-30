@@ -8,10 +8,11 @@
   <RICS.PawnRacesHelp.Overview><b>Pawn Race &amp; Xenotype Settings Overview</b>
 Configure which races and xenotypes viewers can purchase, set prices (absolute silver), age ranges, and enable/disable options.</RICS.PawnRacesHelp.Overview>
   
-  <RICS.PawnRacesHelp.XenotypePricing><b>⚠️ XENOTYPE PRICING — IMPORTANT UPDATE</b>
+  <RICS.PawnRacesHelp.XenotypePricing>
+    <![CDATA[<b>⚠️ XENOTYPE PRICING — IMPORTANT UPDATE</b>
 Prices are now <b>absolute silver values</b> (Race Base + Xenotype Price).
 • Use the <b>Reset</b> button next to each xenotype (or <b>Reset All Prices</b> in header) after mod updates.
-<color=orange>Click Reset on every xenotype you want updated to the new gene-based system!</color></RICS.PawnRacesHelp.XenotypePricing>
+<color=orange>Click Reset on every xenotype you want updated to the new gene-based system!</color>]]></RICS.PawnRacesHelp.XenotypePricing>
   
   <!-- Add more sections as needed for full translation -->
 </LanguageData>
