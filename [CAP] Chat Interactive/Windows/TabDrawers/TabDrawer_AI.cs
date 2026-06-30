@@ -70,7 +70,7 @@ namespace _CAP__Chat_Interactive
             {
                 try
                 {
-                    int count = AI.AIChatBotService.CleanupLeftoverAICommandFiles();
+                    int count = CAP_ChatInteractive.AI.AIChatBotService.CleanupLeftoverAICommandFiles();
                     Messages.Message($"Cleared {count} leftover AI command/event files.", MessageTypeDefOf.PositiveEvent);
                 }
                 catch (Exception ex)
