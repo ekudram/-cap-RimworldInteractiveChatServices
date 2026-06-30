@@ -81,10 +81,12 @@ namespace CAP_ChatInteractive.Windows
                 Close();
             }
 
-            // Subtitle
+            // Subtitle (uses live primary for accuracy with merged raids)
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
-            Widgets.Label(new Rect(0f, 48f, inRect.width, 25f), $"@{raiderName} raided with ~{viewerCount} viewers!");
+            var currNames = GetJoinedNames();
+            string displayRaider = (currNames.Count > 0 ? currNames[0] : raiderName);
+            Widgets.Label(new Rect(0f, 48f, inRect.width, 25f), $"@{displayRaider} raided with ~{viewerCount} viewers!");
 
             // Countdown
             Text.Font = GameFont.Medium;
@@ -150,9 +152,7 @@ namespace CAP_ChatInteractive.Windows
 
         private void CloseAndTriggerRaid()
         {
-            IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
-            IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(GetJoinedNames());
-
+            // Service handles snapshot + transfer to static + clearing its list now
             CAPChatInteractiveMod.Instance.TwitchService.TriggerRaidNow(raiderName, GetJoinedCount());
 
             Close();

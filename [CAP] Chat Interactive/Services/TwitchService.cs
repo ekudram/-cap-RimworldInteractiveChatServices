@@ -62,14 +62,15 @@ namespace CAP_ChatInteractive
         // === Twitch Raids Feature ===
         private readonly Dictionary<string, DateTime> _recentRaiders = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
         private DateTime _lastRaidTriggerTime = DateTime.MinValue;
-        private const int RaidDebounceSeconds = 30; // prevent duplicate triggers from the same raid
+        private const int RaidDebounceSeconds = 30; // prevent duplicate raid triggers (global) or per-raider notifs
 
         // === Twitch Raids Feature - Join System ===
-        private readonly List<string> _raidJoinList = new List<string>(20);
-        private DateTime _raidStartTime = DateTime.MinValue;
+        // Supports multiple simultaneous raids by merging into one collection window + combined raid
+        private readonly List<string> _raidJoinList = new List<string>(30);
         private const int RaidJoinWindowSeconds = 180; // 3 minutes - Twitch can take up to ~3min to register all raiders joining the channel
         private bool _raidJoinWindowActive = false;
         private DateTime _raidJoinStartTime = DateTime.MinValue;
+        private string _primaryRaiderName = null;
 
         /// <summary>
         /// Public read-only view of whether a raid join window is currently active.
@@ -480,21 +481,67 @@ namespace CAP_ChatInteractive
             if (int.TryParse(raid?.MsgParamViewerCount, out int parsedCount))
                 viewerCount = parsedCount;
 
+            // Per-raider debounce using the (now active) _recentRaiders map to ignore duplicate notifs for same channel
+            if (_recentRaiders.TryGetValue(raiderChannel, out DateTime lastNotif) &&
+                (DateTime.Now - lastNotif).TotalSeconds < RaidDebounceSeconds)
+            {
+                Logger.Debug($"Ignoring duplicate raid notification from @{raiderChannel} (within {RaidDebounceSeconds}s).");
+                return;
+            }
+            _recentRaiders[raiderChannel] = DateTime.Now;
+
             Logger.Twitch($"TWITCH RAID DETECTED! From: {raiderChannel} with ~{viewerCount} viewers");
 
-            StartRaidJoinCollection(raiderChannel, viewerCount);
+            // Queue to main thread: WindowStack.Add and SendMessage must be main-thread only
+            LongEventHandler.QueueLongEvent(() =>
+            {
+                StartRaidJoinCollection(raiderChannel, viewerCount);
+            }, null, false, null, showExtraUIInfo: false);
         }
 
         public void StartRaidJoinCollection(string raiderName, int viewerCount)
         {
+            if (_raidJoinWindowActive)
+            {
+                // === MULTI-RAID SPECIAL CASE: merge instead of clobbering previous raiders ===
+                bool added = false;
+                if (!string.IsNullOrWhiteSpace(raiderName) &&
+                    !_raidJoinList.Contains(raiderName, StringComparer.OrdinalIgnoreCase))
+                {
+                    _raidJoinList.Add(raiderName);
+                    added = true;
+                }
+
+                Logger.Twitch($"[RAID JOIN] Merged raid from @{raiderName} (added={added}) | Total: {_raidJoinList.Count} | Primary: {_primaryRaiderName}");
+
+                // Extend window slightly if near end so new raiders from this raid have time to !joinraid or auto-join
+                float remaining = GetRaidJoinTimeLeft();
+                if (remaining > 0f && remaining < 60f)
+                {
+                    // Ensure at least ~60s remain for the new group
+                    _raidJoinStartTime = DateTime.Now - TimeSpan.FromSeconds(RaidJoinWindowSeconds - 60);
+                }
+
+                if (added)
+                {
+                    SendMessage($"@{raiderName} also raided! Their viewers can still !joinraid to join the combined raid.");
+                }
+
+                // Do not spawn duplicate dialogs; the existing one polls live data via GetCurrentRaidJoinList/GetRaidJoinTimeLeft
+                return;
+            }
+
+            // Normal path: first (or new after previous ended) raid
             _raidJoinList.Clear();
-            _raidJoinList.Add(raiderName);                    // Streamer is always first
+            if (!string.IsNullOrWhiteSpace(raiderName))
+                _raidJoinList.Add(raiderName);
             _raidJoinStartTime = DateTime.Now;
             _raidJoinWindowActive = true;
+            _primaryRaiderName = raiderName;
 
             Logger.Twitch($"[RAID JOIN] Window opened for @{raiderName} | Initial list count: {_raidJoinList.Count} | Window active: {_raidJoinWindowActive}");
 
-            // Show nice countdown dialog
+            // Show nice countdown dialog (only for the initiating raid of a collection)
             Find.WindowStack.Add(new Dialog_TwitchRaidJoin(raiderName, viewerCount));
 
             SendMessage($"@{raiderName} just raided us! Type !joinraid or just hang out — anyone who joins in the next {RaidJoinWindowSeconds} seconds will be in the raid!");
@@ -504,13 +551,13 @@ namespace CAP_ChatInteractive
         {
             if (!_raidJoinWindowActive)
             {
-                SendMessage($"@{username} → No raid join window is currently open.");
+                SendMessage($"@{username} { "RICS.CC.joinraid.noRaid".Translate() }");
                 return;
             }
 
             if (_raidJoinList.Contains(username, StringComparer.OrdinalIgnoreCase))
             {
-                SendMessage($"@{username} → You're already in the raid!");
+                SendMessage($"@{username} { "RICS.CC.joinraid.alreadyJoined".Translate() }");
                 return;
             }
 
@@ -527,22 +574,31 @@ namespace CAP_ChatInteractive
         {
             if (!_raidJoinWindowActive && _raidJoinList.Count == 0)
             {
-                _raidJoinList.Add(raiderName);
+                if (!string.IsNullOrWhiteSpace(raiderName))
+                    _raidJoinList.Add(raiderName);
                 Logger.Twitch($"[RAID JOIN] Fallback - added raider @{raiderName} to empty list");
             }
 
             _raidJoinWindowActive = false;
 
-            Logger.Twitch($"[RAID JOIN] TriggerRaidNow called | Final list count BEFORE clear: {_raidJoinList.Count} | Names: {string.Join(", ", _raidJoinList)}");
+            // Snapshot so we can clear the live list immediately (prevents stale data / double-use)
+            var snapshot = new List<string>(_raidJoinList);
+            int count = snapshot.Count;
+            string primary = !string.IsNullOrWhiteSpace(_primaryRaiderName) ? _primaryRaiderName :
+                             (snapshot.Count > 0 ? snapshot[0] : raiderName);
 
-            // Pass all collected names to the worker
+            Logger.Twitch($"[RAID JOIN] TriggerRaidNow called | Snapshot count: {count} | Primary: {primary}");
+
+            // Transfer to the static used by worker, then clear our collection list
             IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
-            IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(_raidJoinList);
+            IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(snapshot);
+            _raidJoinList.Clear();
+            _primaryRaiderName = null;
 
-            Logger.Twitch($"[RAID JOIN] Manual raid start triggered by streamer. Final raiders: {IncidentWorker_TwitchRaid.CurrentRaidUsernames.Count}");
-            Logger.Twitch($"[RAID JOIN] Final names being sent to raid: {string.Join(", ", IncidentWorker_TwitchRaid.CurrentRaidUsernames)}");
+            Logger.Twitch($"[RAID JOIN] Manual raid start. Final raiders: {IncidentWorker_TwitchRaid.CurrentRaidUsernames.Count}");
+            Logger.Twitch($"[RAID JOIN] Names sent: {string.Join(", ", IncidentWorker_TwitchRaid.CurrentRaidUsernames)}");
 
-            TryTriggerRimWorldRaid(raiderName, totalRaiders);
+            TryTriggerRimWorldRaid(primary, count > 0 ? count : totalRaiders);
         }
 
         private void TryTriggerRimWorldRaid(string raiderName, int viewerCount)
@@ -585,7 +641,8 @@ namespace CAP_ChatInteractive
 
             _lastRaidTriggerTime = DateTime.Now;
 
-            Logger.Twitch($"[CUSTOM FACTION RAID] Starting custom faction raid for @{raiderName} | Join list count: {_raidJoinList.Count} | OnlyRaiders setting: {globalSettings.TwitchRaidsOnlyRaiders}");
+            int raiderCount = Math.Max(0, viewerCount); // the 'viewerCount' param here is actually the collected named raider count at trigger time
+            Logger.Twitch($"[CUSTOM FACTION RAID] Starting custom faction raid for @{raiderName} | Raider count: {raiderCount} | OnlyRaiders setting: {globalSettings.TwitchRaidsOnlyRaiders}");
 
             Faction raidFaction = GetOrCreateRaidFaction(raiderName);
 
@@ -594,7 +651,7 @@ namespace CAP_ChatInteractive
             parms.faction = raidFaction;
 
             float basePoints = parms.points;
-            float raidBonus = Mathf.Clamp(viewerCount * 80f, 200f, 4000f);
+            float raidBonus = Mathf.Clamp(raiderCount * 80f, 200f, 4000f);
             parms.points = Mathf.Min(basePoints + raidBonus, basePoints * 2.5f);
 
             parms.raidArrivalMode = PawnsArrivalModeDefOf.EdgeWalkIn;
@@ -609,7 +666,7 @@ namespace CAP_ChatInteractive
             bool success = twitchRaidWorker.TryExecute(parms);
 
             string raidMessage = success
-                ? $"[RICS] INCOMING TWITCH RAID! @{raiderName} brought {_raidJoinList.Count} named raiders to the colony!"
+                ? $"[RICS] INCOMING TWITCH RAID! @{raiderName} brought {raiderCount} named raiders to the colony!"
                 : $"[RICS] Twitch raid from @{raiderName} detected, but storyteller refused the raid.";
 
             Messages.Message(raidMessage, success ? MessageTypeDefOf.ThreatBig : MessageTypeDefOf.NegativeEvent);
@@ -618,8 +675,8 @@ namespace CAP_ChatInteractive
             if (success)
             {
                 Find.LetterStack.ReceiveLetter(
-                    "RICS.TwitchRaid.LetterLabel".Translate(raiderName, _raidJoinList.Count),
-                    "RICS.TwitchRaid.LetterText".Translate(raiderName, _raidJoinList.Count),
+                    "RICS.TwitchRaid.LetterLabel".Translate(raiderName, raiderCount),
+                    "RICS.TwitchRaid.LetterText".Translate(raiderName, raiderCount),
                     LetterDefOf.ThreatBig
                 );
             }
@@ -731,12 +788,19 @@ namespace CAP_ChatInteractive
             {
                 _raidJoinWindowActive = false;
 
-                Logger.Twitch($"[RAID JOIN] Timer expired - final list: {string.Join(", ", _raidJoinList)}");
+                var snapshot = new List<string>(_raidJoinList);
+                int count = snapshot.Count;
+                string primary = !string.IsNullOrWhiteSpace(_primaryRaiderName) ? _primaryRaiderName :
+                                 (count > 0 ? snapshot[0] : "UnknownRaider");
+
+                Logger.Twitch($"[RAID JOIN] Timer expired - final list: {string.Join(", ", snapshot)}");
 
                 IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
-                IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(_raidJoinList);
+                IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(snapshot);
+                _raidJoinList.Clear();
+                _primaryRaiderName = null;
 
-                TryTriggerRimWorldRaid(_raidJoinList[0], _raidJoinList.Count);
+                TryTriggerRimWorldRaid(primary, count);
             }
         }
 
@@ -860,7 +924,8 @@ namespace CAP_ChatInteractive
             var service = CAPChatInteractiveMod.Instance.TwitchService;
             if (service != null)
             {
-                service.ProcessUserJoined(e.Username);
+                // Queue to main thread because list mutation + logs are touched by UI/timer too; TwitchLib events can arrive off-thread
+                LongEventHandler.QueueLongEvent(() => service.ProcessUserJoined(e.Username), null, false, null, showExtraUIInfo: false);
             }
         }
 
@@ -884,21 +949,18 @@ namespace CAP_ChatInteractive
             Logger.Twitch($"[RAID JOIN] SUCCESS - Added @{username} to raid list | New total: {_raidJoinList.Count}");
         }
 
-        public string ProcessUserJoinRaidCommmand(ChatMessageWrapper message)
-            {
+        public string ProcessUserJoinRaidCommand(ChatMessageWrapper message)
+        {
             if (!_raidJoinWindowActive)
             {
-                return $"RICS.CC.joinraid.noRaid".Translate(message.Username);
-                //return $"@{message.Username} → No raid join window is currently open.";
+                return "RICS.CC.joinraid.noRaid".Translate();
             }
             if (_raidJoinList.Contains(message.Username, StringComparer.OrdinalIgnoreCase))
             {
-                return $"RICS.CC.joinraid.alreadyJoined".Translate(message.Username);
-                // return $"@{message.Username} → You're already in the raid!";
+                return "RICS.CC.joinraid.alreadyJoined".Translate();
             }
             _raidJoinList.Add(message.Username);
-            return $"RICS.CC.joinraid.success".Translate(message.Username, _raidJoinList.Count);
-            // return $"@{message.Username} joined the raid! ({_raidJoinList.Count} total)";
+            return "RICS.CC.joinraid.success".Translate();
         }
 
         public List<string> GetCurrentRaidJoinList()

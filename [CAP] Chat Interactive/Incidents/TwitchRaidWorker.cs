@@ -35,6 +35,7 @@ namespace CAP_ChatInteractive.Incidents
             if (parms.target is not Map map)
             {
                 Logger.Twitch("WARNING: No valid map target for raid.");
+                CurrentRaidUsernames.Clear();
                 return false;
             }
 
@@ -67,6 +68,7 @@ namespace CAP_ChatInteractive.Incidents
             if (raidNames.Count == 0)
             {
                 Logger.Twitch("No raid names → falling back to vanilla raid");
+                CurrentRaidUsernames.Clear();
                 return base.TryExecuteWorker(parms);
             }
 

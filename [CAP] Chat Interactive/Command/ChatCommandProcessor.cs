@@ -525,7 +525,7 @@ namespace CAP_ChatInteractive
                             if (message.IsWhisper)
                                 _ = mod.TwitchService.SendWhisperAsync(message.Username, cleanText);
                             else
-                                mod.TwitchService.SendMessage($"{message.Username} {cleanText}");
+                                mod.TwitchService.SendMessage($"@{message.Username} {cleanText}");
                         }
                         break;
 
