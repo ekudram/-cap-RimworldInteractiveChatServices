@@ -16,6 +16,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 
 using RimWorld;
+using System;
 using UnityEngine;
 using Verse;
 
@@ -31,27 +32,41 @@ namespace CAP_ChatInteractive
     {
         /// <summary>
         /// The radius (in cells) around the marker where drop pods will try to land.
-        /// Matches the area used by DropCellFinder.TryFindDropSpotNear etc.
+        /// This is what gets visualized when the marker is selected.
         /// </summary>
-        public const float DropRadius = 5f;
+        public const float DropRadius = 6f;
+
+        // Orange to match the Rimazon (Amazon-style) graphic the user provided
+        private static readonly Color RimazonOrange = new Color(1f, 0.6f, 0f);
 
         public override void DrawExtraSelectionOverlays()
         {
             base.DrawExtraSelectionOverlays();
 
-            // Draw the radius only when this marker is selected (standard RimWorld pattern)
-            GenDraw.DrawRadiusRing(this.Position, DropRadius);
+            if (this.Map == null)
+                return;
+
+            // Predicate: only draw ring segments over cells that are valid drop locations
+            // (standable, not fogged, not impassable). Makes the preview more accurate.
+            Func<IntVec3, bool> validForDrop = (IntVec3 c) =>
+                c.InBounds(this.Map) &&
+                c.Standable(this.Map) &&
+                !c.Fogged(this.Map) &&
+                !c.Impassable(this.Map);
+
+            // Use the full overload with orange color matching the graphic
+            GenDraw.DrawRadiusRing(this.Position, DropRadius, RimazonOrange, validForDrop);
         }
 
         public override string GetInspectString()
         {
-            string text = base.GetInspectString();
-            if (!string.IsNullOrEmpty(text))
-            {
-                text += "\n";
-            }
-            text += "Delivery pods will attempt to land within the highlighted radius.";
-            return text;
+            string baseText = base.GetInspectString();
+            string radiusText = "RICS.DropMarker.Inspect".Translate();
+
+            if (!string.IsNullOrEmpty(baseText))
+                return baseText + "\n" + radiusText;
+
+            return radiusText;
         }
 
         // No special storage or power needed. Pure marker.
