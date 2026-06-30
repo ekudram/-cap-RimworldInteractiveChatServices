@@ -13,6 +13,7 @@
   <RICS.CIS.Economy>Economy</RICS.CIS.Economy>
   <RICS.CIS.GameEvents>Game Events</RICS.CIS.GameEvents>
   <RICS.CIS.Rewards>Rewards</RICS.CIS.Rewards>
+  <RICS.CIS.AI>AI Chatbot</RICS.CIS.AI>
 
   <!-- Tab Tooltips -->
   <RICS.CIS.Global.Tooltip>Configure global chat and economy settings</RICS.CIS.Global.Tooltip>
@@ -23,4 +24,25 @@
   <RICS.CIS.Economy.Tooltip>Configure karma and coin economy settings</RICS.CIS.Economy.Tooltip>
   <RICS.CIS.GameEvents.Tooltip>Manage events, traits, store items and cooldowns</RICS.CIS.GameEvents.Tooltip>
   <RICS.CIS.Rewards.Tooltip>Configure channel points and lootbox rewards</RICS.CIS.Rewards.Tooltip>
+  <RICS.CIS.AI.Tooltip>Configure external AI chatbot integration (Masie / Ollama bots etc.)</RICS.CIS.AI.Tooltip>
+
+  <!-- AI Tab Content (used by TabDrawer_AI) -->
+  <RICS.AI.Title>AI Chatbot Integration</RICS.AI.Title>
+  <RICS.AI.Enable>Enable AI Chatbot</RICS.AI.Enable>
+  <RICS.AI.Description>Connect RICS to an external AI bot (e.g. local Python + Ollama "Masie" bot). RICS provides game state, events, and command execution hooks. You must run and host your own bot.</RICS.AI.Description>
+  <RICS.AI.ListenerURL>RICS Listener Endpoint (bot polls this for /gamestate etc.):</RICS.AI.ListenerURL>
+  <RICS.AI.BotResponseURL>Bot Response URL (RICS posts !chatbot commands here):</RICS.AI.BotResponseURL>
+  <RICS.AI.BotName>Bot Display Name (used in chat and as AI "viewer"):</RICS.AI.BotName>
+  <RICS.AI.SendGameState>Send full game state snapshot with prompts</RICS.AI.SendGameState>
+  <RICS.AI.SendChatHistory>Send recent chat history with prompts</RICS.AI.SendChatHistory>
+  <RICS.AI.UpdateInterval>Game State Push Interval (minutes, 0 = disabled)</RICS.AI.UpdateInterval>
+  <RICS.AI.Timeout>Response Timeout (ms)</RICS.AI.Timeout>
+  <RICS.AI.PushEndpoint>Game State Push Endpoint (POST target for bot):</RICS.AI.PushEndpoint>
+  <RICS.AI.CanExecuteCommands>Allow bot to execute in-game commands via file interface (powerful but risky)</RICS.AI.CanExecuteCommands>
+  <RICS.AI.WarningExecute>⚠️ Enabling command execution lets the bot run !buy, !raid etc. Only enable with trusted bots.</RICS.AI.WarningExecute>
+  <RICS.AI.TestButton>Test AI Listener</RICS.AI.TestButton>
+  <RICS.AI.ResetButton>Reset to Local Python Defaults</RICS.AI.ResetButton>
+  <RICS.AI.SetupHelp>Setup: Run your Python bot (e.g. Masie V9) that polls http://127.0.0.1:17888/gamestate and responds on /chat. Use local Ollama for LLM.</RICS.AI.SetupHelp>
+  <RICS.AI.ClearLeftoverLabel>Clear any stale .json files left by crashed external bot (safe).</RICS.AI.ClearLeftoverLabel>
+  <RICS.AI.ClearLeftoverButton>Clear Leftover AI Files</RICS.AI.ClearLeftoverButton>
 </LanguageData>

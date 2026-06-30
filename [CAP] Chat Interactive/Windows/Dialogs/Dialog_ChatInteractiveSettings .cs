@@ -107,6 +107,13 @@ namespace CAP_ChatInteractive
                 Tooltip = "RICS.CIS.Rewards.Tooltip".Translate(),
                 ContentDrawer = TabDrawer_Rewards.Draw
             });
+
+            _tabWorker.AddTab(new TabItem
+            {
+                Label = "RICS.CIS.AI".Translate(),
+                Tooltip = "RICS.CIS.AI.Tooltip".Translate(),
+                ContentDrawer = TabDrawer_AI.Draw
+            });
         }
 
         public override void DoWindowContents(Rect inRect)

@@ -128,71 +128,6 @@ namespace _CAP__Chat_Interactive
             }
 
             listing.Gap(24f);
-
-            // === AI Chatbot Integration ===
-            Text.Font = GameFont.Medium;
-            GUI.color = ColorLibrary.HeaderAccent;
-            listing.Label("AI Chatbot Integration");
-            Text.Font = GameFont.Small;
-            GUI.color = Color.white;
-
-            listing.GapLine(6f);
-
-            // TODO: Add validation for URLs and display warnings if they don't look correct <-- this is important to help users avoid common mistakes when setting up the AI integration 
-            // TODO: Add clarification message that RICS does not provide the AI chatbot itself, just the integration points for users to connect their own bots
-            // Note:  Must be in a game (have game loaded) for AI connection to work <-- consider adding a warning message or disabling the test connection button if not in a game to prevent confusion and error messages when users try to test the connection without having a game loaded.
-
-            // Semantic / theme colors from RICS Color Library - consider using these for section headers and important labels in the settings UI to create a more visually engaging and organized layout that ties into the overall RICS branding and design language.
-            //public static readonly Color HeaderAccent = new Color(1.0f, 0.5f, 0.1f);   // Orange - headers
-            //public static readonly Color SubHeader = new Color(0.529f, 0.808f, 0.922f); // SkyBlue - sub-headers
-            //public static readonly Color PrimaryAction = new Color(0.2f, 0.4f, 0.8f);   // Blue
-            //public static readonly Color Success = new Color(0.2f, 0.8f, 0.2f);
-            //public static readonly Color Warning = new Color(1.0f, 0.75f, 0.2f);  // Yellow-Orange  Maybe more yellow?
-            //public static readonly Color Danger = new Color(0.9f, 0.1f, 0.1f);
-            //public static readonly Color Info = new Color(0.3f, 0.65f, 0.95f); // Informational / neutral blue for status messages, tips, secondary labels and info sections. Distinct from PrimaryAction (darker action blue) and SubHeader (lighter sky blue) while staying readable on RimWorld dark UI.
-
-            // Remove comments after implementing the above TODOs to clean up the code and avoid confusion for future maintainers. The comments are meant to guide the implementation of the AI chatbot settings section, but once it's implemented and the UI is polished, the comments should be removed to keep the codebase clean and maintainable.
-
-
-            listing.CheckboxLabeled("Enable AI Chatbot", ref settings.AIChatBotActive);
-
-            if (settings.AIChatBotActive)
-            {
-                listing.GapLine(6f);
-                listing.Label("To use the AI chatbot, set up your own bot that can receive game state data from RICS and respond to chat messages. Then enter the appropriate URLs below to connect RICS to your bot.");
-                listing.Label("RICS will send game state data to the AIChatBotEndpoint URL, and your bot should respond to these requests with chat messages that RICS will relay back to Twitch/YouTube chat. When you use the !ricsaichatbot command in chat, RICS will send the message content and optionally recent chat history and game state to the AIChatBotListenUrl, and display the response in chat as if it came from the bot.");
-                listing.Label("This is experimental and advanced functionality that requires you to set up and host your own AI chatbot that can interface with RICS. It is not required for basic RICS functionality and is intended for users who want to create a more interactive experience by connecting an AI bot to their stream.");
-
-                listing.GapLine(6f);
-
-                listing.Label("RICS Listener URL (Python bot calls this for game state):");
-                settings.AIChatBotEndpoint = listing.TextEntry(settings.AIChatBotEndpoint);
-
-                listing.Label("AI Bot URL (RICS calls this when using !ricsaichatbot):");
-                settings.AIChatBotListenUrl = listing.TextEntry(settings.AIChatBotListenUrl);
-
-                listing.Label("Bot Display Name (shown in chat):");
-                settings.AIChatBotName = listing.TextEntry(settings.AIChatBotName);
-
-                listing.CheckboxLabeled("Include Game State in prompts", ref settings.AIChatBotSendGameState);
-                listing.CheckboxLabeled("Include Recent Chat History", ref settings.AIChatBotSendChatHistory);
-
-                listing.Gap(8f);
-                if (listing.ButtonText("Test Connection to AI Bot"))
-                {
-                    TestAIConnection();
-                }
-
-                if (listing.ButtonText("Reset AI Settings to Defaults"))
-                {
-                    settings.AIChatBotEndpoint = "http://127.0.0.1:17888";
-                    settings.AIChatBotListenUrl = "http://127.0.0.1:5000/chat";
-                    settings.AIChatBotName = "AI Storyteller";
-                    Messages.Message("AI Chatbot settings reset to defaults.", MessageTypeDefOf.PositiveEvent);
-                }
-            }
-
-            listing.Gap(24f);
             listing.End();
             Widgets.EndScrollView();
         }
@@ -203,34 +138,6 @@ namespace _CAP__Chat_Interactive
             if (prefix.Contains(" ")) return false;
             if (prefix.StartsWith("/") || prefix.StartsWith(".") || prefix.StartsWith("\\")) return false;
             return true;
-        }
-
-
-        /// <summary>
-        /// Sends a test request to the AI chatbot endpoint to verify connectivity and displays the result in a message.
-        /// </summary>
-        private static void TestAIConnection()
-        {
-            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
-            if (settings == null) return;
-
-            try
-            {
-                using (var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) })
-                {
-                    var url = settings.AIChatBotEndpoint.TrimEnd('/') + "/gamestate";
-                    var response = client.GetAsync(url).GetAwaiter().GetResult();
-
-                    if (response.IsSuccessStatusCode)
-                        Messages.Message($"✅ RICS AI listener responding at {url}", MessageTypeDefOf.PositiveEvent);
-                    else
-                        Messages.Message($"⚠️ Connected but got status {response.StatusCode}", MessageTypeDefOf.CautionInput);
-                }
-            }
-            catch (Exception ex)
-            {
-                Messages.Message($"❌ Could not connect to RICS AI listener:\n{ex.Message}", MessageTypeDefOf.NegativeEvent);
-            }
         }
     }
 }

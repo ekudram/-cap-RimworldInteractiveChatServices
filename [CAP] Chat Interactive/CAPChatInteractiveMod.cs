@@ -109,16 +109,19 @@ namespace CAP_ChatInteractive
                 Logger.Warning($"[RICS] Failed to pre-initialize Viewers/GameComponent: {ex.Message}");
             }
 
-            // Ensure AI Commands folders exist early (before any game is loaded)
+            // Ensure AI Commands folders exist early + cleanup any leftover files from previous bot crashes.
+            // This runs once at RimWorld startup (not per game save).
             try
             {
-                string aiCommandsPath = Path.Combine(GenFilePaths.ConfigFolderPath, "CAP_ChatInteractive", "AI_Commands");
-                Directory.CreateDirectory(Path.Combine(aiCommandsPath, "incoming"));
-                Directory.CreateDirectory(Path.Combine(aiCommandsPath, "outgoing"));
+                int cleaned = AI.AIChatBotService.CleanupLeftoverAICommandFiles();
+                if (cleaned > 0)
+                {
+                    Logger.Debug($"[RICS] Startup cleanup removed {cleaned} stale AI command files.");
+                }
             }
             catch (Exception ex)
             {
-                Logger.Warning($"[RICS] Could not pre-create AI_Commands folders: {ex.Message}");
+                Logger.Warning($"[RICS] Error during AI leftover file cleanup: {ex.Message}");
             }
 
 

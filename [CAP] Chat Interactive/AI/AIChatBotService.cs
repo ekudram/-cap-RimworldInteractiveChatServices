@@ -69,6 +69,56 @@ namespace CAP_ChatInteractive.AI
 
         public bool IsRunning => _isRunning;
 
+        /// <summary>
+        /// Cleans up any leftover .json files in the AI command directories (incoming, outgoing, events).
+        /// This can happen if the external bot crashes or is killed before RICS shuts down cleanly.
+        /// Call this at mod startup (one-time) and from UI "Clear" button.
+        /// </summary>
+        /// <returns>Number of files deleted.</returns>
+        public static int CleanupLeftoverAICommandFiles()
+        {
+            int deleted = 0;
+            try
+            {
+                string basePath = Path.Combine(GenFilePaths.ConfigFolderPath, "CAP_ChatInteractive", "AI_Commands");
+                string[] subDirs = { "incoming", "outgoing", "events" };
+
+                foreach (string sub in subDirs)
+                {
+                    string dir = Path.Combine(basePath, sub);
+                    if (!Directory.Exists(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                        continue;
+                    }
+
+                    var files = Directory.GetFiles(dir, "*.json", SearchOption.TopDirectoryOnly);
+                    foreach (var file in files)
+                    {
+                        try
+                        {
+                            File.Delete(file);
+                            deleted++;
+                        }
+                        catch (Exception exDel)
+                        {
+                            Logger.Warning($"[RICS AI] Failed to delete leftover file {file}: {exDel.Message}");
+                        }
+                    }
+                }
+
+                if (deleted > 0)
+                {
+                    Logger.Message($"[RICS AI] Cleaned up {deleted} leftover AI command/event files at startup.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[RICS AI] Error during leftover AI files cleanup: {ex.Message}");
+            }
+            return deleted;
+        }
+
         public void ProcessPendingAICommands()
         {
             (string requestId, ChatMessageWrapper message) item;
