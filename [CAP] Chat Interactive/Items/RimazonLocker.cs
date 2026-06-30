@@ -109,6 +109,7 @@ namespace CAP_ChatInteractive
         // === Add these properties: ===
         //private ThingOwner innerContainer;
         private ThingOwner<Thing> innerContainer;
+
         public ThingOwner InnerContainer
         {
             //get
@@ -131,6 +132,7 @@ namespace CAP_ChatInteractive
             }
 
         }
+
         public int MaxStacks => def.GetModExtension<LockerExtension>().maxStacks;
         public StorageSettings settings;
         public int instanceId = 0;
@@ -279,7 +281,9 @@ namespace CAP_ChatInteractive
 
         //  === IHaulDestination
         public new IntVec3 Position => base.Position;           // Inherited from Thing, but explicit for clarity
+
         public new Map Map => base.Map;                         // Inherited from Thing
+
         // Testing Note.  tested as false and was unable to drop stuff into locker, so this must be true
         public bool HaulDestinationEnabled => true;
 
