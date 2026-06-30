@@ -761,7 +761,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return "RICS.CC.joinraid.noTwitch".Translate();
                 // return "Twitch service is not available.";
             }
-            return twitchService.ProcessUserJoinRaidCommmand(messageWrapper);
+            return twitchService.ProcessUserJoinRaidCommand(messageWrapper);
         }
     }
 
@@ -785,10 +785,14 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 ?? storyteller.difficultyDef?.defName 
                 ?? "RICS.CC.storyteller.unknown".Translate();
 
+            float threatScale = storyteller.difficulty?.threatScale ?? 1f;
+            string threat = threatScale.ToStringPercent();  // Threat level as percent (from Difficulty.threatScale)
+
             string stLabel = "RICS.CC.storyteller.label".Translate();
             string diffLabel = "RICS.CC.storyteller.difficulty".Translate();
+            string threatLabel = "RICS.CC.storyteller.threat".Translate();
 
-            return "RICS.CC.storyteller".Translate(stLabel, name, diffLabel, difficulty);
+            return "RICS.CC.storyteller".Translate(stLabel, name, diffLabel, difficulty, threatLabel, threat);
         }
     }
 

@@ -401,15 +401,15 @@
   </RICS.CC.joinraid.noTwitch>
 
   <RICS.CC.joinraid.noRaid>
-    {0} → There is no Twitch Raid right now.
+    There is no Twitch Raid right now.
   </RICS.CC.joinraid.noRaid>
 
   <RICS.CC.joinraid.alreadyJoined>
-    {0} → You have already joined the Twitch Raid.
+    You have already joined the Twitch Raid.
   </RICS.CC.joinraid.alreadyJoined>
   
   <RICS.CC.joinraid.success>
-    {0} → You have successfully joined the Twitch Raid!
+    You have successfully joined the Twitch Raid!
   </RICS.CC.joinraid.success>
 
     <!-- Reusable status strings (optional but cleaner if you use them elsewhere) -->
