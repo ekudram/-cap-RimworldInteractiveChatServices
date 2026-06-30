@@ -1014,46 +1014,37 @@ This release includes all changes from June 21–23 plus the June 26 heal logic 
 
 <b>MEMORANDUM</b>
 ─────────────────
-- AI ChatBot (Masie Lamia / external storyteller) integration continues to evolve. RICS can now proactively push fresh colony state to external bots via HTTP POST.
-- Large quality-of-life improvement to all pawn death, resurrection, and release feedback messages - viewers now get clear, detailed information.
-- Cooldown system UI standardized for better readability.
+- Rimazon Lockers can now be unloaded directly by pawns (no more manual eject needed in many cases).
+- New Drop Spots system added for better item delivery control.
+- New `!storyteller` command added.
+- Translations are now ~99.9% complete across the entire mod. If you're planning to contribute a new language for RICS, now is the perfect time to start!
 
 <b>UPDATED</b>
 ─────────────────
-- Cooldown display refactored to clean X times every Y days format across the mod (much clearer for viewers and streamers).
-- Pawn death / resurrection / release messaging completely overhauled with detailed cause-of-death information and contextual feedback.
-- Food breakdown expanded with new raw food categories, tuned specifically to give the AI cat-bot storyteller richer flavor text.
-- Game state cache + push logic made more robust (initial push on game load/new game, configurable interval, centralized handling).
-- Refactored CannotResurrectPawn and related error paths for clarity, logging, and future extensibility.
+- Major improvements to pawn death, resurrection, and release messages — viewers now get much clearer feedback with details on what happened.
+- Cooldown display simplified to easy-to-read ""X times every Y days"" format.
+- Food breakdown expanded for richer in-game flavor.
+- General polish and fixes across many pawn and store commands.
 
 <b>FIXED</b>
 ─────────────────
-- Multiple translation key bugs for pawn death and resurrection messages resolved.
-- PawnDeadReason string moved to central RICSGeneral.xml for consistency.
-- Standardized error messages and translation keys across all pawn-related commands (revivepawn, healpawn, leave, etc.).
-- Added proper dead-pawn detection and appropriate messaging in several command paths.
-- Removed stale comments and cleaned up several internal code paths.
+- Fixed several issues with pawn messages, translation keys, and error handling.
+- Improved dead pawn detection and handling in multiple commands.
+- Cleaned up and standardized many behind-the-scenes systems.
 
 <b>ADDED</b>
 ─────────────────
-- HTTP POST push of current game state to external AI bot (AIChatBotGameStatePushEndpoint - new in Global Settings).
-- Ability to dye dead pawns with special contextual messages.
-- Detailed death cause extraction and reporting in resurrection and pawn release messages.
-- New XML-defined messages for various resurrection failure cases.
-- Expanded raw food categories in the food breakdown system for richer AI storyteller responses.
+- **New Drop Spots** system for better control over where items appear.
+- Rimazon Lockers can now be unloaded by pawns.
+- New `!storyteller` command (shows current storyteller + difficulty).
+- New **AI Chat Bot** tab in the settings (for advanced users experimenting with external storyteller bots).
+- Ability to dye dead pawns with special messages.
+- Expanded raw food categories and other small quality-of-life additions.
 
 <b>TRANSLATIONS</b>
 ─────────────────
-- Added RICS.Pawn.Dead entry and improved PawnDeadReason in RICSGeneral.xml.
-- Aligned and fixed many translation keys for death, resurrection, error, and release messages.
-- Better support for localized detailed death information across all relevant commands.
-- Major dialog translation cleanup pass on main non-help dialogs:
-  - Created new translation files: Dialog_ViewerManager.xml, Dialog_TraitsEditor.xml, Dialog_WeatherEditor.xml, Dialog_PawnRacesHelp.xml, Dialog_WeatherEditorHelp.xml, EventsDefInfoWindow.xml, Dialog_TwitchRaidJoin.xml, Dialog_RICS_VersionHistory.xml, Dialog_DebugRaces.xml, Dialog_EditClientSecrets.xml, Dialog_YouTubeSettings.xml and others.
-  - Updated many .cs files to use .Translate() instead of hardcoded English strings.
-  - Standardized backup buttons across editors using RICS.Editor.* keys.
-  - Cleaned labels, titles, buttons, and messages in ViewerManager, TraitsEditor, TwitchRaidJoinMini, QualityResearchSettings, CommandManager, EventsEditor, StoreEditor, PawnRaceSettings, ViewerPawns, and related dialogs.
-  - Added common keys to RICSGeneral.xml for reuse.
-- Note: Help files left as-is (wiki available online)."
+- Massive translation pass completed: nearly all strings (especially pawn messages, errors, and XML entries) are now properly keyed and centralized.
+- Many improvements to death, resurrection, and command feedback text for better localization."
 
 
             }
