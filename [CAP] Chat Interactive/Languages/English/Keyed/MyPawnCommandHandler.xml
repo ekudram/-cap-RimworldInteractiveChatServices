@@ -127,7 +127,7 @@
   <RICS.MPCH.PsycastLevelGroup>L{0}: {1}</RICS.MPCH.PsycastLevelGroup>
   <RICS.MPCH.PsycastSeparator> • </RICS.MPCH.PsycastSeparator>
   <RICS.MPCH.NoPsycastsLazyInit>Pawn abilities not loaded yet (common with mods). Open {0}'s Bio/Abilities tab in-game, then try again.</RICS.MPCH.NoPsycastsLazyInit>
-  <RICS.MPCH.NoPsycastsVPE>Psycasts from Vanilla Psycasts Expanded are not visible in this command (mod incompatibility). Check your pawn's bio/abilities tab in-game.</RICS.MPCH.NoPsycastsVPE>
+  <RICS.MPCH.NoPsycastsVPE>Psycasts from Vanilla Psycasts Expanded (now supported via !mypawn psycasts). If nothing shows, open the pawn's Bio/Abilities tab to initialize.</RICS.MPCH.NoPsycastsVPE>
 
   <!-- Weapon -->
   <RICS.MPCH.WeaponHeader>🔫⚔️ Weapon Report:</RICS.MPCH.WeaponHeader>

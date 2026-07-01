@@ -964,16 +964,50 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static string HandlePsycastsInfo(Pawn pawn)
         {
-            if (!ModsConfig.RoyaltyActive)
-            {
-                Logger.Debug("[MyPawn Psycasts] Royalty DLC not active");
-                return "RICS.MPCH.NoRoyalty".Translate();
-            }
-
             if (pawn == null)
             {
                 Logger.Warning("[MyPawn Psycasts] Pawn is null");
                 return "RICS.MPCH.NoPsycasts".Translate("Unknown");
+            }
+
+            Logger.Debug($"[MyPawn Psycasts] Starting psycasts info for {pawn.LabelShortCap}. RoyaltyActive={ModsConfig.RoyaltyActive}");
+
+            // === Vanilla Expanded Psycasts Expanded (VPE) support ===
+            // VPE replaces vanilla psycasts. It stores learned psycasts on CompAbilities (from VEF) instead of vanilla Pawn_AbilityTracker.
+            var vpePsycastImplantDef = DefDatabase<HediffDef>.GetNamedSilentFail("VPE_PsycastAbilityImplant");
+            bool vpeDefExists = vpePsycastImplantDef != null;
+            Hediff vpeHediff = null;
+            if (vpeDefExists)
+            {
+                vpeHediff = pawn.health?.hediffSet?.GetFirstHediffOfDef(vpePsycastImplantDef, false);
+            }
+
+            // Additional fallback detection (type name or CompAbilities presence) in case def lookup or hediff attachment differs
+            bool hasVPEHediffByType = pawn.health?.hediffSet?.hediffs?.Any(h =>
+                h != null && (h.GetType().Name.Contains("PsycastAbilities") ||
+                              (h.def?.defName != null && h.def.defName.Contains("Psycast") && h.def.defName.StartsWith("VPE_")))) ?? false;
+
+            bool hasCompAbilities = false;
+            if (pawn is ThingWithComps twcCheck && twcCheck.AllComps != null)
+            {
+                hasCompAbilities = twcCheck.AllComps.Any(c => c != null && c.GetType().Name == "CompAbilities");
+            }
+
+            Logger.Debug($"[MyPawn Psycasts] VPE check - defExists:{vpeDefExists} hasVpeHediff:{vpeHediff != null} hasByType:{hasVPEHediffByType} hasCompAbilities:{hasCompAbilities}");
+
+            if (vpeHediff != null || hasVPEHediffByType || hasCompAbilities)
+            {
+                Logger.Debug("[MyPawn Psycasts] Entering VPE psycast handling path");
+                return HandleVPEPsycasts(pawn);
+            }
+
+            Logger.Debug("[MyPawn Psycasts] No VPE indicators found, falling back to vanilla Royalty path");
+
+            // === Vanilla Royalty path ===
+            if (!ModsConfig.RoyaltyActive)
+            {
+                Logger.Debug("[MyPawn Psycasts] Royalty DLC not active");
+                return "RICS.MPCH.NoRoyalty".Translate();
             }
 
             if (pawn.abilities == null)
@@ -987,24 +1021,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             var allAbilities = pawn.abilities.AllAbilitiesForReading;
 
-            // Attempt to detect VPE (for logging only — we no longer try to extract)
-            bool hasVPEHediff = false;
-            if (pawn.health?.hediffSet?.hediffs != null)
-            {
-                hasVPEHediff = pawn.health.hediffSet.hediffs.Any(h =>
-                    h?.def?.defName == "VPE_PsycastAbilityImplant" ||
-                    (h != null && h.GetType().Name.Contains("PsycastAbilities")));
-            }
-
             var psycasts = allAbilities
                 .Where(a => a != null && a.def != null &&
                             (a.def.IsPsycast ||
                              a is Psycast ||
                              a.def.PsyfocusCost > 0f ||
                              a.def.EntropyGain > 0f ||
-                             a.def.AnyCompOverridesPsyfocusCost ||
-                             a.def.defName.StartsWith("VPE_") ||  // fallback catch-all for any leaked VPE defs
-                             a.def.defName.StartsWith("Ability_VPE_")))
+                             a.def.AnyCompOverridesPsyfocusCost))
                 .GroupBy(a => a.def.level)
                 .OrderBy(g => g.Key)
                 .ToList();
@@ -1019,14 +1042,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.MPCH.NoPsycastsLazyInit".Translate(pawn.LabelShortCap);
                 }
 
-                // User-facing message for VPE
-                if (hasVPEHediff)
-                {
-                    Logger.Debug("[MyPawn Psycasts] VPE hediff detected — psycasts not shown (VPE incompatibility)");
-                    return "RICS.MPCH.NoPsycastsVPE".Translate(pawn.LabelShortCap);
-                    // Suggested translation: "Your pawn has psycasts from Vanilla Psycasts Expanded, but they are not visible in this command due to mod incompatibility."
-                }
-
+                Logger.Debug("[MyPawn Psycasts] Vanilla path: no psycasts found in AllAbilitiesForReading");
                 return "RICS.MPCH.NoPsycasts".Translate(pawn.LabelShortCap);
             }
 
@@ -1038,7 +1054,186 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             string result = string.Join("RICS.MPCH.PsycastSeparator".Translate(), levelStrings);
-            Logger.Debug($"[MyPawn Psycasts] Built response with {levelStrings.Count} level groups");
+            Logger.Debug($"[MyPawn Psycasts] Built response with {levelStrings.Count} level groups (vanilla)");
+            return result;
+        }
+
+        /// <summary>
+        /// Handles psycast listing when Vanilla Psycasts Expanded (VPE) is providing the psycasts.
+        /// VPE stores the actual abilities on CompAbilities.LearnedAbilities and marks them via AbilityExtension_Psycast.
+        /// </summary>
+        private static string HandleVPEPsycasts(Pawn pawn)
+        {
+            int GetRequiredHediffMinLevel(AbilityDef def)
+            {
+                if (def == null) return 0;
+                var reqProp = def.GetType().GetProperty("requiredHediff", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+                var req = reqProp?.GetValue(def);
+                if (req == null) return 0;
+
+                var minProp = req.GetType().GetProperty("minimumLevel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+                if (minProp != null)
+                {
+                    object val = minProp.GetValue(req);
+                    if (val is int i) return i;
+                }
+                var minField = req.GetType().GetField("minimumLevel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+                if (minField != null)
+                {
+                    object val = minField.GetValue(req);
+                    if (val is int i) return i;
+                }
+                return 0;
+            }
+
+            // Locate the CompAbilities component (provided by Vanilla Expanded Framework)
+            ThingComp comp = null;
+            if (pawn is ThingWithComps twc && twc.AllComps != null)
+            {
+                comp = twc.AllComps.FirstOrDefault(c => c != null && c.GetType().Name == "CompAbilities");
+            }
+
+            Logger.Debug($"[MyPawn Psycasts VPE] CompAbilities lookup result: {(comp != null ? "FOUND" : "NOT FOUND")}");
+
+            if (comp == null)
+            {
+                Logger.Debug("[MyPawn Psycasts] VPE detected but no CompAbilities found on pawn");
+                // Dump hediffs for debug
+                var hediffNames = pawn.health?.hediffSet?.hediffs?.Select(h => h?.def?.defName ?? h?.GetType().Name).ToList() ?? new List<string>();
+                Logger.Debug($"[MyPawn Psycasts VPE] Pawn hediffs: {string.Join(", ", hediffNames)}");
+                return "RICS.MPCH.NoPsycasts".Translate(pawn.LabelShortCap);
+            }
+
+            // Reflect into LearnedAbilities (IEnumerable<VEF.Abilities.Ability>)
+            var learnedProp = comp.GetType().GetProperty("LearnedAbilities", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+            IEnumerable learned = learnedProp?.GetValue(comp) as IEnumerable;
+
+            var learnedList = learned?.Cast<object>().ToList() ?? new List<object>();
+            Logger.Debug($"[MyPawn Psycasts VPE] LearnedAbilities count: {learnedList.Count}");
+
+            if (learned == null || learnedList.Count == 0)
+            {
+                Logger.Debug("[MyPawn Psycasts VPE] No LearnedAbilities found on CompAbilities");
+                return "RICS.MPCH.NoPsycasts".Translate(pawn.LabelShortCap);
+            }
+
+            // Group by psycast level (from the AbilityExtension_Psycast on the def, or fall back to AbilityDef.level)
+            var groups = new Dictionary<int, List<string>>();
+
+            foreach (object abilityObj in learnedList)
+            {
+                if (abilityObj == null) continue;
+
+                var defProp = abilityObj.GetType().GetProperty("def");
+                AbilityDef aDef = defProp?.GetValue(abilityObj) as AbilityDef;
+                if (aDef == null) continue;
+
+                Logger.Debug($"[MyPawn Psycasts VPE] Examining ability: {aDef.defName}, level={aDef.level}, psyfocus={aDef.PsyfocusCost}, entropy={aDef.EntropyGain}");
+
+                int level = 0;
+                bool isPsycast = false;
+
+                // Preferred: AbilityDef.level (works for many ability defs)
+                level = aDef.level;
+
+                // Look for the VPE AbilityExtension_Psycast on the def via modExtensions (no hard reference)
+                if (aDef.modExtensions != null)
+                {
+                    foreach (var ext in aDef.modExtensions)
+                    {
+                        if (ext == null) continue;
+                        string typeName = ext.GetType().Name;
+                        if (typeName.IndexOf("Psycast", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            isPsycast = true;
+                            Logger.Debug($"[MyPawn Psycasts VPE] Found Psycast extension on {aDef.defName}");
+
+                            // Read level from the extension (public field or property)
+                            var f = ext.GetType().GetField("level");
+                            if (f != null)
+                            {
+                                object val = f.GetValue(ext);
+                                if (val is int i) level = i;
+                            }
+                            var p = ext.GetType().GetProperty("level");
+                            if (p != null)
+                            {
+                                object val = p.GetValue(ext);
+                                if (val is int i) level = i;
+                            }
+
+                            if (level <= 0)
+                            {
+                                int minReq = GetRequiredHediffMinLevel(aDef);
+                                if (minReq > 0)
+                                    level = Math.Max(level, minReq);
+                            }
+
+                            break;
+                        }
+                    }
+                }
+
+                // Heuristic fallback for VPE-style psycasts if not caught by extension
+                if (!isPsycast)
+                {
+                    bool heuristicMatch = (aDef.defName != null &&
+                         (aDef.defName.StartsWith("VPE_") ||
+                          aDef.defName.IndexOf("Psycast", StringComparison.OrdinalIgnoreCase) >= 0)) ||
+                        aDef.PsyfocusCost > 0f ||
+                        aDef.EntropyGain > 0f;
+
+                    if (heuristicMatch)
+                    {
+                        isPsycast = true;
+                        Logger.Debug($"[MyPawn Psycasts VPE] Heuristic matched for {aDef.defName}");
+                        if (level <= 0)
+                        {
+                            int minReq = GetRequiredHediffMinLevel(aDef);
+                            if (minReq > 0)
+                                level = Math.Max(1, minReq);
+                        }
+                        if (level <= 0) level = 1;
+                    }
+                }
+
+                if (isPsycast && level <= 0)
+                    level = 1;
+
+                if (isPsycast)
+                {
+                    if (!groups.ContainsKey(level))
+                        groups[level] = new List<string>();
+
+                    groups[level].Add(StripTags(aDef.LabelCap.Resolve()));
+                    Logger.Debug($"[MyPawn Psycasts VPE] Added psycast '{aDef.defName}' at level {level}");
+                }
+            }
+
+            Logger.Debug($"[MyPawn Psycasts VPE] Total psycast groups found: {groups.Count}, total abilities: {groups.Sum(g => g.Value.Count)}");
+
+            if (groups.Count == 0)
+            {
+                // Could be abilities not initialized yet
+                var allAbilitiesCheck = pawn.abilities?.AllAbilitiesForReading;
+                if (allAbilitiesCheck.NullOrEmpty())
+                {
+                    Logger.Debug("[MyPawn Psycasts VPE] No groups and abilities tracker empty -> lazy init");
+                    return "RICS.MPCH.NoPsycastsLazyInit".Translate(pawn.LabelShortCap);
+                }
+                Logger.Debug("[MyPawn Psycasts VPE] No VPE-style psycasts matched in LearnedAbilities after processing");
+                return "RICS.MPCH.NoPsycasts".Translate(pawn.LabelShortCap);
+            }
+
+            var levelStrings = new List<string>();
+            foreach (var kvp in groups.OrderBy(k => k.Key))
+            {
+                string names = string.Join("• ", kvp.Value);
+                levelStrings.Add("RICS.MPCH.PsycastLevelGroup".Translate(kvp.Key, names));
+            }
+
+            string result = string.Join("RICS.MPCH.PsycastSeparator".Translate(), levelStrings);
+            Logger.Debug($"[MyPawn Psycasts] Built VPE response with {levelStrings.Count} level groups");
             return result;
         }
     }
