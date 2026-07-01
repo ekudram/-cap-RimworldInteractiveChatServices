@@ -1130,11 +1130,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 Logger.Debug($"[MyPawn Psycasts VPE] Examining ability: {aDef.defName}, level={aDef.level}, psyfocus={aDef.PsyfocusCost}, entropy={aDef.EntropyGain}");
 
-                int level = 0;
+                int level = aDef.level;
                 bool isPsycast = false;
 
-                // Preferred: AbilityDef.level (works for many ability defs)
-                level = aDef.level;
+                // List all mod extensions for this ability (debug)
+                var extNames = (aDef.modExtensions ?? new List<DefModExtension>()).Select(e => e?.GetType().FullName ?? e?.GetType().Name ?? "null").ToList();
+                Logger.Debug($"[MyPawn Psycasts VPE]   modExtensions for {aDef.defName}: [{string.Join(", ", extNames)}]");
 
                 // Look for the VPE AbilityExtension_Psycast on the def via modExtensions (no hard reference)
                 if (aDef.modExtensions != null)
@@ -1143,7 +1144,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     {
                         if (ext == null) continue;
                         string typeName = ext.GetType().Name;
-                        if (typeName.IndexOf("Psycast", StringComparison.OrdinalIgnoreCase) >= 0)
+                        string fullName = ext.GetType().FullName ?? typeName;
+                        if (fullName.IndexOf("Psycast", StringComparison.OrdinalIgnoreCase) >= 0 || typeName.IndexOf("Psycast", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
                             isPsycast = true;
                             Logger.Debug($"[MyPawn Psycasts VPE] Found Psycast extension on {aDef.defName}");
@@ -1200,17 +1202,41 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (isPsycast && level <= 0)
                     level = 1;
 
-                if (isPsycast)
+                // In VPE context, if we didn't match the strict "isPsycast" but the ability came from LearnedAbilities
+                // while the pawn has VPE hediff, still include it (many VPE abilities may not match name/cost heuristics if other VEF mods are present)
+                bool includeAsVpePsycast = isPsycast || (aDef.defName != null && (aDef.defName.StartsWith("VPE_") || aDef.defName.IndexOf("Psycast", StringComparison.OrdinalIgnoreCase) >= 0));
+
+                if (includeAsVpePsycast)
                 {
                     if (!groups.ContainsKey(level))
                         groups[level] = new List<string>();
 
                     groups[level].Add(StripTags(aDef.LabelCap.Resolve()));
-                    Logger.Debug($"[MyPawn Psycasts VPE] Added psycast '{aDef.defName}' at level {level}");
+                    Logger.Debug($"[MyPawn Psycasts VPE] Added VPE ability '{aDef.defName}' at level {level} (isPsycast={isPsycast})");
                 }
             }
 
-            Logger.Debug($"[MyPawn Psycasts VPE] Total psycast groups found: {groups.Count}, total abilities: {groups.Sum(g => g.Value.Count)}");
+            Logger.Debug($"[MyPawn Psycasts VPE] Total groups found after filtering: {groups.Count}, total abilities: {groups.Sum(g => g.Value.Count)}");
+
+            if (groups.Count == 0 && learnedList.Count > 0)
+            {
+                // Fallback: if nothing matched the psycast filter but we have LearnedAbilities in VPE context, list them all
+                Logger.Debug("[MyPawn Psycasts VPE] No matches after criteria, falling back to listing ALL LearnedAbilities as VPE abilities");
+                foreach (object abilityObj in learnedList)
+                {
+                    if (abilityObj == null) continue;
+                    var defProp2 = abilityObj.GetType().GetProperty("def");
+                    AbilityDef aDef2 = defProp2?.GetValue(abilityObj) as AbilityDef;
+                    if (aDef2 == null) continue;
+
+                    int fbLevel = aDef2.level;
+                    if (fbLevel <= 0) fbLevel = 1;
+
+                    if (!groups.ContainsKey(fbLevel))
+                        groups[fbLevel] = new List<string>();
+                    groups[fbLevel].Add(StripTags(aDef2.LabelCap.Resolve()));
+                }
+            }
 
             if (groups.Count == 0)
             {
@@ -1221,7 +1247,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     Logger.Debug("[MyPawn Psycasts VPE] No groups and abilities tracker empty -> lazy init");
                     return "RICS.MPCH.NoPsycastsLazyInit".Translate(pawn.LabelShortCap);
                 }
-                Logger.Debug("[MyPawn Psycasts VPE] No VPE-style psycasts matched in LearnedAbilities after processing");
+                Logger.Debug("[MyPawn Psycasts VPE] No abilities matched VPE psycast criteria (check the 'Examining ability' and 'modExtensions for' lines above to see actual defNames and extensions)");
                 return "RICS.MPCH.NoPsycasts".Translate(pawn.LabelShortCap);
             }
 

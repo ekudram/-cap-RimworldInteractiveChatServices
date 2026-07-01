@@ -1,9 +1,4 @@
-﻿//// Source/RICS/Harmony/RimazonLockerHarmony.cs
-//// Copyright (c) Captolamia
-//// This file is part of CAP Chat Interactive (RICS).
-//// GNU Affero GPL v3 — keep open-source friendly.
-
-using HarmonyLib;
+﻿using HarmonyLib;
 using RimWorld;
 using Verse;
 using Verse.AI;
@@ -15,11 +10,26 @@ namespace CAP_ChatInteractive
     {
         static bool Prefix(Pawn pawn, Thing t, bool forced, ref bool __result)
         {
-            if (t is Building_RimazonLocker locker && locker.allowPawnsToEmpty && locker.InnerContainer != null && locker.InnerContainer.Count > 0)
+            if (pawn == null || t == null || t.DestroyedOrNull())
+                return true;
+
+            if (t is Building_RimazonLocker locker
+                && locker.allowPawnsToEmpty
+                && locker.InnerContainer != null
+                && locker.InnerContainer.Count > 0)
             {
-                var desig = pawn.Map.designationManager.DesignationOn(t, DesignationDefOf.Flick);
-                __result = desig != null && pawn.CanReserve(t, ignoreOtherReservations: forced);
-                return false;
+                try
+                {
+                    var desig = pawn.Map?.designationManager?.DesignationOn(t, DesignationDefOf.Flick);
+                    __result = desig != null && pawn.CanReserve(t, ignoreOtherReservations: forced);
+                    return false;
+                }
+                catch
+                {
+                    // Silently fall back to vanilla behavior if anything goes wrong
+                    // (prevents crashes during cache refreshes from AllowTool etc.)
+                    return true;
+                }
             }
             return true;
         }
@@ -30,13 +40,27 @@ namespace CAP_ChatInteractive
     {
         static bool Prefix(Pawn pawn, Thing t, bool forced, ref Job __result)
         {
-            if (t is Building_RimazonLocker locker && locker.allowPawnsToEmpty && locker.InnerContainer != null && locker.InnerContainer.Count > 0)
+            if (pawn == null || t == null || t.DestroyedOrNull())
+                return true;
+
+            if (t is Building_RimazonLocker locker
+                && locker.allowPawnsToEmpty
+                && locker.InnerContainer != null
+                && locker.InnerContainer.Count > 0)
             {
-                var desig = pawn.Map.designationManager.DesignationOn(t, DesignationDefOf.Flick);
-                if (desig != null && pawn.CanReserve(t, ignoreOtherReservations: forced))
+                try
                 {
-                    __result = JobMaker.MakeJob(JobDefOf_CAP.CAP_EmptyLocker, t);
-                    return false;
+                    var desig = pawn.Map?.designationManager?.DesignationOn(t, DesignationDefOf.Flick);
+                    if (desig != null && pawn.CanReserve(t, ignoreOtherReservations: forced))
+                    {
+                        __result = JobMaker.MakeJob(JobDefOf_CAP.CAP_EmptyLocker, t);
+                        return false;
+                    }
+                }
+                catch
+                {
+                    // Silently fall back
+                    return true;
                 }
             }
             return true;
