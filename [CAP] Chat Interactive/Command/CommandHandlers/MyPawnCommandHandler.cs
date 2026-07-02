@@ -1112,28 +1112,33 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             var tracker = pawn.mechanitor;
+
+            int usedBw = tracker.UsedBandwidth;
+            int totalBw = tracker.TotalBandwidth;
+            string bwPrefix = $"Bandwidth {usedBw} / {totalBw} (used of total)";
+
             List<Pawn> mechs = new List<Pawn>();
 
-            if (tracker != null)
+            // Best way: use the same method the game uses internally
+            List<Pawn> assignedOrder = new List<Pawn>();
+            MechanitorUtility.GetMechsInAssignedOrder(pawn, ref assignedOrder);
+            mechs.AddRange(assignedOrder);
+
+            // Also pull the public lists for completeness
+            if (tracker.ControlledPawns != null)
+                mechs.AddRange(tracker.ControlledPawns);
+            if (tracker.OverseenPawns != null)
+                mechs.AddRange(tracker.OverseenPawns);
+            if (tracker.controlGroups != null)
             {
-                // Use the public API from Pawn_MechanitorTracker (see source)
-                if (tracker.ControlledPawns != null)
-                    mechs.AddRange(tracker.ControlledPawns);
-
-                if (tracker.OverseenPawns != null)
-                    mechs.AddRange(tracker.OverseenPawns);
-
-                if (tracker.controlGroups != null)
+                foreach (var group in tracker.controlGroups)
                 {
-                    foreach (var group in tracker.controlGroups)
-                    {
-                        if (group?.MechsForReading != null)
-                            mechs.AddRange(group.MechsForReading);
-                    }
+                    if (group?.MechsForReading != null)
+                        mechs.AddRange(group.MechsForReading);
                 }
             }
 
-            Logger.Debug($"[MyPawn Mechs] Found {mechs.Count} candidate mechs for {pawn.LabelShortCap} (ControlledPawns + OverseenPawns + groups)");
+            Logger.Debug($"[MyPawn Mechs] {pawn.LabelShortCap} - BW:{usedBw}/{totalBw} ControlledPawns:{tracker.ControlledPawns?.Count ?? 0} Overseen:{tracker.OverseenPawns?.Count ?? 0} Groups:{tracker.controlGroups?.Count ?? 0} AssignedOrder:{assignedOrder.Count} Raw collected:{mechs.Count}");
 
             mechs = mechs
                 .Where(m => m != null)
@@ -1141,9 +1146,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 .Where(m => m.RaceProps != null && m.RaceProps.IsMechanoid)
                 .ToList();
 
+            Logger.Debug($"[MyPawn Mechs] After filter: {mechs.Count} mechanoids for {pawn.LabelShortCap}");
+
             if (mechs.Count == 0)
             {
-                return "No mechanoids controlled.";
+                return $"{bwPrefix} | No mechanoids controlled.";
             }
 
             var groups = mechs
@@ -1166,7 +1173,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 });
 
             string listStr = string.Join(" • ", groups);
-            return $"Mechanoids: {listStr}";
+            return $"{bwPrefix} | {listStr}";
         }
     }
 }
