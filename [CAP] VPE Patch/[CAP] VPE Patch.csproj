@@ -1,0 +1,97 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>CAP_ChatInteractive.Patch.VPE</RootNamespace>
+    <OutputPath>C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\[CAP] Chat Interactive\Patches\1.6\Assemblies</OutputPath>
+    <DebugType>none</DebugType>
+    <CopyLocal>False</CopyLocal>
+    <LangVersion>12</LangVersion>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.4850" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\[CAP] Chat Interactive\[CAP] Chat Interactive.csproj">
+      <!-- Prevent copying the main DLL -->
+      <Private>false</Private>
+      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
+      <CopyLocal>False</CopyLocal>
+    </ProjectReference>
+  </ItemGroup>
+
+  <!-- VPE + VEF references. Adjust HintPath if needed for your setup. -->
+  <ItemGroup>
+    <Reference Include="VanillaPsycastsExpanded">
+      <HintPath>..\..\..\..\..\..\workshop\content\294100\2842502659\1.6\Assemblies\VanillaPsycastsExpanded.dll</HintPath>
+    </Reference>
+    <Reference Include="VEF.Abilities">
+      <HintPath>..\..\..\..\..\..\workshop\content\294100\[YOUR-VEF-MOD-ID]\1.6\Assemblies\VEF.Abilities.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Update="System">
+      <Private>False</Private>
+      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
+    <Reference Update="System.Core">
+      <Private>False</Private>
+      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
+    <Reference Update="System.Data">
+      <Private>False</Private>
+      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
+    <Reference Update="System.Drawing">
+      <Private>False</Private>
+      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
+    <Reference Update="System.IO.Compression.FileSystem">
+      <Private>False</Private>
+      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
+    <Reference Update="System.Numerics">
+      <Private>False</Private>
+      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
+    <Reference Update="System.Runtime.Serialization">
+      <Private>False</Private>
+      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
+    <Reference Update="System.Xml">
+      <Private>False</Private>
+      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
+    <Reference Update="System.Xml.Linq">
+      <Private>False</Private>
+      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Minimal PostBuild: only clean patch-specific junk. No deletion of main RICS DLLs. -->
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="del &quot;$(OutputPath)\[CAP] VPE Patch.dll.config&quot;" />
+    <!-- Optionally clean copied VPE/VEF dlls if they pollute the folder:
+    <Exec Command="del &quot;$(OutputPath)\VanillaPsycastsExpanded.dll&quot;" />
+    -->
+  </Target>
+
+</Project>
