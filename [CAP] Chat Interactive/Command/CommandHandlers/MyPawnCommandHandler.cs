@@ -1122,17 +1122,29 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Best way: use the same method the game uses internally
             List<Pawn> assignedOrder = new List<Pawn>();
             MechanitorUtility.GetMechsInAssignedOrder(pawn, ref assignedOrder);
+            foreach (Pawn mech in assignedOrder)
+            {
+                if (mech == null) continue;
+                Logger.Debug($"[MyPawn Mechs] Assigned mech: {mech.LabelShortCap} ({mech.kindDef?.LabelCap ?? "Unknown kind"})");
+            }
             mechs.AddRange(assignedOrder);
 
             // Also pull the public lists for completeness
             if (tracker.ControlledPawns != null)
+            {
+                Logger.Debug($"[MyPawn Mechs] ControlledPawns count: {tracker.ControlledPawns.Count}");
                 mechs.AddRange(tracker.ControlledPawns);
+            }
             if (tracker.OverseenPawns != null)
+            {
+                Logger.Debug($"[MyPawn Mechs] OverseenPawns count: {tracker.OverseenPawns.Count}");
                 mechs.AddRange(tracker.OverseenPawns);
+            }
             if (tracker.controlGroups != null)
             {
                 foreach (var group in tracker.controlGroups)
                 {
+                    Logger.Debug($"[MyPawn Mechs] Control group '{group?.LabelIndexWithWorkMode ?? "Unknown"}' has {group?.MechsForReading?.Count ?? 0} mechanoids");
                     if (group?.MechsForReading != null)
                         mechs.AddRange(group.MechsForReading);
                 }
@@ -1146,7 +1158,37 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 .Where(m => m.RaceProps != null && m.RaceProps.IsMechanoid)
                 .ToList();
 
-            Logger.Debug($"[MyPawn Mechs] After filter: {mechs.Count} mechanoids for {pawn.LabelShortCap}");
+            Logger.Debug($"[MyPawn Mechs] After initial filter: {mechs.Count} mechanoids for {pawn.LabelShortCap}");
+
+            // Robust fallback: scan all maps for any mechanoids that list this pawn as their overseer.
+            // This can catch mechs that aren't showing up in the internal lists yet.
+            int beforeFallback = mechs.Count;
+            if (Current.Game != null)
+            {
+                foreach (var map in Find.Maps)
+                {
+                    if (map == null) continue;
+                    foreach (var p in map.mapPawns.AllPawnsSpawned.Concat(map.mapPawns.AllPawnsUnspawned))
+                    {
+                        if (p != null && p.RaceProps != null && p.RaceProps.IsMechanoid && p.GetOverseer() == pawn)
+                        {
+                            mechs.Add(p);
+                        }
+                    }
+                }
+            }
+            if (mechs.Count > beforeFallback)
+            {
+                Logger.Debug($"[MyPawn Mechs] Fallback scan added {mechs.Count - beforeFallback} more via GetOverseer()");
+            }
+
+            mechs = mechs
+                .Where(m => m != null)
+                .Distinct()
+                .Where(m => m.RaceProps != null && m.RaceProps.IsMechanoid)
+                .ToList();
+
+            Logger.Debug($"[MyPawn Mechs] Final count after fallback + filter: {mechs.Count}");
 
             if (mechs.Count == 0)
             {
