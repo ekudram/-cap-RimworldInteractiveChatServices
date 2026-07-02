@@ -17,6 +17,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "About", "About", "{0083D6CE
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "[CAP] HAR Patch", "[CAP] HAR Patch\[CAP] HAR Patch.csproj", "{6A6186C9-4DC4-4098-B598-BAACF789CE32}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "[CAP] VPE Patch", "[CAP] VPE Patch\[CAP] VPE Patch.csproj", "{450C098F-8CB5-4FA5-A3CD-F0514487BC95}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Languages", "Languages", "{3D07B92E-449F-4DD2-B323-83B0E2E269D5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "English", "English", "{574CBD0D-4F52-4EE9-8D65-3CDA841A3D76}"
@@ -37,6 +39,10 @@ Global
 		{6A6186C9-4DC4-4098-B598-BAACF789CE32}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6A6186C9-4DC4-4098-B598-BAACF789CE32}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6A6186C9-4DC4-4098-B598-BAACF789CE32}.Release|Any CPU.Build.0 = Release|Any CPU
+		{450C098F-8CB5-4FA5-A3CD-F0514487BC95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{450C098F-8CB5-4FA5-A3CD-F0514487BC95}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{450C098F-8CB5-4FA5-A3CD-F0514487BC95}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{450C098F-8CB5-4FA5-A3CD-F0514487BC95}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

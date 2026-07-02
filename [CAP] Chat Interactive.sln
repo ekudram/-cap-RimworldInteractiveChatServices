@@ -5,6 +5,8 @@ VisualStudioVersion = 17.14.36518.9
 MinimumVisualStudioVersion = 10.0.40219.1
 Project(...) = "Source", "[CAP] Chat Interactive.csproj", "{0AB8EBE0-F761-4225-AD1F-18EA6AB3D6FB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "[CAP] VPE Patch", "[CAP] VPE Patch\[CAP] VPE Patch.csproj", "{450C098F-8CB5-4FA5-A3CD-F0514487BC95}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{0AB8EBE0-F761-4225-AD1F-18EA6AB3D6FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0AB8EBE0-F761-4225-AD1F-18EA6AB3D6FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0AB8EBE0-F761-4225-AD1F-18EA6AB3D6FB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{450C098F-8CB5-4FA5-A3CD-F0514487BC95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{450C098F-8CB5-4FA5-A3CD-F0514487BC95}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{450C098F-8CB5-4FA5-A3CD-F0514487BC95}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{450C098F-8CB5-4FA5-A3CD-F0514487BC95}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -15,12 +15,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
-// Provides compatibility with Vanilla Psycasts Expanded (VPE).
-// Kept completely separate from the HAR patch system for readability.
+// VPE compatibility patch. Kept separate from the HAR patch for readability.
+// Implements IVPEPsycastProvider so the main mod can get clean VPE psycast data.
 
 using _CAP__Chat_Interactive.Interfaces;
 using VanillaPsycastsExpanded;
-using VEF.Abilities;
 using RimWorld;
 using System;
 using Verse;
@@ -57,11 +56,6 @@ namespace CAP_ChatInteractive.Patch.VPE
             }
         }
 
-        /// <summary>
-        /// Phase 1: Returns basic psycast stats for !mypawn psycasts
-        /// (level, psyfocus current+needed, heat current+max).
-        /// Heavy logging + try/catch for debugging.
-        /// </summary>
         public VPEBasicPsycastInfo GetBasicPsycastInfo(Pawn pawn)
         {
             Logger.Debug($"[CAP] VPE Patch: GetBasicPsycastInfo called for {(pawn?.LabelShort ?? "null")}");
@@ -70,21 +64,15 @@ namespace CAP_ChatInteractive.Patch.VPE
             {
                 if (pawn == null)
                 {
-                    Logger.Debug("[CAP] VPE Patch: Pawn is null, returning empty info.");
                     return new VPEBasicPsycastInfo();
                 }
 
                 var implantDef = DefDatabase<HediffDef>.GetNamedSilentFail("VPE_PsycastAbilityImplant");
-                if (implantDef == null)
-                {
-                    Logger.Debug("[CAP] VPE Patch: VPE_PsycastAbilityImplant def not found.");
-                    return new VPEBasicPsycastInfo();
-                }
-
                 var hediff = pawn.health?.hediffSet?.GetFirstHediffOfDef(implantDef, false) as Hediff_PsycastAbilities;
+
                 if (hediff == null)
                 {
-                    Logger.Debug("[CAP] VPE Patch: No VPE_PsycastAbilityImplant hediff on pawn.");
+                    Logger.Debug("[CAP] VPE Patch: No VPE_PsycastAbilityImplant hediff found.");
                     return new VPEBasicPsycastInfo();
                 }
 
@@ -101,23 +89,20 @@ namespace CAP_ChatInteractive.Patch.VPE
                     info.CurrentHeat = pe.CurrentEntropy;
                     info.MaxHeat = pe.MaxEntropy;
 
-                    // Try to compute "needed for next level" using experience
+                    // Compute experience needed for next level (Phase 1)
                     try
                     {
-                        if (hediff.level < 30) // safe upper bound
+                        if (hediff.level < 30)
                         {
-                            int nextLevel = hediff.level + 1;
-                            float required = Hediff_PsycastAbilities.ExperienceRequiredForLevel(nextLevel);
+                            int next = hediff.level + 1;
+                            float required = Hediff_PsycastAbilities.ExperienceRequiredForLevel(next);
                             info.PsyfocusNeededForNextLevel = Math.Max(0f, required - hediff.experience);
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        Logger.Debug($"[CAP] VPE Patch: Could not compute next-level experience: {ex.Message}");
-                    }
+                    catch { }
                 }
 
-                Logger.Debug($"[CAP] VPE Patch: level={info.Level}, psyfocus={info.CurrentPsyfocus:F2}/{info.MaxPsyfocus:F2}, heat={info.CurrentHeat:F1}/{info.MaxHeat:F1}, neededForNext={info.PsyfocusNeededForNextLevel:F1}");
+                Logger.Debug($"[CAP] VPE Patch: level={info.Level}, psyfocus={info.CurrentPsyfocus:F2}/{info.MaxPsyfocus:F2}, heat={info.CurrentHeat:F1}/{info.MaxHeat:F1}");
                 return info;
             }
             catch (Exception ex)

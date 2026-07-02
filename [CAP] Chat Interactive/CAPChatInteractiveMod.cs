@@ -36,6 +36,7 @@ namespace CAP_ChatInteractive
         public CAPChatInteractiveSettings Settings { get; private set; }
 
         public IAlienCompatibilityProvider AlienProvider { get; private set; }
+        public IVPEPsycastProvider VPEProvider { get; private set; }
 
         // Service managers add new chat platforms here as needed, and they will be initialized at mod startup
         private TwitchService _twitchService;
@@ -76,6 +77,10 @@ namespace CAP_ChatInteractive
             // INITIALIZE ALIEN PROVIDER HERE - AT MOD STARTUP
             Logger.Debug("=== INITIALIZING ALIEN COMPATIBILITY AT MOD STARTUP ===");
             InitializeAlienCompatibilityProvider();
+
+            // INITIALIZE VPE PS YCAST PROVIDER HERE - AT MOD STARTUP
+            Logger.Debug("=== INITIALIZING VPE PS YCAST PROVIDER AT MOD STARTUP ===");
+            InitializeVPEPsycastProvider();
 
             if (Current.Game != null && Current.Game.components != null)
             {
@@ -128,6 +133,7 @@ namespace CAP_ChatInteractive
             // Then initialize services (which will use the registered commands)
             InitializeServices();
             InitializeAlienCompatibilityProvider(); // HAR
+            InitializeVPEPsycastProvider(); // VPE
 
             Logger.Debug("CAPChatInteractiveMod constructor completed");
         }
@@ -241,6 +247,62 @@ namespace CAP_ChatInteractive
                 Logger.Error($"Error finding HAR Patch: {ex}");
                 return null;
             }
+        }
+
+        public void InitializeVPEPsycastProvider()
+        {
+            try
+            {
+                Logger.Debug("=== INITIALIZING VPE PS YCAST PROVIDER ===");
+
+                if (ModLister.GetActiveModWithIdentifier("VanillaExpanded.VPsycastsE") != null)
+                {
+                    Logger.Debug("VPE mod detected, checking for patch assembly");
+
+                    VPEProvider = LoadVPEPatchConditionally();
+                }
+                else
+                {
+                    Logger.Debug("VPE mod not detected, VPE psycast support disabled");
+                    VPEProvider = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error initializing VPE psycast provider: {ex}");
+                VPEProvider = null;
+            }
+        }
+
+        private IVPEPsycastProvider LoadVPEPatchConditionally()
+        {
+            try
+            {
+                Assembly vpePatchAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                    .FirstOrDefault(a => a.GetName().Name == "[CAP] VPE Patch");
+
+                if (vpePatchAssembly == null)
+                {
+                    Logger.Debug("VPE Patch assembly not found");
+                    return null;
+                }
+
+                Type vpePatchType = vpePatchAssembly.GetType("CAP_ChatInteractive.Patch.VPE.VPEPatch");
+                if (vpePatchType != null)
+                {
+                    return Activator.CreateInstance(vpePatchType) as IVPEPsycastProvider;
+                }
+            }
+            catch (FileNotFoundException)
+            {
+                Logger.Debug("VPE Patch assembly not found (optional dependency)");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error loading VPE patch: {ex}");
+            }
+
+            return null;
         }
 
         private void InitializeServices()

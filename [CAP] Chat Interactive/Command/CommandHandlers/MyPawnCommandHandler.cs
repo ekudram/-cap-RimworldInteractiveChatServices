@@ -20,6 +20,7 @@
 
 
 using _CAP__Chat_Interactive.Command.CommandHelpers;
+using _CAP__Chat_Interactive.Interfaces;
 using RimWorld;
 using System;
 using System.Collections;
@@ -972,36 +973,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             Logger.Debug($"[MyPawn Psycasts] Starting psycasts info for {pawn.LabelShortCap}. RoyaltyActive={ModsConfig.RoyaltyActive}");
 
-            // === Vanilla Expanded Psycasts Expanded (VPE) support ===
-            // VPE replaces vanilla psycasts. It stores learned psycasts on CompAbilities (from VEF) instead of vanilla Pawn_AbilityTracker.
-            var vpePsycastImplantDef = DefDatabase<HediffDef>.GetNamedSilentFail("VPE_PsycastAbilityImplant");
-            bool vpeDefExists = vpePsycastImplantDef != null;
-            Hediff vpeHediff = null;
-            if (vpeDefExists)
+            // === VPE support via patch (clean, no reflection) ===
+            var vpeProvider = CAPChatInteractiveMod.Instance?.VPEProvider;
+            if (vpeProvider != null)
             {
-                vpeHediff = pawn.health?.hediffSet?.GetFirstHediffOfDef(vpePsycastImplantDef, false);
+                var info = vpeProvider.GetBasicPsycastInfo(pawn);
+                if (info != null && info.HasPsycasts)
+                {
+                    string result = $"Psycaster L{info.Level} | Psyfocus: {info.CurrentPsyfocus:F2}/{info.MaxPsyfocus:F2} (need ~{info.PsyfocusNeededForNextLevel:F1} for next) | Heat: {info.CurrentHeat:F1}/{info.MaxHeat:F1}";
+                    Logger.Debug($"[MyPawn Psycasts] VPE provider returned: {result}");
+                    return result;
+                }
+                Logger.Debug("[MyPawn Psycasts] VPE provider present but no psycasts for this pawn");
             }
-
-            // Additional fallback detection (type name or CompAbilities presence) in case def lookup or hediff attachment differs
-            bool hasVPEHediffByType = pawn.health?.hediffSet?.hediffs?.Any(h =>
-                h != null && (h.GetType().Name.Contains("PsycastAbilities") ||
-                              (h.def?.defName != null && h.def.defName.Contains("Psycast") && h.def.defName.StartsWith("VPE_")))) ?? false;
-
-            bool hasCompAbilities = false;
-            if (pawn is ThingWithComps twcCheck && twcCheck.AllComps != null)
-            {
-                hasCompAbilities = twcCheck.AllComps.Any(c => c != null && c.GetType().Name == "CompAbilities");
-            }
-
-            Logger.Debug($"[MyPawn Psycasts] VPE check - defExists:{vpeDefExists} hasVpeHediff:{vpeHediff != null} hasByType:{hasVPEHediffByType} hasCompAbilities:{hasCompAbilities}");
-
-            if (vpeHediff != null || hasVPEHediffByType || hasCompAbilities)
-            {
-                Logger.Debug("[MyPawn Psycasts] Entering VPE psycast handling path");
-                return HandleVPEPsycasts(pawn);
-            }
-
-            Logger.Debug("[MyPawn Psycasts] No VPE indicators found, falling back to vanilla Royalty path");
 
             // === Vanilla Royalty path ===
             if (!ModsConfig.RoyaltyActive)
@@ -1056,130 +1040,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             string result = string.Join("RICS.MPCH.PsycastSeparator".Translate(), levelStrings);
             Logger.Debug($"[MyPawn Psycasts] Built response with {levelStrings.Count} level groups (vanilla)");
             return result;
-        }
-
-        /// <summary>
-        /// Handles psycast listing when Vanilla Psycasts Expanded (VPE) is providing the psycasts.
-        /// VPE stores the actual abilities on CompAbilities.LearnedAbilities and marks them via AbilityExtension_Psycast.
-        /// </summary>
-        private static string HandleVPEPsycasts(Pawn pawn)
-        {
-            // Locate the CompAbilities component (provided by Vanilla Expanded Framework)
-            ThingComp comp = null;
-            if (pawn is ThingWithComps twc && twc.AllComps != null)
-            {
-                comp = twc.AllComps.FirstOrDefault(c => c != null && c.GetType().Name == "CompAbilities");
-            }
-
-            Logger.Debug($"[MyPawn Psycasts VPE] CompAbilities lookup result: {(comp != null ? "FOUND" : "NOT FOUND")}");
-
-            if (comp == null)
-            {
-                Logger.Debug("[MyPawn Psycasts] VPE detected but no CompAbilities found on pawn");
-                // Dump hediffs for debug
-                var hediffNames = pawn.health?.hediffSet?.hediffs?.Select(h => h?.def?.defName ?? h?.GetType().Name).ToList() ?? new List<string>();
-                Logger.Debug($"[MyPawn Psycasts VPE] Pawn hediffs: {string.Join(", ", hediffNames)}");
-                return "RICS.MPCH.NoPsycasts".Translate(pawn.LabelShortCap);
-            }
-
-            // Reflect into LearnedAbilities (IEnumerable<VEF.Abilities.Ability>)
-            var learnedProp = comp.GetType().GetProperty("LearnedAbilities", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
-            IEnumerable learned = learnedProp?.GetValue(comp) as IEnumerable;
-
-            var learnedList = learned?.Cast<object>().ToList() ?? new List<object>();
-            Logger.Debug($"[MyPawn Psycasts VPE] LearnedAbilities count: {learnedList.Count}");
-
-            if (learnedList.Count > 0)
-            {
-                object first = learnedList[0];
-                Logger.Debug($"[MyPawn Psycasts VPE] First ability runtime type: {first.GetType().FullName}");
-            }
-
-            if (learned == null || learnedList.Count == 0)
-            {
-                Logger.Debug("[MyPawn Psycasts VPE] No LearnedAbilities found on CompAbilities");
-                return "RICS.MPCH.NoPsycasts".Translate(pawn.LabelShortCap);
-            }
-
-            // Use CompAbilities.HasAbility (same as VPE's own iTab) -- this is the authoritative list of what the pawn "has".
-            var groups = new Dictionary<int, List<string>>();
-
-            var compType = comp.GetType();
-            var hasAbilityMethod = compType.GetMethod("HasAbility", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
-
-            if (hasAbilityMethod == null)
-            {
-                Logger.Debug("[MyPawn Psycasts VPE] Could not find HasAbility method");
-                return "RICS.MPCH.NoPsycasts".Translate(pawn.LabelShortCap);
-            }
-
-            var candidates = DefDatabase<AbilityDef>.AllDefsListForReading
-                .Where(d => d != null && d.defName != null &&
-                    (d.defName.StartsWith("VPE_", StringComparison.OrdinalIgnoreCase) ||
-                     (d.modExtensions != null && d.modExtensions.Any(e => e != null && e.GetType().Name.IndexOf("Psycast", StringComparison.OrdinalIgnoreCase) >= 0))))
-                .ToList();
-
-            Logger.Debug($"[MyPawn Psycasts VPE] Checking HasAbility on {candidates.Count} VPE psycast candidates");
-
-            foreach (var ad in candidates)
-            {
-                bool has = false;
-                try { has = (bool)hasAbilityMethod.Invoke(comp, new object[] { ad }); } catch { continue; }
-
-                if (has)
-                {
-                    int level = ad.level;
-                    if (ad.modExtensions != null)
-                    {
-                        foreach (var ext in ad.modExtensions)
-                        {
-                            if (ext != null && ext.GetType().Name.IndexOf("Psycast", StringComparison.OrdinalIgnoreCase) >= 0)
-                            {
-                                var lp = ext.GetType().GetProperty("level", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                                if (lp != null) { var v = lp.GetValue(ext); if (v is int ii && ii > 0) level = ii; }
-                                var lf = ext.GetType().GetField("level", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                                if (lf != null) { var v = lf.GetValue(ext); if (v is int ii && ii > 0) level = ii; }
-                                break;
-                            }
-                        }
-                    }
-                    if (level <= 0) level = 1;
-
-                    if (!groups.ContainsKey(level)) groups[level] = new List<string>();
-                    groups[level].Add(StripTags(ad.LabelCap.Resolve()));
-                    Logger.Debug($"[MyPawn Psycasts VPE] HasAbility true: {ad.defName} L{level}");
-                }
-            }
-
-            Logger.Debug($"[MyPawn Psycasts VPE] groups after HasAbility: {groups.Count}");
-
-            if (groups.Count == 0)
-            {
-                return "RICS.MPCH.NoPsycasts".Translate(pawn.LabelShortCap);
-            }
-
-
-
-
-
-
-
-            if (groups.Count == 0)
-            {
-                return "RICS.MPCH.NoPsycasts".Translate(pawn.LabelShortCap);
-            }
-
-            var levelStrings = new List<string>();
-            foreach (var kvp in groups.OrderBy(k => k.Key))
-            {
-                string names = string.Join("• ", kvp.Value);
-                levelStrings.Add("RICS.MPCH.PsycastLevelGroup".Translate(kvp.Key, names));
-            }
-
-            string result = string.Join("RICS.MPCH.PsycastSeparator".Translate(), levelStrings);
-            Logger.Debug($"[MyPawn Psycasts] Built VPE response with {levelStrings.Count} level groups");
-            return result;
-
         }
     }
 }
