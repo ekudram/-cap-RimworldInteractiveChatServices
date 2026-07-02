@@ -1114,55 +1114,31 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var tracker = pawn.mechanitor;
             List<Pawn> mechs = new List<Pawn>();
 
-            // Use reflection to access internal lists safely (API not fully public on Pawn_MechanitorTracker)
-            try
+            if (tracker != null)
             {
-                var assignedField = tracker.GetType().GetField("assignedMechs", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                if (assignedField != null)
-                {
-                    var val = assignedField.GetValue(tracker) as System.Collections.IEnumerable;
-                    if (val != null)
-                        foreach (Pawn p in val) if (p != null) mechs.Add(p);
-                }
+                // Use the public API from Pawn_MechanitorTracker (see source)
+                if (tracker.ControlledPawns != null)
+                    mechs.AddRange(tracker.ControlledPawns);
 
-                var directField = tracker.GetType().GetField("directlyControlledMechs", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                if (directField != null)
-                {
-                    var val = directField.GetValue(tracker) as System.Collections.IEnumerable;
-                    if (val != null)
-                        foreach (Pawn p in val) if (p != null) mechs.Add(p);
-                }
-            }
-            catch { }
+                if (tracker.OverseenPawns != null)
+                    mechs.AddRange(tracker.OverseenPawns);
 
-            // Control groups
-            try
-            {
-                var groupsField = tracker.GetType().GetField("controlGroups", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                if (groupsField != null)
+                if (tracker.controlGroups != null)
                 {
-                    var ctrlGroups = groupsField.GetValue(tracker) as System.Collections.IEnumerable;
-                    if (ctrlGroups != null)
+                    foreach (var group in tracker.controlGroups)
                     {
-                        foreach (object g in ctrlGroups)
-                        {
-                            if (g == null) continue;
-                            var overseenField = g.GetType().GetField("overseenPawns", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                            if (overseenField != null)
-                            {
-                                var val = overseenField.GetValue(g) as System.Collections.IEnumerable;
-                                if (val != null)
-                                    foreach (Pawn p in val) if (p != null) mechs.Add(p);
-                            }
-                        }
+                        if (group?.MechsForReading != null)
+                            mechs.AddRange(group.MechsForReading);
                     }
                 }
             }
-            catch { }
+
+            Logger.Debug($"[MyPawn Mechs] Found {mechs.Count} candidate mechs for {pawn.LabelShortCap} (ControlledPawns + OverseenPawns + groups)");
 
             mechs = mechs
+                .Where(m => m != null)
                 .Distinct()
-                .Where(m => m != null && m.RaceProps != null && m.RaceProps.IsMechanoid)
+                .Where(m => m.RaceProps != null && m.RaceProps.IsMechanoid)
                 .ToList();
 
             if (mechs.Count == 0)
