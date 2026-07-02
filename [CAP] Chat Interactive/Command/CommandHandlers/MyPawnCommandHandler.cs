@@ -105,7 +105,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "psyfocus":
                     case "psycast":
                     case "psycasts":
-                        return HandlePsycastsInfo(pawn);
+                        return HandlePsycastsInfo(pawn, args);
                     default:
                         return "RICS.MPCH.UnknownSubcommand".Translate(subCommand ?? "none");
                 }
@@ -963,9 +963,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         // === Psycasts ===
-        // === Psycasts ===
 
-        private static string HandlePsycastsInfo(Pawn pawn)
+        private static string HandlePsycastsInfo(Pawn pawn, string[] args)
         {
             if (pawn == null)
             {
@@ -973,7 +972,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return "RICS.MPCH.NoPsycasts".Translate("Unknown");
             }
 
-            Logger.Debug($"[MyPawn Psycasts] Starting psycasts info for {pawn.LabelShortCap}. RoyaltyActive={ModsConfig.RoyaltyActive}");
+            Logger.Debug($"[MyPawn Psycasts] Starting psycasts info for {pawn.LabelShortCap}. RoyaltyActive={ModsConfig.RoyaltyActive} args={(args == null ? "null" : string.Join(",", args))}");
 
             // === VPE support via patch (clean, no reflection) ===
             var vpeProvider = CAPChatInteractiveMod.Instance?.VPEProvider;
@@ -981,10 +980,44 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 try
                 {
+                    // Class / path query: !mypawn psycast <classname>
+                    if (args != null && args.Length > 0)
+                    {
+                        var classInfo = vpeProvider.GetPsycastsInClass(pawn, args[0]);
+                        if (classInfo != null && classInfo.HasMatchingClass)
+                        {
+                            string className = StripTags(classInfo.ClassLabel) ?? classInfo.ClassDefName ?? "class";
+                            if (classInfo.HasAnyAbilities)
+                            {
+                                string abilitiesList = string.Join(" • ", classInfo.Abilities.Select(a => StripTags(a.Label)));
+                                string vpeClassResult = $"Psycaster level {classInfo.Level} | {className}: {abilitiesList}";
+                                Logger.Debug($"[MyPawn Psycasts] VPE class returned: {vpeClassResult}");
+                                return vpeClassResult;
+                            }
+                            else
+                            {
+                                return $"Psycaster level {classInfo.Level} | {className}: none learned yet";
+                            }
+                        }
+                        else
+                        {
+                            string err = classInfo?.Error != null ? $" ({classInfo.Error})" : "";
+                            Logger.Debug($"[MyPawn Psycasts] VPE class query no match for '{args[0]}'{err}");
+                            return $"Unknown psycast class '{string.Join(" ", args)}'{err}. Try !mypawn psycast for stats or a valid class name.";
+                        }
+                    }
+
+                    // Basic stats (no class arg): !mypawn psycast / psycasts / psyfocus
                     var info = vpeProvider.GetBasicPsycastInfo(pawn);
                     if (info != null && info.HasPsycasts)
                     {
-                        string vpeResult = $"Psycaster L{info.Level} | Psyfocus: {info.CurrentPsyfocus:F2}/{info.MaxPsyfocus:F2} (need ~{info.PsyfocusNeededForNextLevel:F1} for next) | Heat: {info.CurrentHeat:F1}/{info.MaxHeat:F1}";
+                        float pf = info.CurrentPsyfocus;
+                        float maxPf = info.MaxPsyfocus > 0 ? info.MaxPsyfocus : 1f;
+                        int percent = (int)Math.Round((pf / maxPf) * 100f);
+                        if (percent < 0) percent = 0;
+                        if (percent > 100) percent = 100;
+
+                        string vpeResult = $"Psycaster level {info.Level} | Psyfocus {percent}% full | Need {info.PsyfocusNeededForNextLevel:F1} Psyfocus exp points for next level | Heat {info.CurrentHeat:F1} of {info.MaxHeat:F1} points.";
                         Logger.Debug($"[MyPawn Psycasts] VPE provider returned: {vpeResult}");
                         return vpeResult;
                     }
@@ -1043,7 +1076,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             List<string> levelStrings = new List<string>();
             foreach (var group in psycasts)
             {
-                string names = string.Join("• ", group.Select(a => StripTags(a.def.LabelCap.Resolve())));
+                string names = string.Join(" • ", group.Select(a => StripTags(a.def.LabelCap.Resolve())));
                 levelStrings.Add("RICS.MPCH.PsycastLevelGroup".Translate(group.Key, names));
             }
 

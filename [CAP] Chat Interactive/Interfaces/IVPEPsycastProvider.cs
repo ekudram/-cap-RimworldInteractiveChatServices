@@ -19,6 +19,7 @@
 // Kept separate from IAlienCompatibilityProvider (HAR) for readability.
 
 using RimWorld;
+using System.Collections.Generic;
 using Verse;
 
 namespace _CAP__Chat_Interactive.Interfaces
@@ -36,6 +37,13 @@ namespace _CAP__Chat_Interactive.Interfaces
         /// Returns a sensible default object if the pawn has no VPE psycaster hediff.
         /// </summary>
         VPEBasicPsycastInfo GetBasicPsycastInfo(Pawn pawn);
+
+        /// <summary>
+        /// Returns owned psycast abilities for a specific VPE "class" (PsycasterPathDef).
+        /// Matches classIdentifier against defName or label (case/punctuation insensitive).
+        /// Returns matching class info with owned abilities (filtered by pawn level + HasAbility).
+        /// </summary>
+        VPEClassInfo GetPsycastsInClass(Pawn pawn, string classIdentifier);
     }
 
     /// <summary>
@@ -84,5 +92,30 @@ namespace _CAP__Chat_Interactive.Interfaces
         /// Whether this pawn actually has VPE psycasts active.
         /// </summary>
         public bool HasPsycasts => Level > 0;
+    }
+
+    /// <summary>
+    /// Result for !mypawn psycast &lt;classname&gt; queries.
+    /// Contains the psycaster level at time of query + the list of abilities the pawn has learned in that path/class.
+    /// </summary>
+    public class VPEClassInfo
+    {
+        public int Level { get; set; } = 0;
+        public string ClassLabel { get; set; } = "";
+        public string ClassDefName { get; set; } = "";
+        public List<VPEOwnedAbility> Abilities { get; set; } = new List<VPEOwnedAbility>();
+        public bool HasMatchingClass { get; set; } = false;
+        public string Error { get; set; }
+
+        public bool HasAnyAbilities => Abilities != null && Abilities.Count > 0;
+    }
+
+    /// <summary>
+    /// A single ability the pawn owns within a VPE class/path.
+    /// </summary>
+    public class VPEOwnedAbility
+    {
+        public string Label { get; set; }
+        public int RequiredLevel { get; set; }
     }
 }
