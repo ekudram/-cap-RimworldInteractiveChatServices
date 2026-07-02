@@ -30,6 +30,11 @@
   <ItemGroup>
     <Reference Include="VanillaPsycastsExpanded">
       <HintPath>..\..\..\..\..\..\workshop\content\294100\2842502659\1.6\Assemblies\VanillaPsycastsExpanded.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VEF">
+      <HintPath>..\..\..\..\..\..\workshop\content\294100\2023507013\1.6\Assemblies\VEF.dll</HintPath>
+      <Private>False</Private>
     </Reference>
   </ItemGroup>
 

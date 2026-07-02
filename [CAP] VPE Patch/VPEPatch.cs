@@ -23,6 +23,9 @@ using VanillaPsycastsExpanded;
 using RimWorld;
 using System;
 using Verse;
+using JetBrains.Annotations;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace CAP_ChatInteractive.Patch.VPE
 {
