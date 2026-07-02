@@ -177,24 +177,14 @@ namespace CAP_ChatInteractive.Patch.VPE
                     Abilities = new List<VPEOwnedAbility>()
                 };
 
-                // Get abilities for this path via AbilityExtension_Psycast
+                // Get abilities for this path. matchedPath.abilities is already the filtered list (VEF.Abilities.AbilityDef instances from PsycasterPathDef.ResolveReferences)
                 var comp = pawn.GetComp<CompAbilities>();
 
-                var candidates = DefDatabase<RimWorld.AbilityDef>.AllDefsListForReading
-                    .Where(ad =>
-                    {
-                        if (ad == null) return false;
-                        var ext = ad.GetModExtension<AbilityExtension_Psycast>();
-                        return ext != null && ext.path == matchedPath;
-                    })
-                    .OrderBy(ad =>
-                    {
-                        var ext = ad.GetModExtension<AbilityExtension_Psycast>();
-                        return ext?.level ?? 99;
-                    })
-                    .ToList();
+                var pathAbilities = matchedPath.abilities ?? new List<VEF.Abilities.AbilityDef>();
 
-                foreach (var ad in candidates)
+                Logger.Debug($"[CAP] VPE Patch: Path has {pathAbilities.Count} total abilities defined. unlockedPaths contains path? {(hediff.unlockedPaths != null && hediff.unlockedPaths.Contains(matchedPath))}");
+
+                foreach (var ad in pathAbilities)
                 {
                     var ext = ad.GetModExtension<AbilityExtension_Psycast>();
                     int reqLevel = ext?.level ?? 0;
@@ -202,23 +192,33 @@ namespace CAP_ChatInteractive.Patch.VPE
 
                     bool owns = false;
 
-                    // Prefer abilities tracker (populated for actual granted psycasts). Avoid VEF.AbilityDef type conflict.
-                    if (pawn.abilities != null)
+                    if (comp != null)
                     {
                         try
                         {
-                            owns = pawn.abilities.AllAbilitiesForReading.Any(ab => ab != null && ab.def == ad);
+                            owns = comp.HasAbility(ad);
+                            Logger.Debug($"[CAP] VPE Patch: comp.HasAbility({ad.defName}) = {owns}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Debug($"[CAP] VPE Patch: HasAbility({ad.defName}) threw: {ex.Message}");
+                        }
+                    }
+
+                    if (!owns && pawn.abilities != null)
+                    {
+                        try
+                        {
+                            owns = pawn.abilities.AllAbilitiesForReading.Any(ab => ab != null && ab.def != null && ab.def.defName == ad.defName);
                         }
                         catch { }
                     }
 
-                    // Extra: if CompAbilities present, try via the VEF AbilityDef if available (best effort)
-                    if (!owns && comp != null)
+                    if (!owns && comp?.LearnedAbilities != null)
                     {
                         try
                         {
-                            // VEF CompAbilities.HasAbility expects VEF.Abilities.AbilityDef in some builds; attempt via name match fallback
-                            owns = comp.LearnedAbilities != null && comp.LearnedAbilities.Any(a => a != null && a.def != null && a.def.defName == ad.defName);
+                            owns = comp.LearnedAbilities.Any(a => a != null && a.def != null && a.def.defName == ad.defName);
                         }
                         catch { }
                     }
@@ -227,7 +227,7 @@ namespace CAP_ChatInteractive.Patch.VPE
                     {
                         result.Abilities.Add(new VPEOwnedAbility
                         {
-                            Label = ad.LabelCap.Resolve() ?? ad.label ?? ad.defName,
+                            Label = (ad.LabelCap != null ? ad.LabelCap.ToString() : null) ?? ad.label ?? ad.defName,
                             RequiredLevel = reqLevel
                         });
                     }

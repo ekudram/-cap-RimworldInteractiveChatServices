@@ -989,7 +989,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             string className = StripTags(classInfo.ClassLabel) ?? classInfo.ClassDefName ?? "class";
                             if (classInfo.HasAnyAbilities)
                             {
-                                string abilitiesList = string.Join(" • ", classInfo.Abilities.Select(a => StripTags(a.Label)));
+                                string abilitiesList = string.Join(" • ", classInfo.Abilities.Select(a =>
+                                {
+                                    string raw = StripTags(a.Label ?? "");
+                                    // Make "speedboost", "blade focus" etc. look nice like in the ITab
+                                    return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(raw.ToLowerInvariant());
+                                }));
                                 string vpeClassResult = $"Psycaster level {classInfo.Level} | {className}: {abilitiesList}";
                                 Logger.Debug($"[MyPawn Psycasts] VPE class returned: {vpeClassResult}");
                                 return vpeClassResult;
