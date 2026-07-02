@@ -106,6 +106,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "psycast":
                     case "psycasts":
                         return HandlePsycastsInfo(pawn, args);
+                    case "mech":
+                    case "mechs":
+                    case "mechanoid":
+                    case "mechanoids":
+                        return HandleMechsInfo(pawn);
                     default:
                         return "RICS.MPCH.UnknownSubcommand".Translate(subCommand ?? "none");
                 }
@@ -1088,6 +1093,104 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             string result = string.Join("RICS.MPCH.PsycastSeparator".Translate(), levelStrings);
             Logger.Debug($"[MyPawn Psycasts] Built response with {levelStrings.Count} level groups (vanilla)");
             return result;
+        }
+
+        // === Mechs (Biotech mechanoids for mechanitors) ===
+        private static string HandleMechsInfo(Pawn pawn)
+        {
+            if (!ModsConfig.BiotechActive)
+            {
+                return "RICS.CC.xenotype.dlcrequired".Translate();
+            }
+
+            var mechLinkDef = DefDatabase<HediffDef>.GetNamedSilentFail("MechlinkImplant");
+            bool hasMechLink = mechLinkDef != null && pawn.health?.hediffSet?.HasHediff(mechLinkDef) == true;
+
+            if (!hasMechLink || pawn.mechanitor == null)
+            {
+                return "Pawn is not a mechanitor (requires Mechlink implant in brain).";
+            }
+
+            var tracker = pawn.mechanitor;
+            List<Pawn> mechs = new List<Pawn>();
+
+            // Use reflection to access internal lists safely (API not fully public on Pawn_MechanitorTracker)
+            try
+            {
+                var assignedField = tracker.GetType().GetField("assignedMechs", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                if (assignedField != null)
+                {
+                    var val = assignedField.GetValue(tracker) as System.Collections.IEnumerable;
+                    if (val != null)
+                        foreach (Pawn p in val) if (p != null) mechs.Add(p);
+                }
+
+                var directField = tracker.GetType().GetField("directlyControlledMechs", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                if (directField != null)
+                {
+                    var val = directField.GetValue(tracker) as System.Collections.IEnumerable;
+                    if (val != null)
+                        foreach (Pawn p in val) if (p != null) mechs.Add(p);
+                }
+            }
+            catch { }
+
+            // Control groups
+            try
+            {
+                var groupsField = tracker.GetType().GetField("controlGroups", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                if (groupsField != null)
+                {
+                    var ctrlGroups = groupsField.GetValue(tracker) as System.Collections.IEnumerable;
+                    if (ctrlGroups != null)
+                    {
+                        foreach (object g in ctrlGroups)
+                        {
+                            if (g == null) continue;
+                            var overseenField = g.GetType().GetField("overseenPawns", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                            if (overseenField != null)
+                            {
+                                var val = overseenField.GetValue(g) as System.Collections.IEnumerable;
+                                if (val != null)
+                                    foreach (Pawn p in val) if (p != null) mechs.Add(p);
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            mechs = mechs
+                .Distinct()
+                .Where(m => m != null && m.RaceProps != null && m.RaceProps.IsMechanoid)
+                .ToList();
+
+            if (mechs.Count == 0)
+            {
+                return "No mechanoids controlled.";
+            }
+
+            var groups = mechs
+                .GroupBy(m => m.kindDef?.LabelCap.ToString() ?? m.LabelShortCap ?? "Unknown")
+                .OrderByDescending(g => g.Count())
+                .Take(10)
+                .Select(g =>
+                {
+                    int count = g.Count();
+                    string typeName = g.Key;
+                    if (count > 1)
+                    {
+                        if (typeName.EndsWith("man", StringComparison.OrdinalIgnoreCase))
+                            typeName = typeName.Substring(0, typeName.Length - 3) + "men";
+                        else if (!typeName.EndsWith("s", StringComparison.OrdinalIgnoreCase) &&
+                                 !typeName.EndsWith("x", StringComparison.OrdinalIgnoreCase))
+                            typeName += "s";
+                    }
+                    return $"{count} {typeName}";
+                });
+
+            string listStr = string.Join(" • ", groups);
+            return $"Mechanoids: {listStr}";
         }
     }
 }
