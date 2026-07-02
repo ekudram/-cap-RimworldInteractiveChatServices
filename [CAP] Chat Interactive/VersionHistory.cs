@@ -1021,6 +1021,9 @@ This release includes all changes from June 21–23 plus the June 26 heal logic 
 
 <b>UPDATED</b>
 ─────────────────
+- `!mypawn` command expanded:
+  - `!mypawn mech` Now shows Mechinator bandwidth and controlled mechs (if the pawn is a Mechinator).
+  - `!mypawn psycasts` Added support for **Vanilla Psycasts Expanded** — lists psycasts on your pawn (note: this integration is a bit fragile and may require a game reload if it breaks).
 - Major improvements to pawn death, resurrection, and release messages — viewers now get much clearer feedback with details on what happened.
 - Cooldown display simplified to easy-to-read ""X times every Y days"" format.
 - Food breakdown expanded for richer in-game flavor.
