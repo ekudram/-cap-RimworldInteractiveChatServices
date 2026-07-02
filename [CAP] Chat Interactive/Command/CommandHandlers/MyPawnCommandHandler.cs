@@ -977,14 +977,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var vpeProvider = CAPChatInteractiveMod.Instance?.VPEProvider;
             if (vpeProvider != null)
             {
-                var info = vpeProvider.GetBasicPsycastInfo(pawn);
-                if (info != null && info.HasPsycasts)
+                try
                 {
-                    string result = $"Psycaster L{info.Level} | Psyfocus: {info.CurrentPsyfocus:F2}/{info.MaxPsyfocus:F2} (need ~{info.PsyfocusNeededForNextLevel:F1} for next) | Heat: {info.CurrentHeat:F1}/{info.MaxHeat:F1}";
-                    Logger.Debug($"[MyPawn Psycasts] VPE provider returned: {result}");
-                    return result;
+                    var info = vpeProvider.GetBasicPsycastInfo(pawn);
+                    if (info != null && info.HasPsycasts)
+                    {
+                        string vpeResult = $"Psycaster L{info.Level} | Psyfocus: {info.CurrentPsyfocus:F2}/{info.MaxPsyfocus:F2} (need ~{info.PsyfocusNeededForNextLevel:F1} for next) | Heat: {info.CurrentHeat:F1}/{info.MaxHeat:F1}";
+                        Logger.Debug($"[MyPawn Psycasts] VPE provider returned: {vpeResult}");
+                        return vpeResult;
+                    }
+                    Logger.Debug("[MyPawn Psycasts] VPE provider present but no psycasts for this pawn");
                 }
-                Logger.Debug("[MyPawn Psycasts] VPE provider present but no psycasts for this pawn");
+                catch (Exception ex)
+                {
+                    Logger.Error($"[MyPawn Psycasts] Error calling VPE provider: {ex}");
+                    Messages.Message("[RICS] ERROR: Problem reading VPE psycast data from patch. Check that both VPE and VEF are installed correctly.", MessageTypeDefOf.RejectInput);
+                }
             }
 
             // === Vanilla Royalty path ===

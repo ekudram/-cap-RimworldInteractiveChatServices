@@ -88,8 +88,8 @@ namespace CAP_ChatInteractive.Patch.VPE
                 if (pe != null)
                 {
                     info.CurrentPsyfocus = pe.CurrentPsyfocus;
-                    info.MaxPsyfocus = pe.MaxPsyfocus;
-                    info.CurrentHeat = pe.CurrentEntropy;
+                    info.MaxPsyfocus = 1f;  // psyfocus is always 0-1 range
+                    info.CurrentHeat = pe.EntropyValue;
                     info.MaxHeat = pe.MaxEntropy;
 
                     // Compute experience needed for next level (Phase 1)
