@@ -102,6 +102,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "job":
                     case "action":
                         return HandleJobInfo(pawn);
+                    case "psyfocus":
+                    case "psycast":
                     case "psycasts":
                         return HandlePsycastsInfo(pawn);
                     default:
