@@ -98,6 +98,11 @@ namespace CAP_ChatInteractive
         public void AssignPawnToViewer(ChatMessageWrapper message, Pawn pawn)
         {
             string identifier = GetViewerIdentifier(message);
+            if (string.IsNullOrEmpty(identifier))
+            {
+                Logger.Warning("AssignPawnToViewer: computed null/empty identifier, skipping assignment");
+                return;
+            }
             viewerPawnAssignments[identifier] = pawn.ThingID;
 
             // Remove from queue if they're in it
@@ -130,7 +135,11 @@ namespace CAP_ChatInteractive
         // NEW: Direct assignment method for dialog use
         public void AssignPawnToViewerDialog(string username, string platformID, Pawn pawn)
         {
-            // Now we can assume platformID is valid (checked by the caller)
+            if (string.IsNullOrEmpty(platformID))
+            {
+                Logger.Warning("AssignPawnToViewerDialog: null/empty platformID, skipping assignment");
+                return;
+            }
             viewerPawnAssignments[platformID] = pawn.ThingID;
 
             // Remove from queue if they're in it
@@ -166,7 +175,8 @@ namespace CAP_ChatInteractive
         {
             string identifier = GetViewerIdentifier(message);
 
-            if (viewerPawnAssignments.TryGetValue(identifier, out string thingId))
+            string thingId;
+            if (TryGetPawnAssignment(identifier, out thingId))
             {
                 Logger.Debug($"Retrieving assigned pawn for {identifier}, ThingID: {thingId}");
                 Pawn pawn = FindPawnByThingId(thingId);
@@ -186,6 +196,8 @@ namespace CAP_ChatInteractive
         // 6 references
         public Pawn GetAssignedPawn(string username)
         {
+            if (string.IsNullOrEmpty(username))
+                return null;
             string identifier = FindViewerIdentifier(username);
             return GetAssignedPawnIdentifier(identifier);
         }
@@ -217,29 +229,32 @@ namespace CAP_ChatInteractive
         // 4 references - used by public methods that resolve identifier first
         public Pawn GetAssignedPawnIdentifier(string identifier)
         {
-            // FIX: Check if identifier is null before using it
-            if (string.IsNullOrEmpty(identifier))
+            string thingId;
+            if (!TryGetPawnAssignment(identifier, out thingId))
             {
-                Logger.Debug($"GetAssignedPawnIdentifier: No identifier provided for pawn lookup");
+                Logger.Debug($"GetAssignedPawnIdentifier: No identifier provided for pawn lookup or no assignment");
                 return null;
             }
 
-            if (viewerPawnAssignments.TryGetValue(identifier, out string thingId))
+            Logger.Debug($"Retrieving assigned pawn for {identifier}, ThingID: {thingId}");
+            Pawn pawn = FindPawnByThingId(thingId);
+            if (pawn != null)
             {
-                Logger.Debug($"Retrieving assigned pawn for {identifier}, ThingID: {thingId}");
-                Pawn pawn = FindPawnByThingId(thingId);
-                if (pawn != null)
-                {
-                    Logger.Debug($"Found pawn: {pawn.Name}, Dead: {pawn.Dead}, Destroyed: {pawn.Destroyed}");
-                }
-                else
-                {
-                    Logger.Debug($"No pawn found with ThingID: {thingId}");
-                }
-                return pawn;
+                Logger.Debug($"Found pawn: {pawn.Name}, Dead: {pawn.Dead}, Destroyed: {pawn.Destroyed}");
             }
-            Logger.Debug($"No assignment found for identifier: {identifier}");
-            return null;
+            else
+            {
+                Logger.Debug($"No pawn found with ThingID: {thingId}");
+            }
+            return pawn;
+        }
+
+        private bool TryGetPawnAssignment(string identifier, out string thingId)
+        {
+            thingId = null;
+            if (string.IsNullOrEmpty(identifier))
+                return false;
+            return viewerPawnAssignments.TryGetValue(identifier, out thingId);
         }
 
         // === HasAssignedPawn Methods ===
@@ -247,7 +262,8 @@ namespace CAP_ChatInteractive
         public bool HasAssignedPawn(ChatMessageWrapper message)
         {
             string identifier = FindViewerIdentifier(message.Username, message);
-            if (viewerPawnAssignments.TryGetValue(identifier, out string thingId))
+            string thingId;
+            if (TryGetPawnAssignment(identifier, out thingId))
             {
                 Logger.Debug($" Checking assigned pawn for {identifier}, ThingID: {thingId}");
                 Pawn pawn = FindPawnByThingId(thingId);
@@ -259,6 +275,8 @@ namespace CAP_ChatInteractive
         // 3 references
         public bool HasAssignedPawn(string username)
         {
+            if (string.IsNullOrEmpty(username))
+                return false;
             string identifier = FindViewerIdentifier(username);
             return HasAssignedPawnIdentifier(identifier);
         }
@@ -266,7 +284,10 @@ namespace CAP_ChatInteractive
         // PRIVATE: Internal method that takes identifier directly
         private bool HasAssignedPawnIdentifier(string identifier)
         {
-            if (viewerPawnAssignments.TryGetValue(identifier, out string thingId))
+            if (string.IsNullOrEmpty(identifier))
+                return false;
+            string thingId;
+            if (TryGetPawnAssignment(identifier, out thingId))
             {
                 Logger.Debug($"Checking assigned pawn for {identifier}, ThingID: {thingId}");
                 Pawn pawn = FindPawnByThingId(thingId);
@@ -282,7 +303,8 @@ namespace CAP_ChatInteractive
             string identifier = GetViewerIdentifier(message);
 
             // Reset nickname for platform ID assignment
-            if (viewerPawnAssignments.TryGetValue(identifier, out string thingId))
+            string thingId;
+            if (TryGetPawnAssignment(identifier, out thingId))
             {
                 Pawn pawn = FindPawnByThingId(thingId);
                 if (pawn != null)
@@ -298,7 +320,7 @@ namespace CAP_ChatInteractive
             // in a future major version once we can be sure all legacy assignments are cleaned up,
             // but we'll keep it for now to ensure no one gets stuck with an unremovable pawn due to the old system
             string legacyId = GetLegacyIdentifier(message.Username);
-            if (viewerPawnAssignments.TryGetValue(legacyId, out thingId))
+            if (!string.IsNullOrEmpty(legacyId) && viewerPawnAssignments.TryGetValue(legacyId, out thingId))
             {
                 Pawn pawn = FindPawnByThingId(thingId);
                 if (pawn != null)
@@ -313,6 +335,8 @@ namespace CAP_ChatInteractive
         // NEW: Legacy overload for username-only calls
         public void UnassignPawn(string platformId)
         {
+            if (string.IsNullOrEmpty(platformId))
+                return;
             if (viewerPawnAssignments.TryGetValue(platformId, out string thingId))
             {
                 // Restore original nickname before removing assignment
@@ -645,14 +669,15 @@ namespace CAP_ChatInteractive
             bool hasPawn = false;
 
             // Check platform ID
-            if (viewerPawnAssignments.TryGetValue(platformId, out string thingId))
+            string thingId;
+            if (TryGetPawnAssignment(platformId, out thingId))
             {
                 Pawn existingPawn = FindPawnByThingId(thingId);
                 hasPawn = (existingPawn != null);
             }
 
             // Check legacy username if platform ID didn't find anything
-            if (!hasPawn && viewerPawnAssignments.TryGetValue(usernameLower, out thingId))
+            if (!hasPawn && TryGetPawnAssignment(usernameLower, out thingId))
             {
                 Pawn existingPawn = FindPawnByThingId(thingId);
                 hasPawn = (existingPawn != null);
@@ -879,10 +904,14 @@ namespace CAP_ChatInteractive
 
         private string GetViewerIdentifier(ChatMessageWrapper message)
         {
+            if (message == null)
+                return "name:unknown";
+
             // Priority 1: Platform User ID (most reliable, prevents spoofing)
             if (!string.IsNullOrEmpty(message.PlatformUserId))
             {
-                return $"{message.Platform.ToLowerInvariant()}:{message.PlatformUserId}";
+                string plat = message.Platform?.ToLowerInvariant() ?? "unknown";
+                return $"{plat}:{message.PlatformUserId}";
             }
 
             // Priority 2: Username (fallback for backwards compatibility)
@@ -925,7 +954,7 @@ namespace CAP_ChatInteractive
                 foreach (var platformEntry in viewer.PlatformUserIds)
                 {
                     string platId = $"{platformEntry.Key.ToLowerInvariant()}:{platformEntry.Value}";
-                    if (viewerPawnAssignments.ContainsKey(platId))
+                    if (!string.IsNullOrEmpty(platId) && viewerPawnAssignments.ContainsKey(platId))
                     {
                         Logger.Debug($"Found assignment under platform ID: {platId} for username: {usernameClean}");
                         return platId;
@@ -934,7 +963,7 @@ namespace CAP_ChatInteractive
 
                 // Check if primary platform ID has assignment
                 string primaryId = viewer.GetPrimaryPlatformIdentifier();
-                if (viewerPawnAssignments.ContainsKey(primaryId))
+                if (!string.IsNullOrEmpty(primaryId) && viewerPawnAssignments.ContainsKey(primaryId))
                 {
                     Logger.Debug($"Found assignment under primary ID: {primaryId} for username: {usernameClean}");
                     return primaryId;
@@ -945,7 +974,7 @@ namespace CAP_ChatInteractive
             if (message != null)
             {
                 string platformId = GetViewerIdentifier(message);
-                if (viewerPawnAssignments.ContainsKey(platformId))
+                if (!string.IsNullOrEmpty(platformId) && viewerPawnAssignments.ContainsKey(platformId))
                 {
                     Logger.Debug($"Found assignment for message platform ID: {platformId}");
                     return platformId;
@@ -953,7 +982,7 @@ namespace CAP_ChatInteractive
             }
 
             // Legacy fallback: check if username was used as key (for backwards compatibility)
-            if (viewerPawnAssignments.ContainsKey(usernameLower))
+            if (!string.IsNullOrEmpty(usernameLower) && viewerPawnAssignments.ContainsKey(usernameLower))
             {
                 Logger.Debug($"Found legacy assignment under username: {usernameLower}");
                 return usernameLower;
@@ -961,7 +990,7 @@ namespace CAP_ChatInteractive
 
             // Also check username with "username:" prefix
             string prefixedUsername = $"username:{usernameLower}";
-            if (viewerPawnAssignments.ContainsKey(prefixedUsername))
+            if (!string.IsNullOrEmpty(prefixedUsername) && viewerPawnAssignments.ContainsKey(prefixedUsername))
             {
                 Logger.Debug($"Found assignment under prefixed username: {prefixedUsername}");
                 return prefixedUsername;

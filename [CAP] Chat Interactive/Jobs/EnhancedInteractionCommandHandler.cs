@@ -26,20 +26,30 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class EnhancedInteractionCommandHandler
     {
-        private static readonly Dictionary<InteractionDef, InteractionInfo> InteractionData =
-            new Dictionary<InteractionDef, InteractionInfo>
+        private static readonly Dictionary<InteractionDef, InteractionInfo> InteractionData = new Dictionary<InteractionDef, InteractionInfo>();
+
+        static EnhancedInteractionCommandHandler()
         {
-            { InteractionDefOf.Chitchat, new InteractionInfo { IsNegative = false, Cost = 10, KarmaCost = 0 } },
-            { InteractionDefOf.DeepTalk, new InteractionInfo { IsNegative = false, Cost = 15, KarmaCost = 0 } },
-            { InteractionDefOf.Insult, new InteractionInfo { IsNegative = true, Cost = 5, KarmaCost = 5 } },
-            { InteractionDefOf.RomanceAttempt, new InteractionInfo { IsNegative = false, Cost = 20, KarmaCost = 0 } },
-            { InteractionDefOf.MarriageProposal, new InteractionInfo { IsNegative = false, Cost = 50, KarmaCost = 10 } },
-            { InteractionDefOf.BuildRapport, new InteractionInfo { IsNegative = false, Cost = 25, KarmaCost = 0 } },
-            { InteractionDefOf.ConvertIdeoAttempt, new InteractionInfo { IsNegative = false, Cost = 30, KarmaCost = 15 } },
-            { InteractionDefOf.Reassure, new InteractionInfo { IsNegative = false, Cost = 12, KarmaCost = 0 } },
-            { InteractionDefOf.Nuzzle, new InteractionInfo { IsNegative = false, Cost = 8, KarmaCost = 0 } },
-            { InteractionDefOf.AnimalChat, new InteractionInfo { IsNegative = false, Cost = 10, KarmaCost = 0 } }
-        };
+            // Safely add only non-null InteractionDefs (some require DLC like Ideology)
+            AddIfNotNull(InteractionDefOf.Chitchat, new InteractionInfo { IsNegative = false, Cost = 10, KarmaCost = 0 });
+            AddIfNotNull(InteractionDefOf.DeepTalk, new InteractionInfo { IsNegative = false, Cost = 15, KarmaCost = 0 });
+            AddIfNotNull(InteractionDefOf.Insult, new InteractionInfo { IsNegative = true, Cost = 5, KarmaCost = 5 });
+            AddIfNotNull(InteractionDefOf.RomanceAttempt, new InteractionInfo { IsNegative = false, Cost = 20, KarmaCost = 0 });
+            AddIfNotNull(InteractionDefOf.MarriageProposal, new InteractionInfo { IsNegative = false, Cost = 50, KarmaCost = 10 });
+            AddIfNotNull(InteractionDefOf.BuildRapport, new InteractionInfo { IsNegative = false, Cost = 25, KarmaCost = 0 });
+            AddIfNotNull(InteractionDefOf.ConvertIdeoAttempt, new InteractionInfo { IsNegative = false, Cost = 30, KarmaCost = 15 });
+            AddIfNotNull(InteractionDefOf.Reassure, new InteractionInfo { IsNegative = false, Cost = 12, KarmaCost = 0 });
+            AddIfNotNull(InteractionDefOf.Nuzzle, new InteractionInfo { IsNegative = false, Cost = 8, KarmaCost = 0 });
+            AddIfNotNull(InteractionDefOf.AnimalChat, new InteractionInfo { IsNegative = false, Cost = 10, KarmaCost = 0 });
+        }
+
+        private static void AddIfNotNull(InteractionDef def, InteractionInfo info)
+        {
+            if (def != null && info != null)
+            {
+                InteractionData[def] = info;
+            }
+        }
 
         public class FlirtSettings
         {
@@ -64,7 +74,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Check interaction validity and cost
                 if (interaction == null) return "This interaction is not available.";
 
-                if (!InteractionData.TryGetValue(interaction, out var interactionInfo))
+                InteractionInfo interactionInfo;
+                if (InteractionData == null || !InteractionData.TryGetValue(interaction, out interactionInfo))
                     interactionInfo = new InteractionInfo(); // Default values
 
                 if (viewer.GetCoins() < interactionInfo.Cost)
@@ -80,6 +91,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 // Get pawns
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+                if (assignmentManager == null)
+                    return "Pawn assignment system is not available (load a game first).";
                 var initiatorPawn = assignmentManager.GetAssignedPawn(messageWrapper);
                 if (initiatorPawn == null) return "You don't have an active pawn. Use !pawn to purchase one!";
 
@@ -105,8 +118,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // Create and assign the social visit job
-                Job socialJob = JobMaker.MakeJob(JobDefOf_CAP.CAP_SocialVisit, targetPawn);
-                socialJob.interaction = interaction; // Store which interaction to useI coul
+                var socialVisitDef = JobDefOf_CAP.CAP_SocialVisit;
+                if (socialVisitDef == null)
+                    return "The social visit job definition is missing.";
+
+                Job socialJob = JobMaker.MakeJob(socialVisitDef, targetPawn);
+                socialJob.interaction = interaction; // Store which interaction to use
 
                 initiatorPawn.jobs.StartJob(socialJob, JobCondition.InterruptForced);
 
@@ -142,8 +159,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 string targetQuery = args[0];
 
                 // Remove @ symbol if present
-                if (targetQuery.StartsWith("@"))
+                if (targetQuery != null && targetQuery.StartsWith("@"))
                     targetQuery = targetQuery.Substring(1);
+
+                if (string.IsNullOrWhiteSpace(targetQuery))
+                    return null;
 
                 if (isAnimalInteraction)
                 {
@@ -153,8 +173,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 else
                 {
                     var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-                    if (assignmentManager != null && assignmentManager.HasAssignedPawn(targetQuery))
+                    if (assignmentManager != null && !string.IsNullOrEmpty(targetQuery))
                     {
+                        // Use GetAssignedPawn (not HasAssignedPawn) which safely handles cases where the name has no assignment (FindViewerIdentifier returns null)
                         var targetPawn = assignmentManager.GetAssignedPawn(targetQuery);
                         if (targetPawn != null && targetPawn != initiator) return targetPawn;
                     }
@@ -273,6 +294,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static Pawn FindPawnByName(string name)
         {
+            if (string.IsNullOrEmpty(name))
+                return null;
             return PawnsFinder.AllMapsCaravansAndTravellingTransporters_Alive_FreeColonists
                 .FirstOrDefault(p => !p.Dead && p.Name != null &&
                     p.Name.ToString().ToLower().Contains(name.ToLower()));

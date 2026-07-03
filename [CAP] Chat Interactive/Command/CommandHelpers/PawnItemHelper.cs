@@ -121,6 +121,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
         public static Pawn GetViewerPawn(string username)
         {
+            if (string.IsNullOrEmpty(username))
+                return null;
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
             if (assignmentManager != null && assignmentManager.HasAssignedPawn(username))
             {

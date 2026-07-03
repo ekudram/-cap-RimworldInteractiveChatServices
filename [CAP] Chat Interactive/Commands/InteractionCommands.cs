@@ -110,6 +110,8 @@ namespace CAP_ChatInteractive.Commands.InteractionCommands
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
+            if (InteractionDefOf.BuildRapport == null)
+                return "RICS.CC.common.interaction.dlc_required".Translate();
             return EnhancedInteractionCommandHandler.HandleInteractionCommand(messageWrapper, InteractionDefOf.BuildRapport, args);
         }
     }
