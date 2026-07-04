@@ -18,9 +18,41 @@
 // RimWorld Def for chat commands that can be loaded from XML
 using System;
 using Verse;
+using System.Collections.Generic;
 
 namespace CAP_ChatInteractive
 {
+    /// <summary>
+    /// Defines a single custom/extra UI element for a command's CustomData section.
+    /// Declared in Commands.xml inside &lt;CustomData&gt; ... &lt;/CustomData&gt; for a ChatCommandDef (order matters).
+    /// Supported types (per dev spec): Label, CheckBox, LabelTextBox, NumericTextBox.
+    /// Values for inputs are stored in CommandSettings.CustomData (JSON) and rendered in Command Editor.
+    /// </summary>
+    [Serializable]
+    public class CommandCustomSetting
+    {
+        /// <summary>The type: "Label", "CheckBox", "LabelTextBox", "NumericTextBox".</summary>
+        public string type = "string";
+
+        /// <summary>Key/name for the value (for CheckBox, LabelTextBox, NumericTextBox). Not used for Label.</summary>
+        public string name = "";
+
+        /// <summary>UI label or the text content for Label type.</summary>
+        public string label = "";
+
+        /// <summary>String form of default value (parsed by type). E.g. "false", "500", "text here".</summary>
+        public string defaultValue = "";
+
+        /// <summary>Tooltip / description (for input types).</summary>
+        public string description = "";
+
+        /// <summary>For NumericTextBox: min value.</summary>
+        public float min = float.MinValue;
+
+        /// <summary>For NumericTextBox: max value.</summary>
+        public float max = float.MaxValue;
+    }
+
     /// <summary>
     /// RimWorld Def for chat commands that can be loaded from XML
     /// This bridges the Def system with your existing ChatCommand processor
@@ -61,6 +93,15 @@ namespace CAP_ChatInteractive
         /// </summary>
         public bool useCommandCooldown = false;
         /// think of it like this: public bool useCommandCooldown = false;
+
+        /// <summary>
+        /// The &lt;CustomData&gt; definition for this command (list of UI elements in order).
+        /// Parsed from the &lt;CustomData&gt;...&lt;/CustomData&gt; section in XML.
+        /// Enables dynamic per-command settings (Label, CheckBox, LabelTextBox, NumericTextBox) in the editor.
+        /// Values stored in CommandSettings.CustomData.
+        /// Backwards compatible (empty = no extra UI).
+        /// </summary>
+        public List<CommandCustomSetting> CustomData = new List<CommandCustomSetting>();
 
         /// <summary>
         /// Gets the display label for this command, using defName if label is empty

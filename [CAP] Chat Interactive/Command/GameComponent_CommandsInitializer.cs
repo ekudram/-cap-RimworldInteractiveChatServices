@@ -61,6 +61,9 @@ namespace CAP_ChatInteractive
                 // Initialize settings
                 CAP_InitializeCommandSettings();
 
+                // Ensure custom per-command settings defaults from Defs (populates CustomData)
+                EnsureCustomSettingsDefaults();
+
                 // Then register commands
                 RegisterDefCommands();
 
@@ -88,6 +91,48 @@ namespace CAP_ChatInteractive
             Logger.Message($"=== [CAP] Command settings initialized ===");
         }
 
+        /// <summary>
+        /// For every ChatCommandDef that declares &lt;customSettings&gt;, ensure the corresponding
+        /// CommandSettings has the keys populated with schema defaults (stored in CustomData).
+        /// Safe to call multiple times; does not overwrite existing values.
+        /// </summary>
+        private void EnsureCustomSettingsDefaults()
+        {
+            try
+            {
+                string jsonContent = JsonFileManager.LoadFile("CommandSettings.json");
+                var current = string.IsNullOrEmpty(jsonContent)
+                    ? new Dictionary<string, CommandSettings>()
+                    : (JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(jsonContent) ?? new Dictionary<string, CommandSettings>());
+
+                bool changed = false;
+                foreach (var def in DefDatabase<ChatCommandDef>.AllDefsListForReading)
+                {
+                    if (string.IsNullOrEmpty(def.commandText) || def.CustomData == null || def.CustomData.Count == 0)
+                        continue;
+
+                    string key = def.commandText.ToLowerInvariant();
+                    if (!current.TryGetValue(key, out var s))
+                    {
+                        s = new CommandSettings { Enabled = def.enabled, CooldownSeconds = def.cooldownSeconds, PermissionLevel = def.permissionLevel, useCommandCooldown = def.useCommandCooldown };
+                        current[key] = s;
+                    }
+                    s.EnsureCustomDefaults(def.CustomData);
+                    changed = true;
+                }
+
+                if (changed)
+                {
+                    JsonFileManager.SaveFile("CommandSettings.json", JsonConvert.SerializeObject(current, Formatting.Indented));
+                    Logger.Message("[CAP] Ensured custom settings defaults for commands declaring them");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error ensuring custom settings defaults: {ex}");
+            }
+        }
+
         private void ForceAddMissingCommands()
         {
             try
@@ -111,7 +156,8 @@ namespace CAP_ChatInteractive
                     {
                         // FIX: Use lowercase consistently
                         string commandName = def.commandText.ToLowerInvariant();
-                        if (!currentSettings.ContainsKey(commandName))
+                        bool isNew = !currentSettings.ContainsKey(commandName);
+                        if (isNew)
                         {
                             currentSettings[commandName] = new CommandSettings
                             {
@@ -122,6 +168,14 @@ namespace CAP_ChatInteractive
                             };
                             settingsChanged = true;
                             Logger.Message($"FORCE ADDED missing command: '{commandName}'");
+                        }
+
+                        // Ensure custom settings defaults (from XML <CustomData>) are present
+                        var settings = currentSettings[commandName];
+                        if (def.CustomData != null && def.CustomData.Count > 0)
+                        {
+                            settings.EnsureCustomDefaults(def.CustomData);
+                            if (isNew) settingsChanged = true;
                         }
                     }
                 }

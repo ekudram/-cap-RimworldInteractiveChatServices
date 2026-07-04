@@ -68,6 +68,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var raidSettings = GetRaidCommandSettings();
 
+                // Values from CustomData (defined via <CustomData> in Commands.xml for the Raid command)
+                int minWager = raidSettings.GetCustom<int>("minRaidWager", 100);
+                int maxWager = raidSettings.GetCustom<int>("maxRaidWager", 2500);
+
                 var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
                 if (cooldownManager != null)
                 {
@@ -90,9 +94,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                 }
 
-                if (wager < raidSettings.MinRaidWager || wager > raidSettings.MaxRaidWager)
+                if (wager < minWager || wager > maxWager)
                 {
-                    return "RICS.Raid.WagerInvalid".Translate(raidSettings.MinRaidWager, raidSettings.MaxRaidWager, currencySymbol);
+                    return "RICS.Raid.WagerInvalid".Translate(minWager, maxWager, currencySymbol);
                 }
 
                 if (viewer.Coins < wager)

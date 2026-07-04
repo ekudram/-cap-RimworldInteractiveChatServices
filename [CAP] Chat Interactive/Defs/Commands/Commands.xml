@@ -306,6 +306,16 @@
     <permissionLevel>everyone</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- Example of per-command CustomData definition (for addon authors). 
+         Dialog will render CheckBox etc. Values stored in CustomData. -->
+    <CustomData>
+      <li>
+        <type>CheckBox</type>
+        <name>showDebugInfo</name>
+        <label>Show debug info in lootbox messages</label>
+        <defaultValue>false</defaultValue>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -453,6 +463,37 @@
     <permissionLevel>everyone</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>false</useCommandCooldown>
+    <!-- CustomData for Military Aid wagers (to avoid polluting JSON for non-military commands) -->
+    <CustomData>
+      <li>
+        <type>Label</type>
+        <label>Military Aid Settings</label>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>defaultMilitaryAidWager</name>
+        <label>Default Military Aid Wager</label>
+        <defaultValue>300</defaultValue>
+        <min>50</min>
+        <max>10000</max>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>minMilitaryAidWager</name>
+        <label>Min Military Aid Wager</label>
+        <defaultValue>50</defaultValue>
+        <min>10</min>
+        <max>5000</max>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>maxMilitaryAidWager</name>
+        <label>Max Military Aid Wager</label>
+        <defaultValue>1500</defaultValue>
+        <min>100</min>
+        <max>20000</max>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -466,6 +507,40 @@
     <permissionLevel>everyone</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>false</useCommandCooldown>
+    <!-- <CustomData> definition (order important). Parsed by dialog to render Label / CheckBox / LabelTextBox / NumericTextBox.
+         Values stored in this command's CommandSettings.CustomData.
+         This moves the "weird" raid settings out of top-level CommandSettings (migration from global/top-level).
+         Note: Wager fields no longer in CommandSettings top-level to avoid polluting JSON for all commands. -->
+    <CustomData>
+      <li>
+        <type>Label</type>
+        <label>Raid Advanceded Settings</label>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>defaultRaidWager</name>
+        <label>Default Raid Wager</label>
+        <defaultValue>500</defaultValue>
+        <min>50</min>
+        <max>10000</max>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>minRaidWager</name>
+        <label>Minimum Raid Wager</label>
+        <defaultValue>100</defaultValue>
+        <min>10</min>
+        <max>5000</max>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>maxRaidWager</name>
+        <label>Maximum Raid Wager</label>
+        <defaultValue>2500</defaultValue>
+        <min>100</min>
+        <max>50000</max>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>

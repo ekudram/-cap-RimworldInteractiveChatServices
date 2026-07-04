@@ -36,12 +36,14 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             // Get command settings
             var settings = GetCommandSettings();
 
-            // Parse wager amount if provided, otherwise use default from settings
-            int wager = settings.DefaultMilitaryAidWager;
+            // Parse wager amount if provided, otherwise use default from CustomData (via <CustomData> in XML)
+            int wager = settings.GetCustom<int>("defaultMilitaryAidWager", 300);
             if (args.Length > 0 && int.TryParse(args[0], out int parsedWager))
             {
-                // Clamp between min and max from settings
-                wager = Math.Max(settings.MinMilitaryAidWager, Math.Min(settings.MaxMilitaryAidWager, parsedWager));
+                int minW = settings.GetCustom<int>("minMilitaryAidWager", 50);
+                int maxW = settings.GetCustom<int>("maxMilitaryAidWager", 1500);
+                // Clamp between min and max from CustomData
+                wager = Math.Max(minW, Math.Min(maxW, parsedWager));
             }
 
             return MilitaryAidCommandHandler.HandleMilitaryAid(user, wager);
@@ -59,10 +61,13 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             // Get command settings
             var settingsCommand = GetCommandSettings();
 
-            // Use settings defaults
+            // Use settings defaults (from CustomData via <CustomData> in XML)
             string raidType = "standard";
             string strategy = "default";
-            int wager = settingsCommand.DefaultRaidWager;
+            int defaultW = settingsCommand.GetCustom<int>("defaultRaidWager", 500);
+            int minW = settingsCommand.GetCustom<int>("minRaidWager", 100);
+            int maxW = settingsCommand.GetCustom<int>("maxRaidWager", 2500);
+            int wager = defaultW;
 
             // Use allowed types from settings, fallback to all if empty
             var validRaidTypes = settingsCommand.AllowedRaidTypes.Count > 0
@@ -89,7 +94,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 }
                 else if (int.TryParse(arg, out int parsedWager))
                 {
-                    wager = Math.Max(settingsCommand.MinRaidWager, Math.Min(settingsCommand.MaxRaidWager, parsedWager));
+                    wager = Math.Max(minW, Math.Min(maxW, parsedWager));
                 }
                 else
                 {

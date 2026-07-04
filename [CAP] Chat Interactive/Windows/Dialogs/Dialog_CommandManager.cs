@@ -216,6 +216,13 @@ namespace CAP_ChatInteractive
                             existing.CooldownSeconds = commandDef.cooldownSeconds;
                         }
                     }
+
+                    // Ensure custom settings declared in the Def have entries (with defaults) in CustomData
+                    var s = commandSettings[commandKey];
+                    if (commandDef.CustomData != null && commandDef.CustomData.Count > 0)
+                    {
+                        s.EnsureCustomDefaults(commandDef.CustomData);
+                    }
                 }
             }
         }
@@ -648,6 +655,98 @@ namespace CAP_ChatInteractive
                     GUI.color = Color.white;
                 }
                 y += sectionHeight + 8f;  // Extra spacing before next section
+
+
+                // === COMMAND-SPECIFIC / CUSTOM SETTINGS (from ChatCommandDef.CustomData definition) ===
+                // Generic support for per-command extras declared in XML (e.g. addon toggles).
+                // Values stored in settings.CustomData as JSON. Uses existing buffers for numeric fields.
+                if (selectedCommand != null && selectedCommand.CustomData != null && selectedCommand.CustomData.Count > 0)
+                {
+                    y += 6f;
+                    Rect customHeader = new Rect(leftPadding, y, viewRect.width, sectionHeight);
+                    Widgets.Label(customHeader, "CAP.CommandManager.CommandSpecificSettings".Translate());
+                    y += sectionHeight;
+
+                    string cmdKey = selectedCommand.commandText?.ToLowerInvariant() ?? selectedCommand.defName.ToLowerInvariant();
+                    // Ensure defaults for this command's schema (idempotent)
+                    settings.EnsureCustomDefaults(selectedCommand.CustomData);
+
+                    foreach (var cset in selectedCommand.CustomData)
+                    {
+                        string displayLabel = !string.IsNullOrEmpty(cset.label) ? cset.label : cset.name;
+                        string tip = !string.IsNullOrEmpty(cset.description) ? cset.description : "";
+
+                        string t = (cset.type ?? "").ToLowerInvariant();
+
+                        if (t == "label")
+                        {
+                            // Label: just show as (bold) text / header. Can be used for "Raid Advanceded Settings" etc.
+                            Rect lRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 20f, sectionHeight);
+                            Text.Font = GameFont.Medium;
+                            Widgets.Label(lRect, displayLabel);
+                            Text.Font = GameFont.Small;
+                            if (!string.IsNullOrEmpty(tip)) TooltipHandler.TipRegion(lRect, tip);
+                            y += sectionHeight;
+                        }
+                        else if (t == "checkbox" || t == "bool")
+                        {
+                            bool val = settings.GetCustom<bool>(cset.name, bool.TryParse(cset.defaultValue, out var b) ? b : false);
+                            Rect cbRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 20f, sectionHeight);
+                            bool was = val;
+                            Widgets.CheckboxLabeled(cbRect, displayLabel, ref val);
+                            if (val != was)
+                            {
+                                settings.SetCustom(cset.name, val);
+                                SoundDefOf.Click.PlayOneShotOnCamera();
+                            }
+                            if (!string.IsNullOrEmpty(tip)) TooltipHandler.TipRegion(cbRect, tip);
+                            y += sectionHeight;
+                        }
+                        else if (t == "numerictextbox" || t == "int" || t == "float")
+                        {
+                            Rect lRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
+                            Widgets.Label(lRect, displayLabel);
+                            if (!string.IsNullOrEmpty(tip)) TooltipHandler.TipRegion(lRect, tip);
+
+                            Rect iRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                            string bufKey = $"custom_{cmdKey}_{cset.name}_{settings.GetHashCode()}";
+                            if (!numericBuffers.ContainsKey(bufKey))
+                            {
+                                string cur = settings.GetCustom<string>(cset.name, cset.defaultValue ?? (t == "int" ? "0" : "0.0"));
+                                numericBuffers[bufKey] = cur;
+                            }
+                            string buf = numericBuffers[bufKey];
+
+                            if (t == "int")
+                            {
+                                int iv = settings.GetCustom<int>(cset.name, int.TryParse(cset.defaultValue, out var di) ? di : 0);
+                                Widgets.TextFieldNumeric(iRect, ref iv, ref buf, (int)Mathf.Max(cset.min, int.MinValue), (int)Mathf.Min(cset.max, int.MaxValue));
+                                if (iv != settings.GetCustom<int>(cset.name)) settings.SetCustom(cset.name, iv);
+                            }
+                            else
+                            {
+                                float fv = settings.GetCustom<float>(cset.name, float.TryParse(cset.defaultValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var df) ? df : 0f);
+                                UIUtilities.TextFieldNumericFlexible(iRect, ref fv, ref buf, cset.min, cset.max);
+                                if (!Mathf.Approximately(fv, settings.GetCustom<float>(cset.name))) settings.SetCustom(cset.name, fv);
+                            }
+                            numericBuffers[bufKey] = buf;
+                            y += sectionHeight;
+                        }
+                        else // LabelTextBox or string / default
+                        {
+                            Rect lRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 200f, sectionHeight);
+                            Widgets.Label(lRect, displayLabel);
+                            if (!string.IsNullOrEmpty(tip)) TooltipHandler.TipRegion(lRect, tip);
+
+                            Rect iRect = new Rect(viewRect.width - 190f, y, 170f, sectionHeight);
+                            string cur = settings.GetCustom<string>(cset.name, cset.defaultValue ?? "");
+                            string newVal = Widgets.TextField(iRect, cur);
+                            if (newVal != cur) settings.SetCustom(cset.name, newVal);
+                            y += sectionHeight;
+                        }
+                    }
+                    y += 6f;
+                }
 
 
                 // RAID-SPECIFIC SETTINGS - Only show for raid command
@@ -1569,38 +1668,16 @@ namespace CAP_ChatInteractive
             Rect resetRect = new Rect(viewRect.width - 180f, raidHeaderRect.y, 160f, sectionHeight - 2f);
             if (Widgets.ButtonText(resetRect, "Reset to Recommended"))
             {
-                settings.DefaultRaidWager = 500;
-                settings.MinRaidWager = 100;
-                settings.MaxRaidWager = 2500;
+                // Wager values are now only in CustomData (driven by <CustomData> in Commands.xml for the Raid command)
+                settings.SetCustom("defaultRaidWager", 500);
+                settings.SetCustom("minRaidWager", 100);
+                settings.SetCustom("maxRaidWager", 2500);
                 Messages.Message("Raid wagers reset to recommended values (500 / 100 / 2500).", MessageTypeDefOf.TaskCompletion);
             }
             TooltipHandler.TipRegion(resetRect, "Reset to new recommended pricing based on current viewer economy.");
 
-            // Default wager
-            Rect wagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-            Widgets.Label(wagerRect, "CAP.CommandManager.DefaultWager".Translate());
-            Rect wagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-            string wagerBuffer = settings.DefaultRaidWager.ToString();
-            UIUtilities.TextFieldNumericFlexible(wagerInputRect, ref settings.DefaultRaidWager, ref wagerBuffer,
-                settings.MinRaidWager, settings.MaxRaidWager);
-            y += sectionHeight;
-
-            // Min wager
-            Rect minWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-            Widgets.Label(minWagerRect, "CAP.CommandManager.MinWager".Translate());
-            Rect minWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-            string minWagerBuffer = settings.MinRaidWager.ToString();
-            UIUtilities.TextFieldNumericFlexible(minWagerInputRect, ref settings.MinRaidWager, ref minWagerBuffer, 100, 5000);
-            y += sectionHeight;
-
-            // Max wager
-            Rect maxWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-            Widgets.Label(maxWagerRect, "CAP.CommandManager.MaxWager".Translate());
-            Rect maxWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-            string maxWagerBuffer = settings.MaxRaidWager.ToString();
-            UIUtilities.TextFieldNumericFlexible(maxWagerInputRect, ref settings.MaxRaidWager, ref maxWagerBuffer,
-                settings.MinRaidWager, 50000);
-            y += sectionHeight;
+            // Note: Wager fields are now driven by the <CustomData> definition above via the generic custom settings drawer.
+            // The lists (types/strategies) remain here for their dedicated sub-editors.
 
             // Allowed raid types button
             Rect raidTypesRect = new Rect(leftPadding + 10f, y, 200f, sectionHeight);
@@ -1637,37 +1714,47 @@ namespace CAP_ChatInteractive
             Rect resetRect = new Rect(viewRect.width - 180f, militaryHeaderRect.y, 160f, sectionHeight - 2f);
             if (Widgets.ButtonText(resetRect, "Reset to Recommended"))
             {
-                settings.DefaultMilitaryAidWager = 300;
-                settings.MinMilitaryAidWager = 50;
-                settings.MaxMilitaryAidWager = 1500;
+                // Values now stored via CustomData (per <CustomData> in XML)
+                settings.SetCustom("defaultMilitaryAidWager", 300);
+                settings.SetCustom("minMilitaryAidWager", 50);
+                settings.SetCustom("maxMilitaryAidWager", 1500);
                 Messages.Message("Military Aid wagers reset to recommended values (300 / 50 / 1500).", MessageTypeDefOf.TaskCompletion);
             }
             TooltipHandler.TipRegion(resetRect, "Reset to new recommended pricing based on current viewer economy.");
+
+            // Read current values (with legacy fallback removed)
+            int defW = settings.GetCustom<int>("defaultMilitaryAidWager", 300);
+            int minW = settings.GetCustom<int>("minMilitaryAidWager", 50);
+            int maxW = settings.GetCustom<int>("maxMilitaryAidWager", 1500);
 
             // Default wager
             Rect wagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
             Widgets.Label(wagerRect, "CAP.CommandManager.MilitaryAidDefaultwager".Translate());
             Rect wagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-            string wagerBuffer = settings.DefaultMilitaryAidWager.ToString();
-            UIUtilities.TextFieldNumericFlexible(wagerInputRect, ref settings.DefaultMilitaryAidWager, ref wagerBuffer,
-                settings.MinMilitaryAidWager, settings.MaxMilitaryAidWager);
+            string wagerBuffer = defW.ToString();
+            UIUtilities.TextFieldNumericFlexible(wagerInputRect, ref defW, ref wagerBuffer, minW, maxW);
+            if (defW != settings.GetCustom<int>("defaultMilitaryAidWager", 300))
+                settings.SetCustom("defaultMilitaryAidWager", defW);
             y += sectionHeight;
 
             // Min wager
             Rect minWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
             Widgets.Label(minWagerRect, "CAP.CommandManager.MilitaryAidMinWager".Translate());
             Rect minWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-            string minWagerBuffer = settings.MinMilitaryAidWager.ToString();
-            UIUtilities.TextFieldNumericFlexible(minWagerInputRect, ref settings.MinMilitaryAidWager, ref minWagerBuffer, 50, 5000);
+            string minWagerBuffer = minW.ToString();
+            UIUtilities.TextFieldNumericFlexible(minWagerInputRect, ref minW, ref minWagerBuffer, 50, 5000);
+            if (minW != settings.GetCustom<int>("minMilitaryAidWager", 50))
+                settings.SetCustom("minMilitaryAidWager", minW);
             y += sectionHeight;
 
             // Max wager
             Rect maxWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
             Widgets.Label(maxWagerRect, "CAP.CommandManager.MilitaryAidMaxWager".Translate());
             Rect maxWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-            string maxWagerBuffer = settings.MaxMilitaryAidWager.ToString();
-            UIUtilities.TextFieldNumericFlexible(maxWagerInputRect, ref settings.MaxMilitaryAidWager, ref maxWagerBuffer,
-                settings.MinMilitaryAidWager, 20000);
+            string maxWagerBuffer = maxW.ToString();
+            UIUtilities.TextFieldNumericFlexible(maxWagerInputRect, ref maxW, ref maxWagerBuffer, minW, 20000);
+            if (maxW != settings.GetCustom<int>("maxMilitaryAidWager", 1500))
+                settings.SetCustom("maxMilitaryAidWager", maxW);
             y += sectionHeight;
         }
 

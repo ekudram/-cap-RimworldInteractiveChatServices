@@ -136,6 +136,7 @@
 
   <!-- Surgery command Section-->
   <CAP.CommandManager.SurgerySettings>Surgery Command Settings:</CAP.CommandManager.SurgerySettings>
+  <CAP.CommandManager.CommandSpecificSettings>Command-Specific Settings</CAP.CommandManager.CommandSpecificSettings>
   <CAP.CommandManager.SurgeryGenderSwapCost>Gender Swap Cost:</CAP.CommandManager.SurgeryGenderSwapCost>
   <CAP.CommandManager.BodyChangeCost>Body Change Cost:</CAP.CommandManager.BodyChangeCost>
 
