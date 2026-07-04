@@ -136,6 +136,11 @@ public class CommandSettings
         bool changed = false;
         foreach (var s in schema)
         {
+            // Gap and Label (and any nameless item) do not store values — skip them.
+            string tt = (s.type ?? "").ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(s.name) || tt == "label" || tt == "gap" || tt == "spacer")
+                continue;
+
             if (!dict.ContainsKey(s.name))
             {
                 dict[s.name] = s.defaultValue ?? "";

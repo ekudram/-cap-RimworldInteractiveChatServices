@@ -648,7 +648,7 @@ namespace CAP_ChatInteractive
                     Widgets.Label(noteRect, "CAP.CommandManager.UnlimitedUses".Translate());
                     GUI.color = Color.white;
                 }
-                y += sectionHeight + 8f;  // Extra spacing before next section
+                y += sectionHeight + 16f;  // Extra spacing before next section
 
 
                 // === COMMAND-SPECIFIC / CUSTOM SETTINGS (from ChatCommandDef.CustomData definition) ===
@@ -658,8 +658,13 @@ namespace CAP_ChatInteractive
                 {
                     y += 6f;
                     Rect customHeader = new Rect(leftPadding, y, viewRect.width, sectionHeight);
+                    GUI.color = ColorLibrary.SubHeader;
                     Widgets.Label(customHeader, "CAP.CommandManager.CommandSpecificSettings".Translate());
-                    y += sectionHeight;
+                    y += sectionHeight + 8f;  // Extra spacing after header
+
+                    // Draw a line here
+                    Widgets.DrawLineHorizontal(leftPadding, y, viewRect.width - leftPadding);
+                    GUI.color = Color.white;
 
                     string cmdKey = selectedCommand.commandText?.ToLowerInvariant() ?? selectedCommand.defName.ToLowerInvariant();
                     // Ensure defaults for this command's schema (idempotent)
@@ -681,6 +686,15 @@ namespace CAP_ChatInteractive
                             Text.Font = GameFont.Small;
                             if (!string.IsNullOrEmpty(tip)) TooltipHandler.TipRegion(lRect, tip);
                             y += sectionHeight;
+                        }
+                        else if (t == "gap" || t == "spacer")
+                        {
+                            // Gap: pure vertical spacer for modders. Amount (pixels) from defaultValue. No widget, no storage.
+                            float gap = 0f;
+                            if (float.TryParse(cset.defaultValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var g))
+                                gap = g;
+                            if (gap > 0f) y += gap;
+                            // intentionally no tooltip or further processing
                         }
                         else if (t == "checkbox" || t == "bool")
                         {
@@ -961,6 +975,14 @@ namespace CAP_ChatInteractive
                     if (t == "label")
                     {
                         height += 28f;  // label row
+                    }
+                    else if (t == "gap" || t == "spacer")
+                    {
+                        // Gap contributes its custom float amount (from defaultValue) to height.
+                        float g = 0f;
+                        if (float.TryParse(cset.defaultValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var gg))
+                            g = gg;
+                        if (g > 0f) height += g;
                     }
                     else
                     {
