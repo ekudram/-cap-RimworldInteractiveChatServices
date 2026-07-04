@@ -252,6 +252,21 @@
     <permissionLevel>everyone</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData for Shuffle Adulthood (migrated from global settings) -->
+    <CustomData>
+      <li>
+        <type>HeaderLabel</type>
+        <label>Shuffle Adulthood Settings</label>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>adulthoodWager</name>
+        <label>Adulthood Wager Cost</label>
+        <defaultValue>1000</defaultValue>
+        <min>1</min>
+        <max>100000</max>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>

@@ -64,8 +64,9 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return "RICS.ADCH.NoAdulthood".Translate(); // Translation key: RICS.ADCH.NoAdulthood – "You have no adulthood backstory to shuffle."
             }
 
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            int cost = settings.AdulthoodWager;
+            // Per-command setting (migrated to CustomData)
+            var cmdSettings = CommandSettingsManager.GetSettings("shuffleadulthood");
+            int cost = cmdSettings.GetCustom<int>("adulthoodWager", 1000);
 
             // Coin check (Viewer.Coins is the standard economy field in RICS)
             if (viewer.Coins < cost)
@@ -117,7 +118,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 : "Unknown";
 
             // Add space between cost and currency symbol for readability
-            string coinDisplay = $"{cost} {settings.CurrencyName.Trim()}";
+            var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            string coinDisplay = $"{cost} {globalSettings.CurrencyName.Trim()}";
 
             // report.AppendLine($"🎒 Adulthood backstory shuffled for {coinDisplay}!");
             report.AppendLine("RICS.ADCH.AdultBackstoryShuffled".Translate(coinDisplay));

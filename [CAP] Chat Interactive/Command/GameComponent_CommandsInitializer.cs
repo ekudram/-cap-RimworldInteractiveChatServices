@@ -79,6 +79,9 @@ namespace CAP_ChatInteractive
                 // Shuffle Childhood (single wager cost)
                 EnsureShuffleChildhoodSettingsMigrated();
 
+                // Shuffle Adulthood (single wager cost)
+                EnsureShuffleAdulthoodSettingsMigrated();
+
                 commandsInitialized = true;
                 Logger.Message("[CAP] Commands initialized successfully");
             }
@@ -355,6 +358,33 @@ namespace CAP_ChatInteractive
             catch (Exception ex)
             {
                 Logger.Error($"Error migrating shuffle childhood settings from global: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// One-time migration for Shuffle Adulthood: copy global AdulthoodWager into the command's CustomData.
+        /// </summary>
+        private void EnsureShuffleAdulthoodSettingsMigrated()
+        {
+            try
+            {
+                var global = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var s = CommandSettingsManager.GetSettings("shuffleadulthood");
+                if (s == null) return;
+
+                var def = DefDatabase<ChatCommandDef>.GetNamed("ShuffleAdulthood", false);
+                if (def?.CustomData != null && def.CustomData.Count > 0)
+                    s.EnsureCustomDefaults(def.CustomData);
+
+                // Seed if still at default
+                if (s.GetCustom<string>("adulthoodWager", "") == "1000" || string.IsNullOrEmpty(s.GetCustom<string>("adulthoodWager", "")))
+                {
+                    s.SetCustom("adulthoodWager", global.AdulthoodWager);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error migrating shuffle adulthood settings from global: {ex.Message}");
             }
         }
 

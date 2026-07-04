@@ -864,29 +864,9 @@ namespace CAP_ChatInteractive
                 // Rendered via the generic dynamic section (HeaderLabel + NumericTextBox).
                 // Old special block removed.
 
-                // SHUFFLE ADULTHOOD-SPECIFIC SETTINGS
-                if (selectedCommand != null && selectedCommand.commandText.ToLower() == "shuffleadulthood")
-                {
-                    y += 10f; // Extra spacing
-
-                    Rect headerRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
-                    Widgets.Label(headerRect, "CAP.CommandManager.ShuffleAdulthoodSettings".Translate().Colorize(ColorLibrary.SubHeader));
-                    y += sectionHeight;
-
-                    Rect AdulthoodlabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(AdulthoodlabelRect, "CAP.CommandManager.AdulthoodWager".Translate());
-
-                    Rect AdulthoodinputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string bufferKey = "shuffle_adulthood_wager";
-                    if (!numericBuffers.ContainsKey(bufferKey))
-                        numericBuffers[bufferKey] = settingsGlobalChat.AdulthoodWager.ToString();
-
-                    string Adulthoodbuffer = numericBuffers[bufferKey];
-                    Widgets.TextFieldNumeric(AdulthoodinputRect, ref settingsGlobalChat.AdulthoodWager, ref Adulthoodbuffer, 1, 100000);
-                    numericBuffers[bufferKey] = Adulthoodbuffer;
-
-                    y += sectionHeight + 8f; // small padding
-                }
+                // SHUFFLE ADULTHOOD-SPECIFIC SETTINGS have been migrated to per-command CustomData.
+                // Rendered via the generic dynamic section (HeaderLabel + NumericTextBox).
+                // Old special block removed.
 
 
             }
@@ -932,13 +912,8 @@ namespace CAP_ChatInteractive
             // SHUFFLE CHILDHOOD height now comes from dynamic CustomData (HeaderLabel + Numeric).
             // (Old hardcoded height block removed.)
 
-            // SHUFFLE ADULTHOOD-SPECIFIC SETTINGS HEIGHT
-            if (selectedCommand != null && selectedCommand.commandText.ToLower() == "shuffleadulthood")
-            {
-                height += 10f;  // Extra spacing
-                height += 28f;  // Header
-                height += 28f;  // AdulthoodWager row
-            }
+            // SHUFFLE ADULTHOOD height now comes from dynamic CustomData (HeaderLabel + Numeric).
+            // (Old hardcoded height block removed.)
 
             // === DYNAMIC CUSTOM DATA HEIGHT (from selectedCommand.CustomData) ===
             // This must be calculated from the CustomData definition because:
