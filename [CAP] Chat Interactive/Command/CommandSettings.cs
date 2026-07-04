@@ -60,7 +60,7 @@ public class CommandSettings
     //
     // Example in Commands.xml:
     // <CustomData>
-    //   <li><type>Label</type><label>Raid Advanceded Settings</label></li>
+    //   <li><type>HeaderLabel</type><label>Raid Advanceded Settings</label></li>
     //   <li><type>NumericTextBox</type><name>defaultRaidWager</name><label>Default Raid Wager</label><defaultValue>500</defaultValue></li>
     //   ...
     // </CustomData>

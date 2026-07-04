@@ -25,20 +25,20 @@ namespace CAP_ChatInteractive
     /// <summary>
     /// Defines a single custom/extra UI element for a command's CustomData section.
     /// Declared in Commands.xml inside &lt;CustomData&gt; ... &lt;/CustomData&gt; for a ChatCommandDef (order matters).
-    /// Supported types: Label, CheckBox, LabelTextBox, NumericTextBox, Gap.
+    /// Supported types: HeaderLabel, Label, CheckBox, LabelTextBox, NumericTextBox, Gap.
     /// Values for inputs are stored in CommandSettings.CustomData (JSON) and rendered in Command Editor.
     /// Gap is a pure layout spacer (float pixels from defaultValue); it stores nothing.
     /// </summary>
     [Serializable]
     public class CommandCustomSetting
     {
-        /// <summary>The type: "Label", "CheckBox", "LabelTextBox", "NumericTextBox", "Gap".</summary>
+        /// <summary>The type: "HeaderLabel", "Label", "CheckBox", "LabelTextBox", "NumericTextBox", "Gap".</summary>
         public string type = "string";
 
-        /// <summary>Key/name for the value (for CheckBox, LabelTextBox, NumericTextBox). Not used for Label or Gap.</summary>
+        /// <summary>Key/name for the value (for CheckBox, LabelTextBox, NumericTextBox). Not used for HeaderLabel, Label or Gap.</summary>
         public string name = "";
 
-        /// <summary>UI label or the text content for Label type.</summary>
+        /// <summary>UI label or the text content for Label/HeaderLabel type.</summary>
         public string label = "";
 
         /// <summary>String form of default value (parsed by type). E.g. "false", "500", "text here". For Gap this is the float gap amount in pixels.</summary>
@@ -98,7 +98,7 @@ namespace CAP_ChatInteractive
         /// <summary>
         /// The &lt;CustomData&gt; definition for this command (list of UI elements in order).
         /// Parsed from the &lt;CustomData&gt;...&lt;/CustomData&gt; section in XML.
-        /// Enables dynamic per-command settings (Label, CheckBox, LabelTextBox, NumericTextBox, Gap) in the editor.
+        /// Enables dynamic per-command settings (HeaderLabel, Label, CheckBox, LabelTextBox, NumericTextBox, Gap) in the editor.
         /// Values for interactive items stored in CommandSettings.CustomData.
         /// Backwards compatible (empty = no extra UI).
         /// </summary>

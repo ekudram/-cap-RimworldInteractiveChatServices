@@ -426,7 +426,7 @@
          CheckBox for enable/disable + NumericTextBox for costs (negative = pays viewer). -->
     <CustomData>
       <li>
-        <type>Label</type>
+        <type>HeaderLabel</type>
         <label>Surgery Settings</label>
       </li>
       <li>
@@ -618,7 +618,7 @@
     <!-- CustomData for Military Aid wagers (to avoid polluting JSON for non-military commands) -->
     <CustomData>
       <li>
-        <type>Label</type>
+        <type>HeaderLabel</type>
         <label>Military Aid Settings</label>
       </li>
       <li>
@@ -665,7 +665,7 @@
          Note: Wager fields no longer in CommandSettings top-level to avoid polluting JSON for all commands. -->
     <CustomData>
       <li>
-        <type>Label</type>
+        <type>HeaderLabel</type>
         <label>Raid Advanceded Settings</label>
       </li>
       <li>
@@ -919,12 +919,12 @@
          Values go into this command's CommandSettings.CustomData. -->
     <CustomData>
       <li>
-        <type>Label</type>
+        <type>HeaderLabel</type>
         <label>Passion Command Settings</label>
       </li>
       <!-- Wager Limits and Scaling -->
       <li>
-        <type>Label</type>
+        <type>HeaderLabel</type>
         <label>Wager Limits and Scaling</label>
       </li>
       <li>
@@ -965,7 +965,7 @@
       </li>
       <!-- Success Chance Scaling -->
       <li>
-        <type>Label</type>
+        <type>HeaderLabel</type>
         <label>Success Chance Scaling</label>
       </li>
       <li>
@@ -988,7 +988,7 @@
       </li>
       <!-- Critical Success -->
       <li>
-        <type>Label</type>
+        <type>HeaderLabel</type>
         <label>Critical Success</label>
       </li>
       <li>
@@ -1011,7 +1011,7 @@
       </li>
       <!-- Critical Failure -->
       <li>
-        <type>Label</type>
+        <type>HeaderLabel</type>
         <label>Critical Failure</label>
       </li>
       <li>
@@ -1043,7 +1043,7 @@
       </li>
       <!-- Outcome Biases (Advanced) -->
       <li>
-        <type>Label</type>
+        <type>HeaderLabel</type>
         <label>Outcome Biases (Advanced)</label>
       </li>
       <li>

@@ -677,13 +677,21 @@ namespace CAP_ChatInteractive
 
                         string t = (cset.type ?? "").ToLowerInvariant();
 
-                        if (t == "label")
+                        if (t == "headerlabel" || t == "header")
                         {
-                            // Label: just show as (bold) text / header. Can be used for "Raid Advanceded Settings" etc.
+                            // HeaderLabel: medium text for section headers inside CustomData.
                             Rect lRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 20f, sectionHeight);
                             Text.Font = GameFont.Medium;
                             Widgets.Label(lRect, displayLabel);
                             Text.Font = GameFont.Small;
+                            if (!string.IsNullOrEmpty(tip)) TooltipHandler.TipRegion(lRect, tip);
+                            y += sectionHeight;
+                        }
+                        else if (t == "label")
+                        {
+                            // Label: small/regular text label.
+                            Rect lRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 20f, sectionHeight);
+                            Widgets.Label(lRect, displayLabel);
                             if (!string.IsNullOrEmpty(tip)) TooltipHandler.TipRegion(lRect, tip);
                             y += sectionHeight;
                         }
@@ -972,9 +980,9 @@ namespace CAP_ChatInteractive
                 {
                     string t = (cset.type ?? "").ToLowerInvariant();
 
-                    if (t == "label")
+                    if (t == "label" || t == "headerlabel" || t == "header")
                     {
-                        height += 28f;  // label row
+                        height += 28f;  // label or headerlabel row
                     }
                     else if (t == "gap" || t == "spacer")
                     {
