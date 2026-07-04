@@ -762,6 +762,166 @@
     <commandDescription>Place a wager to have chance to increase a passion.</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData for Passion command: all the former global wager/success/crit/fail/bias settings now live here (per-command only).
+         Rendered dynamically via Labels (section headers) + NumericTextBox. Order preserved.
+         Values go into this command's CommandSettings.CustomData. -->
+    <CustomData>
+      <li>
+        <type>Label</type>
+        <label>Passion Command Settings</label>
+      </li>
+      <!-- Wager Limits and Scaling -->
+      <li>
+        <type>Label</type>
+        <label>Wager Limits and Scaling</label>
+      </li>
+      <li>
+        <type>int</type>
+        <name>minPassionWager</name>
+        <label>Min wager:</label>
+        <defaultValue>500</defaultValue>
+        <min>1</min>
+        <max>100000</max>
+        <description>Lowest number of coins a viewer can wager on !passion (default: 500)</description>
+      </li>
+      <li>
+        <type>int</type>
+        <name>maxPassionWager</name>
+        <label>Max wager:</label>
+        <defaultValue>1000</defaultValue>
+        <min>1</min>
+        <max>1000000</max>
+        <description>Highest number of coins allowed in a single !passion wager (default: 1000)</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>passionWagerBonusPer100</name>
+        <label>Bonus % per 100 coins wagered</label>
+        <defaultValue>1.0</defaultValue>
+        <min>0</min>
+        <max>10</max>
+        <description>How many % success chance is added for every 100 coins wagered (default: 1.0)</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>maxPassionWagerBonus</name>
+        <label>Maximum bonus from wager</label>
+        <defaultValue>30.0</defaultValue>
+        <min>0</min>
+        <max>100</max>
+        <description>Maximum bonus percentage that can come from large wagers (default: 30%)</description>
+      </li>
+      <!-- Success Chance Scaling -->
+      <li>
+        <type>Label</type>
+        <label>Success Chance Scaling</label>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>basePassionSuccessChance</name>
+        <label>Base success chance (%):</label>
+        <defaultValue>15.0</defaultValue>
+        <min>0</min>
+        <max>100</max>
+        <description>Starting success chance before any wager bonus (default: 15%)</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>maxPassionSuccessChance</name>
+        <label>Max success chance (%):</label>
+        <defaultValue>60.0</defaultValue>
+        <min>0</min>
+        <max>100</max>
+        <description>Hard upper limit on total success chance, even with big wagers (default: 60%)</description>
+      </li>
+      <!-- Critical Success -->
+      <li>
+        <type>Label</type>
+        <label>Critical Success</label>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>criticalSuccessRatio</name>
+        <label>Critical success multiplier (of base chance)</label>
+        <defaultValue>0.2</defaultValue>
+        <min>0</min>
+        <max>2</max>
+        <description>Critical success chance = base success \u00d7 this value (default: 0.2)</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>maxCriticalSuccessChance</name>
+        <label>Hard cap on critical success chance (%)</label>
+        <defaultValue>5.0</defaultValue>
+        <min>0</min>
+        <max>20</max>
+        <description>Absolute maximum chance for a critical success outcome (default: 5%)</description>
+      </li>
+      <!-- Critical Failure -->
+      <li>
+        <type>Label</type>
+        <label>Critical Failure</label>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>criticalFailBaseChance</name>
+        <label>Base critical failure chance (%)</label>
+        <defaultValue>10.0</defaultValue>
+        <min>0</min>
+        <max>50</max>
+        <description>Starting critical failure chance before reduction (default: 10%)</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>criticalFailReductionFactor</name>
+        <label>Crit-fail reduction per success chance point</label>
+        <defaultValue>0.1</defaultValue>
+        <min>0</min>
+        <max>1</max>
+        <description>How much the crit-fail chance decreases for each % of base success (default: 0.1)</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>minCriticalFailChance</name>
+        <label>Minimum critical failure chance (%)</label>
+        <defaultValue>2.0</defaultValue>
+        <min>0</min>
+        <max>20</max>
+        <description>Lowest the critical failure chance can ever go (default: 2%)</description>
+      </li>
+      <!-- Outcome Biases (Advanced) -->
+      <li>
+        <type>Label</type>
+        <label>Outcome Biases (Advanced)</label>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>critSuccessUpgradeVsNewChance</name>
+        <label>Chance to upgrade existing passion (vs gain new) on crit success</label>
+        <defaultValue>0.5</defaultValue>
+        <min>0</min>
+        <max>1</max>
+        <description>Probability to upgrade an existing passion instead of adding a new one on critical success (default: 0.5)</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>critFailLoseVsWrongChance</name>
+        <label>Chance to lose passion (vs gain useless one) on crit failure</label>
+        <defaultValue>0.6</defaultValue>
+        <min>0</min>
+        <max>1</max>
+        <description>Probability to lose an existing passion instead of gaining a useless one on critical failure (default: 0.6)</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>targetedCritFailAffectTargetChance</name>
+        <label>Chance targeted skill is affected (vs random other) on targeted crit failure</label>
+        <defaultValue>0.7</defaultValue>
+        <min>0</min>
+        <max>1</max>
+        <description>When using !passion [skill] \u2014 chance the targeted skill is affected on crit failure (default: 0.7)</description>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>

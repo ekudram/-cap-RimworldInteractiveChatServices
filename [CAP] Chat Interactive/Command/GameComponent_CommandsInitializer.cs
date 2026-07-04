@@ -70,6 +70,9 @@ namespace CAP_ChatInteractive
                 // Ensure raid settings are properly initialized
                 EnsureRaidSettingsInitialized();
 
+                // Seed passion command CustomData from global values on first use / migration (one-time copy of tuned numbers).
+                EnsurePassionSettingsMigrated();
+
                 commandsInitialized = true;
                 Logger.Message("[CAP] Commands initialized successfully");
             }
@@ -232,6 +235,49 @@ namespace CAP_ChatInteractive
             catch (Exception ex)
             {
                 Logger.Error($"Error ensuring raid settings are initialized: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// One-time migration helper: copy current global passion values into the "passion" command's CustomData
+        /// (if the keys are not yet present or still at XML defaults). This lets users keep their tuned numbers
+        /// after the passion settings were moved out of CAPGlobalChatSettings.
+        /// </summary>
+        private void EnsurePassionSettingsMigrated()
+        {
+            try
+            {
+                var global = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var passionSettings = CommandSettingsManager.GetSettings("passion");
+                if (passionSettings == null) return;
+
+                passionSettings.EnsureCustomDefaults(DefDatabase<ChatCommandDef>.GetNamed("Passion", false)?.CustomData);
+
+                // Only overwrite if the value is still the XML default (heuristic: compare to known defaults or empty).
+                // Simpler: always set from global on init if the custom value matches the schema default (first run after migration).
+                // To keep it non-destructive for people who already edited in the new UI, only seed when the key is missing or default.
+                var cd = passionSettings.GetCustom<string>("minPassionWager", "");
+                if (string.IsNullOrEmpty(cd) || cd == "500")
+                {
+                    passionSettings.SetCustom("minPassionWager", global.MinPassionWager);
+                    passionSettings.SetCustom("maxPassionWager", global.MaxPassionWager);
+                    passionSettings.SetCustom("passionWagerBonusPer100", global.PassionWagerBonusPer100);
+                    passionSettings.SetCustom("maxPassionWagerBonus", global.MaxPassionWagerBonus);
+                    passionSettings.SetCustom("basePassionSuccessChance", global.BasePassionSuccessChance);
+                    passionSettings.SetCustom("maxPassionSuccessChance", global.MaxPassionSuccessChance);
+                    passionSettings.SetCustom("criticalSuccessRatio", global.CriticalSuccessRatio);
+                    passionSettings.SetCustom("maxCriticalSuccessChance", global.MaxCriticalSuccessChance);
+                    passionSettings.SetCustom("criticalFailBaseChance", global.CriticalFailBaseChance);
+                    passionSettings.SetCustom("criticalFailReductionFactor", global.CriticalFailReductionFactor);
+                    passionSettings.SetCustom("minCriticalFailChance", global.MinCriticalFailChance);
+                    passionSettings.SetCustom("critSuccessUpgradeVsNewChance", global.CritSuccessUpgradeVsNewChance);
+                    passionSettings.SetCustom("critFailLoseVsWrongChance", global.CritFailLoseVsWrongChance);
+                    passionSettings.SetCustom("targetedCritFailAffectTargetChance", global.TargetedCritFailAffectTargetChance);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error migrating passion settings from global: {ex.Message}");
             }
         }
 

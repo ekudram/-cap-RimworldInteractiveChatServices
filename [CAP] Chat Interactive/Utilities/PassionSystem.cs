@@ -33,16 +33,22 @@ namespace CAP_ChatInteractive
             public bool alreadyCharged;
         }
 
+        // Per-command settings access (passion settings migrated out of global CAPGlobalChatSettings into CustomData).
+        private static CommandSettings GetPassionSettings()
+        {
+            return CommandSettingsManager.GetSettings("passion");
+        }
+
         public static PassionResult GambleForPassion(Pawn pawn, int wager, Viewer viewer, SkillDef targetSkill = null)
         {
             var result = new PassionResult();
             var rand = new Random();
             double roll = rand.NextDouble() * 100.0;
 
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            var ps = GetPassionSettings();
             double baseSuccessChance = CalculateSuccessChance(wager);
-            double criticalSuccessChance = Math.Min(baseSuccessChance * settings.CriticalSuccessRatio, settings.MaxCriticalSuccessChance);
-            double criticalFailChance = Math.Max(settings.CriticalFailBaseChance - (baseSuccessChance * settings.CriticalFailReductionFactor), settings.MinCriticalFailChance);
+            double criticalSuccessChance = Math.Min(baseSuccessChance * ps.GetCustom<float>("criticalSuccessRatio", 0.2f), ps.GetCustom<float>("maxCriticalSuccessChance", 5.0f));
+            double criticalFailChance = Math.Max(ps.GetCustom<float>("criticalFailBaseChance", 10.0f) - (baseSuccessChance * ps.GetCustom<float>("criticalFailReductionFactor", 0.1f)), ps.GetCustom<float>("minCriticalFailChance", 2.0f));
 
             criticalSuccessChance = Math.Clamp(criticalSuccessChance, 0.0, 100.0);
             criticalFailChance = Math.Clamp(criticalFailChance, 0.0, 100.0);
@@ -156,9 +162,9 @@ namespace CAP_ChatInteractive
         {
             var result = new PassionResult();
             var rand = new Random();
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            var ps = GetPassionSettings();
 
-            if (rand.NextDouble() < settings.TargetedCritFailAffectTargetChance)
+            if (rand.NextDouble() < ps.GetCustom<float>("targetedCritFailAffectTargetChance", 0.7f))
             {
                 if (targetSkillRecord.passion != Passion.None)
                 {
@@ -240,11 +246,11 @@ namespace CAP_ChatInteractive
 
         private static double CalculateSuccessChance(int wager)
         {
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            double baseChance = settings.BasePassionSuccessChance;
-            double wagerBonus = Math.Min((wager / 100.0) * settings.PassionWagerBonusPer100, settings.MaxPassionWagerBonus);
+            var ps = GetPassionSettings();
+            double baseChance = ps.GetCustom<float>("basePassionSuccessChance", 15.0f);
+            double wagerBonus = Math.Min((wager / 100.0) * ps.GetCustom<float>("passionWagerBonusPer100", 1.0f), ps.GetCustom<float>("maxPassionWagerBonus", 30.0f));
 
-            return Math.Min(baseChance + wagerBonus, settings.MaxPassionSuccessChance);
+            return Math.Min(baseChance + wagerBonus, ps.GetCustom<float>("maxPassionSuccessChance", 60.0f));
         }
 
         private static PassionResult HandleCriticalSuccess(Pawn pawn, int wager, Viewer viewer,
@@ -252,9 +258,9 @@ namespace CAP_ChatInteractive
         {
             var result = new PassionResult();
             var rand = new Random();
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            var ps = GetPassionSettings();
 
-            if (currentPassions.Count > 0 && rand.NextDouble() < settings.CritSuccessUpgradeVsNewChance)
+            if (currentPassions.Count > 0 && rand.NextDouble() < ps.GetCustom<float>("critSuccessUpgradeVsNewChance", 0.5f))
             {
                 var skillToUpgrade = currentPassions[rand.Next(currentPassions.Count)];
                 var oldPassion = skillToUpgrade.passion;
@@ -293,9 +299,9 @@ namespace CAP_ChatInteractive
         {
             var result = new PassionResult();
             var rand = new Random();
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            var ps = GetPassionSettings();
 
-            if (currentPassions.Count > 0 && rand.NextDouble() < settings.CritFailLoseVsWrongChance)
+            if (currentPassions.Count > 0 && rand.NextDouble() < ps.GetCustom<float>("critFailLoseVsWrongChance", 0.6f))
             {
                 var skillToLose = currentPassions[rand.Next(currentPassions.Count)];
                 var lostPassionLevel = skillToLose.passion == Passion.Major ? "🔥🔥" : "🔥";

@@ -245,7 +245,10 @@ namespace CAP_ChatInteractive
         public bool SurgeryAllowTransfusion = true;
         public bool SurgeryAllowMiscBiotech = true;
 
-        // Passion Settings
+        // Passion Settings (MIGRATED to per-command CustomData on the "passion" command via <CustomData> in Commands.xml).
+        // These global fields + their Scribe entries are retained only for backcompat + the one-time seed in the initializer.
+        // All reads for !passion now go through the passion CommandSettings.GetCustom(...) so only that command's JSON entry is affected.
+        // Edit values in the Command Editor (select "passion").
         public int MinPassionWager = 500;
         public int MaxPassionWager = 1000;
         public float BasePassionSuccessChance = 15.0f; // 15% base chance

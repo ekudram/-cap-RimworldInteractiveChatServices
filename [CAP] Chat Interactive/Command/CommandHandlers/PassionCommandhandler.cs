@@ -65,13 +65,16 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
                 int finalWager = wager.Value;
 
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                // Values now come from per-command CustomData (migrated from global settings).
+                var cmdSettings = CommandSettingsManager.GetSettings("passion");
+                int minW = cmdSettings.GetCustom<int>("minPassionWager", 500);
+                int maxW = cmdSettings.GetCustom<int>("maxPassionWager", 1000);
 
-                if (finalWager < settings.MinPassionWager)
-                    return "RICS.PASSION.MinWager".Translate(settings.MinPassionWager);
+                if (finalWager < minW)
+                    return "RICS.PASSION.MinWager".Translate(minW);
 
-                if (finalWager > settings.MaxPassionWager)
-                    return "RICS.PASSION.MaxWager".Translate(settings.MaxPassionWager);
+                if (finalWager > maxW)
+                    return "RICS.PASSION.MaxWager".Translate(maxW);
 
                 if (viewer.Coins < finalWager)
                     return "RICS.PASSION.NotEnoughCoins".Translate(viewer.Coins, finalWager);
