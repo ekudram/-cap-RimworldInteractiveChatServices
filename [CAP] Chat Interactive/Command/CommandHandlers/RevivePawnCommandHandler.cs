@@ -44,8 +44,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 int pricePerRevive = resurrectorSerum.BasePrice;
 
+                var cmdSettings = CommandSettingsManager.GetSettings("revivepawn");
+                float mult = cmdSettings.GetCustom<float>("reviveCostMultiplier", 1.0f);
+                pricePerRevive = (int)(pricePerRevive * mult);
+
                 if (args.Length == 0)
                 {
+                    if (!cmdSettings.GetCustom<bool>("enableSelfRevive", true))
+                        return "Sub Command self is disabled.";
                     return ReviveSelf(user, viewer, pricePerRevive, currencySymbol);
                 }
 
@@ -53,10 +59,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (target == "all")
                 {
+                    if (!cmdSettings.GetCustom<bool>("enableAllRevive", true))
+                        return "Sub Command all is disabled.";
                     return ReviveAll(user, viewer, pricePerRevive, currencySymbol);
                 }
                 else
                 {
+                    if (!cmdSettings.GetCustom<bool>("enableTargetRevive", true))
+                        return "Sub Command target is disabled.";
                     return ReviveSpecificUser(user, viewer, target, pricePerRevive, currencySymbol);
                 }
             }

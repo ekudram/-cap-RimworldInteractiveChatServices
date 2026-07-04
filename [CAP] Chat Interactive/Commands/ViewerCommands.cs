@@ -244,6 +244,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
+            var settings = GetCommandSettings();
+
             // Check if we have enough arguments
             if (args.Length < 2)
             {
@@ -263,6 +265,16 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             {
                 return "RICS.CC.giftcoins.invalidAmount".Translate();
             }
+
+            int maxGift = settings.GetCustom<int>("maxGiftAmount", 10000);
+            if (coinAmount > maxGift)
+            {
+                return $"Max gift amount is {maxGift}.";
+            }
+
+            float feePercent = settings.GetCustom<float>("giftFeePercent", 0f);
+            int fee = (int)(coinAmount * feePercent / 100f);
+            int transferAmount = coinAmount - fee;
 
             // Early self-check (case-insensitive)
             if (targetUsername.Equals(messageWrapper.Username.ToLowerInvariant()))
@@ -315,21 +327,20 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                     // Take coins from sender first
                     sender.TakeCoins(coinAmount);
 
-                    // Give coins to target
-                    target.GiveCoins(coinAmount);
+                    // Give coins to target (fee stays with sender effectively)
+                    target.GiveCoins(transferAmount);
 
                     // Save immediately for transaction safety
                     Viewers.SaveViewers();
 
                     // Log the transaction for debugging
-                    Logger.Debug($"GiftCoins: {sender.Username} gave {coinAmount} coins to {target.Username}. " +
+                    Logger.Debug($"GiftCoins: {sender.Username} gave {coinAmount} coins to {target.Username} (transfer {transferAmount}, fee {fee}). " +
                                $"Sender now has {sender.GetCoins()}, receiver now has {target.GetCoins()}");
 
-                    //result = $"Successfully gave {coinAmount} coins to {target.DisplayName}. You now have {sender.GetCoins():N0} coins remaining.";
-                    result = "RICS.CC.giftcoins.success".Translate(
-                        coinAmount.ToString("N0"),
-                        target.DisplayName,
-                        sender.GetCoins().ToString("N0"));
+                    string msg = $"Successfully gave {transferAmount} coins to {target.DisplayName}.";
+                    if (fee > 0) msg += $" (Fee: {fee})";
+                    msg += $" You now have {sender.GetCoins():N0} coins remaining.";
+                    result = msg;
                 }
                 catch (Exception ex)
                 {

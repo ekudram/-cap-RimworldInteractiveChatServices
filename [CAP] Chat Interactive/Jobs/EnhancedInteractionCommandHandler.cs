@@ -74,6 +74,27 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Check interaction validity and cost
                 if (interaction == null) return "This interaction is not available.";
 
+                // Check if this sub-command is enabled (CustomData added for streamer control)
+                string cmdName = null;
+                if (interaction == InteractionDefOf.Chitchat) cmdName = "chitchat";
+                else if (interaction == InteractionDefOf.DeepTalk) cmdName = "deeptalk";
+                else if (interaction == InteractionDefOf.Insult) cmdName = "insult";
+                else if (interaction == InteractionDefOf.RomanceAttempt) cmdName = "flirt";
+                else if (interaction == InteractionDefOf.Reassure) cmdName = "reassure";
+                else if (interaction == InteractionDefOf.Nuzzle) cmdName = "nuzzle";
+                else if (interaction == InteractionDefOf.AnimalChat) cmdName = "animalchat";
+                else if (interaction == InteractionDefOf.MarriageProposal) cmdName = "marry";
+                else if (interaction == InteractionDefOf.BuildRapport) cmdName = "buildrapport";
+                else if (interaction == InteractionDefOf.ConvertIdeoAttempt) cmdName = "convert";
+                if (cmdName != null)
+                {
+                    var cmdSettings = CommandSettingsManager.GetSettings(cmdName);
+                    if (!cmdSettings.GetCustom<bool>("enabled", true))
+                    {
+                        return $"Sub Command {cmdName} is disabled.";
+                    }
+                }
+
                 InteractionInfo interactionInfo;
                 if (InteractionData == null || !InteractionData.TryGetValue(interaction, out interactionInfo))
                     interactionInfo = new InteractionInfo(); // Default values

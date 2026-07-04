@@ -359,6 +359,29 @@
     <permissionLevel>everyone</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData for gift limits and fees -->
+    <CustomData>
+      <li>
+        <type>HeaderLabel</type>
+        <label>Gift Coins Settings</label>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>maxGiftAmount</name>
+        <label>Max Gift Amount</label>
+        <defaultValue>10000</defaultValue>
+        <min>1</min>
+        <max>1000000</max>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>giftFeePercent</name>
+        <label>Gift Fee % (taken from gift)</label>
+        <defaultValue>0</defaultValue>
+        <min>0</min>
+        <max>50</max>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <!-- Purchase Commands -->
@@ -400,6 +423,21 @@
     <permissionLevel>everyone</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData for use limits -->
+    <CustomData>
+      <li>
+        <type>HeaderLabel</type>
+        <label>Use Item Settings</label>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>maxUsesPerPeriod</name>
+        <label>Max Uses Per Period</label>
+        <defaultValue>0</defaultValue>
+        <min>0</min>
+        <max>100</max>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -999,6 +1037,39 @@
     <commandDescription>Revives a pawn selected all or viewers</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData for revive options -->
+    <CustomData>
+      <li>
+        <type>HeaderLabel</type>
+        <label>Revive Pawn Settings</label>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>enableSelfRevive</name>
+        <label>self</label>
+        <defaultValue>true</defaultValue>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>enableTargetRevive</name>
+        <label>target</label>
+        <defaultValue>true</defaultValue>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>enableAllRevive</name>
+        <label>all</label>
+        <defaultValue>true</defaultValue>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>reviveCostMultiplier</name>
+        <label>Cost Multiplier</label>
+        <defaultValue>1.0</defaultValue>
+        <min>0.1</min>
+        <max>10</max>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -1011,6 +1082,39 @@
     <commandDescription>Heals pawn injuries - self, specific user, or all pawns with optional quantity</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData for heal options -->
+    <CustomData>
+      <li>
+        <type>HeaderLabel</type>
+        <label>Heal Pawn Settings</label>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>enableSelfHeal</name>
+        <label>self</label>
+        <defaultValue>true</defaultValue>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>enableTargetHeal</name>
+        <label>target</label>
+        <defaultValue>true</defaultValue>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>enableAllHeal</name>
+        <label>all</label>
+        <defaultValue>true</defaultValue>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>healCostMultiplier</name>
+        <label>Cost Multiplier</label>
+        <defaultValue>1.0</defaultValue>
+        <min>0.1</min>
+        <max>10</max>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -1023,6 +1127,25 @@
     <commandDescription>Dyes your clothing.</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData for dye options -->
+    <CustomData>
+      <li>
+        <type>HeaderLabel</type>
+        <label>Dye Settings</label>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>enableHairDye</name>
+        <label>hair</label>
+        <defaultValue>true</defaultValue>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>enableApparelDye</name>
+        <label>apparel</label>
+        <defaultValue>true</defaultValue>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -1293,6 +1416,15 @@
     <commandDescription>Have your pawn chat with another colonist (Cost: 10 coins)</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData to allow disabling this sub-command -->
+    <CustomData>
+      <li>
+        <type>CheckBox</type>
+        <name>enabled</name>
+        <label>chitchat</label>
+        <defaultValue>true</defaultValue>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -1305,6 +1437,15 @@
     <commandDescription>Have your pawn have a deep conversation (Cost: 15 coins)</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData to allow disabling this sub-command -->
+    <CustomData>
+      <li>
+        <type>CheckBox</type>
+        <name>enabled</name>
+        <label>deeptalk</label>
+        <defaultValue>true</defaultValue>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -1317,6 +1458,15 @@
     <commandDescription>Insult another colonist (Cost: 5 coins, requires 5 karma)</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData to allow disabling this sub-command -->
+    <CustomData>
+      <li>
+        <type>CheckBox</type>
+        <name>enabled</name>
+        <label>insult</label>
+        <defaultValue>true</defaultValue>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -1329,6 +1479,15 @@
     <commandDescription>Flirt with another colonist (Cost: 20 coins)</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData to allow disabling this sub-command -->
+    <CustomData>
+      <li>
+        <type>CheckBox</type>
+        <name>enabled</name>
+        <label>flirt</label>
+        <defaultValue>true</defaultValue>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -1341,6 +1500,15 @@
     <commandDescription>Reassure another colonist (Requires Ideology DLC, Cost: 12 coins)</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData to allow disabling this sub-command -->
+    <CustomData>
+      <li>
+        <type>CheckBox</type>
+        <name>enabled</name>
+        <label>reassure</label>
+        <defaultValue>true</defaultValue>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -1353,6 +1521,15 @@
     <commandDescription>Nuzzle with another colonist (Cost: 8 coins)</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData to allow disabling this sub-command -->
+    <CustomData>
+      <li>
+        <type>CheckBox</type>
+        <name>enabled</name>
+        <label>nuzzle</label>
+        <defaultValue>true</defaultValue>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -1365,6 +1542,15 @@
     <commandDescription>Chat with an animal (Cost: 10 coins)</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData to allow disabling this sub-command -->
+    <CustomData>
+      <li>
+        <type>CheckBox</type>
+        <name>enabled</name>
+        <label>animalchat</label>
+        <defaultValue>true</defaultValue>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -1377,6 +1563,15 @@
     <commandDescription>Propose marriage to another colonist (Cost: 50 coins, requires 10 karma)</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData to allow disabling this sub-command -->
+    <CustomData>
+      <li>
+        <type>CheckBox</type>
+        <name>enabled</name>
+        <label>marry</label>
+        <defaultValue>true</defaultValue>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -1389,6 +1584,15 @@
     <commandDescription>Build rapport with another colonist (Cost: 25 coins)</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData to allow disabling this sub-command -->
+    <CustomData>
+      <li>
+        <type>CheckBox</type>
+        <name>enabled</name>
+        <label>buildrapport</label>
+        <defaultValue>true</defaultValue>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
@@ -1401,6 +1605,15 @@
     <commandDescription>Attempt to convert another colonist to your ideology (Requires Ideology DLC, Cost: 30 coins, requires 15 karma)</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData to allow disabling this sub-command -->
+    <CustomData>
+      <li>
+        <type>CheckBox</type>
+        <name>enabled</name>
+        <label>convert</label>
+        <defaultValue>true</defaultValue>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <!-- Simple Test Command -->

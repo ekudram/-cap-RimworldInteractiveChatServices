@@ -58,10 +58,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 int pricePerHeal = healerSerum.BasePrice;
 
+                var cmdSettings = CommandSettingsManager.GetSettings("healpawn");
+                float mult = cmdSettings.GetCustom<float>("healCostMultiplier", 1.0f);
+                pricePerHeal = (int)(pricePerHeal * mult);
+
                 // Parse command arguments
                 if (args.Length == 0)
                 {
                     // Heal self
+                    if (!cmdSettings.GetCustom<bool>("enableSelfHeal", true))
+                        return "Sub Command self is disabled.";
                     return HealSelf(messageWrapper, viewer, pricePerHeal, currencySymbol, 1);
                 }
 
@@ -81,15 +87,21 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (target == "all")
                 {
+                    if (!cmdSettings.GetCustom<bool>("enableAllHeal", true))
+                        return "Sub Command all is disabled.";
                     return HealAllSelf(messageWrapper, viewer, pricePerHeal, currencySymbol, quantity);
                 }
                 if (target == "allpawns")
                 {
+                    if (!cmdSettings.GetCustom<bool>("enableAllHeal", true))
+                        return "Sub Command all is disabled.";
                     // Heal all pawns
                     return HealAllPawns(messageWrapper, viewer, pricePerHeal, currencySymbol, quantity);
                 }
                 else
                 {
+                    if (!cmdSettings.GetCustom<bool>("enableTargetHeal", true))
+                        return "Sub Command target is disabled.";
                     // Heal specific user's pawn
                     return HealSpecificUser(messageWrapper, viewer, target, pricePerHeal, currencySymbol, quantity);
                 }

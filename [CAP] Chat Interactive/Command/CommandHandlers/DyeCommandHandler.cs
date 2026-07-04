@@ -100,6 +100,21 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
                 return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
             }
+
+            // Check sub enable
+            var cmdSettings = CommandSettingsManager.GetSettings("dye");
+            bool isHairDyeCheck = args.Length > 0 && args[0].ToLower() == "hair";
+            if (isHairDyeCheck)
+            {
+                if (!cmdSettings.GetCustom<bool>("enableHairDye", true))
+                    return "Sub Command hair is disabled.";
+            }
+            else
+            {
+                if (!cmdSettings.GetCustom<bool>("enableApparelDye", true))
+                    return "Sub Command apparel is disabled.";
+            }
+
             // Capture death state early (we still allow dyeing)
             bool isDead = viewerPawn.Dead;
             string deathMessage = "";
