@@ -1048,9 +1048,31 @@ This release includes all changes from June 21–23 plus the June 26 heal logic 
 ─────────────────
 - Massive translation pass completed: nearly all strings (especially pawn messages, errors, and XML entries) are now properly keyed and centralized.
 - Many improvements to death, resurrection, and command feedback text for better localization."
+            },
+            {"1.42",
+                "===========================================================\r\n" +
+                "                         RICS version - Changelog\r\n" +
+                "                         Released: July 4, 2026\r\n" +
+                "===========================================================\r\n\r\n" +
+                "<b>MEMORANDUM</b>\r\n─────────────────\r\n" +
+                "Streamers your settings will be migrated to the new structure. Just be sure to check the settings in the Updated section.\r\n\r\n" +
+                "Modders who write custom commands can now make custom settings for your commands.\r\n" +
+                "See the new Wiki Page on GitHub in section 4 Modders.\r\n\r\n" +
+                "<b>UPDATED</b>\r\n──────────────\r\n" +
+                "- Command settings system rewritten for better extensibility\r\n" +
+                "- !raid command settings migrated\r\n" +
+                "- !militaryaid command settings migrated\r\n" +
+                "- !surgery command settings migrated\r\n" +
+                "- (and other core commands)\r\n\r\n" +
+                "<b>FIXED</b>\r\n────────────\r\n" +
+                "(none in this update — mostly structural improvements)\r\n\r\n" +
+                "<b>ADDED</b>\r\n────────────\r\n" +
+                "- Custom command settings support for modders\r\n" +
+                "- New commands now able to expose their own toggles, numeric fields, headers, buttons, and gaps in the in-game Command Editor\r\n\r\n" +
+                "<b>TRANSLATIONS</b>\r\n───────────────────\r\n" +
+                "- Updated strings related to the new command settings system\r\n\r\n" +
+                "Full commit history: https://github.com/ekudram/-cap-RimworldInteractiveChatServices/commits/master/"}
 
-
-            }
 
 /*  Copy this template for future versions and fill in the details
 ===========================================================
