@@ -1339,23 +1339,6 @@ namespace CAP_ChatInteractive
             height += 28f; // Turn on for non event Commands toggle
             height += 28f; // Max uses per cooldown period
 
-            // RAID-SPECIFIC SETTINGS HEIGHT
-            // RAID-SPECIFIC SETTINGS HEIGHT
-            if (selectedCommand != null && selectedCommand.commandText.ToLower() == "raid")
-            {
-                height += 10f;           // Extra spacing before section
-                height += 28f;           // Header + Reset button row
-                height += 28f * 6;       // Default wager, Min wager, Max wager, Types button, Strategies button (+ small buffer)
-            }
-
-            // MILITARY AID-SPECIFIC SETTINGS HEIGHT
-            if (selectedCommand != null && selectedCommand.commandText.ToLower() == "militaryaid")
-            {
-                height += 10f;           // Extra spacing before section
-                height += 28f;           // Header + Reset button row
-                height += 28f * 3;       // Default wager, Min wager, Max wager
-            }
-
             // LOOTBOX-SPECIFIC SETTINGS HEIGHT
             if (selectedCommand != null && selectedCommand.commandText.ToLower() == "openlootbox")
             {
@@ -1419,6 +1402,54 @@ namespace CAP_ChatInteractive
                 height += 10f;  // Extra spacing
                 height += 28f;  // Header
                 height += 28f;  // AdulthoodWager row
+            }
+
+            // === DYNAMIC CUSTOM DATA HEIGHT (from selectedCommand.CustomData) ===
+            // This must be calculated from the CustomData definition because:
+            // - We are moving to dynamic per-command settings.
+            // - Modders can add commands with arbitrary numbers/types of settings via <CustomData> in their XML.
+            // - We only know the required space at runtime by inspecting the CustomData list.
+            // This method will evolve as more commands (core + modder) add custom settings.
+            if (selectedCommand != null && selectedCommand.CustomData != null && selectedCommand.CustomData.Count > 0)
+            {
+                height += 6f;   // spacing before custom section header
+                height += 28f;  // "Command Specific Settings" header
+
+                foreach (var cset in selectedCommand.CustomData)
+                {
+                    string t = (cset.type ?? "").ToLowerInvariant();
+
+                    if (t == "label")
+                    {
+                        height += 28f;  // label row
+                    }
+                    else
+                    {
+                        height += 28f;  // input row (checkbox, textbox, numeric)
+                        if (!string.IsNullOrEmpty(cset.description))
+                            height += 14f; // extra for description tooltip area
+                    }
+                }
+
+                height += 6f; // spacing after custom items
+            }
+
+            // RAID-SPECIFIC extra height for the list buttons drawn after custom wagers (types/strategies).
+            // These are not part of CustomData so must be added here. Matches DrawRaidSpecificSettings + our added padding.
+            if (selectedCommand != null && selectedCommand.commandText.ToLower() == "raid")
+            {
+                height += 10f;  // initial spacing in DrawRaidSpecificSettings
+                height += 28f;  // "Raid Command Settings" header
+                height += 8f;   // extra padding for the two buttons
+                height += 28f;  // Configure Raid Types button
+                height += 28f;  // Configure Strategies button
+            }
+
+            // MILITARY AID extra: now only the header line for reset button (wager fields come from dynamic CustomData).
+            if (selectedCommand != null && selectedCommand.commandText.ToLower() == "militaryaid")
+            {
+                height += 10f;  // spacing
+                height += 28f;  // Military header + reset line
             }
 
             return height + 40f; // Extra padding for safety
@@ -1672,12 +1703,22 @@ namespace CAP_ChatInteractive
                 settings.SetCustom("defaultRaidWager", 500);
                 settings.SetCustom("minRaidWager", 100);
                 settings.SetCustom("maxRaidWager", 2500);
+
+                // Sync the display buffers used by the dynamic custom numeric fields so the reset is reflected in UI immediately.
+                int hash = settings.GetHashCode();
+                numericBuffers[$"custom_raid_defaultRaidWager_{hash}"] = "500";
+                numericBuffers[$"custom_raid_minRaidWager_{hash}"] = "100";
+                numericBuffers[$"custom_raid_maxRaidWager_{hash}"] = "2500";
+
                 Messages.Message("Raid wagers reset to recommended values (500 / 100 / 2500).", MessageTypeDefOf.TaskCompletion);
             }
             TooltipHandler.TipRegion(resetRect, "Reset to new recommended pricing based on current viewer economy.");
 
             // Note: Wager fields are now driven by the <CustomData> definition above via the generic custom settings drawer.
             // The lists (types/strategies) remain here for their dedicated sub-editors.
+
+            // Extra padding before the two list buttons (types/strategies) as requested.
+            y += 8f;
 
             // Allowed raid types button
             Rect raidTypesRect = new Rect(leftPadding + 10f, y, 200f, sectionHeight);
@@ -1718,44 +1759,20 @@ namespace CAP_ChatInteractive
                 settings.SetCustom("defaultMilitaryAidWager", 300);
                 settings.SetCustom("minMilitaryAidWager", 50);
                 settings.SetCustom("maxMilitaryAidWager", 1500);
+
+                // Sync display buffers (used by the generic CustomData numeric drawer) so reset reflects in UI.
+                int hash = settings.GetHashCode();
+                numericBuffers[$"custom_militaryaid_defaultMilitaryAidWager_{hash}"] = "300";
+                numericBuffers[$"custom_militaryaid_minMilitaryAidWager_{hash}"] = "50";
+                numericBuffers[$"custom_militaryaid_maxMilitaryAidWager_{hash}"] = "1500";
+
                 Messages.Message("Military Aid wagers reset to recommended values (300 / 50 / 1500).", MessageTypeDefOf.TaskCompletion);
             }
             TooltipHandler.TipRegion(resetRect, "Reset to new recommended pricing based on current viewer economy.");
 
-            // Read current values (with legacy fallback removed)
-            int defW = settings.GetCustom<int>("defaultMilitaryAidWager", 300);
-            int minW = settings.GetCustom<int>("minMilitaryAidWager", 50);
-            int maxW = settings.GetCustom<int>("maxMilitaryAidWager", 1500);
-
-            // Default wager
-            Rect wagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-            Widgets.Label(wagerRect, "CAP.CommandManager.MilitaryAidDefaultwager".Translate());
-            Rect wagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-            string wagerBuffer = defW.ToString();
-            UIUtilities.TextFieldNumericFlexible(wagerInputRect, ref defW, ref wagerBuffer, minW, maxW);
-            if (defW != settings.GetCustom<int>("defaultMilitaryAidWager", 300))
-                settings.SetCustom("defaultMilitaryAidWager", defW);
-            y += sectionHeight;
-
-            // Min wager
-            Rect minWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-            Widgets.Label(minWagerRect, "CAP.CommandManager.MilitaryAidMinWager".Translate());
-            Rect minWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-            string minWagerBuffer = minW.ToString();
-            UIUtilities.TextFieldNumericFlexible(minWagerInputRect, ref minW, ref minWagerBuffer, 50, 5000);
-            if (minW != settings.GetCustom<int>("minMilitaryAidWager", 50))
-                settings.SetCustom("minMilitaryAidWager", minW);
-            y += sectionHeight;
-
-            // Max wager
-            Rect maxWagerRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-            Widgets.Label(maxWagerRect, "CAP.CommandManager.MilitaryAidMaxWager".Translate());
-            Rect maxWagerInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-            string maxWagerBuffer = maxW.ToString();
-            UIUtilities.TextFieldNumericFlexible(maxWagerInputRect, ref maxW, ref maxWagerBuffer, minW, 20000);
-            if (maxW != settings.GetCustom<int>("maxMilitaryAidWager", 1500))
-                settings.SetCustom("maxMilitaryAidWager", maxW);
-            y += sectionHeight;
+            // Wager value fields are rendered exclusively by the dynamic <CustomData> system (see XML definition).
+            // Previously this method duplicated the inputs (old + new system). The fields above (under Command Specific Settings)
+            // are the single source of truth now. Only header + reset remain here for consistency with Raid layout.
         }
 
         [DebugAction("CAP", "Delete JSON & Rebuild Commands", allowedGameStates = AllowedGameStates.Playing)]
