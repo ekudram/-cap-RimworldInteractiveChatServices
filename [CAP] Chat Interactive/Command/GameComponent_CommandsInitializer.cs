@@ -73,6 +73,9 @@ namespace CAP_ChatInteractive
                 // Seed passion command CustomData from global values on first use / migration (one-time copy of tuned numbers).
                 EnsurePassionSettingsMigrated();
 
+                // Same for surgery (checkboxes + costs).
+                EnsureSurgerySettingsMigrated();
+
                 commandsInitialized = true;
                 Logger.Message("[CAP] Commands initialized successfully");
             }
@@ -278,6 +281,50 @@ namespace CAP_ChatInteractive
             catch (Exception ex)
             {
                 Logger.Error($"Error migrating passion settings from global: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// One-time migration for surgery: copy global surgery costs/allows into the "surgery" command's CustomData.
+        /// </summary>
+        private void EnsureSurgerySettingsMigrated()
+        {
+            try
+            {
+                var global = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var s = CommandSettingsManager.GetSettings("surgery");
+                if (s == null) return;
+
+                var def = DefDatabase<ChatCommandDef>.GetNamed("Surgery", false);
+                if (def?.CustomData != null && def.CustomData.Count > 0)
+                    s.EnsureCustomDefaults(def.CustomData);
+
+                // Seed if still at default values (first migration)
+                if (s.GetCustom<string>("genderSwapCost", "") == "1000" || string.IsNullOrEmpty(s.GetCustom<string>("genderSwapCost", "")))
+                {
+                    s.SetCustom("allowGenderSwap", global.SurgeryAllowGenderSwap);
+                    s.SetCustom("genderSwapCost", global.SurgeryGenderSwapCost);
+                    s.SetCustom("allowBodyChange", global.SurgeryAllowBodyChange);
+                    s.SetCustom("bodyChangeCost", global.SurgeryBodyChangeCost);
+                    s.SetCustom("allowSterilize", global.SurgeryAllowSterilize);
+                    s.SetCustom("sterilizeCost", global.SurgerySterilizeCost);
+                    s.SetCustom("allowIUD", global.SurgeryAllowIUD);
+                    s.SetCustom("iudCost", global.SurgeryIUDCost);
+                    s.SetCustom("allowVasReverse", global.SurgeryAllowVasReverse);
+                    s.SetCustom("vasReverseCost", global.SurgeryVasReverseCost);
+                    s.SetCustom("allowTerminate", global.SurgeryAllowTerminate);
+                    s.SetCustom("terminateCost", global.SurgeryTerminateCost);
+                    s.SetCustom("allowHemogen", global.SurgeryAllowHemogen);
+                    s.SetCustom("hemogenCost", global.SurgeryHemogenCost);
+                    s.SetCustom("allowTransfusion", global.SurgeryAllowTransfusion);
+                    s.SetCustom("transfusionCost", global.SurgeryTransfusionCost);
+                    s.SetCustom("allowMiscBiotech", global.SurgeryAllowMiscBiotech);
+                    s.SetCustom("miscBiotechCost", global.SurgeryMiscBiotechCost);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error migrating surgery settings from global: {ex.Message}");
             }
         }
 

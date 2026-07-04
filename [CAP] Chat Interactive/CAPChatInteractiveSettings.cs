@@ -224,7 +224,9 @@ namespace CAP_ChatInteractive
 
         // Command settings that need to be global for now
 
-        // Surgery Command Settings
+        // Surgery Command Settings (MIGRATED to per-command CustomData on the "surgery" command).
+        // Global fields + scribe kept only for backcompat and one-time seeding into CustomData.
+        // All logic now reads via CommandSettings.GetCustom on the surgery command.
         public int SurgeryGenderSwapCost = 1000;
         public int SurgeryBodyChangeCost = 800;
         public int SurgerySterilizeCost = 400;

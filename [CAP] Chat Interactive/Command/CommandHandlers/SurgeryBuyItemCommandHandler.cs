@@ -54,6 +54,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             { "abortion", "TerminatePregnancy" }
             // Add more as needed, e.g. "ovum" -> "ExtractOvum" if you want IVF chain
         };
+
+        private static CommandSettings GetSurgerySettings()
+        {
+            return CommandSettingsManager.GetSettings("surgery");
+        }
+
         /// <summary>
         /// Main handler for the !surgery command.
         /// </summary>
@@ -71,9 +77,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.SBCH.Usage".Translate();
                 }
 
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-                var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
                 var viewer = Viewers.GetViewer(messageWrapper);
+                var currencySymbol = CAPChatInteractiveMod.Instance.Settings.GlobalSettings.CurrencyName?.Trim() ?? "¢";
 
                 var parsed = CommandParserUtility.ParseCommandArguments(args, allowQuality: false, allowMaterial: false, allowSide: true, allowQuantity: true);
                 if (parsed.HasError)
@@ -123,7 +128,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 bool isAllowed;
                 string disabledMessage;
-                CheckSurgeryEnabled(settings, itemName, out isAllowed, out disabledMessage);
+                CheckSurgeryEnabled(itemName, out isAllowed, out disabledMessage);
 
                 if (!isAllowed)
                 {
@@ -291,55 +296,57 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         // ──── SURGERY ENABLED CHECK METHOD ────
-        private static void CheckSurgeryEnabled(CAPGlobalChatSettings settings, string itemNameLower, out bool isAllowed, out string disabledMessage)
+        private static void CheckSurgeryEnabled(string itemNameLower, out bool isAllowed, out string disabledMessage)
         {
             isAllowed = true;
             disabledMessage = null;
 
+            var s = GetSurgerySettings();
+
             switch (itemNameLower)
             {
                 case "genderswap" or "gender swap" or "swapgender":
-                    isAllowed = settings.SurgeryAllowGenderSwap;
+                    isAllowed = s.GetCustom<bool>("allowGenderSwap", true);
                     disabledMessage = "RICS.SBCH.GenderSwapDisabled".Translate();
                     break;
 
                 case "fatbody" or "fat body" or "fat" or "body fat" or "femininebody" or "feminine body" or "feminine" or "bodyfeminine" or "hulkingbody" or "hulking body" or "hulk" or "bodyhulking" or "masculinebody" or "masculine body" or "masculine" or "bodymasculine" or "thinbody" or "thin body" or "thin" or "bodythin":
-                    isAllowed = settings.SurgeryAllowBodyChange;
+                    isAllowed = s.GetCustom<bool>("allowBodyChange", true);
                     disabledMessage = "RICS.SBCH.BodyChangeDisabled".Translate();
                     break;
 
                 case "sterilize" or "vasectomy" or "tubal" or "tuballigation":
-                    isAllowed = settings.SurgeryAllowSterilize;
+                    isAllowed = s.GetCustom<bool>("allowSterilize", true);
                     disabledMessage = "RICS.SBCH.SterilizeDisabled".Translate();
                     break;
 
                 case "iud" or "iudimplant" or "implant iud" or "iudremove" or "removeiud" or "remove iud":
-                    isAllowed = settings.SurgeryAllowIUD;
+                    isAllowed = s.GetCustom<bool>("allowIUD", true);
                     disabledMessage = "RICS.SBCH.IUDDisabled".Translate();
                     break;
 
                 case "vasreverse" or "vas reverse" or "reversovasectomy" or "reverse vasectomy" or "reversevasectomy":
-                    isAllowed = settings.SurgeryAllowVasReverse;
+                    isAllowed = s.GetCustom<bool>("allowVasReverse", true);
                     disabledMessage = "RICS.SBCH.VasReverseDisabled".Translate();
                     break;
 
                 case "terminate" or "termination" or "pregnancy termination" or "pregnancytermination" or "abortion":
-                    isAllowed = settings.SurgeryAllowTerminate;
+                    isAllowed = s.GetCustom<bool>("allowTerminate", true);
                     disabledMessage = "RICS.SBCH.TerminateDisabled".Translate();
                     break;
 
                 case "hemogen" or "giveblood" or "extract hemogen" or "extracthemogen":
-                    isAllowed = settings.SurgeryAllowHemogen;
+                    isAllowed = s.GetCustom<bool>("allowHemogen", true);
                     disabledMessage = "RICS.SBCH.HemogenDisabled".Translate();
                     break;
 
                 case "transfusion" or "getblood" or "blood transfusion" or "bloodtransfusion" or "blood":
-                    isAllowed = settings.SurgeryAllowTransfusion;
+                    isAllowed = s.GetCustom<bool>("allowTransfusion", true);
                     disabledMessage = "RICS.SBCH.TransfusionDisabled".Translate();
                     break;
 
                 default:
-                    isAllowed = settings.SurgeryAllowMiscBiotech;
+                    isAllowed = s.GetCustom<bool>("allowMiscBiotech", true);
                     disabledMessage = "RICS.SBCH.MiscBiotechDisabled".Translate();
                     break;
             }
@@ -350,8 +357,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             const int quantity = 1;
 
-            var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            int finalPrice = globalSettings.SurgeryBodyChangeCost; // Assume a new global setting for body change cost, e.g., 800 default
+            int finalPrice = GetSurgerySettings().GetCustom<int>("bodyChangeCost", 800);
 
             if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
             {
@@ -435,8 +441,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             const int quantity = 1;
 
-            var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            int finalPrice = globalSettings.SurgeryGenderSwapCost;
+            int finalPrice = GetSurgerySettings().GetCustom<int>("genderSwapCost", 1000);
             if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
             {
                 return "RICS.SBCH.GenderSwapCannotAfford".Translate(
@@ -982,16 +987,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static int GetBiotechSurgeryCost(string recipeDefName)
         {
+            var s = GetSurgerySettings();
             return recipeDefName switch
             {
-                "TubalLigation" or "Vasectomy" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgerySterilizeCost,
-                "ImplantIUD" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryIUDCost,
-                "RemoveIUD" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryIUDCost / 2, // Cheaper
-                "ReverseVasectomy" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryVasReverseCost,
-                "TerminatePregnancy" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryTerminateCost,
-                "ExtractHemogenPack" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryHemogenCost,
-                "BloodTransfusion" => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryTransfusionCost,
-                _ => CAPChatInteractiveMod.Instance.Settings.GlobalSettings.SurgeryMiscBiotechCost
+                "TubalLigation" or "Vasectomy" => s.GetCustom<int>("sterilizeCost", 400),
+                "ImplantIUD" => s.GetCustom<int>("iudCost", 250),
+                "RemoveIUD" => s.GetCustom<int>("iudCost", 250) / 2, // Cheaper
+                "ReverseVasectomy" => s.GetCustom<int>("vasReverseCost", 500),
+                "TerminatePregnancy" => s.GetCustom<int>("terminateCost", 300),
+                "ExtractHemogenPack" => s.GetCustom<int>("hemogenCost", -100),
+                "BloodTransfusion" => s.GetCustom<int>("transfusionCost", 200),
+                _ => s.GetCustom<int>("miscBiotechCost", 350)
             };
         }
 

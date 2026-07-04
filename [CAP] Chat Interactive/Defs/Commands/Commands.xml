@@ -422,6 +422,158 @@
     <permissionLevel>everyone</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>false</useCommandCooldown>
+    <!-- Surgery settings migrated to per-command CustomData.
+         CheckBox for enable/disable + NumericTextBox for costs (negative = pays viewer). -->
+    <CustomData>
+      <li>
+        <type>Label</type>
+        <label>Surgery Settings</label>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>allowGenderSwap</name>
+        <label>Allow Gender Swap</label>
+        <defaultValue>true</defaultValue>
+        <description>Enable/disable the gender swap surgery option</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>genderSwapCost</name>
+        <label>Gender Swap Cost</label>
+        <defaultValue>1000</defaultValue>
+        <min>-100000</min>
+        <max>100000</max>
+        <description>Cost for gender swap surgery</description>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>allowBodyChange</name>
+        <label>Allow Body Change</label>
+        <defaultValue>true</defaultValue>
+        <description>Enable/disable body type change surgeries (fat, thin, hulking, etc.)</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>bodyChangeCost</name>
+        <label>Body Change Cost</label>
+        <defaultValue>800</defaultValue>
+        <min>-100000</min>
+        <max>100000</max>
+        <description>Cost for body type change surgeries</description>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>allowSterilize</name>
+        <label>Allow Sterilize</label>
+        <defaultValue>true</defaultValue>
+        <description>Enable/disable sterilization (tubal ligation / vasectomy)</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>sterilizeCost</name>
+        <label>Sterilize Cost</label>
+        <defaultValue>400</defaultValue>
+        <min>-100000</min>
+        <max>100000</max>
+        <description>Cost for sterilization procedures</description>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>allowIUD</name>
+        <label>Allow IUD</label>
+        <defaultValue>true</defaultValue>
+        <description>Enable/disable IUD implant and removal</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>iudCost</name>
+        <label>IUD Cost</label>
+        <defaultValue>250</defaultValue>
+        <min>-100000</min>
+        <max>100000</max>
+        <description>Cost for IUD implant (removal is half)</description>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>allowVasReverse</name>
+        <label>Allow Vas Reverse</label>
+        <defaultValue>true</defaultValue>
+        <description>Enable/disable vasectomy reversal</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>vasReverseCost</name>
+        <label>Vas Reverse Cost</label>
+        <defaultValue>500</defaultValue>
+        <min>-100000</min>
+        <max>100000</max>
+        <description>Cost for vasectomy reversal</description>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>allowTerminate</name>
+        <label>Allow Terminate</label>
+        <defaultValue>true</defaultValue>
+        <description>Enable/disable pregnancy termination</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>terminateCost</name>
+        <label>Terminate Cost</label>
+        <defaultValue>300</defaultValue>
+        <min>-100000</min>
+        <max>100000</max>
+        <description>Cost for pregnancy termination</description>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>allowHemogen</name>
+        <label>Allow Hemogen</label>
+        <defaultValue>true</defaultValue>
+        <description>Enable/disable hemogen extraction</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>hemogenCost</name>
+        <label>Hemogen Cost</label>
+        <defaultValue>-100</defaultValue>
+        <min>-100000</min>
+        <max>100000</max>
+        <description>Cost (negative = viewer is paid) for hemogen extraction</description>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>allowTransfusion</name>
+        <label>Allow Transfusion</label>
+        <defaultValue>true</defaultValue>
+        <description>Enable/disable blood transfusion</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>transfusionCost</name>
+        <label>Transfusion Cost</label>
+        <defaultValue>200</defaultValue>
+        <min>-100000</min>
+        <max>100000</max>
+        <description>Cost for blood transfusion</description>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>allowMiscBiotech</name>
+        <label>Allow Misc Biotech</label>
+        <defaultValue>true</defaultValue>
+        <description>Enable/disable other biotech/misc surgery options</description>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>miscBiotechCost</name>
+        <label>Misc Biotech Cost</label>
+        <defaultValue>350</defaultValue>
+        <min>-100000</min>
+        <max>100000</max>
+        <description>Default cost for other biotech surgeries</description>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
   
   <!-- Event Commands-->
