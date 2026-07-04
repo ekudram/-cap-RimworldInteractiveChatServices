@@ -67,6 +67,44 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
                 }
 
+                // Check per-subcommand enable via CustomData (added to allow streamers to disable sub-features of !mypawn)
+                var cmdSettings = CommandSettingsManager.GetSettings("mypawn");
+                string sub = subCommand?.ToLowerInvariant() ?? "";
+                string settingKey = null;
+                switch (sub)
+                {
+                    case "body": settingKey = "enableBody"; break;
+                    case "health": settingKey = "enableHealth"; break;
+                    case "implants": settingKey = "enableImplants"; break;
+                    case "gear": settingKey = "enableGear"; break;
+                    case "weapon":
+                    case "weapons": settingKey = "enableWeapon"; break;
+                    case "kills":
+                    case "killcount": settingKey = "enableKills"; break;
+                    case "needs": settingKey = "enableNeeds"; break;
+                    case "relations": settingKey = "enableRelations"; break;
+                    case "skills": settingKey = "enableSkills"; break;
+                    case "stats": settingKey = "enableStats"; break;
+                    case "story": settingKey = "enableStory"; break;
+                    case "traits": settingKey = "enableTraits"; break;
+                    case "work": settingKey = "enableWork"; break;
+                    case "job":
+                    case "action": settingKey = "enableJob"; break;
+                    case "psyfocus":
+                    case "psycast":
+                    case "psycasts": settingKey = "enablePsycasts"; break;
+                    case "mech":
+                    case "mechs":
+                    case "mechanoid":
+                    case "mechanoids": settingKey = "enableMechs"; break;
+                }
+                if (settingKey != null)
+                {
+                    if (!cmdSettings.GetCustom<bool>(settingKey, true))
+                    {
+                        return $"Sub Command {subCommand} is disabled.";
+                    }
+                }
 
                 // Route to sub-handler
                 switch (subCommand?.ToLowerInvariant())
