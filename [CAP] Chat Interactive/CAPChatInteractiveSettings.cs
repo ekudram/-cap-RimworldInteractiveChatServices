@@ -267,7 +267,8 @@ namespace CAP_ChatInteractive
         public float CritFailLoseVsWrongChance = 0.6f;       // lose passion vs gain useless on crit failure
         public float TargetedCritFailAffectTargetChance = 0.7f; // targeted crit-fail: hit chosen skill vs random
 
-        // Backstory Settings
+        // Backstory Settings (migrated to per-command CustomData for shufflechildhood / shuffleadulthood)
+        // Globals kept for backcompat + seeding.
 
         public int ChildhoodWager = 1000;
         public int AdulthoodWager = 1000;
@@ -441,7 +442,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref SurgeryAllowTransfusion, "surgeryAllowTransfusion", true);
             Scribe_Values.Look(ref SurgeryAllowMiscBiotech, "surgeryAllowMiscBiotech", true);
 
-            // Backstory Settings
+            // Backstory Settings (legacy globals for shuffle commands; migrated to CustomData)
             Scribe_Values.Look(ref ChildhoodWager, "childhoodWager", 1000);
             Scribe_Values.Look(ref AdulthoodWager, "adulthoodWager", 1000);
 

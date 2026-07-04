@@ -224,6 +224,21 @@
     <permissionLevel>everyone</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
+    <!-- CustomData for Shuffle Childhood (migrated from global settings) -->
+    <CustomData>
+      <li>
+        <type>HeaderLabel</type>
+        <label>Shuffle Childhood Settings</label>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>childhoodWager</name>
+        <label>Childhood Wager Cost</label>
+        <defaultValue>1000</defaultValue>
+        <min>1</min>
+        <max>100000</max>
+      </li>
+    </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>

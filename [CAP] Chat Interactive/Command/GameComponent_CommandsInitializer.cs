@@ -76,6 +76,9 @@ namespace CAP_ChatInteractive
                 // Same for surgery (checkboxes + costs).
                 EnsureSurgerySettingsMigrated();
 
+                // Shuffle Childhood (single wager cost)
+                EnsureShuffleChildhoodSettingsMigrated();
+
                 commandsInitialized = true;
                 Logger.Message("[CAP] Commands initialized successfully");
             }
@@ -325,6 +328,33 @@ namespace CAP_ChatInteractive
             catch (Exception ex)
             {
                 Logger.Error($"Error migrating surgery settings from global: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// One-time migration for Shuffle Childhood: copy global ChildhoodWager into the command's CustomData.
+        /// </summary>
+        private void EnsureShuffleChildhoodSettingsMigrated()
+        {
+            try
+            {
+                var global = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var s = CommandSettingsManager.GetSettings("shufflechildhood");
+                if (s == null) return;
+
+                var def = DefDatabase<ChatCommandDef>.GetNamed("ShuffleChildhood", false);
+                if (def?.CustomData != null && def.CustomData.Count > 0)
+                    s.EnsureCustomDefaults(def.CustomData);
+
+                // Seed if still at default
+                if (s.GetCustom<string>("childhoodWager", "") == "1000" || string.IsNullOrEmpty(s.GetCustom<string>("childhoodWager", "")))
+                {
+                    s.SetCustom("childhoodWager", global.ChildhoodWager);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error migrating shuffle childhood settings from global: {ex.Message}");
             }
         }
 

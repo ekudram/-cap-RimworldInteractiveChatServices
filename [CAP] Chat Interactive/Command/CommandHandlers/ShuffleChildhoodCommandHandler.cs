@@ -66,8 +66,9 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return "RICS.CHCH.NoChildhood".Translate(); // Translation key: RICS.CHCH.NoChildhood – "You have no childhood backstory to shuffle."
             }
 
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            int cost = settings.ChildhoodWager;
+            // Per-command setting (migrated to CustomData)
+            var cmdSettings = CommandSettingsManager.GetSettings("shufflechildhood");
+            int cost = cmdSettings.GetCustom<int>("childhoodWager", 1000);
 
             // Coin check (Viewer.Coins is the standard economy field in RICS)
             if (viewer.Coins < cost)
@@ -119,7 +120,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 : "Unknown";
 
             // Add space between cost and currency symbol for readability
-            string coinDisplay = $"{cost} {settings.CurrencyName.Trim()}";
+            var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            string coinDisplay = $"{cost} {globalSettings.CurrencyName.Trim()}";
 
             // report.AppendLine($"🎒 Childhood backstory shuffled for {coinDisplay}!");
             report.AppendLine("RICS.ADCH.ChildBackstoryShuffled".Translate(coinDisplay));

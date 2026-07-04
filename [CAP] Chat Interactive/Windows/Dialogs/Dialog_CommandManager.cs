@@ -860,29 +860,9 @@ namespace CAP_ChatInteractive
                 // Rendered by the generic dynamic section using CheckBox + NumericTextBox pairs.
                 // Old paired checkbox+cost drawing removed to avoid duplicating the old+new system.
 
-                // SHUFFLE CHILDHOOD-SPECIFIC SETTINGS
-                if (selectedCommand != null && selectedCommand.commandText.ToLower() == "shufflechildhood")
-                {
-                    y += 10f; // Extra spacing
-
-                    Rect headerRect = new Rect(leftPadding, y, viewRect.width, sectionHeight);
-                    Widgets.Label(headerRect, "CAP.CommandManager.ShuffleChildhoodSettings".Translate().Colorize(ColorLibrary.SubHeader));
-                    y += sectionHeight;
-
-                    Rect ChildhoodlabelRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 100f, sectionHeight);
-                    Widgets.Label(ChildhoodlabelRect, "CAP.CommandManager.ChildhoodWager".Translate());
-
-                    Rect ChildhoodinputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
-                    string bufferKey = "shuffle_childhood_wager";
-                    if (!numericBuffers.ContainsKey(bufferKey))
-                        numericBuffers[bufferKey] = settingsGlobalChat.ChildhoodWager.ToString();
-
-                    string Childhoodbuffer = numericBuffers[bufferKey];
-                    Widgets.TextFieldNumeric(ChildhoodinputRect, ref settingsGlobalChat.ChildhoodWager, ref Childhoodbuffer, 1, 100000);
-                    numericBuffers[bufferKey] = Childhoodbuffer;
-
-                    y += sectionHeight + 8f; // small padding
-                }
+                // SHUFFLE CHILDHOOD-SPECIFIC SETTINGS have been migrated to per-command CustomData.
+                // Rendered via the generic dynamic section (HeaderLabel + NumericTextBox).
+                // Old special block removed.
 
                 // SHUFFLE ADULTHOOD-SPECIFIC SETTINGS
                 if (selectedCommand != null && selectedCommand.commandText.ToLower() == "shuffleadulthood")
@@ -949,13 +929,8 @@ namespace CAP_ChatInteractive
             // SURGERY height is now provided by the dynamic CustomData (CheckBoxes + Numerics + Labels).
             // (Old hardcoded block removed.)
 
-            // SHUFFLE CHILDHOOD-SPECIFIC SETTINGS HEIGHT
-            if (selectedCommand != null && selectedCommand.commandText.ToLower() == "shufflechildhood")
-            {
-                height += 10f;  // Extra spacing
-                height += 28f;  // Header
-                height += 28f;  // ChildhoodWager row
-            }
+            // SHUFFLE CHILDHOOD height now comes from dynamic CustomData (HeaderLabel + Numeric).
+            // (Old hardcoded height block removed.)
 
             // SHUFFLE ADULTHOOD-SPECIFIC SETTINGS HEIGHT
             if (selectedCommand != null && selectedCommand.commandText.ToLower() == "shuffleadulthood")
