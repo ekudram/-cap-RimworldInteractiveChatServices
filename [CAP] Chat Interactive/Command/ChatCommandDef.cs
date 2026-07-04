@@ -25,17 +25,18 @@ namespace CAP_ChatInteractive
     /// <summary>
     /// Defines a single custom/extra UI element for a command's CustomData section.
     /// Declared in Commands.xml inside &lt;CustomData&gt; ... &lt;/CustomData&gt; for a ChatCommandDef (order matters).
-    /// Supported types: HeaderLabel, Label, CheckBox, LabelTextBox, NumericTextBox, Gap.
+    /// Supported types: HeaderLabel, Label, CheckBox, LabelTextBox, NumericTextBox, Gap, Button.
     /// Values for inputs are stored in CommandSettings.CustomData (JSON) and rendered in Command Editor.
     /// Gap is a pure layout spacer (float pixels from defaultValue); it stores nothing.
+    /// Button is an action item (label is the button text, name is used to identify it for hooks). It stores nothing.
     /// </summary>
     [Serializable]
     public class CommandCustomSetting
     {
-        /// <summary>The type: "HeaderLabel", "Label", "CheckBox", "LabelTextBox", "NumericTextBox", "Gap".</summary>
+        /// <summary>The type: "HeaderLabel", "Label", "CheckBox", "LabelTextBox", "NumericTextBox", "Gap", "Button".</summary>
         public string type = "string";
 
-        /// <summary>Key/name for the value (for CheckBox, LabelTextBox, NumericTextBox). Not used for HeaderLabel, Label or Gap.</summary>
+        /// <summary>Key/name for the value (for CheckBox, LabelTextBox, NumericTextBox). For Button this is the identifier passed to OnCustomDataButtonClicked. Not used for HeaderLabel, Label or Gap.</summary>
         public string name = "";
 
         /// <summary>UI label or the text content for Label/HeaderLabel type.</summary>
@@ -98,8 +99,9 @@ namespace CAP_ChatInteractive
         /// <summary>
         /// The &lt;CustomData&gt; definition for this command (list of UI elements in order).
         /// Parsed from the &lt;CustomData&gt;...&lt;/CustomData&gt; section in XML.
-        /// Enables dynamic per-command settings (HeaderLabel, Label, CheckBox, LabelTextBox, NumericTextBox, Gap) in the editor.
+        /// Enables dynamic per-command settings (HeaderLabel, Label, CheckBox, LabelTextBox, NumericTextBox, Gap, Button) in the editor.
         /// Values for interactive items stored in CommandSettings.CustomData.
+        /// Buttons trigger OnCustomDataButtonClicked on the command (plus a built-in CustomData reset).
         /// Backwards compatible (empty = no extra UI).
         /// </summary>
         public List<CommandCustomSetting> CustomData = new List<CommandCustomSetting>();
@@ -213,6 +215,11 @@ namespace CAP_ChatInteractive
             var viewer = Viewers.GetViewer(message);
             if (viewer == null) return false;
             return viewer.HasPermission(PermissionLevel);
+        }
+
+        public override void OnCustomDataButtonClicked(string buttonName, CommandSettings settings)
+        {
+            _wrappedCommand.OnCustomDataButtonClicked(buttonName, settings);
         }
     }
 }

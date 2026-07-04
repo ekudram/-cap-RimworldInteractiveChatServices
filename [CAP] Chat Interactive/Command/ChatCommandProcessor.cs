@@ -690,6 +690,21 @@ namespace CAP_ChatInteractive
             return _commands.Values.Distinct().Where(cmd => cmd.CanExecute(user));
         }
 
+        /// <summary>
+        /// Tries to retrieve a registered command instance by name (case-insensitive).
+        /// Useful for UI actions (e.g. CustomData buttons in the Command Editor) that need to
+        /// invoke behavior on the live command object.
+        /// </summary>
+        public static bool TryGetCommand(string name, out ChatCommand command)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                command = null;
+                return false;
+            }
+            return _commands.TryGetValue(name, out command);
+        }
+
         // Helper method to check if a specific prefix is used
         public static bool UsesPrefix(string message, string prefix)
         {

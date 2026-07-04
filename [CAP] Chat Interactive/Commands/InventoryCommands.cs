@@ -178,6 +178,21 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 // return $"Store purchase limit reached ({globalSettings.MaxItemPurchases} per {globalSettings.EventCooldownDays} days)";
                 return "RICS.CC.common.PurchaseLimit".Translate(globalSettings.MaxItemPurchases, globalSettings.EventCooldownDays);
             }
+
+            // Per-command use limit from CustomData (0 = infinite/unlimited)
+            var cmdSettings = CommandSettingsManager.GetSettings("use");
+            int maxUses = cmdSettings.GetCustom<int>("maxUsesPerPeriod", 0);
+            if (maxUses > 0)
+            {
+                int currentUses = cooldownManager.GetCurrentCommandUses("use");
+                if (currentUses >= maxUses)
+                {
+                    int days = globalSettings.EventCooldownDays;
+                    string periodText = days > 0 ? days.ToString() : "N/A (no auto reset)";
+                    return "RICS.CC.use.UseLimitReached".Translate(currentUses, maxUses, periodText);
+                }
+            }
+
             return UseItemCommandHandler.HandleUseItem(messageWrapper, args);
         }
     }

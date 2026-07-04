@@ -43,10 +43,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.UICH.Usage".Translate();
                 }
 
-                var cmdSettings = CommandSettingsManager.GetSettings("use");
-                int maxUses = cmdSettings.GetCustom<int>("maxUsesPerPeriod", 0);
-                // maxUses can be used to further limit (integrated with cooldowns elsewhere)
-
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
                 var viewer = Viewers.GetViewer(messageWrapper);

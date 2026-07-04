@@ -136,14 +136,39 @@ public class CommandSettings
         bool changed = false;
         foreach (var s in schema)
         {
-            // Gap and Label (and any nameless item) do not store values — skip them.
+            // Gap, Label, Button (and any nameless item) do not store values — skip them.
             string tt = (s.type ?? "").ToLowerInvariant();
-            if (string.IsNullOrWhiteSpace(s.name) || tt == "label" || tt == "gap" || tt == "spacer")
+            if (string.IsNullOrWhiteSpace(s.name) || tt == "label" || tt == "gap" || tt == "spacer" || tt == "button")
                 continue;
 
             if (!dict.ContainsKey(s.name))
             {
                 dict[s.name] = s.defaultValue ?? "";
+                changed = true;
+            }
+        }
+        if (changed) SaveCustomDict(dict);
+    }
+
+    /// <summary>
+    /// Force-reset all value-bearing custom entries for this command back to the defaults
+    /// declared in the XML &lt;CustomData&gt; schema. Used by Button reset actions in the Command Editor.
+    /// </summary>
+    public void ResetCustomToDefaults(IEnumerable<CommandCustomSetting> schema)
+    {
+        if (schema == null) return;
+        var dict = GetCustomDict();
+        bool changed = false;
+        foreach (var s in schema)
+        {
+            string tt = (s.type ?? "").ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(s.name) || tt == "label" || tt == "gap" || tt == "spacer" || tt == "button")
+                continue;
+
+            string def = s.defaultValue ?? "";
+            if (!dict.TryGetValue(s.name, out var current) || current != def)
+            {
+                dict[s.name] = def;
                 changed = true;
             }
         }

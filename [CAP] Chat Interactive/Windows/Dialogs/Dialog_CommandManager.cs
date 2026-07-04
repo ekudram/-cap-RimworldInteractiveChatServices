@@ -705,6 +705,31 @@ namespace CAP_ChatInteractive
                             if (gap > 0f) y += gap;
                             // intentionally no tooltip or further processing
                         }
+                        else if (t == "button" || t == "action")
+                        {
+                            // Button: clickable action (primarily for "Reset to Defaults").
+                            // Core dialog will reset CustomData values; also calls hook on the command for modder extra logic.
+                            Rect btnRect = new Rect(leftPadding + 10f, y, 220f, sectionHeight);
+                            if (Widgets.ButtonText(btnRect, displayLabel))
+                            {
+                                // 1. Reset the command's custom values to the XML schema defaults
+                                settings.ResetCustomToDefaults(selectedCommand.CustomData);
+
+                                // 2. Purge numeric buffers for this command so fields refresh from the new values
+                                string cmdKeyForBuf = selectedCommand.commandText?.ToLowerInvariant() ?? selectedCommand.defName.ToLowerInvariant();
+                                string bufPrefix = $"custom_{cmdKeyForBuf}_";
+                                var keysToRemove = numericBuffers.Keys.Where(k => k.StartsWith(bufPrefix)).ToList();
+                                foreach (var k in keysToRemove)
+                                    numericBuffers.Remove(k);
+
+                                // 3. Let the command (or its wrapper) do any additional reset work
+                                TryInvokeCustomDataButtonHook(selectedCommand, cset.name, settings);
+
+                                SoundDefOf.Click.PlayOneShotOnCamera();
+                            }
+                            if (!string.IsNullOrEmpty(tip)) TooltipHandler.TipRegion(btnRect, tip);
+                            y += sectionHeight;
+                        }
                         else if (t == "checkbox" || t == "bool")
                         {
                             bool val = settings.GetCustom<bool>(cset.name, bool.TryParse(cset.defaultValue, out var b) ? b : false);
@@ -943,6 +968,10 @@ namespace CAP_ChatInteractive
                         if (float.TryParse(cset.defaultValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var gg))
                             g = gg;
                         if (g > 0f) height += g;
+                    }
+                    else if (t == "button" || t == "action")
+                    {
+                        height += 28f;  // button row
                     }
                     else
                     {
@@ -1294,6 +1323,38 @@ namespace CAP_ChatInteractive
             // Wager value fields are rendered exclusively by the dynamic <CustomData> system (see XML definition).
             // Previously this method duplicated the inputs (old + new system). The fields above (under Command Specific Settings)
             // are the single source of truth now. Only header + reset remain here for consistency with Raid layout.
+        }
+
+        /// <summary>
+        /// Attempts to invoke OnCustomDataButtonClicked on the command instance for the given def.
+        /// Used by the generic Button support inside CustomData.
+        /// </summary>
+        private void TryInvokeCustomDataButtonHook(ChatCommandDef def, string buttonName, CommandSettings settings)
+        {
+            if (def?.commandClass == null) return;
+
+            try
+            {
+                ChatCommand cmd = null;
+
+                // Prefer a live registered instance when available
+                if (ChatCommandProcessor.TryGetCommand(def.commandText, out var live))
+                {
+                    cmd = live;
+                }
+                else
+                {
+                    // Fallback: create a temporary instance (sufficient for most reset hooks)
+                    var instance = Activator.CreateInstance(def.commandClass);
+                    cmd = instance as ChatCommand;
+                }
+
+                cmd?.OnCustomDataButtonClicked(buttonName, settings);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error invoking custom button hook '{buttonName}' for {def?.commandText}: {ex}");
+            }
         }
 
         [DebugAction("CAP", "Delete JSON & Rebuild Commands", allowedGameStates = AllowedGameStates.Playing)]

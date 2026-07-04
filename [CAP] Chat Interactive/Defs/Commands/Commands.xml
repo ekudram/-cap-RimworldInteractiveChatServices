@@ -437,6 +437,16 @@
         <min>0</min>
         <max>100</max>
       </li>
+      <li>
+        <type>Label</type>
+        <label>0 = infinite (unlimited uses per period)</label>
+      </li>
+      <li>
+        <type>Button</type>
+        <name>resetToDefaults</name>
+        <label>Reset to Defaults</label>
+        <description>Restore Max Uses Per Period to the default (0 = unlimited).</description>
+      </li>
     </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 

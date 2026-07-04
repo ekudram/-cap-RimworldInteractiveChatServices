@@ -279,6 +279,21 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             record.UsageDays.Add(CurrentGameDay);
         }
 
+        /// <summary>
+        /// Returns the number of times this command has been successfully used in the current cooldown window.
+        /// Cleans up old entries first.
+        /// </summary>
+        public int GetCurrentCommandUses(string commandName)
+        {
+            CleanupOldRecords();
+            var globalSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (globalSettings == null) return 0;
+
+            var record = GetOrCreateCommandRecord(commandName);
+            CleanupOldCommandUses(record, globalSettings.EventCooldownDays);
+            return record.CurrentPeriodUses;
+        }
+
         private void CleanupOldRecords()
         {
             int currentDay = CurrentGameDay;

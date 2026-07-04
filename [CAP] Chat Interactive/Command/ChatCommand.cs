@@ -100,6 +100,25 @@ namespace CAP_ChatInteractive
             return settings?.Enabled ?? true;
         }
 
+        /// <summary>
+        /// Invoked by the Command Editor dialog when the user clicks a &lt;type&gt;Button&lt;/type&gt;
+        /// declared inside this command's &lt;CustomData&gt;.
+        ///
+        /// buttonName comes from the &lt;name&gt; element in XML (use it to distinguish multiple buttons).
+        /// The passed CommandSettings already had its CustomData values reset to XML defaults by the dialog
+        /// (for the standard "reset" use case).
+        ///
+        /// Override this in your ChatCommand subclass (the one referenced by &lt;commandClass&gt; in your XML)
+        /// to perform extra work such as:
+        /// - Resetting non-CustomData fields (lists, etc.)
+        /// - Clearing other internal state for the command
+        /// - Implementing completely custom button actions
+        /// </summary>
+        public virtual void OnCustomDataButtonClicked(string buttonName, CommandSettings settings)
+        {
+            // Base: do nothing. The dialog performs the standard CustomData value reset.
+        }
+
         // Public method to get karma emoji - can be used anywhere
         public static string GetKarmaEmoji(float karma)
         {
