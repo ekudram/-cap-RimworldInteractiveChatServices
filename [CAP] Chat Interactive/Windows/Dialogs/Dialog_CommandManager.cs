@@ -661,6 +661,7 @@ namespace CAP_ChatInteractive
                     GUI.color = ColorLibrary.SubHeader;
                     Widgets.Label(customHeader, "CAP.CommandManager.CommandSpecificSettings".Translate());
                     y += sectionHeight + 8f;  // Extra spacing after header
+                    y += 4f;  // extra gap on the bottom for descenders (p, q, g, etc.)
 
                     // Draw a line here
                     Widgets.DrawLineHorizontal(leftPadding, y, viewRect.width - leftPadding);
@@ -925,6 +926,7 @@ namespace CAP_ChatInteractive
             {
                 height += 6f;   // spacing before custom section header
                 height += 28f;  // "Command Specific Settings" header
+                height += 4f;   // extra gap on the bottom for descenders (p, q, g, etc.)
 
                 foreach (var cset in selectedCommand.CustomData)
                 {
