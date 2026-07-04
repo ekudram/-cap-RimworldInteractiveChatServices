@@ -53,8 +53,6 @@
   <RICS.ViewerManager.ResetCoins>Reset All Coins</RICS.ViewerManager.ResetCoins>
   <RICS.ViewerManager.ResetKarma>Reset All Karma</RICS.ViewerManager.ResetKarma>
   <RICS.ViewerManager.ViewStatistics>View Statistics</RICS.ViewerManager.ViewStatistics>
-  <RICS.ViewerManager.ResetCoinsConfirm>Reset ALL viewer coins to starting amount?</RICS.ViewerManager.ResetCoinsConfirm>
-  <RICS.ViewerManager.ResetKarmaConfirm>Reset ALL viewer karma to starting amount?</RICS.ViewerManager.ResetKarmaConfirm>
   <RICS.ViewerManager.PortraitError>Portrait\nError</RICS.ViewerManager.PortraitError>
   <RICS.ViewerManager.UnassignPawn>Unassign Pawn</RICS.ViewerManager.UnassignPawn>
 
