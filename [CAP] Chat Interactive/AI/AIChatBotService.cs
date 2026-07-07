@@ -254,6 +254,8 @@ namespace CAP_ChatInteractive.AI
 
         public void UpdateGameStateCache()
         {
+            // Prefer the home colony map. For gravship/caravan/event situations the "current" map
+            // may be a temporary raid site with no nice name — the death reports now handle those better.
             Map map = Current.Game?.Maps?.FirstOrDefault(m => m.IsPlayerHome && !m.Disposed)
                    ?? Find.AnyPlayerHomeMap
                    ?? Find.CurrentMap;
@@ -775,5 +777,52 @@ namespace CAP_ChatInteractive.AI
         }
 
         public void ExposeData() { }
+
+        /// <summary>
+        /// Returns a rich, bot-friendly description of the map's location/context.
+        /// Used to give the AI (Masie) clear understanding of *where* events are happening
+        /// (home colony, gravship raid, temporary event map, remote site, etc.).
+        /// </summary>
+        public static string GetRichMapDescription(Map map)
+        {
+            if (map == null)
+                return "an unknown location";
+
+            bool isHome = map.IsPlayerHome;
+
+            // Gravship special case (user noted gravship raids create named-less maps)
+            if (map.wasSpawnedViaGravShipLanding)
+            {
+                if (isHome)
+                    return "the colony gravship (home map)";
+                return "the colony gravship's remote raid site (event map)";
+            }
+
+            if (isHome)
+            {
+                return "the home colony map";
+            }
+
+            if (map.Parent != null)
+            {
+                string parentLabel = map.Parent.Label;
+                if (string.IsNullOrWhiteSpace(parentLabel) || parentLabel == "Map" || parentLabel.ToLower().Contains("map"))
+                    parentLabel = map.Parent.def?.label;
+
+                string baseDesc = !string.IsNullOrWhiteSpace(parentLabel) ? parentLabel : "a remote event site";
+
+                if (map.IsTempIncidentMap || (map.info?.parent?.def?.isTempIncidentMapOwner ?? false))
+                    return $"{baseDesc} (remote/event map)";
+
+                return baseDesc;
+            }
+
+            if (map.info != null)
+            {
+                return "a temporary event map (remote/event map)";
+            }
+
+            return "an unknown location";
+        }
     }
 }

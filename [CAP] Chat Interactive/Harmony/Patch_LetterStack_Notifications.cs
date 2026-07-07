@@ -11,7 +11,8 @@ namespace CAP_ChatInteractive.AI
     /// <summary>
     /// Postfix on LetterStack.ReceiveLetter so we can notify the external AI ChatBot
     /// whenever any letter is shown to the player (storyteller incidents + viewer events).
-    /// This is the single best central hook for "something happened in the colony".
+    /// Now includes rich map context (home colony, gravship raid site, temp event map, etc.)
+    /// so the bot has the location information needed to understand the situation.
     /// </summary>
     [HarmonyPatch(typeof(LetterStack))]
     [HarmonyPatch(nameof(LetterStack.ReceiveLetter), new[] { typeof(Letter), typeof(string), typeof(int), typeof(bool) })]
@@ -43,7 +44,27 @@ namespace CAP_ChatInteractive.AI
                         body = body.Substring(0, 2000) + "...";
                 }
 
-                string notification = $"{botName} this has occurred in the colony: {title}.";
+                // Resolve the most relevant map for this letter (lookTargets if available, else current/home)
+                Map relevantMap = null;
+                try
+                {
+                    if (let is ChoiceLetter cl && cl.lookTargets != null && !cl.lookTargets.targets.NullOrEmpty())
+                    {
+                        var primary = cl.lookTargets.TryGetPrimaryTarget();
+                        if (primary.IsValid && primary.HasThing && primary.Thing != null && primary.Thing.Map != null)
+                            relevantMap = primary.Thing.Map;
+                    }
+                }
+                catch { /* best effort */ }
+
+                if (relevantMap == null)
+                    relevantMap = Find.CurrentMap ?? Find.AnyPlayerHomeMap;
+
+                string mapDesc = AIChatBotService.GetRichMapDescription(relevantMap);
+
+                // Include rich map context so the bot understands *where* the event is happening
+                // (home colony, gravship raid, temp event map, remote site, etc.)
+                string notification = $"{botName} this has occurred in the colony on {mapDesc}: {title}.";
                 if (!string.IsNullOrWhiteSpace(body))
                     notification += $" {body}";
 
@@ -60,9 +81,12 @@ namespace CAP_ChatInteractive.AI
 
     /// <summary>
     /// Postfix on Pawn.Kill to catch deaths for the AI bot.
-    /// Builds intuitive death info: animal vs pawn, faction (for pawns/animals), killer (instigator + damage), map context,
-    /// and special note when a player-faction animal is euthanized/slaughtered for meat and fur.
-    /// Messages are batched in GameComponent (throttled) for raid detection from volume + home map.
+    /// Builds richer death info for the improved AI (Masie):
+    /// - Faction attached so bot knows if it's a raiding faction.
+    /// - Scaria on animals is reported (Masie understands Scaria as "like Rabies").
+    /// - No-faction animals described as "woodland creature".
+    /// - Much better map identification (home colony vs event-generated maps from gravship raids etc.).
+    /// Messages are batched in GameComponent (throttled) for raid detection.
     /// </summary>
     [HarmonyPatch(typeof(Pawn))]
     [HarmonyPatch(nameof(Pawn.Kill))]
@@ -83,36 +107,80 @@ namespace CAP_ChatInteractive.AI
                 Pawn pawn = __instance;
                 string name = pawn.LabelShortCap ?? pawn.Name?.ToStringShort ?? "Unknown";
 
-                // Map context (keep the phrases for existing batch raid detection logic in GameComponent)
+                // Use the shared rich map description (centralized in AIChatBotService) for maximum consistency
+                // between deaths and general letter events. The bot gets the same rich location phrases.
+                Map pawnMap = pawn.Map;
+                string mapDesc = AIChatBotService.GetRichMapDescription(pawnMap);
+
+                // Preserve the exact substrings expected by the raid-volume batch detection in GameComponent.
                 string mapLabel = "an unknown location";
                 string mapContext = "";
-                Map pawnMap = pawn.Map;
-                if (pawnMap != null && pawnMap.Parent != null)
+                if (pawnMap != null)
                 {
-                    mapLabel = pawnMap.Parent.Label ?? pawnMap.Parent.def.label ?? "a map";
-                    mapContext = pawnMap.IsPlayerHome ? " (home colony map)" : " (remote map)";
+                    bool isHome = pawnMap.IsPlayerHome;
+                    if (isHome)
+                    {
+                        mapLabel = "home colony";
+                        mapContext = " (home colony map)";
+                    }
+                    else
+                    {
+                        mapLabel = mapDesc;
+                        mapContext = " (remote/event map)";
+                    }
                 }
 
-                // Determine intuitive type: pawn vs animal (per request)
-                string entityKind = "Pawn";
-                if (pawn.RaceProps != null)
-                {
-                    if (pawn.RaceProps.Animal)
-                        entityKind = "Animal";
-                    else if (pawn.RaceProps.Humanlike)
-                        entityKind = "Pawn";
-                    else
-                        entityKind = "Creature";
-                }
+                // Determine intuitive type + better description for the bot (raiding faction, scaria, woodland creature)
+                string entityDesc = pawn.LabelShortCap ?? pawn.Name?.ToStringShort ?? "Unknown creature";
 
-                // Faction context if present (player or other)
-                string factionPart = "";
-                if (pawn.Faction != null)
+                bool isAnimal = pawn.RaceProps?.Animal ?? false;
+                bool isHumanlike = pawn.RaceProps?.Humanlike ?? false;
+
+                if (isAnimal)
                 {
-                    if (pawn.Faction == Faction.OfPlayer || pawn.Faction.IsPlayer)
-                        factionPart = " (player faction)";
+                    // Check for Scaria (Masie now understands this as "like Rabies")
+                    bool hasScaria = false;
+                    try
+                    {
+                        var scariaDef = DefDatabase<HediffDef>.GetNamedSilentFail("Scaria");
+                        if (scariaDef != null && pawn.health?.hediffSet?.HasHediff(scariaDef) == true)
+                            hasScaria = true;
+                    }
+                    catch { }
+
+                    if (hasScaria)
+                    {
+                        entityDesc = $"{entityDesc} (Scaria-infected animal, like Rabies)";
+                    }
+                    else if (pawn.Faction != null && !pawn.Faction.IsPlayer)
+                    {
+                        // Animal with a faction (rare, but could be manhunter pack or tamed by hostiles)
+                        string f = pawn.Faction.Name ?? pawn.Faction.def?.label ?? "hostile faction";
+                        entityDesc = $"{entityDesc} ({f})";
+                    }
                     else
-                        factionPart = $" ({pawn.Faction.Name ?? pawn.Faction.def?.label ?? "unknown faction"})";
+                    {
+                        // Wild / no faction animal → call it woodland creature so bot understands context
+                        entityDesc = $"{entityDesc} (woodland creature)";
+                    }
+                }
+                else if (isHumanlike || (pawn.RaceProps != null))
+                {
+                    // Humanlike or other creature: attach faction so bot knows raiding faction etc.
+                    if (pawn.Faction != null)
+                    {
+                        if (pawn.Faction.IsPlayer)
+                            entityDesc = $"{entityDesc} (player colonist)";
+                        else
+                        {
+                            string f = pawn.Faction.Name ?? pawn.Faction.def?.label ?? "unknown faction";
+                            entityDesc = $"{entityDesc} ({f})";
+                        }
+                    }
+                    else
+                    {
+                        entityDesc = $"{entityDesc} (no faction)";
+                    }
                 }
 
                 // Killer / cause extraction: prefer instigator (who/what killed it) + damage
@@ -179,13 +247,12 @@ namespace CAP_ChatInteractive.AI
                     }
                 }
 
-                // Build intuitive message: context of what died + faction + killer + special slaughter note
-                // Examples (what the bot receives in colony_event):
-                //   "Animal Muffalo (player faction) was euthanized (slaughtered for meat and fur) by Bob (player faction) (cut) on Map (home colony map)"
-                //   "Pawn Alice (player faction) was killed by Raider (hostiles) (bullet) on Map (home colony map)"
-                //   "Animal Wolf has died from infection on Remote (remote map)"
-                //   "Pawn Enemy (pirates) was killed by Colonist (player faction) (cut) on ... (home colony map)"
-                string message = $"{entityKind} {name}{factionPart}{killerDetail} on {mapLabel}{mapContext}{slaughterNote}";
+                // Build intuitive message for the AI bot.
+                // Examples:
+                //   "Muffalo (woodland creature) was killed by Wolf (woodland creature) (bite) on remote raid site (remote/event map)"
+                //   "Raider (Pirates) was killed by Colonist (player colonist) (bullet) on home colony (home colony map)"
+                //   "Wolf (Scaria-infected animal, like Rabies) has died from infection on a temporary event map (remote/event map)"
+                string message = $"{entityDesc}{killerDetail} on {mapLabel}{mapContext}{slaughterNote}";
 
                 var gameComp = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>();
                 gameComp?.RecordDeath(message);
