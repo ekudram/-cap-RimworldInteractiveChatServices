@@ -1106,8 +1106,6 @@ namespace CAP_ChatInteractive
             return "Other";
         }
 
-
-
         public CommandSettings GetCommandSettings(string commandName)
         {
             if (commandSettings.ContainsKey(commandName))
@@ -1159,7 +1157,6 @@ namespace CAP_ChatInteractive
                  MessageTypeDefOf.NegativeEvent);
             }
         }
-
 
         private void ShowSaveAsMenu()
         {

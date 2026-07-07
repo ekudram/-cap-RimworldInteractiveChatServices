@@ -30,6 +30,11 @@ using Verse;
 
 namespace CAP_ChatInteractive
 {
+    /// <summary>
+    /// Represents a single tab item in the tabbed interface.
+    /// Needs a lot of work,
+    /// Needs to handle multiple lines of tabs
+    /// </summary>
     public class TabItem
     {
         public string Label { get; set; }
@@ -94,6 +99,14 @@ namespace CAP_ChatInteractive
             }
         }
 
+        /// <summary>
+        /// Draws a single tab button with the specified label and active state.
+        /// TODO MAKE A BETTER LOOKING TAB BUTTON
+        /// </summary>
+        /// <param name="rect"></param>
+        /// <param name="label"></param>
+        /// <param name="active"></param>
+        /// <returns></returns>
         private bool DrawTabButton(Rect rect, string label, bool active)
         {
             var buttonRect = rect.ContractedBy(2f);

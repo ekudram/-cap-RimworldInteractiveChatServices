@@ -71,15 +71,20 @@ namespace CAP_ChatInteractive
                 Tooltip = "RICS.CIS.Twitch.Tooltip".Translate(),
                 ContentDrawer = TabDrawer_YouTube.Draw
             });
-            // /*
+
+            /// <summary>
+            /// NEEDS TABS FIXED — currently commented out because the Kick tab is not fully implemented yet. Uncomment when ready to test.
+            /// NEEDS TABS SYSTEM FIXED SO WE CAN ADD MORE TABS TO A SECOND LINE
+            /// </summary>
+            /*
             // Kick tab — added for full multi-platform support (Discord/Steam-ready pattern)
-            //_tabWorker.AddTab(new TabItem   // ← uncomment when you're ready to test
-            //{
-            //    Label = "RICS.CIS.Kick".Translate(),
-            //    Tooltip = "RICS.CIS.Kick.Tooltip".Translate(),
-            //    ContentDrawer = TabDrawer_Kick.Draw
-            //});
-            // */
+            _tabWorker.AddTab(new TabItem   // ← uncomment when you're ready to test
+            {
+                Label = "RICS.CIS.Kick".Translate(),
+                Tooltip = "RICS.CIS.Kick.Tooltip".Translate(),
+                ContentDrawer = TabDrawer_Kick.Draw
+            });
+            */
             //_tabWorker.AddTab(new TabItem
             //{
             //    Label = "OAuth",
@@ -170,33 +175,34 @@ namespace CAP_ChatInteractive
                 }
             }
 
-            //// Save As... (custom named theme)
-            float saveAsX = loadX + btnW + gap;
+            // Save As... 
+            //float saveAsX = loadX + btnW + gap;
             //Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
             //if (Widgets.ButtonText(saveAsRect, "Save As..."))
             //{
             //    ShowSaveAsMenu();
             //}
 
-            //// Load file
-            float loadFileX = saveAsX + btnW + gap;
+            // Load file by name (advanced) — optional, can be added later if needed
+            //float loadFileX = saveAsX + btnW + gap;
             //Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
             //if (Widgets.ButtonText(loadFileRect, "Load file"))
             //{
             //    ShowLoadFileMenu();
             //}
 
-            // Delete file
+            // Delete file FIX! so we can delete files from ingame — optional, can be added later if needed
             //float deleteX = loadFileX + btnW + gap;
-            float deleteX = loadX + btnW + gap;
-            Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
-            if (Widgets.ButtonText(deleteRect, "RICS.Editor.DeleteFile".Translate()))
-            {
-                ShowDeleteFileMenu();
-            }
+            //float deleteX = loadX + btnW + gap;
+            //Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
+            //if (Widgets.ButtonText(deleteRect, "RICS.Editor.DeleteFile".Translate()))
+            //{
+            //    ShowDeleteFileMenu();
+            //}
 
             // Close (right-aligned)
-            float closeX = inRect.xMax - btnW - padding;
+            // float closeX = inRect.xMax - btnW - padding;
+            float closeX = inRect.xMax - btnW;
             Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
             if (Widgets.ButtonText(closeRect, "RICS.Editor.Close".Translate()))
             {
@@ -204,6 +210,9 @@ namespace CAP_ChatInteractive
             }
         }
 
+        /// <summary>
+        /// NEEDS WORK TO BE FULLY FUNCTIONAL — currently just saves a quick timestamped backup and shows a message.
+        /// </summary>
         private void ShowSaveAsMenu()
         {
             List<FloatMenuOption> options = new List<FloatMenuOption>
@@ -241,7 +250,9 @@ namespace CAP_ChatInteractive
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
-
+        /// <summary>
+        /// NEEDS WORK TO BE FULLY FUNCTIONAL — currently just loads the latest backup and shows a message.
+        /// </summary>
         private void ShowLoadFileMenu()
         {
             // For main settings we keep it simple — Load Latest is the primary path.
@@ -257,7 +268,9 @@ namespace CAP_ChatInteractive
                 Messages.Message("No backup found.", MessageTypeDefOf.RejectInput);
             }
         }
-
+        /// <summary>
+        /// NEEDS WORK TO BE FULLY FUNCTIONAL — currently just shows a message that deletion is handled via the Backups folder.
+        /// </summary>
         private void ShowDeleteFileMenu()
         {
             // Placeholder for future — main settings backups are managed in the Backups folder.
