@@ -201,7 +201,19 @@ namespace CAP_ChatInteractive
         public override string Description => !string.IsNullOrEmpty(_def.commandDescription) ? _def.commandDescription : _wrappedCommand.Description;
 
         // FIX: Only use JSON settings, never the Def
-        public override string PermissionLevel => _def.permissionLevel;
+        public override string PermissionLevel
+        {
+            get
+            {
+                // Allow per-command override from settings (for subscriber-only / paid access etc.)
+                // Fall back to the Def default if not overridden.
+                var s = GetCommandSettings();
+                if (s != null && !string.IsNullOrEmpty(s.PermissionLevel))
+                    return s.PermissionLevel;
+
+                return _def.permissionLevel;
+            }
+        }
 
         public override int CooldownSeconds => GetCommandSettings()?.CooldownSeconds ?? 0;
 

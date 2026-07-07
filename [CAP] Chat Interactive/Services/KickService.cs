@@ -442,7 +442,7 @@ namespace CAP_ChatInteractive
                     platform: "kick",
                     platformUserId: (string)(sender?["id"] ?? username),
                     channelId: _settings.ChannelName,
-                    platformMessage: null,
+                    platformMessage: sender,   // pass sender so we can read badges/roles for paid status
                     isWhisper: false
                 );
 

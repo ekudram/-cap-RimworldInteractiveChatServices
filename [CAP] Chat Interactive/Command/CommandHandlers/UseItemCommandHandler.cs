@@ -99,7 +99,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 {
                     var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
 
-                    string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
+                    string deathDetails = deathInfo.ToString();
 
                     return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
                 }
@@ -124,7 +124,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
                 if (thingDef == null)
                 {
-                    return "RICS.UICH.ItemDefMissing".Translate(itemName);  // ← add this key if needed: <RICS.UICH.ItemDefMissing>Error: Item definition for '{0}' not found.</RICS.UICH.ItemDefMissing>
+                    return "RICS.UICH.ItemDefMissing".Translate(itemName);  
                 }
 
                 if (isResurrectorSerum && viewerPawn.Dead && CannotResurrectPawn(viewerPawn))

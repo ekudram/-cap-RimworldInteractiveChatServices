@@ -496,18 +496,41 @@ namespace CAP_ChatInteractive
                 Widgets.Label(descRect, "CAP.CommandManager.Description".Translate() + $" {desc}");
                 y += sectionHeight * 2;
 
-                // Permission level
-                Rect permRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
-                string key = $"CAP.CommandManager.PermissionLevel.{selectedCommand.permissionLevel.ToString().ToLowerInvariant()}";
+                // Permission level (effective = settings override if present, else Def)
+                string effectivePerm = settings.PermissionLevel;
+                if (string.IsNullOrEmpty(effectivePerm))
+                    effectivePerm = selectedCommand.permissionLevel;
+
+                Rect permRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding - 90f, sectionHeight);
+                string key = $"CAP.CommandManager.PermissionLevel.{effectivePerm.ToLowerInvariant()}";
                 string permLevelTranslated = key.Translate();
 
                 // fallback in case someone removes the key (rare but nice)
                 if (permLevelTranslated == key)
                 {
-                    permLevelTranslated = selectedCommand.permissionLevel.ToString().CapitalizeFirst();
+                    permLevelTranslated = effectivePerm.CapitalizeFirst();
                 }
 
                 Widgets.Label(permRect, "CAP.CommandManager.PermissionLevel".Translate() + ": " + permLevelTranslated);
+
+                // Add "Change" button for monetized access (subscriber/everyone) — skip for moderator+ commands
+                bool isModCommand = effectivePerm.Equals("moderator", StringComparison.OrdinalIgnoreCase) ||
+                                    effectivePerm.Equals("broadcaster", StringComparison.OrdinalIgnoreCase);
+
+                if (!isModCommand)
+                {
+                    Rect changeBtn = new Rect(permRect.xMax + 5f, y, 75f, sectionHeight - 4f);
+                    if (Widgets.ButtonText(changeBtn, "Change"))
+                    {
+                        var options = new List<FloatMenuOption>
+                        {
+                            new FloatMenuOption("Everyone (non-paying)", () => SetCommandPermission("everyone")),
+                            new FloatMenuOption("Subscriber / Paid (monetized)", () => SetCommandPermission("subscriber"))
+                        };
+                        Find.WindowStack.Add(new FloatMenu(options));
+                    }
+                }
+
                 y += sectionHeight;
 
                 y += 10f;
@@ -1013,6 +1036,21 @@ namespace CAP_ChatInteractive
     };
 
             Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void SetCommandPermission(string newLevel)
+        {
+            if (selectedCommand == null) return;
+
+            string cmdKey = selectedCommand.commandText?.ToLowerInvariant() ?? selectedCommand.defName.ToLowerInvariant();
+
+            if (commandSettings.TryGetValue(cmdKey, out var cmdSettings))
+            {
+                cmdSettings.PermissionLevel = newLevel;
+                SoundDefOf.Click.PlayOneShotOnCamera();
+
+                // The display will refresh on next draw because we read from settings
+            }
         }
 
         private void FilterCommands()

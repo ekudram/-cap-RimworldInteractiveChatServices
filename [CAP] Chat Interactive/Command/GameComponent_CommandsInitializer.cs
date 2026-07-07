@@ -127,6 +127,7 @@ namespace CAP_ChatInteractive
                     if (!current.TryGetValue(key, out var s))
                     {
                         s = new CommandSettings { Enabled = def.enabled, CooldownSeconds = def.cooldownSeconds, PermissionLevel = def.permissionLevel, useCommandCooldown = def.useCommandCooldown };
+                        // PermissionLevel starts from Def but can be overridden later by user in Command Editor
                         current[key] = s;
                     }
                     s.EnsureCustomDefaults(def.CustomData);
@@ -422,15 +423,11 @@ namespace CAP_ChatInteractive
 
                     if (currentSettings.TryGetValue(commandKey, out var settings))
                     {
-                        // Check if JSON permission matches XML
-                        if (settings.PermissionLevel != def.permissionLevel)
-                        {
-                            // Logger.Debug($"Fixing permission for '{commandKey}': JSON='{settings.PermissionLevel}' -> XML='{def.permissionLevel}'");
-                            settings.PermissionLevel = def.permissionLevel;
-                            fixedAny = true;
-                        }
+                        // Do NOT force PermissionLevel from Def here anymore.
+                        // This allows users to change a command's permission level (e.g. subscriber-only / paid access)
+                        // via the Command Editor. Defaults from XML are still applied at first creation.
 
-                        // Also ensure other XML values are set
+                        // Only ensure other XML values like cooldown if not set
                         if (settings.CooldownSeconds == 0 && def.cooldownSeconds > 0)
                         {
                             settings.CooldownSeconds = def.cooldownSeconds;

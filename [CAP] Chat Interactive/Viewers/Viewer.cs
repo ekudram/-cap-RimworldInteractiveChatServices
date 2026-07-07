@@ -424,6 +424,9 @@ namespace CAP_ChatInteractive
                 case "youtube":
                     UpdateYouTubeRoles(message);
                     break;
+                case "kick":
+                    UpdateKickRoles(message);
+                    break;
             }
         }
         private void UpdateTwitchRoles(ChatMessageWrapper message)
@@ -477,6 +480,79 @@ namespace CAP_ChatInteractive
                     // YouTube doesn't have a direct VIP equivalent
                     // You could track this manually or use custom logic
                 }
+            }
+        }
+
+        private void UpdateKickRoles(ChatMessageWrapper message)
+        {
+            // Kick passes the "sender" JObject (or similar) as PlatformMessage.
+            // We look for common indicators of paid/subscriber status.
+            // Kick chat sender often includes "badges" or "identity.badges" or top-level flags.
+            try
+            {
+                var sender = message.PlatformMessage as Newtonsoft.Json.Linq.JObject;
+                if (sender == null) return;
+
+                // Check for explicit flags if present
+                if (sender["isSubscriber"] != null && (bool)sender["isSubscriber"])
+                    IsSubscriber = true;
+
+                if (sender["isVip"] != null && (bool)sender["isVip"])
+                    IsVip = true;
+
+                if (sender["isModerator"] != null && (bool)sender["isModerator"])
+                    IsModerator = true;
+
+                if (sender["isBroadcaster"] != null && (bool)sender["isBroadcaster"])
+                    IsBroadcaster = true;
+
+                // Check badges array (common in Kick)
+                var badges = sender["badges"] as Newtonsoft.Json.Linq.JArray;
+                if (badges != null)
+                {
+                    foreach (var b in badges)
+                    {
+                        string badgeText = (string)(b["text"] ?? b["type"] ?? b) ?? "";
+                        string lower = badgeText.ToLowerInvariant();
+
+                        if (lower.Contains("subscriber") || lower.Contains("sub") || lower.Contains("member"))
+                            IsSubscriber = true;
+
+                        if (lower.Contains("vip"))
+                            IsVip = true;
+
+                        if (lower.Contains("mod"))
+                            IsModerator = true;
+
+                        if (lower.Contains("broadcaster") || lower.Contains("owner") || lower.Contains("host"))
+                            IsBroadcaster = true;
+                    }
+                }
+
+                // Also check nested identity.badges if Kick uses that format
+                var identity = sender["identity"] as Newtonsoft.Json.Linq.JObject;
+                if (identity != null)
+                {
+                    var idBadges = identity["badges"] as Newtonsoft.Json.Linq.JArray;
+                    if (idBadges != null)
+                    {
+                        foreach (var b in idBadges)
+                        {
+                            string badgeText = (string)(b["text"] ?? b["type"] ?? b) ?? "";
+                            string lower = badgeText.ToLowerInvariant();
+
+                            if (lower.Contains("subscriber") || lower.Contains("sub") || lower.Contains("member"))
+                                IsSubscriber = true;
+
+                            if (lower.Contains("vip"))
+                                IsVip = true;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // best effort — if parsing fails we just leave the flags as they were
             }
         }
 
