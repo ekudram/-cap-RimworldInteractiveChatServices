@@ -116,7 +116,13 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             try
             {
-                ColorDef colorDef = GetColorDef(color);
+                // WHY: Force alpha = 1f so that the favoriteColor stored on the pawn is always
+                // usable for Ideology styling AND for the !dye "no args" fallback without ever
+                // producing invisible clothing. ColorHelper.ParseColor or hex inputs can
+                // legitimately return a=0; we correct it here at the point of storage.
+                Color safeColor = new Color(color.r, color.g, color.b, 1f);
+
+                ColorDef colorDef = GetColorDef(safeColor);
                 pawn.story.favoriteColor = colorDef;
                 return true;
             }

@@ -151,6 +151,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 }
             }
 
+
+
             // Use favorite color if no color specified
             if (!color.HasValue)
             {
@@ -162,6 +164,20 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
                 color = viewerPawn.story?.favoriteColor?.color ?? new Color(0.6f, 0.6f, 0.6f);
                 colorInput = "favorite color";
+            }
+
+            if (color.HasValue)
+            {
+                Color c = color.Value;
+                if (c.a < 0.99f)
+                {
+                    // WHY: User-provided colors via ColorHelper.ParseColor (named "cyan", hex without alpha, etc.)
+                    // or certain closest-match paths can arrive with a=0, which makes CompColorable render
+                    // the apparel completely transparent/invisible. We force opaque here because apparel dye
+                    // and hair color are always meant to be solid. This is defensive and does not change hue.
+                    color = new Color(c.r, c.g, c.b, 1f);
+                    Logger.Debug($"[RICS Dye] Forced alpha=1f for color '{colorInput ?? "favorite color"}' to prevent invisible clothing.");
+                }
             }
 
             if (isHairDye)
