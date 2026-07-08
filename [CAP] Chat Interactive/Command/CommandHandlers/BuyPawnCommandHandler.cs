@@ -29,6 +29,172 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class BuyPawnCommandHandler
     {
+        /// <summary>
+        /// Handles the !pawn command from chat, parsing arguments and generating a pawn for the viewer.
+        /// </summary>
+        /// <param name="messageWrapper"></param>
+        /// <param name="args"></param>
+        /// <returns>
+        /// Message to chat indicating success or failure, including details about the pawn or error.
+        /// </returns>
+        public static string HandleBuyPawnCommand(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            try
+            {
+                // Parse arguments
+                ParsePawnParameters(args, out string raceName, out string xenotypeName, out string genderName, out string ageString);
+
+                Logger.Debug($"Parsed - Race: {raceName}, Xenotype: {xenotypeName}, Gender: {genderName}, Age: {ageString}");
+
+                // Validate that we have at least a race name
+                if (string.IsNullOrEmpty(raceName))
+                {
+                    // return "You must specify a race. Usage: !pawn [race] [xenotype] [gender] [age]";
+                    return "RICS.BPCH.Usage".Translate();
+                }
+
+                // Check if the race exists - try to find it
+                var raceDef = RaceUtils.FindRaceByName(raceName);
+
+                if (raceDef == null)
+                {
+                    // Try to find similar races for better error messages
+                    var allRaces = RaceUtils.GetAllHumanlikeRaces();
+                    var similarRaces = allRaces
+                        .Where(r => r.defName.IndexOf(raceName, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                   r.label.IndexOf(raceName, StringComparison.OrdinalIgnoreCase) >= 0)
+                        .Select(r => r.label)
+                        .Take(3)
+                        .ToList();
+
+                    string errorMessage = "RICS.BPCH.RaceNotFound".Translate(raceName);
+
+                    if (similarRaces.Any())
+                    {
+                        errorMessage += " " + "RICS.BPCH.RaceNotFound.Suggestion".Translate(string.Join(", ", similarRaces));
+                    }
+                    else
+                    {
+                        errorMessage += " " + "RICS.BPCH.RaceNotFound.UseList".Translate();
+                    }
+
+                    return errorMessage;
+                }
+
+                // Call the existing handler with parsed parameters
+                return HandleBuyPawnCommandInternal(messageWrapper, raceName, xenotypeName, genderName, ageString);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error parsing pawn command: {ex}");
+                return "RICS.BPCH.ParseError".Translate();
+            }
+        }
+
+        /// <summary>
+        /// Parses the command arguments to extract
+        /// Helper method to parse command arguments for Pawn purchase, extracting race, xenotype,
+        /// </summary>
+        /// <param name="args"></param>
+        /// <param name="raceName"></param>
+        /// <param name="xenotypeName"></param>
+        /// <param name="genderName"></param>
+        /// <param name="ageString"></param>
+        private static void ParsePawnParameters(string[] args, out string raceName, out string xenotypeName, out string genderName, out string ageString)
+        {
+            // Defaults
+            raceName = "";
+            xenotypeName = "Baseliner";
+            genderName = "Random";
+            ageString = "Random";
+
+            if (args.Length == 0) return;
+
+            var usedArgs = new bool[args.Length];
+
+            // STEP 1: Extract AGE (highest certainty - numeric)
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (usedArgs[i]) continue;
+                if (int.TryParse(args[i], out int age) && age > 0 && age <= 150)
+                {
+                    ageString = args[i];
+                    usedArgs[i] = true;
+                    break;
+                }
+            }
+
+            // STEP 2: Extract GENDER (limited set, safe)
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (usedArgs[i]) continue;
+                string argLower = args[i].ToLowerInvariant();
+                if (argLower is "male" or "m" or "female" or "f")
+                {
+                    genderName = args[i]; // preserve case
+                    usedArgs[i] = true;
+                    break;
+                }
+            }
+
+            // STEP 3: Collect ALL remaining args (in original order)
+            var remaining = new List<(int index, string value)>();
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (!usedArgs[i])
+                    remaining.Add((i, args[i]));
+            }
+            if (remaining.Count == 0) return;
+
+            // STEP 4: Longest PREFIX match for race (greedy from start of remaining)
+            // This is the fix - previous version marked the entire attempted len even when only a sub-match was found
+            string bestRace = "";
+            int bestLength = 0;
+            for (int len = Math.Min(4, remaining.Count); len >= 1; len--)
+            {
+                var candidateParts = remaining.Take(len).Select(x => x.value).ToArray();
+                string matchedRace = FindBestRaceMatch(candidateParts);
+                if (!string.IsNullOrEmpty(matchedRace) && len > bestLength)
+                {
+                    bestRace = matchedRace;
+                    bestLength = len;
+                    break; // longest first
+                }
+            }
+
+            if (!string.IsNullOrEmpty(bestRace))
+            {
+                raceName = bestRace;
+                // Mark ONLY the words actually used for the race
+                for (int k = 0; k < bestLength; k++)
+                {
+                    usedArgs[remaining[k].index] = true;
+                }
+            }
+            else
+            {
+                // Fallback: whole remaining string as race (original behavior for unrecognized input)
+                raceName = string.Join(" ", remaining.Select(x => x.value));
+                foreach (var r in remaining) usedArgs[r.index] = true;
+            }
+
+            // STEP 5: Leftover becomes xenotype (exact user casing preserved for display/letters)
+            var leftover = remaining.Where(r => !usedArgs[r.index]).Select(r => r.value).ToArray();
+            if (leftover.Length > 0)
+            {
+                xenotypeName = string.Join(" ", leftover);
+            }
+        }
+
+        /// <summary>
+        /// Handles the internal logic of buying a pawn after parameters have been parsed and validated.
+        /// </summary>
+        /// <param name="messageWrapper"></param>
+        /// <param name="raceName"></param>
+        /// <param name="xenotypeName"></param>
+        /// <param name="genderName"></param>
+        /// <param name="ageString"></param>
+        /// <returns></returns>
         private static string HandleBuyPawnCommandInternal(ChatMessageWrapper messageWrapper, string raceName, string xenotypeName = "Baseliner", string genderName = "Random", string ageString = "Random")
         {
             try
@@ -38,15 +204,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var viewer = Viewers.GetViewer(messageWrapper);
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-                // NOTE THIS WORKS NOW, returns any pawn ase
+
+                // Check if viewer already has a pawn assigned using the assignment manager
                 Pawn existingPawn = assignmentManager.GetAssignedPawn(messageWrapper);
                 if (existingPawn != null)
                 {
                     // return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn health to check on them.";
                     return "RICS.BPCH.AlreadyHasPawn".Translate(existingPawn.Name.ToStringFull);
                 }
-                // EXtra check and modified.  Redundant now but lets keep it for a bit.
-                // SIMPLIFIED: Check if viewer already has a pawn assigned using direct dictionary lookup
+
+                // Redundant check using platform ID for safety (in case assignment manager is null or misbehaving)
                 if (assignmentManager != null)
                 {
                     // Get the platform identifier directly from the message
@@ -103,42 +270,64 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
 
                 // === XENOTYPE RESOLUTION & VALIDATION ===
+                // WHY: Xenotypes are a Biotech DLC feature only.
+                // When Biotech is disabled:
+                //   - raceSettings.EnabledXenotypes is empty (see RaceSettingsManager.CreateDefaultSettings)
+                //   - All pawns are Baseliner by definition
+                //   - Any user-supplied xenotype name must be ignored gracefully
+                // This guard keeps behavior correct, avoids unnecessary work / confusing debug logs,
+                // and matches the defensive pattern already used in IsValidPawnRequest and GenerateAndSpawnPawn.
 
-                string finalXenotypeName = xenotypeName;  // start with cleaned user input
+                string finalXenotypeName = "Baseliner";
 
-                // Auto-pick logic if no xenotype given or Baseliner is disabled for this race
-                // HAR support: now prefers race-specific xenotype (e.g. Nyaron race → Nyaron xenotype)
-                if (string.IsNullOrEmpty(xenotypeName) ||
-                    xenotypeName.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
+                if (ModsConfig.BiotechActive)
                 {
-                    if (!raceSettings.EnabledXenotypes.TryGetValue("Baseliner", out bool baselinerEnabled) || !baselinerEnabled)
+                    finalXenotypeName = xenotypeName;  // start with cleaned user input
+
+                    // Auto-pick logic if no xenotype given or Baseliner is disabled for this race
+                    // HAR support: now prefers race-specific xenotype (e.g. Nyaron race → Nyaron xenotype)
+                    if (string.IsNullOrEmpty(xenotypeName) ||
+                        xenotypeName.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
                     {
-                        finalXenotypeName = PickRandomEnabledXenotype(raceSettings, raceName);
-                        Logger.Debug($"Baseliner disabled for {raceName} → auto-picked '{finalXenotypeName}' from RaceSettings (HAR-aware)");
+                        if (!raceSettings.EnabledXenotypes.TryGetValue("Baseliner", out bool baselinerEnabled) || !baselinerEnabled)
+                        {
+                            finalXenotypeName = PickRandomEnabledXenotype(raceSettings, raceName);
+                            Logger.Debug($"Baseliner disabled for {raceName} → auto-picked '{finalXenotypeName}' from RaceSettings (HAR-aware)");
+                        }
+                        else
+                        {
+                            finalXenotypeName = "Baseliner";
+                        }
                     }
                     else
                     {
-                        finalXenotypeName = "Baseliner";
+                        finalXenotypeName = GetXenotypeDefName(xenotypeName, raceSettings);
+                    }
+
+                    // Now validate the final resolved xenotype
+                    bool isEnabled = raceSettings.EnabledXenotypes.TryGetValue(finalXenotypeName, out bool enabled)
+                        ? enabled
+                        : raceSettings.AllowCustomXenotypes;
+
+                    if (!isEnabled)
+                    {
+                        return "RICS.BPCH.XenotypeDisabled".Translate(xenotypeName, raceName);  // show original user input in error
+                    }
+
+                    if (!raceSettings.AllowCustomXenotypes && finalXenotypeName != "Baseliner")
+                    {
+                        return "RICS.BPCH.CustomXenotypesDisabled".Translate(raceName);
                     }
                 }
                 else
                 {
-                    finalXenotypeName = GetXenotypeDefName(xenotypeName, raceSettings);
-                }
-
-                // Now validate the final resolved xenotype
-                bool isEnabled = raceSettings.EnabledXenotypes.TryGetValue(finalXenotypeName, out bool enabled)
-                    ? enabled
-                    : raceSettings.AllowCustomXenotypes;
-
-                if (!isEnabled)
-                {
-                    return "RICS.BPCH.XenotypeDisabled".Translate(xenotypeName, raceName);  // show original user input in error
-                }
-
-                if (!raceSettings.AllowCustomXenotypes && finalXenotypeName != "Baseliner")
-                {
-                    return "RICS.BPCH.CustomXenotypesDisabled".Translate(raceName);
+                    // No Biotech DLC → force Baseliner. Ignore any xenotype the user typed.
+                    // This is the only correct behavior. Debug log so developers see it during testing.
+                    if (!string.IsNullOrEmpty(xenotypeName) && !xenotypeName.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Logger.Debug($"Ignoring xenotype argument '{xenotypeName}' for race '{raceName}' because Biotech DLC is not active. Forcing Baseliner.");
+                    }
+                    finalXenotypeName = "Baseliner";
                 }
 
                 // Price from RaceSettings (no manual adding)
@@ -161,6 +350,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.BPCH.GameNotReady".Translate();
                 }
 
+                // Generate and spawn the pawn
                 var result = GenerateAndSpawnPawn(messageWrapper.Username, raceName, finalXenotypeName, genderName, age, raceSettings);
 
                 if (result.Success)
@@ -833,145 +1023,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
 
-        public static string HandleBuyPawnCommand(ChatMessageWrapper messageWrapper, string[] args)
-        {
-            try
-            {
-                // Parse arguments
-                ParsePawnParameters(args, out string raceName, out string xenotypeName, out string genderName, out string ageString);
 
-                Logger.Debug($"Parsed - Race: {raceName}, Xenotype: {xenotypeName}, Gender: {genderName}, Age: {ageString}");
 
-                // Validate that we have at least a race name
-                if (string.IsNullOrEmpty(raceName))
-                {
-                    // return "You must specify a race. Usage: !pawn [race] [xenotype] [gender] [age]";
-                    return "RICS.BPCH.Usage".Translate();
-                }
-
-                // Check if the race exists - try to find it
-                var raceDef = RaceUtils.FindRaceByName(raceName);
-
-                if (raceDef == null)
-                {
-                    // Try to find similar races for better error messages
-                    var allRaces = RaceUtils.GetAllHumanlikeRaces();
-                    var similarRaces = allRaces
-                        .Where(r => r.defName.IndexOf(raceName, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                   r.label.IndexOf(raceName, StringComparison.OrdinalIgnoreCase) >= 0)
-                        .Select(r => r.label)
-                        .Take(3)
-                        .ToList();
-
-                    string errorMessage = "RICS.BPCH.RaceNotFound".Translate(raceName);
-
-                    if (similarRaces.Any())
-                    {
-                        errorMessage += " " + "RICS.BPCH.RaceNotFound.Suggestion".Translate(string.Join(", ", similarRaces));
-                    }
-                    else
-                    {
-                        errorMessage += " " + "RICS.BPCH.RaceNotFound.UseList".Translate();
-                    }
-
-                    return errorMessage;
-                }
-
-                // Call the existing handler with parsed parameters
-                return HandleBuyPawnCommandInternal(messageWrapper, raceName, xenotypeName, genderName, ageString);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error parsing pawn command: {ex}");
-                return "RICS.BPCH.ParseError".Translate();
-            }
-        }
-
-        private static void ParsePawnParameters(string[] args, out string raceName, out string xenotypeName, out string genderName, out string ageString)
-        {
-            // Defaults
-            raceName = "";
-            xenotypeName = "Baseliner";
-            genderName = "Random";
-            ageString = "Random";
-
-            if (args.Length == 0) return;
-
-            var usedArgs = new bool[args.Length];
-
-            // STEP 1: Extract AGE (highest certainty - numeric)
-            for (int i = 0; i < args.Length; i++)
-            {
-                if (usedArgs[i]) continue;
-                if (int.TryParse(args[i], out int age) && age > 0 && age <= 150)
-                {
-                    ageString = args[i];
-                    usedArgs[i] = true;
-                    break;
-                }
-            }
-
-            // STEP 2: Extract GENDER (limited set, safe)
-            for (int i = 0; i < args.Length; i++)
-            {
-                if (usedArgs[i]) continue;
-                string argLower = args[i].ToLowerInvariant();
-                if (argLower is "male" or "m" or "female" or "f")
-                {
-                    genderName = args[i]; // preserve case
-                    usedArgs[i] = true;
-                    break;
-                }
-            }
-
-            // STEP 3: Collect ALL remaining args (in original order)
-            var remaining = new List<(int index, string value)>();
-            for (int i = 0; i < args.Length; i++)
-            {
-                if (!usedArgs[i])
-                    remaining.Add((i, args[i]));
-            }
-            if (remaining.Count == 0) return;
-
-            // STEP 4: Longest PREFIX match for race (greedy from start of remaining)
-            // This is the fix - previous version marked the entire attempted len even when only a sub-match was found
-            string bestRace = "";
-            int bestLength = 0;
-            for (int len = Math.Min(4, remaining.Count); len >= 1; len--)
-            {
-                var candidateParts = remaining.Take(len).Select(x => x.value).ToArray();
-                string matchedRace = FindBestRaceMatch(candidateParts);
-                if (!string.IsNullOrEmpty(matchedRace) && len > bestLength)
-                {
-                    bestRace = matchedRace;
-                    bestLength = len;
-                    break; // longest first
-                }
-            }
-
-            if (!string.IsNullOrEmpty(bestRace))
-            {
-                raceName = bestRace;
-                // Mark ONLY the words actually used for the race
-                for (int k = 0; k < bestLength; k++)
-                {
-                    usedArgs[remaining[k].index] = true;
-                }
-            }
-            else
-            {
-                // Fallback: whole remaining string as race (original behavior for unrecognized input)
-                raceName = string.Join(" ", remaining.Select(x => x.value));
-                foreach (var r in remaining) usedArgs[r.index] = true;
-            }
-
-            // STEP 5: Leftover becomes xenotype (exact user casing preserved for display/letters)
-            var leftover = remaining.Where(r => !usedArgs[r.index]).Select(r => r.value).ToArray();
-            if (leftover.Length > 0)
-            {
-                xenotypeName = string.Join(" ", leftover);
-            }
-        }
 
         private static string GetXenotypeDefName(string input, RaceSettings raceSettings)
         {
