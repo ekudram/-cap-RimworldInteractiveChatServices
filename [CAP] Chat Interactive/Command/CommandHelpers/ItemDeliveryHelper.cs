@@ -52,7 +52,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
     public static class ItemDeliveryHelper
     {
 
-        // Replace the FindSuitableLockerFor method with this more robust version
         public static Building_RimazonLocker FindSuitableLockerFor(Thing thing, Map map, Pawn forPawn = null)
         {
             try
@@ -327,6 +326,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             // 7. Absolute last resort: map center
             // ───────────────────────────────────────────────
             Logger.Warning("No good drop spot found → using map center");
+            // fail here and return -1000,-1000, 0 to avoid dropping in a map with no valis spots.
             return map.Center;
         }
 
@@ -351,7 +351,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             float thickNaturalPercentage = (float)naturalThickRoofCount / totalCells;
 
-            // Logger.Debug($"Thick natural overhead mountain roof: {thickNaturalPercentage:P2} ({naturalThickRoofCount}/{totalCells})");
+            Logger.Debug($"Thick natural overhead mountain roof: {thickNaturalPercentage:P2} ({naturalThickRoofCount}/{totalCells})");
 
             // Tune this threshold based on testing — 0.88–0.92 works well for most Anomaly pits
             const float UNDERGROUND_THRESHOLD = 0.92f;
@@ -1134,6 +1134,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     if (pawn.RaceProps.IsMechanoid)
                     {
                         Logger.Debug($"Detected mechanoid: {pawn.def.defName}, setting faction to player");
+                        // todo here 
                         pawn.SetFaction(Faction.OfPlayer);
                     }
                     // Also handle animals (keeping existing logic)
@@ -1178,7 +1179,13 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 return (false, spawnPosition);
             }
         }
-
+        /// <summary>
+        /// Attempts to deliver the given list of things via shuttle/drop pod at the specified position on the map.
+        /// </summary>
+        /// <param name="thingsToDeliver"></param>
+        /// <param name="dropPos"></param>
+        /// <param name="map"></param>
+        /// <returns></returns>
         private static bool TryShuttleDelivery(List<Thing> thingsToDeliver, IntVec3 dropPos, Map map)
         {
             try
@@ -1223,7 +1230,11 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 return false;
             }
         }
-
+        /// <summary>
+        /// Determines if the given ThingDef should be minified for delivery.
+        /// </summary>
+        /// <param name="thingDef"></param>
+        /// <returns></returns>
         public static bool ShouldMinifyForDelivery(ThingDef thingDef)
         {
             if (thingDef == null) return false;
@@ -1238,7 +1249,13 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             //LoggerDebug($"{thingDef.defName} is not minifiable - will be delivered normally");
             return false;
         }
-
+        /// <summary>
+        /// Creates a minified version of the given thing, applying quality and material if applicable.
+        /// </summary>
+        /// <param name="thingDef"></param>
+        /// <param name="quality"></param>
+        /// <param name="material"></param>
+        /// <returns></returns>
         public static Thing CreateMinifiedThing(ThingDef thingDef, QualityCategory? quality, ThingDef material)
         {
             try
@@ -1277,6 +1294,14 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
         }
 
+        /// <summary>
+        /// Creates a list of things for delivery, handling minification and stack sizes appropriately.
+        /// </summary>
+        /// <param name="thingDef"></param>
+        /// <param name="quantity"></param>
+        /// <param name="quality"></param>
+        /// <param name="material"></param>
+        /// <returns></returns>
         public static List<Thing> CreateThingsForDelivery(ThingDef thingDef, int quantity, QualityCategory? quality, ThingDef material)
         {
             List<Thing> things = new List<Thing>();
@@ -1321,25 +1346,44 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         }
 
 
-
-        // NEW: Space map detection (complements ItemDeliveryHelper.IsUndergroundMap)
-        // Why: Space maps are a distinct case from underground; pawns need vacsuits immediately.
+        /// <summary>
+        /// Determines if the given map is a space map.
+        /// </summary>
+        /// <param name="map"></param>
+        /// <returns></returns>
+        /// <remarks
+        /// Why: Space maps are a distinct case from underground; pawns need vacsuits immediately.
+        /// </remarks>
         public static bool IsSpaceMap(Map map)
         {
             if (map == null) return false;
 
-            // Primary: Orbit / Space in biome name (current maps)
-            if (map.Biome?.defName?.Contains("Space", StringComparison.OrdinalIgnoreCase) == true ||
-                map.Biome?.defName?.Contains("Orbit", StringComparison.OrdinalIgnoreCase) == true)
+            // Primary: BiomeDef.inVacuum flag (most accurate for Odyssey)
+            if (map.Biome?.inVacuum == true)
                 return true;
 
-            // Secondary: BiomeDef.inVacuum flag (most accurate for Odyssey)
-            if (map.Biome?.inVacuum == true)
+            // Secondary: Space / Orbit in biome name (current maps) for mod compatibility
+            if (map.Biome?.defName?.Contains("Space", StringComparison.OrdinalIgnoreCase) == true ||
+                map.Biome?.defName?.Contains("Orbit", StringComparison.OrdinalIgnoreCase) == true)
                 return true;
 
             // Fallback: SpaceMapParent
             return map.Parent is SpaceMapParent;
         }
+        /// <summary>
+        /// Handles direct pawn interaction with pre-created items, such as equipping, wearing, or adding to inventory.
+        /// </summary>
+        /// <param name="item"></param>
+        /// <param name="pawn"></param>
+        /// <param name="equipItem"></param>
+        /// <param name="wearItem"></param>
+        /// <param name="addToInventory"></param>
+        /// <param name="result"></param>
+        /// <returns>DeliveryResult</returns>
+        /// <remarks
+        /// Is used when the item is already created and we want to directly interact with the pawn, bypassing lockers or drop pods.
+        /// Generally used with unique type weapons to ensure we are charging the correct price and delivering the correct item to the pawn.
+        /// </
         private static DeliveryResult HandleDirectPawnInteractionWithPreCreated(Thing item, Pawn pawn,
     bool equipItem, bool wearItem, bool addToInventory, DeliveryResult result)
         {
