@@ -199,6 +199,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
+                if (!IsGameReadyForPawnPurchase())
+                {
+                    return "RICS.BPCH.GameNotReady".Translate();
+                }
+
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
@@ -343,11 +348,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     // to purchase a {raceName} pawn! You have {viewer.Coins}{currencySymbol}.";
                     return "RICS.BPCH.InsufficientFunds"
                         .Translate(finalPrice, currencySymbol, raceName, viewer.Coins, currencySymbol);
-                }
-
-                if (!IsGameReadyForPawnPurchase())
-                {
-                    return "RICS.BPCH.GameNotReady".Translate();
                 }
 
                 // Generate and spawn the pawn
