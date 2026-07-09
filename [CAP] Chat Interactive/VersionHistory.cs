@@ -1,4 +1,4 @@
-﻿// VersionHistory.cs 
+// VersionHistory.cs 
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -1165,7 +1165,7 @@ This release includes all changes from June 21–23 plus the June 26 heal logic 
             {
                 // New dialog auto-focuses the latest version (your request)
                 OpenVersionHistory(newVersion);
-                Logger.Message($"[RICS] Updated from version {oldVersion} to {newVersion}. Showing new history dialog.");
+                Logger.Message($"Updated from version {oldVersion} to {newVersion}. Showing new history dialog.");
             }
             catch (Exception ex)
             {

@@ -51,18 +51,18 @@ namespace CAP_ChatInteractive.Patch.VPE
 
         static VPEPatch()
         {
-            Logger.Message("[CAP] VPE Patch Assembly Loaded!");
-            Logger.Debug("[CAP] VPE Patch static constructor executed");
+            Logger.Message("VPE Patch Assembly Loaded!");
+            Logger.Debug("VPE Patch static constructor executed");
         }
 
         public VPEPatch()
         {
-            Logger.Message("[CAP] VPE Patch Instance Created!");
+            Logger.Message("VPE Patch Instance Created!");
         }
 
         public VPEBasicPsycastInfo GetBasicPsycastInfo(Pawn pawn)
         {
-            Logger.Debug($"[CAP] VPE Patch: GetBasicPsycastInfo called for {(pawn?.LabelShort ?? "null")}");
+            Logger.Debug($"VPE Patch: GetBasicPsycastInfo called for {(pawn?.LabelShort ?? "null")}");
             try
             {
                 if (pawn == null) return new VPEBasicPsycastInfo();
@@ -72,7 +72,7 @@ namespace CAP_ChatInteractive.Patch.VPE
 
                 if (hediff == null)
                 {
-                    Logger.Debug("[CAP] VPE Patch: No VPE_PsycastAbilityImplant hediff found.");
+                    Logger.Debug("VPE Patch: No VPE_PsycastAbilityImplant hediff found.");
                     return new VPEBasicPsycastInfo();
                 }
 
@@ -98,19 +98,19 @@ namespace CAP_ChatInteractive.Patch.VPE
                     catch { /* optional VPE level-exp path */ }
                 }
 
-                Logger.Debug($"[CAP] VPE Patch: level={info.Level}, psyfocus={info.CurrentPsyfocus:F2}/{info.MaxPsyfocus:F2}, heat={info.CurrentHeat:F1}/{info.MaxHeat:F1}");
+                Logger.Debug($"VPE Patch: level={info.Level}, psyfocus={info.CurrentPsyfocus:F2}/{info.MaxPsyfocus:F2}, heat={info.CurrentHeat:F1}/{info.MaxHeat:F1}");
                 return info;
             }
             catch (Exception ex)
             {
-                Logger.Error($"[CAP] VPE Patch GetBasicPsycastInfo error: {ex}");
+                Logger.Error($"VPE Patch GetBasicPsycastInfo error: {ex}");
                 return new VPEBasicPsycastInfo();
             }
         }
 
         public VPEClassInfo GetPsycastsInClass(Pawn pawn, string classIdentifier)
         {
-            Logger.Debug($"[CAP] VPE Patch: GetPsycastsInClass called for {(pawn?.LabelShort ?? "null")} class='{classIdentifier}'");
+            Logger.Debug($"VPE Patch: GetPsycastsInClass called for {(pawn?.LabelShort ?? "null")} class='{classIdentifier}'");
 
             try
             {
@@ -204,12 +204,12 @@ namespace CAP_ChatInteractive.Patch.VPE
                     }
                 }
 
-                Logger.Debug($"[RICS] VPE Patch: Class '{result.ClassLabel}' returned {result.Abilities.Count} owned abilities");
+                Logger.Debug($"VPE Patch: Class '{result.ClassLabel}' returned {result.Abilities.Count} owned abilities");
                 return result;
             }
             catch (Exception ex)
             {
-                Logger.Error($"[RICS] VPE Patch GetPsycastsInClass error: {ex}");
+                Logger.Error($"VPE Patch GetPsycastsInClass error: {ex}");
                 return new VPEClassInfo { Error = ex.Message };
             }
         }
@@ -240,7 +240,7 @@ namespace CAP_ChatInteractive.Patch.VPE
             }
             catch (Exception ex)
             {
-                Logger.Debug($"[CAP] VPE Patch: GetPathAbilitiesAsDefs failed: {ex.Message}");
+                Logger.Debug($"VPE Patch: GetPathAbilitiesAsDefs failed: {ex.Message}");
             }
 
             return list;
@@ -256,7 +256,7 @@ namespace CAP_ChatInteractive.Patch.VPE
                 if (_compAbilitiesType == null)
                 {
                     _vefReflectionFailed = true;
-                    Logger.Warning("[CAP] VPE Patch: VEF.Abilities.CompAbilities type not found");
+                    Logger.Warning("VPE Patch: VEF.Abilities.CompAbilities type not found");
                     return;
                 }
 
@@ -268,7 +268,7 @@ namespace CAP_ChatInteractive.Patch.VPE
             catch (Exception ex)
             {
                 _vefReflectionFailed = true;
-                Logger.Warning($"[CAP] VPE Patch: VEF reflection init failed: {ex.Message}");
+                Logger.Warning($"VPE Patch: VEF reflection init failed: {ex.Message}");
             }
         }
 

@@ -1,4 +1,4 @@
-﻿// Dialog_StoreEditor.cs
+// Dialog_StoreEditor.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -1639,7 +1639,7 @@ namespace CAP_ChatInteractive
             {
                 if (item.Category == null)
                 {
-                    Logger.Warning($"[CAP] Store item '{item.DefName}' from mod '{item.ModSource}' has null category");
+                    Logger.Warning($"Store item '{item.DefName}' from mod '{item.ModSource}' has null category");
                 }
                 // Handle null categories - this is the fix!
                 string categoryKey = item.Category ?? "Uncategorized";

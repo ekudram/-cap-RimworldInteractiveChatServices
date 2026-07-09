@@ -1,4 +1,4 @@
-﻿// ChatCommand.cs
+// ChatCommand.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -203,7 +203,7 @@ namespace CAP_ChatInteractive
                 string newJson = JsonConvert.SerializeObject(allSettings, Formatting.Indented);
                 JsonFileManager.SaveFile("CommandSettings.json", newJson);
 
-                Logger.Debug("[CAP] CommandSettings.json saved (store toggle updated)");
+                Logger.Debug("CommandSettings.json saved (store toggle updated)");
             }
             catch (Exception ex)
             {

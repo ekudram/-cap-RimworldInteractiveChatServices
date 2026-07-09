@@ -1,4 +1,4 @@
-﻿// DyeCommandHandler.cs
+// DyeCommandHandler.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -226,7 +226,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             // Try exact match first (preserve case for defNames like "PitchBlack")
             if (rimColors.TryGetValue(colorInput, out Color rimColor))
             {
-                Logger.Debug($"[CAP] Found exact match: {colorInput} -> R:{rimColor.r} G:{rimColor.g} B:{rimColor.b}");
+                Logger.Debug($"Found exact match: {colorInput} -> R:{rimColor.r} G:{rimColor.g} B:{rimColor.b}");
                 return rimColor;
             }
 
@@ -236,7 +236,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             {
                 if (kvp.Key.ToLower() == lowerInput)
                 {
-                    Logger.Debug($"[CAP] Found case-insensitive match: {kvp.Key} -> R:{kvp.Value.r} G:{kvp.Value.g} B:{kvp.Value.b}");
+                    Logger.Debug($"Found case-insensitive match: {kvp.Key} -> R:{kvp.Value.r} G:{kvp.Value.g} B:{kvp.Value.b}");
                     return kvp.Value;
                 }
             }
@@ -247,7 +247,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             {
                 if (string.Equals(kvp.Key.Replace(" ", ""), noSpaces, System.StringComparison.OrdinalIgnoreCase))
                 {
-                    Logger.Debug($"[CAP] Found no-spaces match: {kvp.Key} -> R:{kvp.Value.r} G:{kvp.Value.g} B:{kvp.Value.b}");
+                    Logger.Debug($"Found no-spaces match: {kvp.Key} -> R:{kvp.Value.r} G:{kvp.Value.g} B:{kvp.Value.b}");
                     return kvp.Value;
                 }
             }
@@ -256,7 +256,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             var chatColor = FindChatColorDef(colorInput);
             if (chatColor.HasValue)
             {
-                Logger.Debug($"[CAP] Found ChatColorDef match: {colorInput}");
+                Logger.Debug($"Found ChatColorDef match: {colorInput}");
                 return chatColor.Value;
             }
 
@@ -264,7 +264,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             var hashColor = TryGetColorByHash(colorInput);
             if (hashColor.HasValue)
             {
-                Logger.Debug($"[CAP] Found color by hash: {colorInput}");
+                Logger.Debug($"Found color by hash: {colorInput}");
                 return hashColor.Value;
             }
 
@@ -272,7 +272,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             Color? helperColor = ColorHelper.ParseColor(colorInput);
             if (helperColor.HasValue)
             {
-                Logger.Debug($"[CAP] Using ColorHelper: {colorInput} -> R:{helperColor.Value.r} G:{helperColor.Value.g} B:{helperColor.Value.b}");
+                Logger.Debug($"Using ColorHelper: {colorInput} -> R:{helperColor.Value.r} G:{helperColor.Value.g} B:{helperColor.Value.b}");
             }
             return helperColor;
         }
@@ -367,7 +367,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             }
             catch (System.Exception ex)
             {
-                Logger.Warning($"[CAP] Failed to force hair graphics update for {pawn.LabelShort}: {ex.Message}");
+                Logger.Warning($"Failed to force hair graphics update for {pawn.LabelShort}: {ex.Message}");
             }
         }
 

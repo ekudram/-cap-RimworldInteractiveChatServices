@@ -1,4 +1,4 @@
-﻿// Dialog_PawnRaceSettings.cs
+// Dialog_PawnRaceSettings.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -889,7 +889,7 @@ namespace CAP_ChatInteractive
                     return mod.AlienProvider.GetAllowedXenotypes(raceDef);
                 }
 
-                Logger.Debug("[RICS] AlienProvider not available, falling back to all xenotypes");
+                Logger.Debug("AlienProvider not available, falling back to all xenotypes");
                 return DefDatabase<XenotypeDef>.AllDefs
                     .Where(x => !string.IsNullOrEmpty(x.defName))
                     .Select(x => x.defName)
@@ -898,7 +898,7 @@ namespace CAP_ChatInteractive
             }
             catch (Exception ex)
             {
-                Logger.Warning($"[RICS] Failed to get allowed xenotypes via provider: {ex.Message}");
+                Logger.Warning($"Failed to get allowed xenotypes via provider: {ex.Message}");
                 return DefDatabase<XenotypeDef>.AllDefs
                     .Where(x => !string.IsNullOrEmpty(x.defName))
                     .Select(x => x.defName)

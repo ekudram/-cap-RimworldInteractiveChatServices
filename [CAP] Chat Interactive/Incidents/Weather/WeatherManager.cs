@@ -1,4 +1,4 @@
-﻿// WeatherManager.cs
+// WeatherManager.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -61,7 +61,7 @@ namespace CAP_ChatInteractive.Incidents.Weather
                 }
 
                 isInitialized = true;
-                Logger.Message($"[CAP] Buyable Weather System initialized with {AllBuyableWeather.Count} weather types");
+                Logger.Message($"Buyable Weather System initialized with {AllBuyableWeather.Count} weather types");
             }
         }
         // Loads weather data from JSON file, handling corruption if necessary

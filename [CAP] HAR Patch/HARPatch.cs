@@ -1,4 +1,4 @@
-﻿// Copyright (c) Captolamia
+// Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
@@ -33,25 +33,25 @@ namespace CAP_ChatInteractive.Patch.HAR
 
         static HARPatch()
         {
-            Logger.Message("[CAP] HAR Patch Assembly Loaded!");
-            Logger.Debug("[CAP] HAR Patch static constructor executed");
+            Logger.Message("HAR Patch Assembly Loaded!");
+            Logger.Debug("HAR Patch static constructor executed");
         }
 
         public HARPatch()
         {
-            Logger.Message("[CAP] HAR Patch Instance Created!");
+            Logger.Message("HAR Patch Instance Created!");
         }
 
         public static class HARPatchVerifier
         {
             public static void VerifyLoaded()
             {
-                Logger.Message("[CAP] HAR Patch Verification Called - Assembly is LOADED!");
+                Logger.Message("HAR Patch Verification Called - Assembly is LOADED!");
             }
 
             public static bool IsAvailable()
             {
-                Logger.Debug("[CAP] HAR Patch Availability Check - YES");
+                Logger.Debug("HAR Patch Availability Check - YES");
                 return true;
             }
         }
@@ -259,7 +259,7 @@ namespace CAP_ChatInteractive.Patch.HAR
             // Edge case: Race has NO raceRestriction at all → treat exactly like Human
             if (restriction == null)
             {
-                Logger.Debug($"[HARPatch] No raceRestriction found for {raceDef.defName} → falling back to Human filtered list");
+                Logger.Debug($"[HARPatch] No raceRestriction found for {raceDef.defName} -> falling back to Human filtered list");
                 return GetAllowedXenotypesForHuman();
             }
 
@@ -294,7 +294,7 @@ namespace CAP_ChatInteractive.Patch.HAR
             }
 
             // CASE 4: No lists or only blacklist → Human list minus blacklist (Kurin case)
-            Logger.Debug($"[HARPatch] No xenotypeList or whiteList → starting from Human list and removing blacklist for {raceDef.defName}");
+            Logger.Debug($"[HARPatch] No xenotypeList or whiteList -> starting from Human list and removing blacklist for {raceDef.defName}");
             var finalList = GetAllowedXenotypesForHuman().ToList();
 
             if (restriction.blackXenotypeList != null && restriction.blackXenotypeList.Count > 0)

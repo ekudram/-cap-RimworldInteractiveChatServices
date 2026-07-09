@@ -1,4 +1,4 @@
-﻿// File: GenderSwapRecipeWorker.cs
+// File: GenderSwapRecipeWorker.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -79,7 +79,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             else
             {
-                Logger.Warning($"[RICS] No Torso found for {pawn.Name} in GetPartsToApplyOn - surgery unavailable.");
+                Logger.Warning($"No Torso found for {pawn.Name} in GetPartsToApplyOn - surgery unavailable.");
             }
         }
         
@@ -147,7 +147,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             if (pawn == null || pawn.health?.hediffSet == null)
             {
-                Logger.Warning($"[RICS] Pawn or HediffSet null in GetPartsToApplyOn for FatBody");
+                Logger.Warning($"Pawn or HediffSet null in GetPartsToApplyOn for FatBody");
                 yield break;
             }
 
@@ -161,7 +161,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             else
             {
-                Logger.Warning($"[RICS] No valid Torso found for {pawn.Name} - FatBody surgery unavailable.");
+                Logger.Warning($"No valid Torso found for {pawn.Name} - FatBody surgery unavailable.");
             }
         }
 
@@ -169,7 +169,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             bool canComplete = GetPartsToApplyOn(surgeryTarget, recipe).Any();
             // Optional: log for debugging
-            // Logger.Debug($"[RICS] FatBody CompletableEver for {surgeryTarget.Name}: {canComplete}");
+            // Logger.Debug($"FatBody CompletableEver for {surgeryTarget.Name}: {canComplete}");
             return canComplete;
         }
 
@@ -225,7 +225,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             if (pawn == null || pawn.health?.hediffSet == null)
             {
-                Logger.Warning($"[RICS] Pawn or HediffSet null in GetPartsToApplyOn for FatBody");
+                Logger.Warning($"Pawn or HediffSet null in GetPartsToApplyOn for FatBody");
                 yield break;
             }
 
@@ -239,7 +239,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             else
             {
-                Logger.Warning($"[RICS] No valid Torso found for {pawn.Name} - FatBody surgery unavailable.");
+                Logger.Warning($"No valid Torso found for {pawn.Name} - FatBody surgery unavailable.");
             }
         }
 
@@ -247,7 +247,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             bool canComplete = GetPartsToApplyOn(surgeryTarget, recipe).Any();
             // Optional: log for debugging
-            // Logger.Debug($"[RICS] FatBody CompletableEver for {surgeryTarget.Name}: {canComplete}");
+            // Logger.Debug($"FatBody CompletableEver for {surgeryTarget.Name}: {canComplete}");
             return canComplete;
         }
 
@@ -299,7 +299,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             if (pawn == null || pawn.health?.hediffSet == null)
             {
-                Logger.Warning($"[RICS] Pawn or HediffSet null in GetPartsToApplyOn for FatBody");
+                Logger.Warning($"Pawn or HediffSet null in GetPartsToApplyOn for FatBody");
                 yield break;
             }
 
@@ -313,7 +313,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             else
             {
-                Logger.Warning($"[RICS] No valid Torso found for {pawn.Name} - FatBody surgery unavailable.");
+                Logger.Warning($"No valid Torso found for {pawn.Name} - FatBody surgery unavailable.");
             }
         }
 
@@ -321,7 +321,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             bool canComplete = GetPartsToApplyOn(surgeryTarget, recipe).Any();
             // Optional: log for debugging
-            // Logger.Debug($"[RICS] FatBody CompletableEver for {surgeryTarget.Name}: {canComplete}");
+            // Logger.Debug($"FatBody CompletableEver for {surgeryTarget.Name}: {canComplete}");
             return canComplete;
         }
 
@@ -371,7 +371,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             if (pawn == null || pawn.health?.hediffSet == null)
             {
-                Logger.Warning($"[RICS] Pawn or HediffSet null in GetPartsToApplyOn for FatBody");
+                Logger.Warning($"Pawn or HediffSet null in GetPartsToApplyOn for FatBody");
                 yield break;
             }
 
@@ -385,7 +385,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             else
             {
-                Logger.Warning($"[RICS] No valid Torso found for {pawn.Name} - FatBody surgery unavailable.");
+                Logger.Warning($"No valid Torso found for {pawn.Name} - FatBody surgery unavailable.");
             }
         }
 
@@ -393,7 +393,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             bool canComplete = GetPartsToApplyOn(surgeryTarget, recipe).Any();
             // Optional: log for debugging
-            // Logger.Debug($"[RICS] FatBody CompletableEver for {surgeryTarget.Name}: {canComplete}");
+            // Logger.Debug($"FatBody CompletableEver for {surgeryTarget.Name}: {canComplete}");
             return canComplete;
         }
 
@@ -444,7 +444,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             if (pawn == null || pawn.health?.hediffSet == null)
             {
-                Logger.Warning($"[RICS] Pawn or HediffSet null in GetPartsToApplyOn for FatBody");
+                Logger.Warning($"Pawn or HediffSet null in GetPartsToApplyOn for FatBody");
                 yield break;
             }
 
@@ -458,7 +458,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             else
             {
-                Logger.Warning($"[RICS] No valid Torso found for {pawn.Name} - FatBody surgery unavailable.");
+                Logger.Warning($"No valid Torso found for {pawn.Name} - FatBody surgery unavailable.");
             }
         }
 
@@ -466,7 +466,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             bool canComplete = GetPartsToApplyOn(surgeryTarget, recipe).Any();
             // Optional: log for debugging
-            // Logger.Debug($"[RICS] FatBody CompletableEver for {surgeryTarget.Name}: {canComplete}");
+            // Logger.Debug($"FatBody CompletableEver for {surgeryTarget.Name}: {canComplete}");
             return canComplete;
         }
 

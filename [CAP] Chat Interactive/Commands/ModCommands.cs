@@ -1,4 +1,4 @@
-﻿// ModCommands.cs
+// ModCommands.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -268,7 +268,7 @@ namespace CAP_ChatInteractive.Commands.ModCommands
 
                 //string statusWord = newState ? "**ENABLED**" : "**DISABLED**";
                 string statusWord = newState ? "RICS.CC.common.store.enabled".Translate() : "RICS.CC.common.store.disabled".Translate();
-                Logger.Message($"[CAP] Store commands toggled to {statusWord} by {user.Username}");
+                Logger.Message($"Store commands toggled to {statusWord} by {user.Username}");
 
                 // return $"Store commands now {statusWord}!";
                 return "RICS.CC.Togglestore.success".Translate(statusWord);

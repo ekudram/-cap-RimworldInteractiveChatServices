@@ -1,4 +1,4 @@
-﻿// StoreInventory.cs
+// StoreInventory.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -83,7 +83,7 @@ namespace CAP_ChatInteractive.Store
                 }
 
                 isInitialized = true;
-                Logger.Message($"[CAP] Store Inventory initialized with {AllStoreItems.Count} items");
+                Logger.Message($"Store Inventory initialized with {AllStoreItems.Count} items");
             }
         }
 

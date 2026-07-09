@@ -1,4 +1,4 @@
-﻿// Filename: ItemDeliveryHelper.cs
+// Filename: ItemDeliveryHelper.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -974,7 +974,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     if (marker != null && IsValidDeliveryPosition(marker.Position, map))
                     {
                         dropPos = marker.Position;
-                        Logger.Debug($"[RICS] Using Rimazon Drop Marker at {dropPos}");
+                        Logger.Debug($"Using Rimazon Drop Marker at {dropPos}");
                         return true;
                     }
                 }
@@ -1025,7 +1025,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 if (CellFinderLoose.TryFindRandomNotEdgeCellWith(10,
                     c => IsValidDeliveryPosition(c, map, strict: false), map, out dropPos))
                 {
-                    Logger.Warning($"[RICS] Using relaxed valid cell as absolute last resort: {dropPos}");
+                    Logger.Warning($"Using relaxed valid cell as absolute last resort: {dropPos}");
                     return true;
                 }
 
@@ -1033,7 +1033,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
             catch (Exception ex)
             {
-                Logger.Error($"[RICS] Critical error in TryFindSafeDropPosition: {ex}");
+                Logger.Error($"Critical error in TryFindSafeDropPosition: {ex}");
                 dropPos = map?.Center ?? IntVec3.Zero;
                 return false;
             }
@@ -1149,7 +1149,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     if (!spawnPosition.InBounds(map) || !IsValidDeliveryPosition(spawnPosition, map, strict: false))
                     {
                         spawnPosition = map.Center;
-                        Logger.Warning($"[RICS] Forced spawn at map center due to no valid cells");
+                        Logger.Warning($"Forced spawn at map center due to no valid cells");
                     }
 
                     Logger.Debug($"Spawning {pawnsToDeliver.Count} pawns at position: {spawnPosition}");
@@ -1175,13 +1175,13 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                             {
                                 spawnPosition = betterSpot;
                                 movedOffRoof = true;
-                                Logger.Debug($"[RICS] Moved pawn off thick roof (wider search) to {betterSpot}");
+                                Logger.Debug($"Moved pawn off thick roof (wider search) to {betterSpot}");
                             }
 
                             // === LAST RESORT: CRASH THROUGH THE ROOF (Aggressive & Immersive) ===
                             if (!movedOffRoof)
                             {
-                                Logger.Warning($"[RICS] CRASH LANDING: No safe non-roof spot found. Pawn smashing through thick roof at {spawnPosition}");
+                                Logger.Warning($"CRASH LANDING: No safe non-roof spot found. Pawn smashing through thick roof at {spawnPosition}");
 
                                 // Spawn the pawn
                                 GenSpawn.Spawn(pawn, spawnPosition, map);
@@ -1228,7 +1228,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                                 MoteMaker.ThrowText(spawnPosition.ToVector3Shifted(), map, "CRASH!", Color.red, 2.8f);
 
-                                Logger.Debug($"[RICS] Crash landing destroyed {destroyedCount} things");
+                                Logger.Debug($"Crash landing destroyed {destroyedCount} things");
                             }
                         }
 

@@ -1,4 +1,4 @@
-﻿// HealPawnCommandHandler.cs
+// HealPawnCommandHandler.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -153,7 +153,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (successfulHeals == 0)
             {
                 viewer.GiveCoins(totalCost);
-                Logger.Warning($"[RICS] HealSelf charged {totalCost} but no serum effect applied for {messageWrapper.Username} — coins refunded.");
+                Logger.Warning($"HealSelf charged {totalCost} but no serum effect applied for {messageWrapper.Username} — coins refunded.");
                 return "RICS.HPCH.Return.NoInjuriesHealed".Translate();
             }
 
@@ -281,7 +281,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (successfulHeals == 0)
             {
                 viewer.GiveCoins(totalCost);
-                Logger.Warning($"[RICS] HealSpecificUser charged {totalCost} but no serum effect applied for {messageWrapper.Username} healing {targetUsername} — coins refunded.");
+                Logger.Warning($"HealSpecificUser charged {totalCost} but no serum effect applied for {messageWrapper.Username} healing {targetUsername} — coins refunded.");
                 return "RICS.HPCH.Return.NoInjuriesHealed".Translate();
             }
 
@@ -646,7 +646,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var serumDef = DefDatabase<ThingDef>.GetNamedSilentFail("MechSerumHealer");
             if (serumDef == null)
             {
-                Logger.Error("[RICS] MechSerumHealer def not found — cannot apply heal effect.");
+                Logger.Error("MechSerumHealer def not found — cannot apply heal effect.");
                 return false;
             }
 
@@ -668,11 +668,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             {
                                 compUseEffect.DoEffect(pawn);
                                 anyEffectApplied = true;
-                                Logger.Debug($"[RICS] Applied {comp.GetType().Name} (Healer Serum) to {pawn.Name}");
+                                Logger.Debug($"Applied {comp.GetType().Name} (Healer Serum) to {pawn.Name}");
                             }
                             else
                             {
-                                Logger.Debug($"[RICS] CompUseEffect {comp.GetType().Name} rejected: {report.Reason}");
+                                Logger.Debug($"CompUseEffect {comp.GetType().Name} rejected: {report.Reason}");
                             }
                         }
                     }
@@ -686,7 +686,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             catch (Exception ex)
             {
-                Logger.Error($"[RICS] Error applying Healer Serum effect: {ex}");
+                Logger.Error($"Error applying Healer Serum effect: {ex}");
             }
             finally
             {

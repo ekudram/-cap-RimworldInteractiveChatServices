@@ -42,56 +42,39 @@
     </Reference>
   </ItemGroup>
 
+  <!-- System refs: never copy into optional patch folder (main mod / game provide them). -->
   <ItemGroup>
     <Reference Update="System">
       <Private>False</Private>
-      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-      <CopyLocal>false</CopyLocal>
     </Reference>
     <Reference Update="System.Core">
       <Private>False</Private>
-      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-      <CopyLocal>false</CopyLocal>
     </Reference>
     <Reference Update="System.Data">
       <Private>False</Private>
-      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-      <CopyLocal>false</CopyLocal>
     </Reference>
     <Reference Update="System.Drawing">
       <Private>False</Private>
-      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-      <CopyLocal>false</CopyLocal>
     </Reference>
     <Reference Update="System.IO.Compression.FileSystem">
       <Private>False</Private>
-      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-      <CopyLocal>false</CopyLocal>
     </Reference>
     <Reference Update="System.Numerics">
       <Private>False</Private>
-      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-      <CopyLocal>false</CopyLocal>
     </Reference>
     <Reference Update="System.Runtime.Serialization">
       <Private>False</Private>
-      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-      <CopyLocal>false</CopyLocal>
     </Reference>
     <Reference Update="System.Xml">
       <Private>False</Private>
-      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-      <CopyLocal>false</CopyLocal>
     </Reference>
     <Reference Update="System.Xml.Linq">
       <Private>False</Private>
-      <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-      <CopyLocal>false</CopyLocal>
     </Reference>
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <!-- Keep optional VPE folder clean: only the patch DLL should live here. -->
+    <!-- Safety net only: patch folder must contain solely [CAP] VPE Patch.dll (+ no deps). -->
     <Exec Command="del &quot;$(OutputPath)\[CAP] VPE Patch.dll.config&quot;" IgnoreExitCode="true" />
     <Exec Command="del &quot;$(OutputPath)\[CAP] Chat Interactive.dll&quot;" IgnoreExitCode="true" />
     <Exec Command="del &quot;$(OutputPath)\[CAP] Chat Interactive.pdb&quot;" IgnoreExitCode="true" />

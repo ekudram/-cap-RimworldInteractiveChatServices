@@ -1,4 +1,4 @@
-﻿// CAPChatInteractiveMod.cs
+// CAPChatInteractiveMod.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive aka RICS (Rimworld Interactive Chat System).
 // 
@@ -59,7 +59,7 @@ namespace CAP_ChatInteractive
             // - Any future core patches you add
             var harmony = new Harmony("com.captolamia.rics");
             harmony.PatchAll();
-            Logger.Debug("[RICS] Harmony patches applied (including AI letter notifications)");
+            Logger.Debug("Harmony patches applied (including AI letter notifications)");
             // ============================================================
 
             // Ensure modVersion is set in saved settings if it's empty
@@ -111,7 +111,7 @@ namespace CAP_ChatInteractive
             }
             catch (System.Exception ex)
             {
-                Logger.Warning($"[RICS] Failed to pre-initialize Viewers/GameComponent: {ex.Message}");
+                Logger.Warning($"Failed to pre-initialize Viewers/GameComponent: {ex.Message}");
             }
 
             // Ensure AI Commands folders exist early + cleanup any leftover files from previous bot crashes.
@@ -121,12 +121,12 @@ namespace CAP_ChatInteractive
                 int cleaned = AI.AIChatBotService.CleanupLeftoverAICommandFiles();
                 if (cleaned > 0)
                 {
-                    Logger.Debug($"[RICS] Startup cleanup removed {cleaned} stale AI command files.");
+                    Logger.Debug($"Startup cleanup removed {cleaned} stale AI command files.");
                 }
             }
             catch (Exception ex)
             {
-                Logger.Warning($"[RICS] Error during AI leftover file cleanup: {ex.Message}");
+                Logger.Warning($"Error during AI leftover file cleanup: {ex.Message}");
             }
 
 
@@ -229,7 +229,7 @@ namespace CAP_ChatInteractive
                 }
                 else
                 {
-                    Logger.Error("[CAP] HAR Patch assembly not found in loaded assemblies");
+                    Logger.Error("HAR Patch assembly not found in loaded assemblies");
 
                     // Log all loaded assemblies for debugging
                     Logger.Debug("=== LOADED ASSEMBLIES ===");
@@ -309,7 +309,7 @@ namespace CAP_ChatInteractive
                 var provider = Activator.CreateInstance(vpePatchType) as IVPEPsycastProvider;
                 if (provider != null)
                 {
-                    Logger.Message("[RICS] VPE Patch Instance Created!");
+                    Logger.Message("VPE Patch instance created");
                     return provider;
                 }
             }

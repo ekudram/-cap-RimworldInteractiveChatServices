@@ -1,4 +1,4 @@
-﻿// IncidentsManager.cs
+// IncidentsManager.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -84,7 +84,7 @@ namespace CAP_ChatInteractive.Incidents
                 }
 
                 isInitialized = true;
-                Logger.Message($"[CAP] Incidents System initialized with {AllBuyableIncidents.Count} incidents");
+                Logger.Message($"Incidents System initialized with {AllBuyableIncidents.Count} incidents");
             }
         }
         // Loads incidents from the JSON file, with validation and error handling

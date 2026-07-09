@@ -1,4 +1,4 @@
-﻿// Copyright (c) Captolamia
+// Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
@@ -231,7 +231,7 @@ namespace CAP_ChatInteractive
             if (def?.building?.defaultStorageSettings != null)
                 return def.building.defaultStorageSettings;
 
-            //Logger.Debug($"[RICS] No defaultStorageSettings on def (common with storage tweak mods)");
+            //Logger.Debug($"No defaultStorageSettings on def (common with storage tweak mods)");
             return null;
         }
 
@@ -259,7 +259,7 @@ namespace CAP_ChatInteractive
             base.SpawnSetup(map, respawningAfterReload);
 
             _ = InnerContainer;
-            //Logger.Debug($"[RICS] Locker has {innerContainer.Count} items after spawn");
+            //Logger.Debug($"Locker has {innerContainer.Count} items after spawn");
 
             _ = GetStoreSettings();
 

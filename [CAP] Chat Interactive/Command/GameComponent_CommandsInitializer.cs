@@ -1,4 +1,4 @@
-﻿// GameComponent_CommandsInitializer.cs
+// GameComponent_CommandsInitializer.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -83,7 +83,7 @@ namespace CAP_ChatInteractive
                 EnsureShuffleAdulthoodSettingsMigrated();
 
                 commandsInitialized = true;
-                Logger.Message("[CAP] Commands initialized successfully");
+                Logger.Message("Commands initialized successfully");
             }
         }
 
@@ -100,7 +100,7 @@ namespace CAP_ChatInteractive
             // FORCE check for any missing commands and add them
             ForceAddMissingCommands();
 
-            Logger.Message($"=== [CAP] Command settings initialized ===");
+            Logger.Message($"=== Command settings initialized ===");
         }
 
         /// <summary>
@@ -137,7 +137,7 @@ namespace CAP_ChatInteractive
                 if (changed)
                 {
                     JsonFileManager.SaveFile("CommandSettings.json", JsonConvert.SerializeObject(current, Formatting.Indented));
-                    Logger.Message("[CAP] Ensured custom settings defaults for commands declaring them");
+                    Logger.Message("Ensured custom settings defaults for commands declaring them");
                 }
             }
             catch (Exception ex)
@@ -198,7 +198,7 @@ namespace CAP_ChatInteractive
                 {
                     string newJson = JsonConvert.SerializeObject(currentSettings, Formatting.Indented);
                     JsonFileManager.SaveFile("CommandSettings.json", newJson);
-                    Logger.Message("[CAP] Added missing commands to settings");
+                    Logger.Message("Added missing commands to settings");
                 }
             }
             catch (Exception ex)
@@ -394,7 +394,7 @@ namespace CAP_ChatInteractive
         {
             try
             {
-                Logger.Message("[CAP] Validating JSON permissions against XML Defs...");
+                Logger.Message("Validating JSON permissions against XML Defs...");
 
                 // Load current JSON
                 string jsonContent = JsonFileManager.LoadFile("CommandSettings.json");
@@ -441,11 +441,11 @@ namespace CAP_ChatInteractive
                     // Save the fixed JSON
                     string fixedJson = JsonConvert.SerializeObject(currentSettings, Formatting.Indented);
                     JsonFileManager.SaveFile("CommandSettings.json", fixedJson);
-                    Logger.Message("[CAP] Fixed JSON permissions to match XML Defs");
+                    Logger.Message("Fixed JSON permissions to match XML Defs");
                 }
                 else
                 {
-                    Logger.Message("[CAP] All JSON permissions match XML Defs");
+                    Logger.Message("All JSON permissions match XML Defs");
                 }
             }
             catch (Exception ex)

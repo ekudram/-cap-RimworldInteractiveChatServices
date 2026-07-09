@@ -1,4 +1,4 @@
-﻿// Traits.cs
+// Traits.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -68,7 +68,7 @@ namespace CAP_ChatInteractive.Traits
                 }
 
                 isInitialized = true;
-                Logger.Message($"[CAP] Traits System initialized with {AllBuyableTraits.Count} traits");
+                Logger.Message($"Traits System initialized with {AllBuyableTraits.Count} traits");
             }
         }
 
@@ -294,7 +294,7 @@ namespace CAP_ChatInteractive.Traits
 
             if (anomalyTraitsDisabled > 0)
             {
-                Logger.Message($"[CAP] Anomaly DLC: {anomalyTraitsDisabled} traits disabled by default");
+                Logger.Message($"Anomaly DLC: {anomalyTraitsDisabled} traits disabled by default");
             }
         }
 
@@ -474,7 +474,7 @@ namespace CAP_ChatInteractive.Traits
 
             if (anomalyTraitsDisabled > 0)
             {
-                Logger.Message($"[CAP] Anomaly DLC: {anomalyTraitsDisabled} new traits disabled by default");
+                Logger.Message($"Anomaly DLC: {anomalyTraitsDisabled} new traits disabled by default");
             }
 
             if (addedTraits > 0 || removedTraits > 0 || updatedTraits > 0)

@@ -1,4 +1,4 @@
-﻿// Source/RICS/Services/KickService.cs
+// Source/RICS/Services/KickService.cs
 // Copyright (c) Captolamia
 // This file is part of RICS (Rimworld Interactive Chat Services).
 //
@@ -165,7 +165,7 @@ namespace CAP_ChatInteractive
                 LongEventHandler.ExecuteWhenFinished(() =>
                 {
                     OnConnected?.Invoke(_settings.ChannelName);
-                    Logger.Message($"[RICS] SUCCESS: Joined Kick channel {_settings.ChannelName}");
+                    Logger.Message($"SUCCESS: Joined Kick channel {_settings.ChannelName}");
                     Messages.Message($"[RICS] Successfully connected to Kick: {_settings.ChannelName}", MessageTypeDefOf.TaskCompletion);
                 });
             }
