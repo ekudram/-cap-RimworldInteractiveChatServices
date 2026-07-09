@@ -913,51 +913,32 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 return spawnPos2;
             }
 
+
             // Final fallback: use the preferred position
             // //LoggerDebug($"Using preferred position as fallback: {preferredPos}");
             return preferredPos;
         }
 
-        public static bool IsValidDeliveryPosition(IntVec3 pos, Map map)
+        public static bool IsValidDeliveryPosition(IntVec3 pos, Map map, bool strict = true)
         {
-            if (map == null)
-            {
-                //LoggerDebug("Map is null");
-                return false;
-            }
+            if (map == null) return false;
+            if (!pos.InBounds(map)) return false;
 
-            if (!pos.InBounds(map))
+            if (strict)
             {
-                //LoggerDebug($"Position {pos} is out of map bounds (map size: {map.Size})");
-                return false;
-            }
+                if (pos.Fogged(map)) return false;
+                if (!pos.Standable(map) && !GenGrid.Walkable(pos, map)) return false;
 
-            if (pos.Fogged(map))
-            {
-                //LoggerDebug($"Position {pos} is fogged");
-                return false;
-            }
-
-            // Check if position is standable or can be roof-punched
-            if (!pos.Standable(map))
-            {
-                // Check if we can place on this cell (non-standable but passable)
-                if (!GenGrid.Walkable(pos, map))
-                {
-                    //LoggerDebug($"Position {pos} is not walkable or standable");
+                Building edifice = pos.GetEdifice(map);
+                if (edifice != null && edifice.def.passability == Traversability.Impassable && edifice.def.building.isNaturalRock)
                     return false;
-                }
             }
-
-            // Additional check: ensure it's not in a solid rock wall
-            Building edifice = pos.GetEdifice(map);
-            if (edifice != null && edifice.def.passability == Traversability.Impassable && edifice.def.building.isNaturalRock)
+            else
             {
-                //LoggerDebug($"Position {pos} is in solid rock");
-                return false;
+                // Last-resort mode: allow more cells
+                if (!GenGrid.Walkable(pos, map)) return false;
             }
 
-            //LoggerDebug($"Position {pos} is valid for delivery");
             return true;
         }
 
@@ -1040,10 +1021,15 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     }
                 }
 
-                // Final fallback
-                dropPos = map.Center;
-                Logger.Warning($"[RICS] Pawn drop position fallback to map center: {dropPos}");
-                return true;
+                // Final fallback - relaxed validation
+                if (CellFinderLoose.TryFindRandomNotEdgeCellWith(10,
+                    c => IsValidDeliveryPosition(c, map, strict: false), map, out dropPos))
+                {
+                    Logger.Warning($"[RICS] Using relaxed valid cell as absolute last resort: {dropPos}");
+                    return true;
+                }
+
+                return false;
             }
             catch (Exception ex)
             {
@@ -1158,6 +1144,13 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 {
                     // Get the final spawn position using our improved finder
                     spawnPosition = FindPawnSpawnPosition(map, GetCustomDropSpot(map), viewerPawn);
+
+                    // Safety: if still invalid, force map center
+                    if (!spawnPosition.InBounds(map) || !IsValidDeliveryPosition(spawnPosition, map, strict: false))
+                    {
+                        spawnPosition = map.Center;
+                        Logger.Warning($"[RICS] Forced spawn at map center due to no valid cells");
+                    }
 
                     Logger.Debug($"Spawning {pawnsToDeliver.Count} pawns at position: {spawnPosition}");
 
