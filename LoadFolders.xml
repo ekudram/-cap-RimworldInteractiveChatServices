@@ -1,8 +1,12 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mirror of the mod-root LoadFolders.xml (kept in Source for reference).
+     The file RimWorld reads is: ..\LoadFolders.xml -->
 <loadFolders>
   <v1.6>
+    <li>/</li>
+    <li>Languages</li>
     <li>1.6</li>
-    <li>1.6/Assemblies</li>
-    <li IfModActive="erdelf.HumanoidAlienRaces">1.6/Patches/HAR/Assemblies</li>
+    <li IfModActive="erdelf.HumanoidAlienRaces">Patches/1.6/HAR</li>
+    <li IfModActiveAll="VanillaExpanded.VPsycastsE,OskarPotocki.VanillaFactionsExpanded.Core">Patches/1.6/VPE</li>
   </v1.6>
 </loadFolders>

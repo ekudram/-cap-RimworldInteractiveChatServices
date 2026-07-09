@@ -289,8 +289,9 @@ namespace CAP_ChatInteractive
         {
             try
             {
+                // Assembly name matches the VPE patch project / DLL: "[CAP] VPE Patch"
                 Assembly vpePatchAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                    .FirstOrDefault(a => a.GetName().Name == "[RICS] VPE Patch");
+                    .FirstOrDefault(a => a.GetName().Name == "[CAP] VPE Patch");
 
                 if (vpePatchAssembly == null)
                 {

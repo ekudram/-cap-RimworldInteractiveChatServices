@@ -1,35 +1,38 @@
-﻿// VPEPatch.cs
+// VPEPatch.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
-// 
+//
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or
 // (at an option) any later version.
-// 
+//
 // CAP Chat Interactive is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Affero General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // VPE compatibility patch. Kept separate from the HAR patch for readability.
 // Implements IVPEPsycastProvider so the main mod can get clean VPE psycast data.
-
-// VPEPatch.cs
-// ... (keep your copyright header)
+//
+// IMPORTANT: Do not put VEF.Abilities.AbilityDef (or other VEF types) in method
+// signatures, fields, or lambda captures. RimWorld's type scanner calls GetFields
+// on compiler-generated display classes; if VEF is missing/mismatched that throws
+// TypeLoadException even when the method is never called.
 
 using _CAP__Chat_Interactive.Interfaces;
 using HarmonyLib;
 using JetBrains.Annotations;
 using RimWorld;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using VanillaPsycastsExpanded;
-using VEF.Abilities;
 using Verse;
 
 namespace CAP_ChatInteractive.Patch.VPE
@@ -38,6 +41,13 @@ namespace CAP_ChatInteractive.Patch.VPE
     public class VPEPatch : IVPEPsycastProvider
     {
         public string ModId => "VanillaExpanded.VPsycastsE";
+
+        // Cached reflection — resolved only when first needed (VPE+VEF must be present).
+        private static Type _compAbilitiesType;
+        private static MethodInfo _hasAbilityMethod;
+        private static PropertyInfo _learnedAbilitiesProp;
+        private static bool _vefReflectionReady;
+        private static bool _vefReflectionFailed;
 
         static VPEPatch()
         {
@@ -52,8 +62,6 @@ namespace CAP_ChatInteractive.Patch.VPE
 
         public VPEBasicPsycastInfo GetBasicPsycastInfo(Pawn pawn)
         {
-            // ... (your existing implementation - unchanged, it doesn't reference VEF directly)
-            // Keep as-is
             Logger.Debug($"[CAP] VPE Patch: GetBasicPsycastInfo called for {(pawn?.LabelShort ?? "null")}");
             try
             {
@@ -87,7 +95,7 @@ namespace CAP_ChatInteractive.Patch.VPE
                             info.PsyfocusNeededForNextLevel = Math.Max(0f, required - hediff.experience);
                         }
                     }
-                    catch { }
+                    catch { /* optional VPE level-exp path */ }
                 }
 
                 Logger.Debug($"[CAP] VPE Patch: level={info.Level}, psyfocus={info.CurrentPsyfocus:F2}/{info.MaxPsyfocus:F2}, heat={info.CurrentHeat:F1}/{info.MaxHeat:F1}");
@@ -117,8 +125,8 @@ namespace CAP_ChatInteractive.Patch.VPE
 
                 int currentLevel = hediff.level;
 
-                // Fuzzy match (unchanged)
-                string search = classIdentifier.ToLowerInvariant().Replace(" ", "").Replace("_", "").Replace("-", "").Replace(".", "");
+                string search = classIdentifier.ToLowerInvariant()
+                    .Replace(" ", "").Replace("_", "").Replace("-", "").Replace(".", "");
 
                 PsycasterPathDef matchedPath = null;
                 foreach (var p in DefDatabase<PsycasterPathDef>.AllDefsListForReading)
@@ -152,44 +160,45 @@ namespace CAP_ChatInteractive.Patch.VPE
                     Abilities = new List<VPEOwnedAbility>()
                 };
 
-                // CRITICAL FIX: Avoid direct VEF.Abilities.AbilityDef reference on load
-                var comp = pawn.GetComp<CompAbilities>();
-                var pathAbilities = GetPathAbilitiesSafe(matchedPath);  // New helper
+                // Use Def (not VEF.Abilities.AbilityDef) so nested display classes never
+                // store a field typed as AbilityDef — that was the TypeLoadException source.
+                List<Def> pathAbilities = GetPathAbilitiesAsDefs(matchedPath);
+                object compAbilities = GetCompAbilitiesInstance(pawn);
 
-                foreach (var ad in pathAbilities)
+                foreach (Def ad in pathAbilities)
                 {
-                    // ... rest of your logic for ext, reqLevel, owns checks (unchanged)
+                    if (ad == null) continue;
+
+                    // Snapshot strings so lambdas never capture Def/AbilityDef instances.
+                    string adDefName = ad.defName;
+                    string adLabel = ad.LabelCap.ToString() ?? ad.label ?? adDefName;
+
                     var ext = ad.GetModExtension<AbilityExtension_Psycast>();
                     int reqLevel = ext?.level ?? 0;
                     if (reqLevel > currentLevel) continue;
 
                     bool owns = false;
-                    if (comp != null)
-                    {
-                        try { owns = comp.HasAbility(ad); } catch { }
-                    }
+                    if (compAbilities != null)
+                        owns = CompHasAbility(compAbilities, ad);
+
                     if (!owns && pawn.abilities != null)
                     {
                         try
                         {
-                            owns = pawn.abilities.AllAbilitiesForReading.Any(ab => ab?.def?.defName == ad.defName);
+                            // Capture string only — avoids DisplayClass field of type AbilityDef.
+                            owns = pawn.abilities.AllAbilitiesForReading.Any(ab => ab?.def?.defName == adDefName);
                         }
-                        catch { }
+                        catch { /* vanilla tracker may be unavailable */ }
                     }
-                    if (!owns && comp?.LearnedAbilities != null)
-                    {
-                        try
-                        {
-                            owns = comp.LearnedAbilities.Any(a => a?.def?.defName == ad.defName);
-                        }
-                        catch { }
-                    }
+
+                    if (!owns && compAbilities != null)
+                        owns = CompLearnedContains(compAbilities, adDefName);
 
                     if (owns)
                     {
                         result.Abilities.Add(new VPEOwnedAbility
                         {
-                            Label = ad.LabelCap.ToString() ?? ad.label ?? ad.defName,
+                            Label = adLabel,
                             RequiredLevel = reqLevel
                         });
                     }
@@ -205,23 +214,134 @@ namespace CAP_ChatInteractive.Patch.VPE
             }
         }
 
-        // NEW HELPER: Defers VEF type resolution until actually needed
-        private List<VEF.Abilities.AbilityDef> GetPathAbilitiesSafe(PsycasterPathDef path)
+        /// <summary>
+        /// Reads PsycasterPathDef.abilities without naming VEF.Abilities.AbilityDef in signatures.
+        /// Returns Verse.Def list so callers stay free of VEF field types.
+        /// </summary>
+        private static List<Def> GetPathAbilitiesAsDefs(PsycasterPathDef path)
         {
+            var list = new List<Def>();
+            if (path == null) return list;
+
             try
             {
-                // Use reflection or indirect access to avoid compile-time VEF dep in closure
-                var abilitiesField = AccessTools.Field(typeof(PsycasterPathDef), "abilities");
-                if (abilitiesField != null)
+                FieldInfo abilitiesField = AccessTools.Field(typeof(PsycasterPathDef), "abilities");
+                if (abilitiesField == null) return list;
+
+                object raw = abilitiesField.GetValue(path);
+                if (raw is IEnumerable enumerable)
                 {
-                    return abilitiesField.GetValue(path) as List<VEF.Abilities.AbilityDef> ?? new List<VEF.Abilities.AbilityDef>();
+                    foreach (object item in enumerable)
+                    {
+                        if (item is Def def)
+                            list.Add(def);
+                    }
                 }
-                return new List<VEF.Abilities.AbilityDef>();
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"[CAP] VPE Patch: GetPathAbilitiesAsDefs failed: {ex.Message}");
+            }
+
+            return list;
+        }
+
+        private static void EnsureVefReflection()
+        {
+            if (_vefReflectionReady || _vefReflectionFailed) return;
+
+            try
+            {
+                _compAbilitiesType = AccessTools.TypeByName("VEF.Abilities.CompAbilities");
+                if (_compAbilitiesType == null)
+                {
+                    _vefReflectionFailed = true;
+                    Logger.Warning("[CAP] VPE Patch: VEF.Abilities.CompAbilities type not found");
+                    return;
+                }
+
+                _hasAbilityMethod = AccessTools.Method(_compAbilitiesType, "HasAbility", new[] { typeof(Def) })
+                    ?? AccessTools.Method(_compAbilitiesType, "HasAbility");
+                _learnedAbilitiesProp = AccessTools.Property(_compAbilitiesType, "LearnedAbilities");
+                _vefReflectionReady = true;
+            }
+            catch (Exception ex)
+            {
+                _vefReflectionFailed = true;
+                Logger.Warning($"[CAP] VPE Patch: VEF reflection init failed: {ex.Message}");
+            }
+        }
+
+        private static object GetCompAbilitiesInstance(Pawn pawn)
+        {
+            EnsureVefReflection();
+            if (_compAbilitiesType == null || pawn == null) return null;
+
+            try
+            {
+                // ThingWithComps.GetComp&lt;T&gt; via non-generic path
+                MethodInfo getComp = AccessTools.Method(typeof(ThingWithComps), "GetComp");
+                if (getComp == null) return null;
+                MethodInfo generic = getComp.MakeGenericMethod(_compAbilitiesType);
+                return generic.Invoke(pawn, null);
             }
             catch
             {
-                return new List<VEF.Abilities.AbilityDef>();
+                // Fallback: walk AllComps by type name
+                try
+                {
+                    if (pawn.AllComps == null) return null;
+                    foreach (ThingComp c in pawn.AllComps)
+                    {
+                        if (c != null && c.GetType() == _compAbilitiesType)
+                            return c;
+                    }
+                }
+                catch { /* ignore */ }
+                return null;
             }
+        }
+
+        private static bool CompHasAbility(object compAbilities, Def abilityDef)
+        {
+            EnsureVefReflection();
+            if (compAbilities == null || abilityDef == null || _hasAbilityMethod == null) return false;
+
+            try
+            {
+                object result = _hasAbilityMethod.Invoke(compAbilities, new object[] { abilityDef });
+                return result is bool b && b;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool CompLearnedContains(object compAbilities, string abilityDefName)
+        {
+            EnsureVefReflection();
+            if (compAbilities == null || string.IsNullOrEmpty(abilityDefName) || _learnedAbilitiesProp == null)
+                return false;
+
+            try
+            {
+                object learned = _learnedAbilitiesProp.GetValue(compAbilities);
+                if (learned is not IEnumerable enumerable) return false;
+
+                foreach (object ability in enumerable)
+                {
+                    if (ability == null) continue;
+                    // VEF.Abilities.Ability has .def
+                    object defObj = AccessTools.Field(ability.GetType(), "def")?.GetValue(ability)
+                        ?? AccessTools.Property(ability.GetType(), "def")?.GetValue(ability);
+                    if (defObj is Def d && d.defName == abilityDefName)
+                        return true;
+                }
+            }
+            catch { /* ignore */ }
+
+            return false;
         }
     }
 }

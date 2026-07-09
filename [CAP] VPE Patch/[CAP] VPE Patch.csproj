@@ -3,7 +3,8 @@
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <RootNamespace>CAP_ChatInteractive.Patch.VPE</RootNamespace>
-    <OutputPath>C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\[CAP] Chat Interactive\Patches\1.6\Assemblies</OutputPath>
+    <!-- Isolated folder so LoadFolders can load VPE only when VPE is active (not shared with HAR). -->
+    <OutputPath>C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\[CAP] Chat Interactive\Patches\1.6\VPE\Assemblies</OutputPath>
     <DebugType>none</DebugType>
     <CopyLocal>False</CopyLocal>
     <LangVersion>12</LangVersion>
@@ -32,6 +33,9 @@
       <HintPath>..\..\..\..\..\..\workshop\content\294100\2842502659\1.6\Assemblies\VanillaPsycastsExpanded.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <!-- Needed at compile time (VPE types inherit VEF bases). Runtime: only load this assembly
+         when VPE+VEF are active (LoadFolders IfModActiveAll). Code still avoids AbilityDef
+         fields/lambda captures so type scanning is safer if VEF is partial. -->
     <Reference Include="VEF">
       <HintPath>..\..\..\..\..\..\workshop\content\294100\2023507013\1.6\Assemblies\VEF.dll</HintPath>
       <Private>False</Private>
@@ -87,7 +91,14 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="del &quot;$(OutputPath)\[CAP] VPE Patch.dll.config&quot;" />
+    <!-- Keep optional VPE folder clean: only the patch DLL should live here. -->
+    <Exec Command="del &quot;$(OutputPath)\[CAP] VPE Patch.dll.config&quot;" IgnoreExitCode="true" />
+    <Exec Command="del &quot;$(OutputPath)\[CAP] Chat Interactive.dll&quot;" IgnoreExitCode="true" />
+    <Exec Command="del &quot;$(OutputPath)\[CAP] Chat Interactive.pdb&quot;" IgnoreExitCode="true" />
+    <Exec Command="del &quot;$(OutputPath)\[CAP] Chat Interactive.dll.config&quot;" IgnoreExitCode="true" />
+    <Exec Command="del &quot;$(OutputPath)\0Harmony.dll&quot;" IgnoreExitCode="true" />
+    <Exec Command="del &quot;$(OutputPath)\VanillaPsycastsExpanded.dll&quot;" IgnoreExitCode="true" />
+    <Exec Command="del &quot;$(OutputPath)\VEF.dll&quot;" IgnoreExitCode="true" />
   </Target>
 
 </Project>

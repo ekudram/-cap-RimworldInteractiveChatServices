@@ -3,7 +3,8 @@
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <RootNamespace>CAP_ChatInteractive.Patch.HAR</RootNamespace>
-    <OutputPath>C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\[CAP] Chat Interactive\Patches\1.6\Assemblies</OutputPath>
+    <!-- Isolated folder so LoadFolders can load HAR only when HAR is active (not shared with VPE). -->
+    <OutputPath>C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\[CAP] Chat Interactive\Patches\1.6\HAR\Assemblies</OutputPath>
     <DebugType>none</DebugType>
     <CopyLocal>False</CopyLocal>
     <LangVersion>12</LangVersion>
