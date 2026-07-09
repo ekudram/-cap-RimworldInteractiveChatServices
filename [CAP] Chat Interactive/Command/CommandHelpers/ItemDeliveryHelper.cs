@@ -981,64 +981,81 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         private static bool TryFindSafeDropPosition(Map map, out IntVec3 dropPos)
         {
             dropPos = IntVec3.Invalid;
+            if (map == null) return false;
 
-            if (map == null)
+            try
+            {
+                // 1. Rimazon Drop Marker (new priority)
+                ThingDef markerDef = DefDatabase<ThingDef>.GetNamedSilentFail("RimazonDropMarker");
+                if (markerDef != null)
+                {
+                    var marker = map.listerBuildings.AllBuildingsColonistOfDef(markerDef).FirstOrDefault(b => b.Spawned && !b.Destroyed);
+                    if (marker != null && IsValidDeliveryPosition(marker.Position, map))
+                    {
+                        dropPos = marker.Position;
+                        Logger.Debug($"[RICS] Using Rimazon Drop Marker at {dropPos}");
+                        return true;
+                    }
+                }
+
+                // 2. Normal drop pod logic near trade spot
+                IntVec3 tradeSpot = GetCustomDropSpot(map);
+                if (DropCellFinder.TryFindDropSpotNear(tradeSpot, map, out dropPos,
+                    allowFogged: false, canRoofPunch: true, maxRadius: 35))
+                {
+                    if (IsValidDeliveryPosition(dropPos, map)) return true;
+                }
+
+                // 3. Map edge
+                if (CellFinder.TryFindRandomEdgeCellWith(
+                    c => c.Standable(map) && !c.Fogged(map) && c.Walkable(map),
+                    map, CellFinder.EdgeRoadChance_Ignore, out dropPos))
+                {
+                    if (IsValidDeliveryPosition(dropPos, map)) return true;
+                }
+
+                // 4. Near a Rimazon Locker
+                var lockers = map.listerThings.AllThings.OfType<Building_RimazonLocker>()
+                    .Where(l => l.Spawned && !l.Destroyed).ToList();
+                if (lockers.Any())
+                {
+                    var nearestLocker = lockers.OrderBy(l => l.Position.DistanceToSquared(tradeSpot)).First();
+                    if (DropCellFinder.TryFindDropSpotNear(nearestLocker.Position, map, out dropPos,
+                        allowFogged: false, canRoofPunch: true, maxRadius: 12))
+                    {
+                        if (IsValidDeliveryPosition(dropPos, map)) return true;
+                    }
+                }
+
+                // 5. Near friendly pawn (animal style)
+                var friendly = map.mapPawns.AllPawnsSpawned
+                    .Where(p => p.Faction == Faction.OfPlayer && p.Spawned && !p.Dead).ToList();
+                if (friendly.Any())
+                {
+                    var nearest = friendly.OrderBy(p => p.Position.DistanceToSquared(tradeSpot)).First();
+                    if (DropCellFinder.TryFindDropSpotNear(nearest.Position, map, out dropPos,
+                        allowFogged: false, canRoofPunch: true, maxRadius: 15))
+                    {
+                        if (IsValidDeliveryPosition(dropPos, map)) return true;
+                    }
+                }
+
+                // Final fallback
+                dropPos = map.Center;
+                Logger.Warning($"[RICS] Pawn drop position fallback to map center: {dropPos}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[RICS] Critical error in TryFindSafeDropPosition: {ex}");
+                dropPos = map?.Center ?? IntVec3.Zero;
                 return false;
-
-            // First try trade spot
-            IntVec3 tradeSpot = GetCustomDropSpot(map);
-            if (IsValidDeliveryPosition(tradeSpot, map))
-            {
-                dropPos = tradeSpot;
-                Logger.Debug($"Using valid trade spot: {tradeSpot}");
-                return true;
             }
-
-            // Try near trade spot
-            if (DropCellFinder.TryFindDropSpotNear(tradeSpot, map, out dropPos,
-                allowFogged: false, canRoofPunch: true, maxRadius: 30))
-            {
-                if (IsValidDeliveryPosition(dropPos, map))
-                {
-                    Logger.Debug($"Using position near trade spot: {dropPos} (trade spot: {tradeSpot})");
-                    return true;
-                }
-            }
-
-            // Try map center
-            IntVec3 mapCenter = map.Center;
-            if (IsValidDeliveryPosition(mapCenter, map))
-            {
-                dropPos = mapCenter;
-                Logger.Debug($"Using map center: {mapCenter}");
-                return true;
-            }
-
-            // Try near map center
-            if (DropCellFinder.TryFindDropSpotNear(mapCenter, map, out dropPos,
-                allowFogged: false, canRoofPunch: true, maxRadius: 50))
-            {
-                if (IsValidDeliveryPosition(dropPos, map))
-                {
-                    Logger.Debug($"Using position near map center: {dropPos} (center: {mapCenter})");
-                    return true;
-                }
-            }
-
-            // Final fallback: find any valid cell on the map
-            if (CellFinderLoose.TryFindRandomNotEdgeCellWith(10,
-                (IntVec3 c) => IsValidDeliveryPosition(c, map),
-                map, out dropPos))
-            {
-                Logger.Debug($"Using random valid cell: {dropPos}");
-                return true;
-            }
-
-            Logger.Error("No safe drop position found after all attempts");
-            return false;
         }
 
-        private static (bool success, IntVec3 spawnPosition) TryPawnDelivery(ThingDef pawnDef, int quantity, QualityCategory? quality, ThingDef material, IntVec3 dropPos, Map map, Pawn viewerPawn = null)
+        private static (bool success, IntVec3 spawnPosition) TryPawnDelivery(
+    ThingDef pawnDef, int quantity, QualityCategory? quality, ThingDef material,
+    IntVec3 dropPos, Map map, Pawn viewerPawn = null)
         {
             IntVec3 spawnPosition = IntVec3.Invalid;
 
@@ -1058,43 +1075,33 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     return (false, spawnPosition);
                 }
 
-                // NEW: Prefer spawning near the nearest RimazonLocker if one exists
-                // (we don't try to put pawns *inside* the locker, just use it as a safe/central drop point)
+                // Prefer spawning near the nearest RimazonLocker if one exists
                 Building_RimazonLocker nearestLocker = null;
-
                 var allLockers = map.listerThings.AllThings
                     .OfType<Building_RimazonLocker>()
                     .Where(l => l.Spawned && l.Map == map && !l.Destroyed)
-                    .ToList();  // Materialize to avoid multiple enumerations
+                    .ToList();
 
                 if (allLockers.Any())
                 {
                     nearestLocker = allLockers
-                        .OrderBy(l => l.Position.DistanceToSquared(dropPos))  // Sort by distance (squared = faster)
-                        .First();  // Closest one
+                        .OrderBy(l => l.Position.DistanceToSquared(dropPos))
+                        .First();
 
-                    Logger.Debug($"Found nearest RimazonLocker at {nearestLocker.Position} (distance squared: {nearestLocker.Position.DistanceToSquared(dropPos)})");
-                }
-                else
-                {
-                    Logger.Debug("No RimazonLocker found on map");
+                    Logger.Debug($"Found nearest RimazonLocker at {nearestLocker.Position}");
                 }
 
                 if (nearestLocker != null)
                 {
                     Logger.Debug($"Using nearest RimazonLocker at {nearestLocker.Position} as base for pawn spawn");
-                    dropPos = nearestLocker.Position;  // Override the preferred drop position
-                }
-                else
-                {
-                    Logger.Debug("No RimazonLocker found — using original drop position");
+                    dropPos = nearestLocker.Position;
                 }
 
+                // Create all the pawns first
                 List<Pawn> pawnsToDeliver = new List<Pawn>();
 
                 for (int i = 0; i < quantity; i++)
                 {
-                    // Create pawn using RimWorld's proper pawn generation
                     PawnGenerationRequest request = new PawnGenerationRequest(
                         kind: pawnDef.race.AnyPawnKind,
                         faction: null,
@@ -1130,14 +1137,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                     Pawn pawn = PawnGenerator.GeneratePawn(request);
 
-                    // CRITICAL FIX: Handle mechanoids by setting faction to player
+                    // Handle mechanoids and animals
                     if (pawn.RaceProps.IsMechanoid)
                     {
                         Logger.Debug($"Detected mechanoid: {pawn.def.defName}, setting faction to player");
-                        // todo here 
                         pawn.SetFaction(Faction.OfPlayer);
                     }
-                    // Also handle animals (keeping existing logic)
                     else if (pawn.RaceProps.Animal)
                     {
                         pawn.SetFaction(Faction.OfPlayer);
@@ -1145,26 +1150,110 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     }
 
                     pawnsToDeliver.Add(pawn);
-                    Logger.Debug($"Created pawn: {pawn.Name} ({pawn.def.defName}), Faction: {pawn.Faction?.Name ?? "null"}, IsMechanoid: {pawn.RaceProps.IsMechanoid}");
+                    Logger.Debug($"Created pawn: {pawn.Name} ({pawn.def.defName})");
                 }
 
-                // Use a gentler delivery method for pawns - walk them in from the edge
+                // === SPAWN PHASE ===
                 if (pawnsToDeliver.Count > 0)
                 {
-                    spawnPosition = FindPawnSpawnPosition(map, dropPos, viewerPawn);
+                    // Get the final spawn position using our improved finder
+                    spawnPosition = FindPawnSpawnPosition(map, GetCustomDropSpot(map), viewerPawn);
 
                     Logger.Debug($"Spawning {pawnsToDeliver.Count} pawns at position: {spawnPosition}");
 
                     foreach (var pawn in pawnsToDeliver)
                     {
-                        // Spawn the pawn properly
-                        GenSpawn.Spawn(pawn, spawnPosition, map);
+                        bool alreadySpawned = false;
 
-                        // Add some arrival effects
-                        FleckMaker.ThrowDustPuff(spawnPosition, map, 2f);
+                        // === AGGRESSIVE ROOF CRASH HANDLING ===
+                        if (map.roofGrid.RoofAt(spawnPosition) == RoofDefOf.RoofRockThick)
+                        {
+                            bool movedOffRoof = false;
 
-                        // Debug logging
-                        Logger.Debug($"Spawned pawn {pawn.Name} ({pawn.def.defName}) with faction: {pawn.Faction?.Name ?? "null"}");
+                            // Try to find a better spot first
+                            if (CellFinder.TryFindRandomCellNear(spawnPosition, map, 8,
+                                c => c.Standable(map) && map.roofGrid.RoofAt(c) != RoofDefOf.RoofRockThick, out var betterSpot))
+                            {
+                                spawnPosition = betterSpot;
+                                movedOffRoof = true;
+                            }
+                            else if (CellFinder.TryFindRandomCellNear(spawnPosition, map, 20,
+                                c => c.Standable(map) && map.roofGrid.RoofAt(c) != RoofDefOf.RoofRockThick && c.Walkable(map), out betterSpot))
+                            {
+                                spawnPosition = betterSpot;
+                                movedOffRoof = true;
+                                Logger.Debug($"[RICS] Moved pawn off thick roof (wider search) to {betterSpot}");
+                            }
+
+                            // === LAST RESORT: CRASH THROUGH THE ROOF (Aggressive & Immersive) ===
+                            if (!movedOffRoof)
+                            {
+                                Logger.Warning($"[RICS] CRASH LANDING: No safe non-roof spot found. Pawn smashing through thick roof at {spawnPosition}");
+
+                                // Spawn the pawn
+                                GenSpawn.Spawn(pawn, spawnPosition, map);
+                                alreadySpawned = true;
+
+                                // === DESTRUCTION ===
+                                int radius = 2;
+                                var cells = GenRadial.RadialCellsAround(spawnPosition, radius, true).ToList();
+                                int destroyedCount = 0;
+
+                                foreach (var cell in cells)
+                                {
+                                    if (!cell.InBounds(map)) continue;
+
+                                    var thingsHere = cell.GetThingList(map).ToList();
+                                    foreach (var thing in thingsHere)
+                                    {
+                                        // Never destroy natural rock walls
+                                        if (thing is Building b && b.def.building.isNaturalRock &&
+                                            b.def.passability == Traversability.Impassable)
+                                            continue;
+
+                                        if (thing == pawn) continue;
+
+                                        if (thing.def.destroyable)
+                                        {
+                                            thing.Destroy(DestroyMode.KillFinalize);
+                                            destroyedCount++;
+                                        }
+                                    }
+                                }
+
+                                // === DRAMATIC VISUAL EFFECTS ===
+                                FleckMaker.ThrowDustPuff(spawnPosition, map, 3.5f);
+                                FleckMaker.ThrowDustPuff(spawnPosition, map, 2.8f);
+
+                                foreach (var cell in GenRadial.RadialCellsAround(spawnPosition, 3, true))
+                                {
+                                    if (cell.InBounds(map) && Rand.Chance(0.65f))
+                                    {
+                                        FleckMaker.ThrowDustPuff(cell, map, Rand.Range(1.3f, 2.4f));
+                                    }
+                                }
+
+                                MoteMaker.ThrowText(spawnPosition.ToVector3Shifted(), map, "CRASH!", Color.red, 2.8f);
+
+                                Logger.Debug($"[RICS] Crash landing destroyed {destroyedCount} things");
+                            }
+                        }
+
+                        // Normal spawn (if we didn't do the crash path)
+                        if (!alreadySpawned)
+                        {
+                            GenSpawn.Spawn(pawn, spawnPosition, map);
+                        }
+
+                        // Arrival effects (skip extra dust if we already did the dramatic crash effects)
+                        bool isUnderThickRoof = map.roofGrid.RoofAt(spawnPosition) == RoofDefOf.RoofRockThick;
+
+                        if (!isUnderThickRoof || !alreadySpawned)
+                        {
+                            FleckMaker.ThrowDustPuff(spawnPosition, map, 2f);
+                        }
+
+                        Logger.Debug($"Spawned pawn {pawn.Name} ({pawn.def.defName}) at {spawnPosition}");
                     }
 
                     Logger.Debug($"Successfully delivered {pawnsToDeliver.Count}x {pawnDef.defName} at {spawnPosition}");

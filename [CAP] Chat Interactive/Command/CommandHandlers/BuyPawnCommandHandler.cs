@@ -1022,10 +1022,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-
-
-
-
         private static string GetXenotypeDefName(string input, RaceSettings raceSettings)
         {
             if (string.IsNullOrWhiteSpace(input) || input.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
