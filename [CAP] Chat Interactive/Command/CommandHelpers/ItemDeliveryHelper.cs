@@ -957,8 +957,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return Find.Maps?.FirstOrDefault(m => m != null && m.IsPlayerHome && !IsUndergroundMap(m));
         }
 
-
-
         /// <summary>Drop-pod cell for items on map (shared cell finder).</summary>
         private static IntVec3 GetDeliveryPosition(Map map, Pawn pawn)
         {
