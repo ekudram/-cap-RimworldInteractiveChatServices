@@ -521,7 +521,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 return result;
             }
 
-            var pawnDeliveryResult = TryPawnDelivery(thingDef, quantity, quality, material, deliveryPos, targetMap, viewerPawn);
+            var pawnDeliveryResult = TryDeliverPawnFromStore(thingDef, quantity, quality, material, deliveryPos, targetMap, viewerPawn);
             if (pawnDeliveryResult.success)
             {
                 result.DeliveryPosition = pawnDeliveryResult.spawnPosition;
@@ -872,6 +872,13 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return things;
         }
 
+        /// <summary>
+        /// Finds a suitable spawn position for a pawn, prioritizing proximity to the viewer's pawn, then preferred positions, and finally map edges.
+        /// </summary>
+        /// <param name="map"></param>
+        /// <param name="preferredPos"></param>
+        /// <param name="viewerPawn"></param>
+        /// <returns></returns>
         private static IntVec3 FindPawnSpawnPosition(Map map, IntVec3 preferredPos, Pawn viewerPawn = null)
         {
             // First priority: try to spawn near the viewer's pawn if available
@@ -919,6 +926,13 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return preferredPos;
         }
 
+        /// <summary>
+        /// Validates whether a given position is suitable for drop pod delivery.
+        /// </summary>
+        /// <param name="pos"></param>
+        /// <param name="map"></param>
+        /// <param name="strict"></param>
+        /// <returns></returns>
         public static bool IsValidDeliveryPosition(IntVec3 pos, Map map, bool strict = true)
         {
             if (map == null) return false;
@@ -1039,7 +1053,19 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
         }
 
-        private static (bool success, IntVec3 spawnPosition) TryPawnDelivery(
+        /// <summary>
+        /// Specialized pawn delivery used by the general store system (!buy animal, !buy mech, etc.).
+        /// For viewer pawn purchases (!pawn command) see TrySpawnPawnInSpaceBiome in BuyPawnCommandHandler.
+        /// </summary>
+        /// <param name="pawnDef"></param>
+        /// <param name="quantity"></param>
+        /// <param name="quality"></param>
+        /// <param name="material"></param>
+        /// <param name="dropPos"></param>
+        /// <param name="map"></param>
+        /// <param name="viewerPawn"></param>
+        /// <returns></returns>
+        private static (bool success, IntVec3 spawnPosition) TryDeliverPawnFromStore(
     ThingDef pawnDef, int quantity, QualityCategory? quality, ThingDef material,
     IntVec3 dropPos, Map map, Pawn viewerPawn = null)
         {
@@ -1126,6 +1152,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     // Handle mechanoids and animals
                     if (pawn.RaceProps.IsMechanoid)
                     {
+                        // TODO: ADD code to set controller to player pawn if mechinator.  DONT REMOVE THIS COMMENT UNTIL TODO IS DONE
                         Logger.Debug($"Detected mechanoid: {pawn.def.defName}, setting faction to player");
                         pawn.SetFaction(Faction.OfPlayer);
                     }

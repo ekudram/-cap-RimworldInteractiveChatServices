@@ -900,69 +900,66 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static bool TrySpawnPawnInSpaceBiome(Pawn pawn, Map map, out IntVec3 deliveryPosition)
         {
+            deliveryPosition = IntVec3.Invalid;
             try
             {
-                Logger.Debug($"Attempting to spawn pawn in biome: {map.Biome.defName} (underground: {ItemDeliveryHelper.IsUndergroundMap(map)})");
+                Logger.Debug($"Attempting to spawn pawn in biome: {map.Biome?.defName} (underground: {ItemDeliveryHelper.IsUndergroundMap(map)})");
 
-                // === PRIORITY 1: Drop pod delivery (vanilla pawn arrival behavior) ===
-                // Why: Matches new-game pawn drops, handles space/underground correctly, and is the most robust RimWorld system.
-                if (TryDropPodDelivery(pawn, map, out deliveryPosition))
+                // === PRIORITY 1: Use the robust ItemDeliveryHelper drop position (includes Rimazon marker, relaxed checks, etc.) ===
+                if (ItemDeliveryHelper.TryFindSafeDropPosition(map, out IntVec3 safePos))
                 {
+                    deliveryPosition = safePos;
+                    Logger.Debug($"Using safe drop position from ItemDeliveryHelper: {safePos}");
+
+                    // Drop pod delivery (preferred for immersion)
+                    List<Thing> things = new List<Thing> { pawn };
+                    if (ItemDeliveryHelper.IsSpaceMap(map) || (map.Biome?.inVacuum == true))
+                    {
+                        ItemDeliveryHelper.TryEquipVacsuit(pawn, map); // your existing method
+                    }
+
+                    DropPodUtility.DropThingsNear(safePos, map, things, openDelay: 110, leaveSlag: false, canRoofPunch: true, forbid: true);
                     return true;
                 }
 
-                // === PRIORITY 2: Near Rimazon locker (best visual & gameplay fit) ===
-                // Why: Lockers are the mod's delivery hubs; avoids "pawn appears in middle of nowhere".
+                // === PRIORITY 2: Fallback to near locker or existing pawn (simple GenSpawn) ===
                 var locker = ItemDeliveryHelper.FindSuitableLockerFor(pawn, map);
                 if (locker != null)
                 {
-                    IntVec3 nearLocker = CellFinder.TryFindRandomCellNear(locker.Position, map, 6,
-                        c => c.Standable(map) && !c.Fogged(map) && c.Walkable(map) && c.GetRoom(map) == locker.GetRoom(),
-                        out IntVec3 spawnLoc) ? spawnLoc : locker.Position;
-
-                    GenSpawn.Spawn(pawn, nearLocker, map, WipeMode.Vanish);
-                    Logger.Debug($"Spawned pawn near RimazonLocker at: {nearLocker}");
-                    return true;
-                }
-
-                // === PRIORITY 3: Near existing colonists / home area (vanilla fallback) ===
-                // Why: Guarantees a safe, reachable location even on weird maps (space, underground, etc.).
-                var existingColonist = map.mapPawns.FreeColonists.FirstOrDefault();
-                if (existingColonist != null)
-                {
-                    if (CellFinder.TryFindRandomCellNear(existingColonist.Position, map, 8,
-                        c => c.Standable(map) && !c.Fogged(map) && c.Walkable(map),
-                        out IntVec3 nearColonistPos))
+                    if (CellFinder.TryFindRandomCellNear(locker.Position, map, 6, c => c.Standable(map) && c.Walkable(map), out var near))
                     {
-                        GenSpawn.Spawn(pawn, nearColonistPos, map, WipeMode.Vanish);
-                        Logger.Debug($"Spawned pawn near colonist: {nearColonistPos}");
+                        GenSpawn.Spawn(pawn, near, map);
+                        deliveryPosition = near;
                         return true;
                     }
                 }
 
-                // === PRIORITY 4: Home area (last safe zone) ===
-                if (map.areaManager.Home.ActiveCells != null)
-                {
-                    var homeCells = map.areaManager.Home.ActiveCells.Where(c =>
-                        c.Standable(map) && !c.Fogged(map)).ToList();
+                // === PRIORITY 3: Near any player pawn (your requested ultimate fallback) ===
+                var anyPlayerPawn = map.mapPawns.AllPawnsSpawned.FirstOrDefault(p =>
+                    p.Faction == Faction.OfPlayer && p.Spawned && !p.Dead);
 
-                    if (homeCells.Count > 0)
+                if (anyPlayerPawn != null)
+                {
+                    if (CellFinder.TryFindRandomCellNear(anyPlayerPawn.Position, map, 8,
+                        c => c.Standable(map) && c.Walkable(map), out var nearPawn))
                     {
-                        IntVec3 homePos = homeCells.RandomElement();
-                        GenSpawn.Spawn(pawn, homePos, map, WipeMode.Vanish);
-                        Logger.Debug($"Spawned pawn in home area: {homePos}");
+                        GenSpawn.Spawn(pawn, nearPawn, map);
+                        deliveryPosition = nearPawn;
+                        Logger.Debug($"Spawned next to existing player pawn at {nearPawn}");
                         return true;
                     }
                 }
 
-                // === FINAL FALLBACK: Drop pod retry (should almost never reach here) ===
-                Logger.Debug("All spawn strategies failed → forcing drop pod retry");
-                return TryDropPodDelivery(pawn, map, out deliveryPosition);
+                // === FINAL: Map center ===
+                GenSpawn.Spawn(pawn, map.Center, map);
+                deliveryPosition = map.Center;
+                Logger.Warning($"[RICS] Ultimate fallback: Spawned at map center");
+                return true;
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in TrySpawnPawnInSpaceBiome: {ex}");
-                deliveryPosition = IntVec3.Invalid;
+                deliveryPosition = map?.Center ?? IntVec3.Invalid;
                 return false;
             }
         }
