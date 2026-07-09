@@ -404,149 +404,100 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
         }
 
-        public static Building_RimazonLocker FindSuitableLockerFor(Thing thing, Map map, Pawn forPawn = null)
+        /// <summary>
+        /// Finds any spawned Rimazon locker that <see cref="Building_RimazonLocker.Accepts"/> the thing.
+        /// Searches <b>all loaded maps</b> (pocket, surface, caravan maps, etc.) — not limited to one map.
+        /// <paramref name="preferredMap"/> only affects ordering (prefer lockers on that map first).
+        /// Locker storage filters still apply (player can block food etc.).
+        /// </summary>
+        public static Building_RimazonLocker FindSuitableLockerFor(Thing thing, Map preferredMap = null, Pawn forPawn = null)
         {
             try
             {
-                if (map == null || thing == null)
-                {
-                    //Logger.Debug("FindSuitableLocker: Map or thing is null");
+                if (thing == null || thing.Destroyed)
                     return null;
-                }
 
+                // Pawns never go in lockers
+                if (thing is Pawn)
+                    return null;
+
+                // Minified buildings (beds, etc.) skip lockers — drop pod is correct
                 if (thing.def.Minifiable)
-                {
-                    //Logger.Debug($"{thing.def.defName} is minifiable - skipping locker delivery");
                     return null;
-                }
 
-                // Get all lockers on the map
+                // Collect EVERY locker on every map
                 var allLockers = new List<Building_RimazonLocker>();
-
-                // Try small locker def (exists)
-                ThingDef smallLockerDef = DefDatabase<ThingDef>.GetNamedSilentFail("RimazonLockerSmall");
-                if (smallLockerDef != null)
+                if (Find.Maps != null)
                 {
-                    var smallLockers = map.listerThings.ThingsOfDef(smallLockerDef)
-                        .OfType<Building_RimazonLocker>();
-                    allLockers.AddRange(smallLockers);
-                    //Logger.Debug($"Found {smallLockers.Count()} small lockers");
-                }
-
-                // Try large locker def (might not exist yet)
-                ThingDef largeLockerDef = DefDatabase<ThingDef>.GetNamedSilentFail("RimazonLockerLarge");
-                if (largeLockerDef != null)
-                {
-                    var largeLockers = map.listerThings.ThingsOfDef(largeLockerDef)
-                        .OfType<Building_RimazonLocker>();
-                    allLockers.AddRange(largeLockers);
-                    //Logger.Debug($"Found {largeLockers.Count()} large lockers");
-                }
-
-                if (!allLockers.Any())
-                {
-                    //Logger.Debug($"No RimazonLockers found on map");
-                    return null;
-                }
-
-                //Logger.Debug($"Found {allLockers.Count} total lockers on map");
-
-                // CRITICAL FIX: Check if the locker can accept this SPECIFIC thing
-                // This considers merging with existing stacks
-                var suitableLockers = allLockers
-                    .Where(locker =>
-                        locker.Spawned &&
-                        locker.Map == map &&
-                        !locker.Destroyed &&
-                        locker.Accepts(thing)) // This is the key - uses the locker's own Accepts() logic
-                    .ToList();
-
-                if (!suitableLockers.Any())
-                {
-                    //Logger.Debug($"No suitable RimazonLocker found for {thing.def.defName} x{thing.stackCount}");
-
-                    // Log debug info for each locker
-                    //foreach (var locker in allLockers.Take(3)) // Just first 3 for brevity
-                    //{
-                    //    Logger.Debug($"Locker at {locker.Position}: " +
-                    //               $"Spawned={locker.Spawned}, " +
-                    //               $"MapMatch={locker.Map == map}, " +
-                    //               $"Destroyed={locker.Destroyed}, " +
-                    //               $"Accepts={locker.Accepts(thing)}, " +
-                    //               $"CurrentItems={locker.InnerContainer.TotalStackCount}/{locker.MaxStacks}");
-                    //}
-
-                    return null;
-                }
-
-                //Logger.Debug($"Found {suitableLockers.Count} suitable lockers for {thing.def.defName}");
-
-                // Selection priority:
-                Building_RimazonLocker bestLocker = null;
-
-                // 1. Try to find lockers that already have this item type (for stack merging)
-                var matchingLockers = suitableLockers
-                    .Where(l =>
+                    foreach (Map m in Find.Maps)
                     {
-                        return l.InnerContainer.Any(t =>
-                            t.def == thing.def &&
-                            t.Stuff == thing.Stuff &&                     // same material
-                            (!t.TryGetQuality(out var q) ||               // either no quality
-                             !thing.TryGetQuality(out var q2) ||
-                             q == q2)                                     // or same quality
-                        );
+                        if (m?.listerThings?.AllThings == null) continue;
+                        foreach (Thing t in m.listerThings.AllThings)
+                        {
+                            if (t is Building_RimazonLocker locker && locker.Spawned && !locker.Destroyed)
+                                allLockers.Add(locker);
+                        }
+                    }
+                }
+
+                if (allLockers.Count == 0)
+                {
+                    Logger.Debug($"FindSuitableLocker: no Rimazon lockers on any of {Find.Maps?.Count ?? 0} map(s)");
+                    return null;
+                }
+
+                var suitable = new List<Building_RimazonLocker>();
+                foreach (var locker in allLockers)
+                {
+                    try
+                    {
+                        if (locker.Accepts(thing))
+                            suitable.Add(locker);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Debug($"FindSuitableLocker: Accepts threw on locker at {locker.Position}: {ex.Message}");
+                    }
+                }
+
+                if (suitable.Count == 0)
+                {
+                    // Help diagnose filter/space rejects
+                    var sample = allLockers.Take(3).Select(l =>
+                    {
+                        bool filterOk = false;
+                        try { filterOk = l.settings?.AllowedToAccept(thing) ?? false; } catch { /* ignore */ }
+                        return $"{l.Map?.Parent?.LabelCap ?? "?"}@{l.Position} filter={filterOk} stacks={l.InnerContainer?.Count ?? 0}/{l.MaxStacks}";
+                    });
+                    Logger.Debug(
+                        $"FindSuitableLocker: 0/{allLockers.Count} lockers accept {thing.def.defName} x{thing.stackCount}. " +
+                        $"Sample: {string.Join("; ", sample)}");
+                    return null;
+                }
+
+                Map orderMap = preferredMap
+                    ?? (forPawn != null && forPawn.Spawned ? forPawn.Map : null)
+                    ?? Find.CurrentMap;
+
+                // Prefer: same map as streamer/preferred → already has this stack → most free slots → nearest on same map
+                Building_RimazonLocker best = suitable
+                    .OrderBy(l => orderMap != null && l.Map == orderMap ? 0 : 1)
+                    .ThenBy(l => l.InnerContainer.Any(t => t != null && t.def == thing.def && t.CanStackWith(thing)) ? 0 : 1)
+                    .ThenByDescending(l => l.MaxStacks - (l.InnerContainer?.Count ?? 0))
+                    .ThenBy(l =>
+                    {
+                        if (forPawn != null && forPawn.Spawned && forPawn.Map == l.Map)
+                            return l.Position.DistanceToSquared(forPawn.Position);
+                        return 0;
                     })
-                    .ToList();
+                    .First();
 
-                if (matchingLockers.Any())
-                {
-                    // Prefer the one closest to target + with most free space
-                    bestLocker = matchingLockers
-                        .OrderBy(l => l.Position.DistanceToSquared(forPawn?.Position ?? GetCustomDropSpot(map)))
-                        .ThenByDescending(l => l.MaxStacks - l.InnerContainer.TotalStackCount)
-                        .FirstOrDefault();
+                Logger.Debug(
+                    $"FindSuitableLocker: chose locker on {best.Map?.Parent?.LabelCap ?? "?"} " +
+                    $"at {best.Position} for {thing.def.defName} x{thing.stackCount} " +
+                    $"(candidates={suitable.Count}/{allLockers.Count})");
 
-                    if (bestLocker != null)
-                    {
-                        //Logger.Debug($"Selected BEST MATCH locker for stacking: {bestLocker.Position} " +
-                        //             $"(free stacks: {bestLocker.MaxStacks - bestLocker.InnerContainer.TotalStackCount})");
-                        return bestLocker;
-                    }
-                }
-
-                // 2. If no perfect match, still prefer ANY suitable locker over drop pod
-                if (suitableLockers.Any())
-                {
-                    bestLocker = suitableLockers
-                        .OrderBy(l => l.Position.DistanceToSquared(forPawn?.Position ?? GetCustomDropSpot(map)))
-                        .ThenByDescending(l => l.MaxStacks - l.InnerContainer.TotalStackCount)
-                        .FirstOrDefault();
-
-                    if (bestLocker != null)
-                    {
-                        // Logger.Debug($"No perfect stack match → selected nearest suitable locker anyway: {bestLocker.Position}");
-                        return bestLocker;
-                    }
-                }
-
-                // 3. Fall back to proximity
-                IntVec3 targetPos = forPawn != null && forPawn.Spawned && forPawn.Map == map
-                    ? forPawn.Position
-                    : GetCustomDropSpot(map);
-
-                bestLocker = suitableLockers
-                    .OrderBy(locker => locker.Position.DistanceToSquared(targetPos))
-                    .ThenByDescending(locker => locker.MaxStacks - locker.InnerContainer.TotalStackCount) // Most space left
-                    .FirstOrDefault();
-
-                //if (bestLocker != null)
-                //{
-                //    Logger.Debug($"Selected locker at {bestLocker.Position} " +
-                //                $"(distance to target: {bestLocker.Position.DistanceTo(targetPos):F1}, " +
-                //                $"space left: {bestLocker.MaxStacks - bestLocker.InnerContainer.TotalStackCount})");
-                //}
-
-                return bestLocker;
+                return best;
             }
             catch (Exception ex)
             {
@@ -864,8 +815,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
         /// <summary>
         /// Loose item delivery (not equip/wear/backpack):
-        /// lockers on local map → lockers on surface → drop pod (surface if local is pocket).
-        /// Must NOT redirect map to surface before trying local lockers.
+        /// 1) ANY accepting locker on ANY map (preferred map is only a soft priority)
+        /// 2) Drop pod leftovers (surface if streamer map is underground)
         /// </summary>
         private static DeliveryResult HandleRegularDelivery(ThingDef thingDef, int quantity, QualityCategory? quality,
             ThingDef material, Pawn pawn)
@@ -881,51 +832,39 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             List<Thing> itemsToDeliver = CreateItemsForDelivery(thingDef, quantity, quality, finalMaterial);
 
-            // LOCAL map first (CurrentMap / pocket) — never surface-redirect before locker search
-            Map localMap = ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
-            if (localMap == null)
-            {
-                Logger.Error("No valid map found for item delivery");
-                return result;
-            }
-
+            // Preferred map for ordering + drop-pod fallback only (locker search is all maps)
+            Map preferredMap = ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
             Map surfaceMap = GetSurfaceHomeMap();
             Logger.Debug(
-                $"Item delivery maps: local={localMap.Parent?.LabelCap ?? localMap.ToString()} " +
-                $"(underground={IsUndergroundMap(localMap)}), " +
-                $"surface={surfaceMap?.Parent?.LabelCap ?? "none"}");
+                $"Item delivery: preferredMap={preferredMap?.Parent?.LabelCap ?? "null"} " +
+                $"(underground={IsUndergroundMap(preferredMap)}), maps loaded={Find.Maps?.Count ?? 0}");
 
-            // ── STEP 1: lockers on the map the streamer is actually on ──
-            var afterLocal = new List<Thing>();
-            TryDeliverItemsToLockersOnMap(itemsToDeliver, localMap, pawn, result, afterLocal);
-
-            // ── STEP 2: if local lockers full/missing, try surface lockers ──
-            var undeliveredItems = afterLocal;
-            if (undeliveredItems.Count > 0 && surfaceMap != null && surfaceMap != localMap)
+            // ── STEP 1: lockers anywhere that Accepts the item ──
+            var undeliveredItems = new List<Thing>();
+            foreach (var item in itemsToDeliver)
             {
-                var afterSurface = new List<Thing>();
-                TryDeliverItemsToLockersOnMap(undeliveredItems, surfaceMap, pawn, result, afterSurface);
-                undeliveredItems = afterSurface;
+                if (!TryDeliverToLocker(item, preferredMap, pawn, result))
+                    undeliveredItems.Add(item);
             }
 
-            // ── STEP 3: leftovers → drop pod (prefer surface when local is underground) ──
+            // ── STEP 2: leftovers → drop pod ──
             if (undeliveredItems.Count > 0)
             {
                 int dropCount = undeliveredItems.Sum(t => t?.stackCount ?? 0);
-                Map dropMap = localMap;
-                if (IsUndergroundMap(localMap) && surfaceMap != null)
-                {
+                Map dropMap = preferredMap ?? surfaceMap ?? Find.CurrentMap;
+                if (dropMap != null && IsUndergroundMap(dropMap) && surfaceMap != null)
                     dropMap = surfaceMap;
-                    Logger.Debug(
-                        $"Item delivery: no/full locker for {dropCount} units on local map → " +
-                        $"drop pod on surface {surfaceMap.Parent?.LabelCap}");
-                }
-                else
+
+                if (dropMap == null)
                 {
-                    Logger.Debug(
-                        $"Item delivery: {result.LockerDeliveredCount} in locker, " +
-                        $"{undeliveredItems.Count} stack(s)/{dropCount} units → drop pod on local map");
+                    Logger.Error("No map for drop-pod fallback after locker miss");
+                    return result;
                 }
+
+                Logger.Debug(
+                    $"Item delivery: {result.LockerDeliveredCount} units in locker(s), " +
+                    $"{undeliveredItems.Count} stack(s)/{dropCount} units → drop pod on " +
+                    $"{dropMap.Parent?.LabelCap ?? dropMap.ToString()}");
 
                 result.DropPodDeliveredItems.AddRange(undeliveredItems);
 
@@ -949,13 +888,15 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             if (result.DeliveryPosition == IntVec3.Invalid || result.DeliveryPosition == default(IntVec3))
             {
-                Map fallbackMap = result.LockerDeliveredCount > 0 ? localMap : (surfaceMap ?? localMap);
-                result.DeliveryPosition = GetFallbackDeliveryPosition(fallbackMap, result);
+                Map fallbackMap = preferredMap ?? surfaceMap ?? Find.CurrentMap;
+                if (fallbackMap != null)
+                    result.DeliveryPosition = GetFallbackDeliveryPosition(fallbackMap, result);
             }
 
-            Logger.Debug($"Delivery result: Method={result.PrimaryMethod}, Position={result.DeliveryPosition}, " +
-                        $"LockerItems={result.LockerDeliveredItems.Sum(t => t.stackCount)}, " +
-                        $"DropPodItems={result.DropPodDeliveredItems.Sum(t => t.stackCount)}");
+            Logger.Debug(
+                $"Delivery result: Method={result.PrimaryMethod}, Position={result.DeliveryPosition}, " +
+                $"LockerCount={result.LockerDeliveredCount}, " +
+                $"DropPodItems={result.DropPodDeliveredItems.Sum(t => t.stackCount)}");
 
             return result;
         }
@@ -968,7 +909,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         /// <param name="pawn"></param>
         /// <param name="result"></param>
         /// <returns></returns>
-        private static bool TryDeliverToLocker(Thing item, Map map, Pawn pawn, DeliveryResult result)
+        /// <param name="preferredMap">Hint for which map's lockers to prefer; search is still all maps.</param>
+        private static bool TryDeliverToLocker(Thing item, Map preferredMap, Pawn pawn, DeliveryResult result)
         {
             if (item == null || item.Destroyed)
             {
@@ -976,39 +918,37 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 return false;
             }
 
-            var locker = FindSuitableLockerFor(item, map, pawn);
+            // preferredMap is ordering only — FindSuitableLockerFor scans every map
+            var locker = FindSuitableLockerFor(item, preferredMap, pawn);
             if (locker == null)
-            {
-                // Logger.Debug($"No suitable Rimazon locker found for {item.def.defName} x{item.stackCount}");
                 return false;
-            }
 
             int attemptedCount = item.stackCount;  // Snapshot BEFORE possible merge/destroy
+            Map lockerMap = locker.Map;
 
-            bool accepted = locker.TryAcceptThing(item, allowSpecialEffects: false);  // false = no extra effects/motes from storage
+            bool accepted = locker.TryAcceptThing(item, allowSpecialEffects: false);
 
             if (accepted)
             {
-                // Whether merged or new stack — delivery succeeded
-                // Logger.Debug($"Successfully delivered/merged {item.def.defName} x{attemptedCount} → locker at {locker.Position}");
-
                 result.LockerDeliveredCount += attemptedCount;
+                // Item may be destroyed if fully merged — still track for letters via count;
+                // keep a live reference only if it survived as its own stack.
+                if (!item.Destroyed)
+                    result.LockerDeliveredItems.Add(item);
 
-                // Set position if not already set (first successful locker wins for letter targeting)
                 if (result.DeliveryPosition == IntVec3.Invalid)
-                {
                     result.DeliveryPosition = locker.Position;
-                }
 
+                Logger.Debug(
+                    $"Locker accepted {item.def.defName} x{attemptedCount} on " +
+                    $"{lockerMap?.Parent?.LabelCap ?? "?"} at {locker.Position}");
                 return true;
             }
-            else
-            {
-                //Logger.Debug($"Locker {locker.Position} refused {item.def.defName} x{attemptedCount} " +
-                //             $"(current: {locker.InnerContainer.TotalStackCount}/{locker.MaxStacks}, " +
-                //             $"storage settings allow? {locker.settings?.AllowedToAccept(item) ?? false})");
-                return false;
-            }
+
+            Logger.Debug(
+                $"Locker at {locker.Position} on {lockerMap?.Parent?.LabelCap} " +
+                $"failed TryAcceptThing for {item.def.defName} x{attemptedCount} (Accepts was true)");
+            return false;
         }
 
         /// <summary>
@@ -1026,31 +966,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return Find.Maps?.FirstOrDefault(m => m != null && m.IsPlayerHome && !IsUndergroundMap(m));
         }
 
-        /// <summary>
-        /// Tries lockers on <paramref name="map"/> for each remaining item; removes successes from the list.
-        /// </summary>
-        private static void TryDeliverItemsToLockersOnMap(
-            List<Thing> items, Map map, Pawn pawn, DeliveryResult result, List<Thing> stillUndelivered)
-        {
-            if (map == null || items == null || items.Count == 0) return;
 
-            foreach (var item in items)
-            {
-                if (item == null || item.Destroyed)
-                    continue;
-
-                if (TryDeliverToLocker(item, map, pawn, result))
-                {
-                    Logger.Debug(
-                        $"Locker accepted {item.def.defName} x{item.stackCount} on " +
-                        $"{map.Parent?.LabelCap ?? map.ToString()}");
-                }
-                else
-                {
-                    stillUndelivered.Add(item);
-                }
-            }
-        }
 
         /// <summary>Drop-pod cell for items on map (shared cell finder).</summary>
         private static IntVec3 GetDeliveryPosition(Map map, Pawn pawn)
@@ -1585,38 +1501,30 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         /// <param name="result"></param>
         /// <returns></returns>
         /// <summary>
-        /// Pre-created loose item: local lockers → surface lockers → drop pod (same as HandleRegularDelivery).
+        /// Pre-created loose item: any accepting locker on any map → drop pod fallback.
         /// </summary>
         private static DeliveryResult HandleRegularDeliveryWithPreCreated(Thing item, Pawn pawn, DeliveryResult result)
         {
-            Map localMap = ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
-            if (localMap == null)
-            {
-                Logger.Error("No valid map for pre-created item delivery");
-                return result;
-            }
-
+            Map preferredMap = ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
             Map surfaceMap = GetSurfaceHomeMap();
 
-            // Local locker first (pocket locker must win over surface redirect)
-            if (TryDeliverToLocker(item, localMap, pawn, result))
+            // Any map's locker that Accepts this item
+            if (TryDeliverToLocker(item, preferredMap, pawn, result))
             {
                 result.PrimaryMethod = DeliveryMethod.Locker;
-                Logger.Debug($"Pre-created {item.LabelCap} → local locker at {result.DeliveryPosition}");
                 return result;
             }
 
-            // Surface locker second
-            if (surfaceMap != null && surfaceMap != localMap &&
-                TryDeliverToLocker(item, surfaceMap, pawn, result))
+            Map dropMap = preferredMap ?? surfaceMap ?? Find.CurrentMap;
+            if (dropMap != null && IsUndergroundMap(dropMap) && surfaceMap != null)
+                dropMap = surfaceMap;
+
+            if (dropMap == null)
             {
-                result.PrimaryMethod = DeliveryMethod.Locker;
-                Logger.Debug($"Pre-created {item.LabelCap} → surface locker at {result.DeliveryPosition}");
+                Logger.Error("No map for pre-created item drop-pod fallback");
                 return result;
             }
 
-            // Drop pod last — surface if local is underground
-            Map dropMap = (IsUndergroundMap(localMap) && surfaceMap != null) ? surfaceMap : localMap;
             IntVec3 dropPos = GetDeliveryPosition(dropMap, pawn);
             if (TryShuttleDelivery(new List<Thing> { item }, dropPos, dropMap))
             {
@@ -1625,7 +1533,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 result.DeliveryPosition = dropPos;
                 Logger.Debug(
                     $"Pre-created {item.LabelCap} → drop pod at {dropPos} on " +
-                    $"{dropMap.Parent?.LabelCap} (no accepting locker)");
+                    $"{dropMap.Parent?.LabelCap} (no accepting locker on any map)");
             }
             else
             {
