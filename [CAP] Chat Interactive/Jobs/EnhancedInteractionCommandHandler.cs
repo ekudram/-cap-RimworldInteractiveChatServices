@@ -35,7 +35,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             AddIfNotNull(InteractionDefOf.DeepTalk, new InteractionInfo { IsNegative = false, Cost = 15, KarmaCost = 0 });
             AddIfNotNull(InteractionDefOf.Insult, new InteractionInfo { IsNegative = true, Cost = 5, KarmaCost = 5 });
             AddIfNotNull(InteractionDefOf.RomanceAttempt, new InteractionInfo { IsNegative = false, Cost = 20, KarmaCost = 0 });
-            AddIfNotNull(InteractionDefOf.MarriageProposal, new InteractionInfo { IsNegative = false, Cost = 50, KarmaCost = 10 });
+            AddIfNotNull(InteractionDefOf.MarriageProposal, new InteractionInfo { IsNegative = false, Cost = 50, KarmaCost = 0 });
             AddIfNotNull(InteractionDefOf.BuildRapport, new InteractionInfo { IsNegative = false, Cost = 25, KarmaCost = 0 });
             AddIfNotNull(InteractionDefOf.ConvertIdeoAttempt, new InteractionInfo { IsNegative = false, Cost = 30, KarmaCost = 15 });
             AddIfNotNull(InteractionDefOf.Reassure, new InteractionInfo { IsNegative = false, Cost = 12, KarmaCost = 0 });
@@ -124,11 +124,24 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!CanPawnsInteract(initiatorPawn, targetPawn))
                     return $"{initiatorPawn.Name} cannot interact with {targetPawn.Name} right now.";
 
-                // Special handling for romance/flirt interactions
+                // Special handling for romance/flirt and marriage proposal interactions
                 if (interaction == InteractionDefOf.RomanceAttempt ||
+                    interaction == InteractionDefOf.MarriageProposal ||
                     (interaction.defName?.ToLower().Contains("flirt") == true))
                 {
-                    if (!CanFlirt(initiatorPawn, targetPawn, out string refusalMessage))
+                    bool canProceed;
+                    string refusalMessage;
+
+                    if (interaction == InteractionDefOf.MarriageProposal)
+                    {
+                        canProceed = CanProposeMarriage(initiatorPawn, targetPawn, out refusalMessage);
+                    }
+                    else
+                    {
+                        canProceed = CanFlirt(initiatorPawn, targetPawn, out refusalMessage);
+                    }
+
+                    if (!canProceed)
                     {
                         // Refund cost since interaction won't happen
                         viewer.GiveCoins(interactionInfo.Cost);
@@ -157,7 +170,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 Viewers.SaveViewers();
 
-                return $" is going to visit {targetPawn.Name} for a {interaction.label}...";
+                return $"{initiatorPawn.Name} is going to visit {targetPawn.Name} for a {interaction.label}...";
             }
             catch (Exception ex)
             {
@@ -250,7 +263,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             Pawn bestPartner = null;
             int bestPriority = -1;
 
-            // Check direct relations for spouse / lover / fiancé
+            // Check direct relations for spouse / lover / fiancé)
             foreach (var directRelation in initiator.relations.DirectRelations)
             {
                 if (directRelation.otherPawn == null ||
@@ -480,6 +493,142 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             return true; // All checks passed — safe to queue the CAP_SocialVisit job
+        }
+
+        private static bool CanProposeMarriage(Pawn initiator, Pawn target, out string refusalMessage)
+        {
+            refusalMessage = null;
+
+            if (target == null || initiator == null)
+            {
+                refusalMessage = "No valid target found.";
+                return false;
+            }
+
+            if (initiator == target)
+            {
+                refusalMessage = "You can't propose marriage to yourself!";
+                return false;
+            }
+
+            // Step 1: Basic checks
+            if (initiator.Dead || target.Dead)
+            {
+                refusalMessage = $"{target.Name} is not available.";
+                return false;
+            }
+
+            if (initiator.Downed || target.Downed)
+            {
+                refusalMessage = $"{target.Name} is incapacitated.";
+                return false;
+            }
+
+            // Step 2: Mood check on target — marriage is a serious conversation, require decent mood
+            var targetMood = target.needs?.mood;
+            if (targetMood != null)
+            {
+                float targetMoodPct = targetMood.CurLevelPercentage;
+
+                // Hard refuse if target is in a very bad mood (near mental break)
+                if (targetMoodPct < 0.35f)
+                {
+                    refusalMessage = $"{target.Name} is feeling too down to consider such a serious conversation.";
+
+                    // Small mood hit to initiator for insensitive timing (40% chance)
+                    var initiatorMood = initiator.needs?.mood;
+                    if (initiatorMood != null && Rand.Value < 0.4f)
+                    {
+                        initiatorMood.thoughts?.memories?.TryGainMemory(ThoughtDefOf.RebuffedMyRomanceAttempt);
+                    }
+                    return false;
+                }
+                // Soft refuse if target is stressed (60% chance) — higher bar than casual flirt
+                else if (targetMoodPct < 0.50f && Rand.Value < 0.6f)
+                {
+                    refusalMessage = $"{target.Name} isn't in the right headspace for this right now.";
+                    return false;
+                }
+            }
+
+            // Step 3: Opinion check (target's opinion of initiator) — marriage requires stronger foundation than flirting
+            int opinion = target.relations?.OpinionOf(initiator) ?? 0;
+
+            if (opinion < 5)
+            {
+                refusalMessage = $"{target.Name} doesn't think highly enough of {initiator.Name} to even consider marriage.";
+                return false;
+            }
+
+            if (opinion < 25 && Rand.Value < 0.55f) // Mediocre opinion → likely refuse
+            {
+                refusalMessage = $"{target.Name} isn't ready to take that step with {initiator.Name} yet.";
+                return false;
+            }
+
+            // Step 4: Check for existing relationships (stricter than flirt)
+            // Block homewrecking attempts on happy couples. Allow if targeting your own current partner (lover/fiancé/spouse).
+            if (LovePartnerRelationUtility.HasAnyLovePartner(target))
+            {
+                Pawn existingPartner = LovePartnerRelationUtility.ExistingMostLikedLovePartner(target, false);
+                if (existingPartner != null && existingPartner != initiator)
+                {
+                    int partnerOpinion = target.relations?.OpinionOf(existingPartner) ?? 0;
+                    if (partnerOpinion >= 10 && Rand.Value < 0.75f) // High chance to refuse if reasonably happy with someone else
+                    {
+                        refusalMessage = $"{target.Name} is already committed to {existingPartner.Name}.";
+                        return false;
+                    }
+                    // If low opinion with current partner, we still allow the attempt (risky "homewrecker" play) — vanilla outcome will decide
+                }
+                else if (existingPartner == initiator)
+                {
+                    // Already in a romantic relationship with initiator — check if already married to each other
+                    bool alreadyMarried = false;
+                    if (initiator.relations != null)
+                    {
+                        foreach (var rel in initiator.relations.DirectRelations)
+                        {
+                            if (rel.def == PawnRelationDefOf.Spouse && rel.otherPawn == target)
+                            {
+                                alreadyMarried = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (alreadyMarried)
+                    {
+                        refusalMessage = $"You are already married to {target.Name}!";
+                        return false;
+                    }
+                    // Lovers or fiancés proposing marriage is perfectly valid — proceed
+                }
+            }
+
+            // Step 5: Trait-based checks (apply even if current partners)
+            if (target.story != null && target.story.traits != null)
+            {
+                // Psychopaths are much less receptive to marriage proposals
+                if (target.story.traits.HasTrait(TraitDefOf.Psychopath) && Rand.Value < 0.65f)
+                {
+                    refusalMessage = $"{target.Name} has no interest in such emotional commitments.";
+                    return false;
+                }
+
+                // Abrasive pawns more likely to be rude about it
+                if (target.story.traits.HasTrait(TraitDefOf.Abrasive) && Rand.Value < 0.35f)
+                {
+                    refusalMessage = $"{target.Name} snaps: \"Marriage? With you? Don't make me laugh!\"";
+                    return false;
+                }
+            }
+
+            // Note: We intentionally do NOT hard-block proposals to non-partners.
+            // High-opinion strangers or friends can still attempt (vanilla success chance may be low but possible).
+            // This encourages using !flirt / !buildrapport first for better odds, while still allowing bold plays.
+            // The pre-checks above prevent obvious disasters (bad mood, hated, already happily married to someone else).
+
+            return true; // Checks passed — queue the CAP_SocialVisit job; vanilla MarriageProposal interaction will determine final outcome (and possible negative effects)
         }
 
         private class InteractionInfo
