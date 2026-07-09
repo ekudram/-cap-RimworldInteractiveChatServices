@@ -54,14 +54,22 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         // ═══════════════════════════════════════════════════════════════════════
         // DELIVERY PIPELINE (single source of truth)
         //
-        // 1) ResolveDeliveryMap  — which map receives the delivery
-        // 2) TryFindDeliveryCell — which cell on that map (ordered priorities)
-        // 3) TryDeliverGeneratedPawn / locker+pod item paths — how it arrives
+        // Map / cell (shared):
+        //   1) ResolveDeliveryMap  — which map
+        //   2) TryFindDeliveryCell — which cell on that map only
         //
-        // Pocket / thick-roof / "underground" maps: when a normal surface/home map
-        // exists, we REDIRECT the whole delivery to that map (coordinates stay on
-        // the chosen map). Surface spawn above a pocket is intentional for now;
-        // RICS does not depend on third-party nomadic map APIs.
+        // HOW things arrive (do not mix these):
+        //   • LOOSE ITEMS (not equip / wear / backpack):
+        //       1) Lockers on LOCAL map (CurrentMap / pocket / where streamer is) — no surface redirect first
+        //       2) Lockers on surface home (if different and local had no room)
+        //       3) Drop pod (prefer surface if local is underground/pocket)
+        //       Entry: HandleRegularDelivery / HandleRegularDeliveryWithPreCreated
+        //   • EQUIP / WEAR / BACKPACK:
+        //       Try put on pawn → locker fallback if that fails
+        //   • PAWNS (!pawn viewer colonist, !buy animals/mechs):
+        //       ALWAYS drop pod first → GenSpawn near locker/colonist/center as fallback.
+        //       May redirect underground → surface for pod placement.
+        //       Entry: TryDeliverGeneratedPawn (never stuff living pawns into lockers)
         // ═══════════════════════════════════════════════════════════════════════
 
         private static int _undergroundCacheTick = -1;
@@ -685,19 +693,19 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 // Logger.Debug($"Spawning item: {thingDef.defName}, quantity: {quantity}, for pawn: {pawn?.Name}, " +
                 //             $"addToInventory: {addToInventory}, equipItem: {equipItem}, wearItem: {wearItem}");
 
-                // Handle special case for pawns (animals)
+                // Living things (store animals / mechs): drop-pod first — never locker
                 if (IsPawnThingDef(thingDef))
                 {
                     return HandlePawnDelivery(thingDef, quantity, quality, material, pawn);
                 }
 
-                // Handle direct pawn interactions (equip, wear, add to inventory)
+                // Equip / wear / backpack: on-pawn first, locker only if that fails
                 if (equipItem || wearItem || addToInventory)
                 {
                     return HandleDirectPawnInteraction(thingDef, quantity, quality, material, pawn, equipItem, wearItem, addToInventory);
                 }
 
-                // Handle regular deliveries
+                // Loose store items (!buy without equip/wear/backpack): LOCKER first, then drop pod
                 return HandleRegularDelivery(thingDef, quantity, quality, material, pawn);
             }
             catch (Exception ex)
@@ -855,14 +863,10 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         }
 
         /// <summary>
-        /// Handles regular deliveries of items to the player's map, attempting to place them in Rimazon lockers first, and falling back to drop pods if necessary.
+        /// Loose item delivery (not equip/wear/backpack):
+        /// lockers on local map → lockers on surface → drop pod (surface if local is pocket).
+        /// Must NOT redirect map to surface before trying local lockers.
         /// </summary>
-        /// <param name="thingDef"></param>
-        /// <param name="quantity"></param>
-        /// <param name="quality"></param>
-        /// <param name="material"></param>
-        /// <param name="pawn"></param>
-        /// <returns></returns>
         private static DeliveryResult HandleRegularDelivery(ThingDef thingDef, int quantity, QualityCategory? quality,
             ThingDef material, Pawn pawn)
         {
@@ -871,74 +875,82 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 DeliveryPosition = IntVec3.Invalid
             };
 
-            // Determine final material for stuffable items
             ThingDef finalMaterial = material;
             if (thingDef.MadeFromStuff && finalMaterial == null)
-            {
                 finalMaterial = GenStuff.RandomStuffFor(thingDef);
-                // Logger.Debug($"Item requires stuff, selected random material: {finalMaterial?.defName}");
-            }
 
-            // Create items
             List<Thing> itemsToDeliver = CreateItemsForDelivery(thingDef, quantity, quality, finalMaterial);
 
-            // Determine target map
-            Map targetMap = GetTargetMapForDelivery(pawn);
-            if (targetMap == null)
+            // LOCAL map first (CurrentMap / pocket) — never surface-redirect before locker search
+            Map localMap = ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
+            if (localMap == null)
             {
-                Logger.Error("No valid map found for delivery");
+                Logger.Error("No valid map found for item delivery");
                 return result;
             }
 
-            // Try to deliver each item to a locker
-            List<Thing> undeliveredItems = new List<Thing>();
-            int attemptedLockerTotal = 0;
+            Map surfaceMap = GetSurfaceHomeMap();
+            Logger.Debug(
+                $"Item delivery maps: local={localMap.Parent?.LabelCap ?? localMap.ToString()} " +
+                $"(underground={IsUndergroundMap(localMap)}), " +
+                $"surface={surfaceMap?.Parent?.LabelCap ?? "none"}");
 
-            foreach (var item in itemsToDeliver)
+            // ── STEP 1: lockers on the map the streamer is actually on ──
+            var afterLocal = new List<Thing>();
+            TryDeliverItemsToLockersOnMap(itemsToDeliver, localMap, pawn, result, afterLocal);
+
+            // ── STEP 2: if local lockers full/missing, try surface lockers ──
+            var undeliveredItems = afterLocal;
+            if (undeliveredItems.Count > 0 && surfaceMap != null && surfaceMap != localMap)
             {
-                int thisCount = item.stackCount;
-                attemptedLockerTotal += thisCount;
-
-                if (!TryDeliverToLocker(item, targetMap, pawn, result))
-                {
-                    undeliveredItems.Add(item);
-                }
+                var afterSurface = new List<Thing>();
+                TryDeliverItemsToLockersOnMap(undeliveredItems, surfaceMap, pawn, result, afterSurface);
+                undeliveredItems = afterSurface;
             }
 
+            // ── STEP 3: leftovers → drop pod (prefer surface when local is underground) ──
             if (undeliveredItems.Count > 0)
             {
                 int dropCount = undeliveredItems.Sum(t => t?.stackCount ?? 0);
-                // Logger.Debug($"{undeliveredItems.Count} stacks ({dropCount} total units) rejected by lockers → using drop pod");
-                result.DropPodDeliveredCount += dropCount;
-            }
-
-            // Handle undelivered items with drop pod
-            if (undeliveredItems.Count > 0)
-            {
-                int dropCount = undeliveredItems.Sum(t => t?.stackCount ?? 0);  // Null-safe
-                // Logger.Debug($"{undeliveredItems.Count} items ({dropCount} total count) couldn't fit in lockers, using drop pod");
-                result.DropPodDeliveredItems.AddRange(undeliveredItems);
-
-                IntVec3 dropPos = GetDeliveryPosition(targetMap, pawn);
-                if (TryShuttleDelivery(undeliveredItems, dropPos, targetMap))
+                Map dropMap = localMap;
+                if (IsUndergroundMap(localMap) && surfaceMap != null)
                 {
-                    result.DropPodDeliveredCount += dropCount;
-                    result.DeliveryPosition = dropPos;
-                    //Logger.Debug($"Drop pod delivery successful at {dropPos} with {dropCount} items");
+                    dropMap = surfaceMap;
+                    Logger.Debug(
+                        $"Item delivery: no/full locker for {dropCount} units on local map → " +
+                        $"drop pod on surface {surfaceMap.Parent?.LabelCap}");
                 }
                 else
                 {
-                    Logger.Error("Drop pod delivery failed");
+                    Logger.Debug(
+                        $"Item delivery: {result.LockerDeliveredCount} in locker, " +
+                        $"{undeliveredItems.Count} stack(s)/{dropCount} units → drop pod on local map");
+                }
+
+                result.DropPodDeliveredItems.AddRange(undeliveredItems);
+
+                IntVec3 dropPos = GetDeliveryPosition(dropMap, pawn);
+                if (TryShuttleDelivery(undeliveredItems, dropPos, dropMap))
+                {
+                    result.DropPodDeliveredCount += dropCount;
+                    result.DeliveryPosition = dropPos;
+                }
+                else
+                {
+                    Logger.Error("Drop pod delivery failed after locker search");
                 }
             }
+            else
+            {
+                Logger.Debug($"Item delivery: all {result.LockerDeliveredCount} units accepted by locker(s)");
+            }
 
-            // Determine primary delivery method
             DeterminePrimaryDeliveryMethod(result);
 
-            // Set final delivery position if not set
             if (result.DeliveryPosition == IntVec3.Invalid || result.DeliveryPosition == default(IntVec3))
             {
-                result.DeliveryPosition = GetFallbackDeliveryPosition(targetMap, result);
+                Map fallbackMap = result.LockerDeliveredCount > 0 ? localMap : (surfaceMap ?? localMap);
+                result.DeliveryPosition = GetFallbackDeliveryPosition(fallbackMap, result);
             }
 
             Logger.Debug($"Delivery result: Method={result.PrimaryMethod}, Position={result.DeliveryPosition}, " +
@@ -999,10 +1011,45 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
         }
 
-        /// <summary>Map for item delivery — shared ResolveDeliveryMap pipeline.</summary>
+        /// <summary>
+        /// Map for item/equip paths that need a place to stand: prefer local map (no auto surface redirect).
+        /// Loose-item locker search uses this first so pocket lockers win over surface pods.
+        /// </summary>
         private static Map GetTargetMapForDelivery(Pawn pawn)
         {
-            return ResolveDeliveryMap(pawn, allowUndergroundRedirect: true);
+            return ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
+        }
+
+        /// <summary>Best non-underground player-home map, if any (for pod fallback after lockers).</summary>
+        private static Map GetSurfaceHomeMap()
+        {
+            return Find.Maps?.FirstOrDefault(m => m != null && m.IsPlayerHome && !IsUndergroundMap(m));
+        }
+
+        /// <summary>
+        /// Tries lockers on <paramref name="map"/> for each remaining item; removes successes from the list.
+        /// </summary>
+        private static void TryDeliverItemsToLockersOnMap(
+            List<Thing> items, Map map, Pawn pawn, DeliveryResult result, List<Thing> stillUndelivered)
+        {
+            if (map == null || items == null || items.Count == 0) return;
+
+            foreach (var item in items)
+            {
+                if (item == null || item.Destroyed)
+                    continue;
+
+                if (TryDeliverToLocker(item, map, pawn, result))
+                {
+                    Logger.Debug(
+                        $"Locker accepted {item.def.defName} x{item.stackCount} on " +
+                        $"{map.Parent?.LabelCap ?? map.ToString()}");
+                }
+                else
+                {
+                    stillUndelivered.Add(item);
+                }
+            }
         }
 
         /// <summary>Drop-pod cell for items on map (shared cell finder).</summary>
@@ -1537,24 +1584,54 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         /// <param name="pawn"></param>
         /// <param name="result"></param>
         /// <returns></returns>
+        /// <summary>
+        /// Pre-created loose item: local lockers → surface lockers → drop pod (same as HandleRegularDelivery).
+        /// </summary>
         private static DeliveryResult HandleRegularDeliveryWithPreCreated(Thing item, Pawn pawn, DeliveryResult result)
         {
-            Map map = GetTargetMapForDelivery(pawn);
-            if (TryDeliverToLocker(item, map, pawn, result))
+            Map localMap = ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
+            if (localMap == null)
+            {
+                Logger.Error("No valid map for pre-created item delivery");
+                return result;
+            }
+
+            Map surfaceMap = GetSurfaceHomeMap();
+
+            // Local locker first (pocket locker must win over surface redirect)
+            if (TryDeliverToLocker(item, localMap, pawn, result))
             {
                 result.PrimaryMethod = DeliveryMethod.Locker;
+                Logger.Debug($"Pre-created {item.LabelCap} → local locker at {result.DeliveryPosition}");
+                return result;
+            }
+
+            // Surface locker second
+            if (surfaceMap != null && surfaceMap != localMap &&
+                TryDeliverToLocker(item, surfaceMap, pawn, result))
+            {
+                result.PrimaryMethod = DeliveryMethod.Locker;
+                Logger.Debug($"Pre-created {item.LabelCap} → surface locker at {result.DeliveryPosition}");
+                return result;
+            }
+
+            // Drop pod last — surface if local is underground
+            Map dropMap = (IsUndergroundMap(localMap) && surfaceMap != null) ? surfaceMap : localMap;
+            IntVec3 dropPos = GetDeliveryPosition(dropMap, pawn);
+            if (TryShuttleDelivery(new List<Thing> { item }, dropPos, dropMap))
+            {
+                result.DropPodDeliveredItems.Add(item);
+                result.PrimaryMethod = DeliveryMethod.DropPod;
+                result.DeliveryPosition = dropPos;
+                Logger.Debug(
+                    $"Pre-created {item.LabelCap} → drop pod at {dropPos} on " +
+                    $"{dropMap.Parent?.LabelCap} (no accepting locker)");
             }
             else
             {
-                // Drop pod fallback
-                IntVec3 dropPos = GetDeliveryPosition(map, pawn);
-                if (TryShuttleDelivery(new List<Thing> { item }, dropPos, map))
-                {
-                    result.DropPodDeliveredItems.Add(item);
-                    result.PrimaryMethod = DeliveryMethod.DropPod;
-                    result.DeliveryPosition = dropPos;
-                }
+                Logger.Error($"Pre-created item {item.def.defName} failed locker and drop pod");
             }
+
             return result;
         }
 

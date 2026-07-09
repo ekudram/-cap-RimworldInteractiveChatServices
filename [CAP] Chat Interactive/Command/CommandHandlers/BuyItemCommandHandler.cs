@@ -1,4 +1,4 @@
-﻿// Copyright (c) Captolamia
+// Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
@@ -302,23 +302,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     Logger.Debug($"Awarded {karmaEarned:F2} karma ({finalPrice} × settings.KarmaPerStoreItem) for store purchase");
                 }
 
-                // Spawn the item
-                var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
-                //(List<Thing> spawnedItems, IntVec3 deliveryPos) spawnResult;
+                // Deliver purchase:
+                // - equip / wear / backpack → on-pawn first (locker only if that fails)
+                // - loose !buy items → LOCKER first, then drop pod (HandleRegularDelivery*)
+                // - animals / mechs → drop pod first (never locker)
                 DeliveryResult deliveryResult;
 
                 if (requireEquippable || requireWearable || addToInventory)
                 {
-                    // Pass addToInventory through correctly so Backpack command routes to
-                    // HandleDirectPawnInteraction → pawn.inventory.innerContainer.TryAdd()
-                    // (instead of falling through to regular locker/drop-pod delivery).
                     deliveryResult = ItemDeliveryHelper.SpawnItemForPawn(thingDef, quantity, quality, material,
                         viewerPawn, addToInventory, requireEquippable, requireWearable, preCreatedItem: finalItem);
                 }
                 else
                 {
+                    // Colony delivery: Rimazon locker before any drop pod
                     deliveryResult = ItemDeliveryHelper.SpawnItemForPawn(thingDef, quantity, quality, material,
-                        viewerPawn, addToInventory, false, false, preCreatedItem: finalItem);
+                        viewerPawn, addToInventory: false, equipItem: false, wearItem: false, preCreatedItem: finalItem);
                 }
 
                 List<Thing> allSpawnedItems = new List<Thing>();
