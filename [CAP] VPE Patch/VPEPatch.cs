@@ -125,7 +125,7 @@ namespace CAP_ChatInteractive.Patch.VPE
                 {
                     if (p == null) continue;
                     string dn = (p.defName ?? "").ToLowerInvariant().Replace(" ", "").Replace("_", "").Replace("-", "");
-                    string lb = (p.LabelCap?.ToString() ?? "").ToLowerInvariant().Replace(" ", "").Replace("_", "").Replace("-", "");
+                    string lb = (p.LabelCap.ToString() ?? "").ToLowerInvariant().Replace(" ", "").Replace("_", "").Replace("-", "");
                     if (dn.Contains(search) || lb.Contains(search) || search.Contains(dn) || search.Contains(lb))
                     {
                         matchedPath = p;
@@ -146,7 +146,7 @@ namespace CAP_ChatInteractive.Patch.VPE
                 var result = new VPEClassInfo
                 {
                     Level = currentLevel,
-                    ClassLabel = matchedPath.LabelCap?.ToString() ?? matchedPath.defName,
+                    ClassLabel = matchedPath.LabelCap.ToString() ?? matchedPath.defName,
                     ClassDefName = matchedPath.defName,
                     HasMatchingClass = true,
                     Abilities = new List<VPEOwnedAbility>()
@@ -189,18 +189,18 @@ namespace CAP_ChatInteractive.Patch.VPE
                     {
                         result.Abilities.Add(new VPEOwnedAbility
                         {
-                            Label = ad.LabelCap?.ToString() ?? ad.label ?? ad.defName,
+                            Label = ad.LabelCap.ToString() ?? ad.label ?? ad.defName,
                             RequiredLevel = reqLevel
                         });
                     }
                 }
 
-                Logger.Debug($"[CAP] VPE Patch: Class '{result.ClassLabel}' returned {result.Abilities.Count} owned abilities");
+                Logger.Debug($"[RICS] VPE Patch: Class '{result.ClassLabel}' returned {result.Abilities.Count} owned abilities");
                 return result;
             }
             catch (Exception ex)
             {
-                Logger.Error($"[CAP] VPE Patch GetPsycastsInClass error: {ex}");
+                Logger.Error($"[RICS] VPE Patch GetPsycastsInClass error: {ex}");
                 return new VPEClassInfo { Error = ex.Message };
             }
         }
