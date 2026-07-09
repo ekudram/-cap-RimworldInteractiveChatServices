@@ -51,7 +51,7 @@ namespace CAP_ChatInteractive
             Settings = GetSettings<CAPChatInteractiveSettings>();
 
             // ============================================================
-            // HARMONY INITIALIZATION - ADD THIS BLOCK
+            // HARMONY INITIALIZATION 
             // ============================================================
             // This must be called once. It will automatically apply every
             // [HarmonyPatch] class in this assembly, including:
@@ -253,7 +253,7 @@ namespace CAP_ChatInteractive
         {
             try
             {
-                Logger.Debug("=== INITIALIZING VPE PS YCAST PROVIDER ===");
+                Logger.Debug("=== INITIALIZING VPE PSYCATS PROVIDER ===");
 
                 const string vpeModId = "VanillaExpanded.VPsycastsE";
                 const string vefModId = "OskarPotocki.VanillaFactionsExpanded.Core";
@@ -261,39 +261,28 @@ namespace CAP_ChatInteractive
                 bool vpeActive = ModLister.GetActiveModWithIdentifier(vpeModId) != null;
                 bool vefActive = ModLister.GetActiveModWithIdentifier(vefModId) != null;
 
-                if (vpeActive && vefActive)
+                if (!vpeActive || !vefActive)
                 {
-                    Logger.Debug("Both VPE and VEF detected, attempting to load patch assembly");
-
-                    VPEProvider = LoadVPEPatchConditionally();
-                }
-                else
-                {
-                    if (!vpeActive)
-                        Logger.Debug("VPE mod not detected, VPE psycast support disabled");
-                    if (!vefActive)
-                        Logger.Debug("VEF (Vanilla Expanded Framework) not detected - VPE requires it");
-
                     if (vpeActive && !vefActive)
                     {
-                        // Big red error if VPE is present but VEF is missing
-                        Messages.Message("[RICS] ERROR: Vanilla Psycasts Expanded is active but Vanilla Expanded Framework (VEF) is missing! VPE requires VEF. !mypawn psycasts will not work for VPE pawns.", MessageTypeDefOf.RejectInput);
+                        Messages.Message("[RICS] ERROR: Vanilla Psycasts Expanded active but VEF missing! VPE requires VEF.", MessageTypeDefOf.RejectInput);
                     }
-
+                    else
+                    {
+                        Logger.Debug(vpeActive ? "VPE detected but VEF missing" : "VPE mod not detected, psycast support disabled");
+                    }
                     VPEProvider = null;
+                    return;
                 }
+
+                // Only attempt to load the patch assembly if both deps are confirmed present
+                VPEProvider = LoadVPEPatchConditionally();
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error initializing VPE psycast provider: {ex}");
                 VPEProvider = null;
-
-                // Safety net big error
-                try
-                {
-                    Messages.Message("[RICS] ERROR: Failed to initialize VPE Psycast support. Check your VPE + VEF installation. !mypawn psycasts may not work correctly.", MessageTypeDefOf.RejectInput);
-                }
-                catch { }
+                Messages.Message("[RICS] Failed to initialize VPE Psycast support. Check VPE+VEF installation.", MessageTypeDefOf.RejectInput);
             }
         }
 
@@ -301,43 +290,32 @@ namespace CAP_ChatInteractive
         {
             try
             {
+                // Defensive: only look for the patch if we already confirmed deps
                 Assembly vpePatchAssembly = AppDomain.CurrentDomain.GetAssemblies()
                     .FirstOrDefault(a => a.GetName().Name == "[CAP] VPE Patch");
 
                 if (vpePatchAssembly == null)
                 {
-                    Logger.Debug("VPE Patch assembly not found");
+                    Logger.Debug("VPE Patch assembly not found (optional)");
                     return null;
                 }
 
                 Type vpePatchType = vpePatchAssembly.GetType("CAP_ChatInteractive.Patch.VPE.VPEPatch");
-                if (vpePatchType != null)
+                if (vpePatchType == null)
                 {
-                    var provider = Activator.CreateInstance(vpePatchType) as IVPEPsycastProvider;
-                    Logger.Debug($"[RICS] Successfully loaded VPE Patch provider. ModId: {provider?.ModId ?? "unknown"}");
-                    return provider;
+                    Logger.Error("VPEPatch type not found in assembly");
+                    return null;
                 }
-                else
-                {
-                    Logger.Error("[RICS] VPEPatch type not found in the patch assembly!");
-                    Messages.Message("[RICS] CRITICAL ERROR: VPE Patch assembly loaded but VPEPatch type missing. Check mod installation.", MessageTypeDefOf.RejectInput);
-                }
-            }
-            catch (FileNotFoundException)
-            {
-                Logger.Debug("VPE Patch assembly not found (optional dependency)");
+
+                var provider = Activator.CreateInstance(vpePatchType) as IVPEPsycastProvider;
+                Logger.Debug($"[RICS] VPE Patch provider loaded successfully. ModId: {provider?.ModId ?? "unknown"}");
+                return provider;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error loading VPE patch: {ex}");
-                try
-                {
-                    Messages.Message($"[RICS] ERROR loading VPE Psycast patch: {ex.Message}. !mypawn psycasts may fail for VPE.", MessageTypeDefOf.RejectInput);
-                }
-                catch { }
+                Logger.Error($"Failed to load VPE patch: {ex.Message}");
+                return null;
             }
-
-            return null;
         }
 
         private void InitializeServices()
