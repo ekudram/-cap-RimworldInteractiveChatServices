@@ -1212,17 +1212,14 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                     Pawn pawn = PawnGenerator.GeneratePawn(request);
 
-                    // Handle mechanoids and animals
-                    if (pawn.RaceProps.IsMechanoid)
-                    {
-                        // TODO: ADD code to set controller to player pawn if mechinator.  DONT REMOVE THIS COMMENT UNTIL TODO IS DONE
-                        Logger.Debug($"Detected mechanoid: {pawn.def.defName}, setting faction to player");
-                        pawn.SetFaction(Faction.OfPlayer);
-                    }
-                    else if (pawn.RaceProps.Animal)
+                    // Colony ownership; mechanitor link attempted after spawn (needs IsColonyMech + map)
+                    if (pawn.RaceProps.IsMechanoid || pawn.RaceProps.Animal)
                     {
                         pawn.SetFaction(Faction.OfPlayer);
-                        Logger.Debug($"Tamed animal: {pawn.Name}");
+                        Logger.Debug(
+                            pawn.RaceProps.IsMechanoid
+                                ? $"Mechanoid {pawn.def.defName}: faction → player (overseer assign after spawn)"
+                                : $"Tamed animal: {pawn.Name}");
                     }
 
                     pawnsToDeliver.Add(pawn);
@@ -1238,6 +1235,10 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                         {
                             spawnPosition = pos;
                             Logger.Debug($"Store pawn delivered {deliveredPawn.LabelShort} at {pos}");
+
+                            // Mechanoids: try bind to viewer's pawn if they are a mechanitor with bandwidth
+                            if (deliveredPawn.RaceProps.IsMechanoid)
+                                TryAssignMechToViewer(deliveredPawn, viewerPawn);
                         }
                         else
                         {
@@ -1256,6 +1257,90 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             {
                 Logger.Error($"Error in pawn delivery: {ex}");
                 return (false, spawnPosition);
+            }
+        }
+
+        /// <summary>
+        /// After a store-bought mech spawns as a colony mech, try to assign it to the viewer's pawn.
+        /// Requires Biotech, Mechlink (IsMechanitor), free bandwidth, and a controllable mech.
+        /// Failure is non-fatal: mech still exists as an uncontrolled colony mechanoid (chaos is OK).
+        /// Vanilla path matches gestator / quest: Overseer relation (+ control group).
+        /// </summary>
+        private static bool TryAssignMechToViewer(Pawn mech, Pawn viewerPawn)
+        {
+            try
+            {
+                if (!ModsConfig.BiotechActive)
+                {
+                    Logger.Debug("Mech assign: Biotech inactive — leave uncontrolled");
+                    return false;
+                }
+
+                if (mech == null || mech.Destroyed || mech.Dead || !mech.RaceProps.IsMechanoid)
+                    return false;
+
+                if (viewerPawn == null || viewerPawn.Destroyed || viewerPawn.Dead)
+                {
+                    Logger.Debug("Mech assign: no viewer pawn — leave uncontrolled");
+                    return false;
+                }
+
+                // Mechlink implant + mechanitor tracker
+                if (!MechanitorUtility.IsMechanitor(viewerPawn))
+                {
+                    Logger.Debug(
+                        $"Mech assign: {viewerPawn.LabelShort} is not a mechanitor " +
+                        "(needs Mechlink implant) — leave uncontrolled");
+                    return false;
+                }
+
+                if (mech.Faction != Faction.OfPlayer)
+                    mech.SetFaction(Faction.OfPlayer);
+
+                if (!MechanitorUtility.EverControllable(mech))
+                {
+                    Logger.Debug(
+                        $"Mech assign: {mech.def.defName} has no OverseerSubject — leave uncontrolled");
+                    return false;
+                }
+
+                // Full vanilla gate: colony mech, not already controlled, enough free bandwidth, etc.
+                AcceptanceReport canControl = MechanitorUtility.CanControlMech(viewerPawn, mech);
+                if (!canControl.Accepted)
+                {
+                    float cost = mech.GetStatValue(StatDefOf.BandwidthCost);
+                    int freeBw = viewerPawn.mechanitor.TotalBandwidth - viewerPawn.mechanitor.UsedBandwidth;
+                    Logger.Debug(
+                        $"Mech assign: cannot assign {mech.LabelShort} to {viewerPawn.LabelShort}: " +
+                        $"{canControl.Reason} (free BW {freeBw}, cost {cost:0}) — leave uncontrolled");
+                    return false;
+                }
+
+                // Same as Bill_ProductionMech / QuestPart_AssignMechToMechanitor
+                if (mech.GetOverseer() != viewerPawn)
+                    viewerPawn.relations.AddDirectRelation(PawnRelationDefOf.Overseer, mech);
+
+                // Ensure it lands in a control group (UI-equivalent)
+                try
+                {
+                    viewerPawn.mechanitor.AssignPawnControlGroup(mech);
+                }
+                catch (Exception assignEx)
+                {
+                    Logger.Debug($"Mech assign: control group assign soft-failed: {assignEx.Message}");
+                }
+
+                viewerPawn.mechanitor.Notify_BandwidthChanged();
+
+                Logger.Message(
+                    $"Mech assign: {mech.LabelShortCap} overseen by {viewerPawn.LabelShort} " +
+                    $"(BW {viewerPawn.mechanitor.UsedBandwidth}/{viewerPawn.mechanitor.TotalBandwidth})");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Mech assign failed (mech still spawned): {ex.Message}");
+                return false;
             }
         }
 
