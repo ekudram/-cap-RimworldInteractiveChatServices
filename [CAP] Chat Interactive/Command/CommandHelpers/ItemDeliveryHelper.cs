@@ -414,16 +414,10 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         {
             try
             {
-                if (thing == null || thing.Destroyed)
-                    return null;
+                if (thing == null || thing.Destroyed) return null;
 
                 // Pawns never go in lockers
-                if (thing is Pawn)
-                    return null;
-
-                // Minified buildings (beds, etc.) skip lockers — drop pod is correct
-                if (thing.def.Minifiable)
-                    return null;
+                //if (thing is Pawn) return null; // Can we?
 
                 // Collect EVERY locker on every map
                 var allLockers = new List<Building_RimazonLocker>();
