@@ -203,6 +203,19 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
         }
 
+        /// <summary>
+        /// Returns a custom drop spot on the map,
+        /// prioritizing Rimazon Drop Markers,
+        /// explicit "drop spot" items,
+        /// trade beacons,
+        /// ship landing beacons,
+        /// caravan hitching spots,
+        /// and finally falling back to a central colonist area or map center if necessary.
+        /// Is used by the store command to determine where to drop items when lockers are full.
+        /// Is not used by the pawn command see 
+        /// </summary>
+        /// <param name="map"></param>
+        /// <returns></returns>
         public static IntVec3 GetCustomDropSpot(Map map)
         {
             if (map == null)
@@ -330,6 +343,11 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return map.Center;
         }
 
+        /// <summary>
+        /// Determines if the given map is considered "underground" based on the percentage of thick natural overhead mountain roof coverage.
+        /// </summary>
+        /// <param name="map"></param>
+        /// <returns></returns>
         public static bool IsUndergroundMap(Map map)
         {
             if (map == null) return false;
@@ -372,7 +390,13 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return false;
         }
 
-        // Replace the existing SpawnItemAtTradeSpot method with this improved version
+        /// <summary>
+        /// Spawns the given item at a suitable trade spot on the map, preferring Rimazon lockers if available, and falling back to drop pods if necessary.
+        /// THIS IS NOT USED!
+        /// </summary>
+        /// <param name="thing"></param>
+        /// <param name="map"></param>
+        /// <param name="forPawn"></param>
         public static void SpawnItemAtTradeSpot(Thing thing, Map map, Pawn forPawn = null)
         {
             if (map == null)
@@ -412,6 +436,16 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         }
 
         // === ItemDeliveryHelper
+        /// <summary>
+        /// Spawns Items for delivery, checks for method of delivery and validates.  Returns results
+        /// </summary>
+        /// <param name="thingDef"></param>
+        /// <param name="quantity"></param>
+        /// <param name="quality"></param>
+        /// <param name="material"></param>
+        /// <param name="pawn"></param>
+        /// <param name="addToInventory"></param>
+        /// <returns></returns>
         public static (List<Thing> spawnedThings, IntVec3 deliveryPos, DeliveryResult deliveryResult) SpawnItemForPawn(ThingDef thingDef, int quantity, QualityCategory? quality,
             ThingDef material, Pawn pawn, bool addToInventory = false)
         {
@@ -494,11 +528,25 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
         // ===== HELPER METHODS =====
 
+        /// <summary>
+        /// Checks if the given ThingDef represents a pawn (animal or humanoid) by verifying its thingClass
+        /// </summary>
+        /// <param name="thingDef"></param>
+        /// <returns></returns>
         private static bool IsPawnThingDef(ThingDef thingDef)
         {
             return thingDef.thingClass == typeof(Verse.Pawn) || thingDef.race != null;
         }
 
+        /// <summary>
+        /// Handles the delivery of a pawn (animal or humanoid) to the player's map, ensuring a safe drop position is found.
+        /// </summary>
+        /// <param name="thingDef"></param>
+        /// <param name="quantity"></param>
+        /// <param name="quality"></param>
+        /// <param name="material"></param>
+        /// <param name="viewerPawn"></param>
+        /// <returns></returns>
         private static DeliveryResult HandlePawnDelivery(ThingDef thingDef, int quantity, QualityCategory? quality,
             ThingDef material, Pawn viewerPawn)
         {
@@ -531,6 +579,18 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return result;
         }
 
+        /// <summary>
+        /// Handles direct interactions with a pawn, such as equipping, wearing, or adding items to their inventory. If the interaction fails, it falls back to locker delivery.
+        /// </summary>
+        /// <param name="thingDef"></param>
+        /// <param name="quantity"></param>
+        /// <param name="quality"></param>
+        /// <param name="material"></param>
+        /// <param name="pawn"></param>
+        /// <param name="equipItem"></param>
+        /// <param name="wearItem"></param>
+        /// <param name="addToInventory"></param>
+        /// <returns></returns>
         private static DeliveryResult HandleDirectPawnInteraction(ThingDef thingDef, int quantity, QualityCategory? quality,
             ThingDef material, Pawn pawn, bool equipItem, bool wearItem, bool addToInventory)
         {
@@ -613,6 +673,15 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return result;
         }
 
+        /// <summary>
+        /// Handles regular deliveries of items to the player's map, attempting to place them in Rimazon lockers first, and falling back to drop pods if necessary.
+        /// </summary>
+        /// <param name="thingDef"></param>
+        /// <param name="quantity"></param>
+        /// <param name="quality"></param>
+        /// <param name="material"></param>
+        /// <param name="pawn"></param>
+        /// <returns></returns>
         private static DeliveryResult HandleRegularDelivery(ThingDef thingDef, int quantity, QualityCategory? quality,
             ThingDef material, Pawn pawn)
         {
@@ -698,6 +767,14 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return result;
         }
 
+        /// <summary>
+        /// Attempts to deliver a single item to a suitable Rimazon locker on the map. If successful, updates the delivery result with the count and position.
+        /// </summary>
+        /// <param name="item"></param>
+        /// <param name="map"></param>
+        /// <param name="pawn"></param>
+        /// <param name="result"></param>
+        /// <returns></returns>
         private static bool TryDeliverToLocker(Thing item, Map map, Pawn pawn, DeliveryResult result)
         {
             if (item == null || item.Destroyed)
@@ -741,6 +818,11 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
         }
 
+        /// <summary>
+        /// Determines the appropriate map for delivery based on the pawn's current map, handling underground maps by redirecting to a surface map if necessary.
+        /// </summary>
+        /// <param name="pawn"></param>
+        /// <returns></returns>
         private static Map GetTargetMapForDelivery(Pawn pawn)
         {
             Map targetMap = pawn?.Map;
@@ -758,6 +840,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return targetMap ?? Find.CurrentMap ?? Find.Maps.FirstOrDefault(m => m.IsPlayerHome);
         }
 
+        /// <summary>
+        /// Finds a suitable delivery position for drop pods, prioritizing proximity to the trade spot, then the pawn's position, and finally falling back to the trade spot if necessary.
+        /// </summary>
+        /// <param name="map"></param>
+        /// <param name="pawn"></param>
+        /// <returns></returns>
         private static IntVec3 GetDeliveryPosition(Map map, Pawn pawn)
         {
             IntVec3 tradeSpot = GetCustomDropSpot(map);
@@ -784,6 +872,10 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return tradeSpot;
         }
 
+        /// <summary>
+        /// Determines the primary delivery method based on the counts of items delivered to lockers and drop pods, prioritizing lockers when available.
+        /// </summary>
+        /// <param name="result"></param>
         private static void DeterminePrimaryDeliveryMethod(DeliveryResult result)
         {
             if (result.LockerDeliveredCount > 0)
@@ -808,6 +900,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
         }
 
+        /// <summary>
+        /// Finds a fallback delivery position when lockers are unavailable, prioritizing the first suitable locker if any items were delivered to lockers, and otherwise using the trade spot.
+        /// </summary>
+        /// <param name="map"></param>
+        /// <param name="result"></param>
+        /// <returns></returns>
         private static IntVec3 GetFallbackDeliveryPosition(Map map, DeliveryResult result)
         {
             // If we have locker items, use the first locker position
@@ -828,6 +926,14 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return tradeSpot;
         }
 
+        /// <summary>
+        /// Creates a list of Thing instances for delivery, handling minifiable items and stackable items appropriately, and setting quality if applicable.
+        /// </summary>
+        /// <param name="thingDef"></param>
+        /// <param name="quantity"></param>
+        /// <param name="quality"></param>
+        /// <param name="material"></param>
+        /// <returns></returns>
         private static List<Thing> CreateItemsForDelivery(ThingDef thingDef, int quantity, QualityCategory? quality, ThingDef material)
         {
             List<Thing> things = new List<Thing>();
@@ -956,6 +1062,13 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return true;
         }
 
+        /// <summary>
+        /// Logs detailed information about the drop pod delivery attempt, including position, map, and the items being delivered.
+        /// This is a testing Function to help debug drop pod delivery issues.
+        /// </summary>
+        /// <param name="thingsToDeliver"></param>
+        /// <param name="dropPos"></param>
+        /// <param name="map"></param>
         private static void LogDropPodDetails(List<Thing> thingsToDeliver, IntVec3 dropPos, Map map)
         {
             Logger.Debug($"=== DROP POD DELIVERY DEBUG ===");
@@ -973,7 +1086,16 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             Logger.Debug($"=== END DEBUG ===");
         }
 
-        private static bool TryFindSafeDropPosition(Map map, out IntVec3 dropPos)
+        /// <summary>
+        /// Attempts to find a safe drop position for a drop pod on the given map,
+        /// prioritizing Rimazon Drop Markers, trade spots, map edges, and nearby friendly pawns.
+        /// Returns true if a valid position is found, false otherwise.
+        /// Is used by BuyPawnCommandHandler.TrySpawnPawnInSpaceBiome and SpawnItemForPawn for pawn and item deliveries.
+        /// </summary>
+        /// <param name="map"></param>
+        /// <param name="dropPos"></param>
+        /// <returns></returns>
+        public static bool TryFindSafeDropPosition(Map map, out IntVec3 dropPos)
         {
             dropPos = IntVec3.Invalid;
             if (map == null) return false;
@@ -1288,6 +1410,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 return (false, spawnPosition);
             }
         }
+
         /// <summary>
         /// Attempts to deliver the given list of things via shuttle/drop pod at the specified position on the map.
         /// </summary>
@@ -1454,7 +1577,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return things;
         }
 
-
         /// <summary>
         /// Determines if the given map is a space map.
         /// </summary>
@@ -1513,6 +1635,14 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return result;
         }
 
+        /// <summary>
+        /// Handles regular item delivery with pre-created items, attempting locker delivery first, then drop pod as a fallback.
+        /// This is used for unique type weapons and other items that are already created and need to be delivered to the pawn or colony.
+        /// </summary>
+        /// <param name="item"></param>
+        /// <param name="pawn"></param>
+        /// <param name="result"></param>
+        /// <returns></returns>
         private static DeliveryResult HandleRegularDeliveryWithPreCreated(Thing item, Pawn pawn, DeliveryResult result)
         {
             Map map = GetTargetMapForDelivery(pawn);

@@ -19,7 +19,7 @@
 using _CAP__Chat_Interactive.Command.CommandHelpers;
 using _CAP__Chat_Interactive.Utilities;
 using RimWorld;
-using RimWorld.Planet;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,6 +27,9 @@ using Verse;
 
 namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
+    /// <summary>
+    /// Handles the !pawn command from chat, parsing arguments and generating a pawn for the viewer.
+    /// </summary>
     public static class BuyPawnCommandHandler
     {
         /// <summary>
@@ -440,6 +443,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
+        /// <summary>
+        /// Generates a pawn based on the specified parameters and attempts to spawn it in the player's home map.
+        /// </summary>
+        /// <param name="username"></param>
+        /// <param name="raceName"></param>
+        /// <param name="xenotypeName"></param>
+        /// <param name="genderName"></param>
+        /// <param name="age"></param>
+        /// <param name="raceSettings"></param>
+        /// <returns></returns>
         private static BuyPawnResult GenerateAndSpawnPawn(string username, string raceName, string xenotypeName, string genderName, int age, RaceSettings raceSettings)
         {
             try
@@ -623,6 +636,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
+        /// <summary>
+        /// Attempts to find the most appropriate PawnKindDef for a given
+        /// </summary>
+        /// <param name="raceName"></param>
+        /// <returns></returns>
         public static PawnKindDef GetPawnKindDefForRace(string raceName)
         {
 
@@ -695,6 +713,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return PawnKindDefOf.Colonist;
         }
 
+        /// <summary>
+        /// Determines if the given pawn kind is associated with a player faction.
+        /// </summary>
+        /// <param name="pawnKind"></param>
+        /// <returns></returns>
         private static bool IsPlayerFactionPawnKind(PawnKindDef pawnKind)
         {
             if (pawnKind == null) return false;
@@ -715,6 +738,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return false;
         }
 
+        /// <summary>
+        /// Heuristic check to determine if a PawnKindDef is likely intended for player/colonist use based on naming patterns and combat power.
+        /// </summary>
+        /// <param name="pawnKind"></param>
+        /// <returns></returns>
         private static bool IsLikelyPlayerPawnKind(PawnKindDef pawnKind)
         {
             if (pawnKind == null) return false;
@@ -738,6 +766,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return false;
         }
 
+        /// <summary>
+        /// Validates the pawn request based on race
+        /// </summary>
+        /// <param name="raceDefName"></param>
+        /// <param name="xenotypeName"></param>
+        /// <param name="raceSettings"></param>
+        /// <returns></returns>
         private static bool IsValidPawnRequest(string raceDefName, string xenotypeName, out RaceSettings raceSettings)
         {
             raceSettings = null;
@@ -774,6 +809,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return true;
         }
 
+        /// <summary>
+        /// Checks if the given xenotype input is allowed
+        /// </summary>
+        /// <param name="raceSettings"></param>
+        /// <param name="xenotypeInput"></param>
+        /// <returns></returns>
         private static bool IsXenotypeAllowed(RaceSettings raceSettings, string xenotypeInput)
         {
             string xenoDefName = GetXenotypeDefName(xenotypeInput, raceSettings);
@@ -817,7 +858,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return true;
         }
 
-        // Update IsCustomXenotype (tiny change – now works with labels)
+        /// <summary>
+        /// Determines if the given xenotype input is a custom xenotype (not in DefDatabase
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="raceSettings"></param>
+        /// <returns></returns>
         private static bool IsCustomXenotype(string input, RaceSettings raceSettings)
         {
 
@@ -826,6 +872,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 x.defName.Equals(defName, StringComparison.OrdinalIgnoreCase)) == null;
         }
 
+        /// <summary>
+        /// Checks if the game is in a state where a pawn can be purchased and spawned
+        /// </summary>
+        /// <returns></returns>
         private static bool IsGameReadyForPawnPurchase()
         {
             return Current.Game != null &&
@@ -833,6 +883,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                    Current.Game.Maps.Any(map => map.IsPlayerHome);
         }
 
+        /// <summary>
+        /// Parses an age string into an integer age, handling "random" and clamping to race settings
+        /// </summary>
+        /// <param name="ageString"></param>
+        /// <param name="raceSettings"></param>
+        /// <returns></returns>
         private static int ParseAge(string ageString, RaceSettings raceSettings)
         {
             if (ageString.Equals("random", StringComparison.OrdinalIgnoreCase))
@@ -851,6 +907,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return Rand.Range(raceSettings.MinAge, raceSettings.MaxAge + 1);
         }
 
+        /// <summary>
+        /// Parses a gender string into a Gender enum value
+        /// </summary>
+        /// <param name="genderName"></param>
+        /// <returns></returns>
         private static Gender? ParseGender(string genderName)
         {
             if (string.IsNullOrEmpty(genderName)) return null;
@@ -863,8 +924,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             };
         }
 
-        // Helper methods
-
+        /// <summary>
+        /// Checks if the specified gender is allowed
+        /// </summary>
+        /// <param name="allowedGenders"></param>
+        /// <param name="gender"></param>
+        /// <returns></returns>
         private static bool IsGenderAllowed(AllowedGenders allowedGenders, Gender gender)
         {
             return gender switch
@@ -876,6 +941,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             };
         }
 
+        /// <summary>
+        /// Returns a human-readable description
+        /// </summary>
+        /// <param name="allowedGenders"></param>
+        /// <returns></returns>
         private static string GetAllowedGendersDescription(AllowedGenders allowedGenders)
         {
             if (!allowedGenders.AllowMale && !allowedGenders.AllowFemale && !allowedGenders.AllowOther)
@@ -898,6 +968,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return "RICS.BPCH.Gender.Any".Translate();
         }
 
+        /// <summary>
+        /// Attempts to spawn a pawn in a space biome or underground map using multiple strategies:
+        /// </summary>
+        /// <param name="pawn"></param>
+        /// <param name="map"></param>
+        /// <param name="deliveryPosition"></param>
+        /// <returns></returns>
         private static bool TrySpawnPawnInSpaceBiome(Pawn pawn, Map map, out IntVec3 deliveryPosition)
         {
             deliveryPosition = IntVec3.Invalid;
@@ -915,7 +992,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     List<Thing> things = new List<Thing> { pawn };
                     if (ItemDeliveryHelper.IsSpaceMap(map) || (map.Biome?.inVacuum == true))
                     {
-                        ItemDeliveryHelper.TryEquipVacsuit(pawn, map); // your existing method
+                        TryEquipVacsuit(pawn, map); // your existing method
                     }
 
                     DropPodUtility.DropThingsNear(safePos, map, things, openDelay: 110, leaveSlag: false, canRoofPunch: true, forbid: true);
@@ -964,6 +1041,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
+        /// <summary>
+        /// Old drop pod delivery method (kept for reference, but replaced by TrySpawnPawnInSpaceBiome for robustness).
+        /// </summary>
+        /// <param name="pawn"></param>
+        /// <param name="map"></param>
+        /// <param name="deliveryPos"></param>
+        /// <returns></returns>
         private static bool TryDropPodDelivery(Pawn pawn, Map map, out IntVec3 deliveryPos)
         {
             deliveryPos = IntVec3.Invalid;
@@ -1055,7 +1139,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return clean;
         }
 
-
+        /// <summary>
+        /// Attempts to find the best matching race for the given potential race arguments.
+        /// </summary>
+        /// <param name="potentialRaceArgs"></param>
+        /// <returns></returns>
         private static string FindBestRaceMatch(string[] potentialRaceArgs)
         {
             if (potentialRaceArgs == null || potentialRaceArgs.Length == 0) return string.Empty;
@@ -1072,8 +1160,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return knownRaces.FirstOrDefault(r =>
                 r.Equals(candidateRace, StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
         }
-        // List methods
-
+        /// <summary>
+        /// Picks a random enabled xenotype from the race settings, excluding
+        /// </summary>
+        /// <param name="settings"></param>
+        /// <param name="raceDefName"></param>
+        /// <returns></returns>
         private static string PickRandomEnabledXenotype(RaceSettings settings, string raceDefName = null)
         {
             if (settings?.EnabledXenotypes == null)
@@ -1111,7 +1203,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return picked;
         }
 
-        // MyPawn command
+        /// <summary>
+        /// Handles the !mypawn command by looking up the assigned pawn for the user and returning its status.
+        /// </summary>
+        /// <param name="messageWrapper"></param>
+        /// <returns></returns>
         public static string HandleMyPawnCommand(ChatMessageWrapper messageWrapper)
         {
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
@@ -1146,9 +1242,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        // NEW: Auto-equip vacsuit for space purchases
-        // Why: Prevents "pawn dies instantly in vacuum" – uses exact defs from user request.
-        // Uses PawnApparelGenerator.GenerateApparelOfDefFor (correct API) + direct Wear.
+        /// <summary>
+        /// Attempts to equip a vacsuit and helmet on the given pawn if they are in a space or vacuum biome.
+        /// </summary>
+        /// <param name="pawn"></param>
+        /// <param name="map"></param>
         private static void TryEquipVacsuit(Pawn pawn, Map map)
         {
             try
