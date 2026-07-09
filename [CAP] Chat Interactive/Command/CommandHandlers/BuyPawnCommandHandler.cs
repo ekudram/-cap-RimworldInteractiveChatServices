@@ -1,4 +1,4 @@
-﻿// BuyPawnCommadnHandler.cs
+// BuyPawnCommadnHandler.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -458,14 +458,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             try
             {
                 Logger.Debug($"GenerateAndSpawnPawn:   xenotypeName: {xenotypeName}");
-                var playerMaps = Current.Game.Maps.Where(map => map.IsPlayerHome).ToList();
-                if (!playerMaps.Any())
+
+                // Shared delivery map pipeline (anchor none for !pawn — current/home/surface redirect)
+                Map map = ItemDeliveryHelper.ResolveDeliveryMap(anchorPawn: null, allowUndergroundRedirect: true);
+                if (map == null)
                 {
-                    // return new BuyPawnResult(false, "No player home maps found.");
                     return new BuyPawnResult(false, "RICS.BPCH.NoHomeMap".Translate());
                 }
-
-                var map = playerMaps.First();
 
                 // Get pawn kind def for the race
                 var pawnKindDef = GetPawnKindDefForRace(raceName);
@@ -616,11 +615,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     pawn.Name = new NameSingle(username);
                 }
 
-                // Spawn using robust multi-strategy system (drop pod → locker → colonist → home area)
-                // Why: Handles space, underground, and modded maps reliably while preserving vanilla drop-pod feel.
-                // Spawn using robust multi-strategy system...
-                IntVec3 deliveryPos = IntVec3.Invalid;
-                if (!TrySpawnPawnInSpaceBiome(pawn, map, out deliveryPos))
+                // Shared placement: drop pod → near locker → near colonist → center
+                // (map already resolved; underground/pocket may be surface-redirected)
+                if (!ItemDeliveryHelper.TryDeliverGeneratedPawn(pawn, map, out IntVec3 deliveryPos))
                 {
                     Logger.Error("All spawn strategies failed for purchased pawn");
                     return new BuyPawnResult(false, "RICS.BPCH.SpawnLocationNotFound".Translate());
@@ -878,9 +875,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         /// <returns></returns>
         private static bool IsGameReadyForPawnPurchase()
         {
+            // Ready when the shared delivery pipeline can pick a map (home, current, or surface redirect)
             return Current.Game != null &&
                    Current.ProgramState == ProgramState.Playing &&
-                   Current.Game.Maps.Any(map => map.IsPlayerHome);
+                   ItemDeliveryHelper.ResolveDeliveryMap(anchorPawn: null, allowUndergroundRedirect: true) != null;
         }
 
         /// <summary>
@@ -968,140 +966,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return "RICS.BPCH.Gender.Any".Translate();
         }
 
-        /// <summary>
-        /// Attempts to spawn a pawn in a space biome or underground map using multiple strategies:
-        /// </summary>
-        /// <param name="pawn"></param>
-        /// <param name="map"></param>
-        /// <param name="deliveryPosition"></param>
-        /// <returns></returns>
-        private static bool TrySpawnPawnInSpaceBiome(Pawn pawn, Map map, out IntVec3 deliveryPosition)
-        {
-            deliveryPosition = IntVec3.Invalid;
-            try
-            {
-                Logger.Debug($"Attempting to spawn pawn in biome: {map.Biome?.defName} (underground: {ItemDeliveryHelper.IsUndergroundMap(map)})");
 
-                // === PRIORITY 1: Use the robust ItemDeliveryHelper drop position (includes Rimazon marker, relaxed checks, etc.) ===
-                if (ItemDeliveryHelper.TryFindSafeDropPosition(map, out IntVec3 safePos))
-                {
-                    deliveryPosition = safePos;
-                    Logger.Debug($"Using safe drop position from ItemDeliveryHelper: {safePos}");
-
-                    // Drop pod delivery (preferred for immersion)
-                    List<Thing> things = new List<Thing> { pawn };
-                    if (ItemDeliveryHelper.IsSpaceMap(map) || (map.Biome?.inVacuum == true))
-                    {
-                        TryEquipVacsuit(pawn, map); // your existing method
-                    }
-
-                    DropPodUtility.DropThingsNear(safePos, map, things, openDelay: 110, leaveSlag: false, canRoofPunch: true, forbid: true);
-                    return true;
-                }
-
-                // === PRIORITY 2: Fallback to near locker or existing pawn (simple GenSpawn) ===
-                var locker = ItemDeliveryHelper.FindSuitableLockerFor(pawn, map);
-                if (locker != null)
-                {
-                    if (CellFinder.TryFindRandomCellNear(locker.Position, map, 6, c => c.Standable(map) && c.Walkable(map), out var near))
-                    {
-                        GenSpawn.Spawn(pawn, near, map);
-                        deliveryPosition = near;
-                        return true;
-                    }
-                }
-
-                // === PRIORITY 3: Near any player pawn (your requested ultimate fallback) ===
-                var anyPlayerPawn = map.mapPawns.AllPawnsSpawned.FirstOrDefault(p =>
-                    p.Faction == Faction.OfPlayer && p.Spawned && !p.Dead);
-
-                if (anyPlayerPawn != null)
-                {
-                    if (CellFinder.TryFindRandomCellNear(anyPlayerPawn.Position, map, 8,
-                        c => c.Standable(map) && c.Walkable(map), out var nearPawn))
-                    {
-                        GenSpawn.Spawn(pawn, nearPawn, map);
-                        deliveryPosition = nearPawn;
-                        Logger.Debug($"Spawned next to existing player pawn at {nearPawn}");
-                        return true;
-                    }
-                }
-
-                // === FINAL: Map center ===
-                GenSpawn.Spawn(pawn, map.Center, map);
-                deliveryPosition = map.Center;
-                Logger.Warning($"[RICS] Ultimate fallback: Spawned at map center");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error in TrySpawnPawnInSpaceBiome: {ex}");
-                deliveryPosition = map?.Center ?? IntVec3.Invalid;
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Old drop pod delivery method (kept for reference, but replaced by TrySpawnPawnInSpaceBiome for robustness).
-        /// </summary>
-        /// <param name="pawn"></param>
-        /// <param name="map"></param>
-        /// <param name="deliveryPos"></param>
-        /// <returns></returns>
-        private static bool TryDropPodDelivery(Pawn pawn, Map map, out IntVec3 deliveryPos)
-        {
-            deliveryPos = IntVec3.Invalid;
-            try
-            {
-                // === CRITICAL: Use ItemDeliveryHelper targeting for consistency with store deliveries ===
-                // Why: Reuses tested underground/space/trade-spot logic; avoids duplicating drop-spot code.
-                IntVec3 dropPos = ItemDeliveryHelper.GetCustomDropSpot(map);
-
-                Logger.Debug($"Attempting drop pod delivery at custom trade spot: {dropPos}");
-
-                if (!ItemDeliveryHelper.IsValidDeliveryPosition(dropPos, map))
-                {
-                    Logger.Debug("Trade spot invalid → finding nearest valid cell");
-                    if (!DropCellFinder.TryFindDropSpotNear(map.Center, map, out dropPos,
-                        allowFogged: false, canRoofPunch: true, maxRadius: 30))
-                    {
-                        Logger.Error("Could not find any valid drop position for pawn delivery");
-                        return false;
-                    }
-                }
-
-                List<Thing> thingsToDeliver = new List<Thing> { pawn };
-
-                // === VAC SUIT FOR SPACE MAPS ===
-                // Why: Orbit + inVacuum biomes need immediate breathing gear. Equipped AFTER generation but BEFORE drop pod.
-                if (ItemDeliveryHelper.IsSpaceMap(map) || (map.Biome?.inVacuum == true))
-                {
-                    Logger.Debug($"Space/vacuum map detected ({map.Biome?.defName}) → equipping vacsuit");
-                    TryEquipVacsuit(pawn, map);
-                }
-
-                // Use RimWorld's built-in drop pod utility (handles pawns perfectly)
-                DropPodUtility.DropThingsNear(
-                    dropPos,
-                    map,
-                    thingsToDeliver,
-                    openDelay: 110,
-                    leaveSlag: false,
-                    canRoofPunch: true,
-                    forbid: true,
-                    allowFogged: false
-                );
-
-                deliveryPos = dropPos;   // <-- Capture the exact position
-                Logger.Debug($"Delivered pawn via drop pod at: {dropPos}");
-                return true;  // We will pass dropPos up the call stack
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error in drop pod delivery: {ex}");
-                return false;
-            }
-        }
 
         private static string GetXenotypeDefName(string input, RaceSettings raceSettings)
         {
@@ -1242,52 +1107,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        /// <summary>
-        /// Attempts to equip a vacsuit and helmet on the given pawn if they are in a space or vacuum biome.
-        /// </summary>
-        /// <param name="pawn"></param>
-        /// <param name="map"></param>
-        private static void TryEquipVacsuit(Pawn pawn, Map map)
-        {
-            try
-            {
-                if (pawn == null || pawn.apparel == null)
-                    return;
-
-                // Prefer child suit for babies/children
-                ThingDef suitDef = pawn.ageTracker.CurLifeStageIndex <= 1
-                    ? DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_VacsuitChildren")
-                    : DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_Vacsuit");
-
-                ThingDef helmetDef = DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_VacsuitHelmet");
-
-                // Generate and equip suit
-                if (suitDef != null)
-                {
-                    Apparel suit = PawnApparelGenerator.GenerateApparelOfDefFor(pawn, suitDef);
-                    if (suit != null && ApparelUtility.HasPartsToWear(pawn, suit.def))
-                    {
-                        pawn.apparel.Wear(suit);
-                        Logger.Debug($"Equipped vacsuit on space pawn: {pawn.Name}");
-                    }
-                }
-
-                // Generate and equip helmet
-                if (helmetDef != null)
-                {
-                    Apparel helmet = PawnApparelGenerator.GenerateApparelOfDefFor(pawn, helmetDef);
-                    if (helmet != null && ApparelUtility.HasPartsToWear(pawn, helmet.def))
-                    {
-                        pawn.apparel.Wear(helmet);
-                        Logger.Debug($"Equipped vacsuit helmet on space pawn: {pawn.Name}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Warning($"Failed to equip vacsuit on space pawn {pawn?.Name}: {ex.Message}");
-            }
-        }
     }
 
     public class BuyPawnResult

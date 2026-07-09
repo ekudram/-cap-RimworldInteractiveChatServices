@@ -51,6 +51,350 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
     }
     public static class ItemDeliveryHelper
     {
+        // ═══════════════════════════════════════════════════════════════════════
+        // DELIVERY PIPELINE (single source of truth)
+        //
+        // 1) ResolveDeliveryMap  — which map receives the delivery
+        // 2) TryFindDeliveryCell — which cell on that map (ordered priorities)
+        // 3) TryDeliverGeneratedPawn / locker+pod item paths — how it arrives
+        //
+        // Pocket / thick-roof / "underground" maps: when a normal surface/home map
+        // exists, we REDIRECT the whole delivery to that map (coordinates stay on
+        // the chosen map). Surface spawn above a pocket is intentional for now;
+        // RICS does not depend on third-party nomadic map APIs.
+        // ═══════════════════════════════════════════════════════════════════════
+
+        private static int _undergroundCacheTick = -1;
+        private static readonly Dictionary<int, bool> _undergroundByMapId = new Dictionary<int, bool>();
+
+        /// <summary>
+        /// Chooses the map for any RICS delivery (items, !pawn, store animals/mechs).
+        /// Priority: anchor pawn map → CurrentMap → player home → map with colonists/lockers.
+        /// Underground/pocket maps redirect to a non-underground player home when available.
+        /// </summary>
+        public static Map ResolveDeliveryMap(Pawn anchorPawn = null, bool allowUndergroundRedirect = true)
+        {
+            try
+            {
+                Map candidate = null;
+
+                if (anchorPawn != null && !anchorPawn.Destroyed && anchorPawn.Spawned && anchorPawn.Map != null)
+                    candidate = anchorPawn.Map;
+
+                if (candidate == null && Find.CurrentMap != null)
+                    candidate = Find.CurrentMap;
+
+                if (candidate == null)
+                    candidate = Find.Maps?.FirstOrDefault(m => m != null && m.IsPlayerHome);
+
+                if (candidate == null)
+                {
+                    candidate = Find.Maps?.FirstOrDefault(m =>
+                        m != null &&
+                        (m.mapPawns?.FreeColonistsSpawned?.Count > 0 ||
+                         m.listerThings?.AllThings?.OfType<Building_RimazonLocker>().Any(l => l.Spawned) == true));
+                }
+
+                if (candidate == null)
+                {
+                    Logger.Debug("ResolveDeliveryMap: no suitable map found");
+                    return null;
+                }
+
+                if (allowUndergroundRedirect && IsUndergroundMap(candidate))
+                {
+                    Map surface = Find.Maps?.FirstOrDefault(m =>
+                        m != null && m.IsPlayerHome && !IsUndergroundMap(m));
+                    if (surface != null && surface != candidate)
+                    {
+                        Logger.Debug(
+                            $"Delivery map redirected underground/pocket → surface " +
+                            $"{surface.Parent?.LabelCap ?? surface.ToString()}");
+                        return surface;
+                    }
+                }
+
+                Logger.Debug(
+                    $"ResolveDeliveryMap: {candidate.Parent?.LabelCap ?? candidate.ToString()} " +
+                    $"(home={candidate.IsPlayerHome}, underground={IsUndergroundMap(candidate)})");
+                return candidate;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"ResolveDeliveryMap failed: {ex.Message}");
+                return Find.Maps?.FirstOrDefault(m => m != null && m.IsPlayerHome);
+            }
+        }
+
+        /// <summary>
+        /// Finds a delivery cell on <paramref name="map"/> only (never returns coords from another map).
+        /// Order: Drop Marker → labeled drop spot → trade beacon → ship beacon → hitching →
+        /// colonists → drop near anchor → locker → friendly pawn → edge → relaxed → center.
+        /// </summary>
+        public static bool TryFindDeliveryCell(Map map, out IntVec3 cell)
+        {
+            cell = IntVec3.Invalid;
+            if (map == null) return false;
+
+            try
+            {
+                // 1–6: preferred anchors on THIS map
+                IntVec3 anchor = GetPreferredDropAnchorOnMap(map);
+
+                // Prefer a real drop-pod cell near the anchor
+                if (anchor.IsValid && DropCellFinder.TryFindDropSpotNear(
+                        anchor, map, out cell, allowFogged: false, canRoofPunch: true, maxRadius: 35)
+                    && IsValidDeliveryPosition(cell, map))
+                {
+                    Logger.Debug($"TryFindDeliveryCell: drop near anchor {anchor} → {cell}");
+                    return true;
+                }
+
+                if (anchor.IsValid && IsValidDeliveryPosition(anchor, map, strict: false))
+                {
+                    cell = anchor;
+                    Logger.Debug($"TryFindDeliveryCell: using anchor cell {cell}");
+                    return true;
+                }
+
+                // 7. Near Rimazon Locker
+                var lockers = map.listerThings.AllThings.OfType<Building_RimazonLocker>()
+                    .Where(l => l.Spawned && !l.Destroyed).ToList();
+                if (lockers.Any())
+                {
+                    var nearest = lockers.OrderBy(l => l.Position.DistanceToSquared(
+                        anchor.IsValid ? anchor : map.Center)).First();
+                    if (DropCellFinder.TryFindDropSpotNear(
+                            nearest.Position, map, out cell, allowFogged: false, canRoofPunch: true, maxRadius: 12)
+                        && IsValidDeliveryPosition(cell, map))
+                    {
+                        Logger.Debug($"TryFindDeliveryCell: near locker {nearest.Position} → {cell}");
+                        return true;
+                    }
+                    if (CellFinder.TryFindRandomCellNear(nearest.Position, map, 6,
+                            c => c.Standable(map) && c.Walkable(map), out cell))
+                    {
+                        Logger.Debug($"TryFindDeliveryCell: standable near locker → {cell}");
+                        return true;
+                    }
+                }
+
+                // 8. Near friendly pawn
+                var friendly = map.mapPawns.AllPawnsSpawned
+                    .Where(p => p.Faction == Faction.OfPlayer && p.Spawned && !p.Dead).ToList();
+                if (friendly.Any())
+                {
+                    var nearest = friendly.OrderBy(p => p.Position.DistanceToSquared(
+                        anchor.IsValid ? anchor : map.Center)).First();
+                    if (DropCellFinder.TryFindDropSpotNear(
+                            nearest.Position, map, out cell, allowFogged: false, canRoofPunch: true, maxRadius: 15)
+                        && IsValidDeliveryPosition(cell, map))
+                    {
+                        Logger.Debug($"TryFindDeliveryCell: near colonist {nearest.LabelShort} → {cell}");
+                        return true;
+                    }
+                    if (CellFinder.TryFindRandomCellNear(nearest.Position, map, 8,
+                            c => c.Standable(map) && c.Walkable(map), out cell))
+                    {
+                        Logger.Debug($"TryFindDeliveryCell: standable near colonist → {cell}");
+                        return true;
+                    }
+                }
+
+                // 9. Map edge
+                if (CellFinder.TryFindRandomEdgeCellWith(
+                        c => c.Standable(map) && !c.Fogged(map) && c.Walkable(map),
+                        map, CellFinder.EdgeRoadChance_Ignore, out cell)
+                    && IsValidDeliveryPosition(cell, map))
+                {
+                    Logger.Debug($"TryFindDeliveryCell: map edge → {cell}");
+                    return true;
+                }
+
+                // 10. Relaxed walkable
+                if (CellFinderLoose.TryFindRandomNotEdgeCellWith(10,
+                        c => IsValidDeliveryPosition(c, map, strict: false), map, out cell))
+                {
+                    Logger.Warning($"TryFindDeliveryCell: relaxed cell last resort → {cell}");
+                    return true;
+                }
+
+                // 11. Center
+                cell = map.Center;
+                Logger.Warning("TryFindDeliveryCell: map center ultimate fallback");
+                return cell.InBounds(map);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"TryFindDeliveryCell failed: {ex.Message}");
+                cell = map?.Center ?? IntVec3.Invalid;
+                return cell.IsValid && map != null && cell.InBounds(map);
+            }
+        }
+
+        /// <summary>
+        /// Places an already-generated pawn on the map: drop pod preferred, then GenSpawn near locker/colonist/center.
+        /// Equips vacsuit on space/vacuum maps before pod.
+        /// </summary>
+        public static bool TryDeliverGeneratedPawn(Pawn pawn, Map map, out IntVec3 deliveryPosition)
+        {
+            deliveryPosition = IntVec3.Invalid;
+            if (pawn == null || map == null) return false;
+
+            try
+            {
+                if (IsSpaceMap(map) || map.Biome?.inVacuum == true)
+                    EquipVacsuitIfNeeded(pawn);
+
+                // Priority 1: drop pod at delivery cell
+                if (TryFindDeliveryCell(map, out IntVec3 safePos))
+                {
+                    deliveryPosition = safePos;
+                    DropPodUtility.DropThingsNear(
+                        safePos, map, new List<Thing> { pawn },
+                        openDelay: 110, leaveSlag: false, canRoofPunch: true, forbid: true);
+                    Logger.Debug($"TryDeliverGeneratedPawn: drop pod at {safePos} on {map.Parent?.LabelCap}");
+                    return true;
+                }
+
+                // Priority 2: GenSpawn near locker
+                var locker = FindSuitableLockerFor(pawn, map) ??
+                             map.listerThings.AllThings.OfType<Building_RimazonLocker>()
+                                 .FirstOrDefault(l => l.Spawned && !l.Destroyed);
+                if (locker != null &&
+                    CellFinder.TryFindRandomCellNear(locker.Position, map, 6,
+                        c => c.Standable(map) && c.Walkable(map), out var nearLocker))
+                {
+                    GenSpawn.Spawn(pawn, nearLocker, map);
+                    deliveryPosition = nearLocker;
+                    Logger.Debug($"TryDeliverGeneratedPawn: GenSpawn near locker at {nearLocker}");
+                    return true;
+                }
+
+                // Priority 3: near any player pawn
+                var anyPlayerPawn = map.mapPawns.AllPawnsSpawned
+                    .FirstOrDefault(p => p.Faction == Faction.OfPlayer && p.Spawned && !p.Dead);
+                if (anyPlayerPawn != null &&
+                    CellFinder.TryFindRandomCellNear(anyPlayerPawn.Position, map, 8,
+                        c => c.Standable(map) && c.Walkable(map), out var nearPawn))
+                {
+                    GenSpawn.Spawn(pawn, nearPawn, map);
+                    deliveryPosition = nearPawn;
+                    Logger.Debug($"TryDeliverGeneratedPawn: GenSpawn near colonist at {nearPawn}");
+                    return true;
+                }
+
+                // Priority 4: center
+                GenSpawn.Spawn(pawn, map.Center, map);
+                deliveryPosition = map.Center;
+                Logger.Warning("TryDeliverGeneratedPawn: GenSpawn at map center");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"TryDeliverGeneratedPawn failed: {ex}");
+                deliveryPosition = map?.Center ?? IntVec3.Invalid;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Preferred "trade spot" anchors on a single map (no cross-map coordinate return).
+        /// Order: Rimazon Drop Marker → labeled drop spot → unroofed trade beacon →
+        /// ship landing → caravan packing → average free colonist.
+        /// </summary>
+        private static IntVec3 GetPreferredDropAnchorOnMap(Map map)
+        {
+            if (map == null) return IntVec3.Invalid;
+
+            ThingDef markerDef = DefDatabase<ThingDef>.GetNamedSilentFail("RimazonDropMarker");
+            if (markerDef != null)
+            {
+                Building marker = map.listerBuildings.AllBuildingsColonistOfDef(markerDef)
+                    .FirstOrDefault(b => b.Spawned && !b.Destroyed);
+                if (marker != null)
+                    return marker.Position;
+            }
+
+            var dropSpotThing = map.listerThings.AllThings
+                .Where(t => t.Spawned && !t.Destroyed && t.Map == map)
+                .FirstOrDefault(t =>
+                {
+                    string label = t.Label?.ToLowerInvariant();
+                    return !string.IsNullOrWhiteSpace(label) && label.Contains("drop spot");
+                });
+            if (dropSpotThing != null)
+                return dropSpotThing.Position;
+
+            var tradeBeacon = map.listerBuildings.AllBuildingsColonistOfDef(ThingDefOf.OrbitalTradeBeacon)
+                .FirstOrDefault(b => b.Spawned && !b.Destroyed && !map.roofGrid.Roofed(b.Position));
+            if (tradeBeacon != null)
+                return tradeBeacon.Position;
+
+            Building shipBeacon = map.listerBuildings.AllBuildingsColonistOfDef(ThingDefOf.ShipLandingBeacon)
+                .FirstOrDefault(b => b.Spawned && !b.Destroyed);
+            if (shipBeacon != null)
+                return shipBeacon.Position;
+
+            ThingDef hitchingDef = ThingDefOf.CaravanPackingSpot
+                ?? DefDatabase<ThingDef>.GetNamedSilentFail("CaravanPackingSpot");
+            if (hitchingDef != null)
+            {
+                Building hitchingSpot = map.listerBuildings.AllBuildingsColonistOfDef(hitchingDef)
+                    .FirstOrDefault(b => b.Spawned && !b.Destroyed);
+                if (hitchingSpot != null)
+                    return hitchingSpot.Position;
+            }
+
+            var freeColonists = map.mapPawns.FreeColonistsSpawned;
+            if (freeColonists.Count > 0)
+            {
+                IntVec3 average = IntVec3.Zero;
+                foreach (var colonist in freeColonists)
+                    average += colonist.Position;
+                average /= freeColonists.Count;
+
+                if (CellFinder.TryFindRandomCellNear(average, map, 20,
+                        c => c.Standable(map) && !c.Fogged(map), out IntVec3 spot))
+                    return spot;
+
+                return average;
+            }
+
+            return IntVec3.Invalid;
+        }
+
+        /// <summary>Equips vacsuit + helmet when available (space / vacuum maps).</summary>
+        public static void EquipVacsuitIfNeeded(Pawn pawn)
+        {
+            try
+            {
+                if (pawn?.apparel == null) return;
+
+                ThingDef suitDef = pawn.ageTracker.CurLifeStageIndex <= 1
+                    ? DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_VacsuitChildren")
+                    : DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_Vacsuit");
+                ThingDef helmetDef = DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_VacsuitHelmet");
+
+                if (suitDef != null)
+                {
+                    Apparel suit = PawnApparelGenerator.GenerateApparelOfDefFor(pawn, suitDef);
+                    if (suit != null && ApparelUtility.HasPartsToWear(pawn, suit.def))
+                        pawn.apparel.Wear(suit);
+                }
+
+                if (helmetDef != null)
+                {
+                    Apparel helmet = PawnApparelGenerator.GenerateApparelOfDefFor(pawn, helmetDef);
+                    if (helmet != null && ApparelUtility.HasPartsToWear(pawn, helmet.def))
+                        pawn.apparel.Wear(helmet);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Failed to equip vacsuit on {pawn?.LabelShort}: {ex.Message}");
+            }
+        }
 
         public static Building_RimazonLocker FindSuitableLockerFor(Thing thing, Map map, Pawn forPawn = null)
         {
@@ -204,154 +548,47 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         }
 
         /// <summary>
-        /// Returns a custom drop spot on the map,
-        /// prioritizing Rimazon Drop Markers,
-        /// explicit "drop spot" items,
-        /// trade beacons,
-        /// ship landing beacons,
-        /// caravan hitching spots,
-        /// and finally falling back to a central colonist area or map center if necessary.
-        /// Is used by the store command to determine where to drop items when lockers are full.
-        /// Is not used by the pawn command see 
+        /// Preferred drop-anchor cell on this map only.
+        /// Call ResolveDeliveryMap first so underground maps redirect at the map layer —
+        /// never return coordinates from a different map.
         /// </summary>
-        /// <param name="map"></param>
-        /// <returns></returns>
         public static IntVec3 GetCustomDropSpot(Map map)
         {
-            if (map == null)
-            {
-                //Logger.Error("GetCustomDropSpot: Map is null");
-                return IntVec3.Invalid;
-            }
+            if (map == null) return IntVec3.Invalid;
 
-            // ───────────────────────────────────────────────
-            // 0. Highest priority: dedicated Rimazon Drop Marker (new proper item)
-            //    Place this marker (from the provided Amazon R graphic) to control where
-            //    drop pods land when lockers are full.
-            // ───────────────────────────────────────────────
-            ThingDef markerDef = DefDatabase<ThingDef>.GetNamedSilentFail("RimazonDropMarker");
-            if (markerDef != null)
-            {
-                Building marker = map.listerBuildings.AllBuildingsColonistOfDef(markerDef).FirstOrDefault(b => b.Spawned && !b.Destroyed);
-                if (marker != null)
-                {
-                    //Logger.Debug($"Using Rimazon Drop Marker at {marker.Position}");
-                    return marker.Position;
-                }
-            }
+            IntVec3 anchor = GetPreferredDropAnchorOnMap(map);
+            if (anchor.IsValid) return anchor;
 
-            // ───────────────────────────────────────────────
-            // 1. Legacy: explicitly named "drop spot" thing (case-insensitive)
-            // ───────────────────────────────────────────────
-            var allThings = map.listerThings.AllThings;
-            var dropSpotThing = allThings
-                .Where(t => t.Spawned && !t.Destroyed && t.Map == map)
-                .FirstOrDefault(t =>
-                {
-                    string label = t.Label?.ToLowerInvariant();
-                    return !string.IsNullOrWhiteSpace(label) && label.Contains("drop spot");
-                });
-
-            if (dropSpotThing != null)
-            {
-                //Logger.Debug($"Using explicit 'drop spot' item '{dropSpotThing.Label}' at {dropSpotThing.Position}");
-                return dropSpotThing.Position;
-            }
-
-            // ───────────────────────────────────────────────
-            // 2. Orbital trade beacon — but only if outdoors (no roof)
-            // ───────────────────────────────────────────────
-            var tradeBeacons = map.listerBuildings.AllBuildingsColonistOfDef(ThingDefOf.OrbitalTradeBeacon)
-                .Where(b => b.Spawned && !b.Destroyed && !map.roofGrid.Roofed(b.Position))
-                .ToList();
-
-            if (tradeBeacons.Any())
-            {
-                var beacon = tradeBeacons.First(); // or .OrderBy(b => some criteria).First()
-                //Logger.Debug($"Using roof-free Orbital Trade Beacon at {beacon.Position}");
-                return beacon.Position;
-            }
-
-            // ───────────────────────────────────────────────
-            // 3. Ship landing beacon (usually placed outside anyway)
-            // ───────────────────────────────────────────────
-            Building shipBeacon = map.listerBuildings.AllBuildingsColonistOfDef(ThingDefOf.ShipLandingBeacon).FirstOrDefault();
-            if (shipBeacon != null)
-            {
-                //Logger.Debug($"Using Ship Landing Beacon position: {shipBeacon.Position}");
-                return shipBeacon.Position;
-            }
-
-            // ───────────────────────────────────────────────
-            // 4. Caravan hitching / packing spot
-            // ───────────────────────────────────────────────
-            ThingDef hitchingDef = ThingDefOf.CaravanPackingSpot
-                ?? DefDatabase<ThingDef>.GetNamedSilentFail("CaravanPackingSpot");
-
-            if (hitchingDef != null)
-            {
-                Building hitchingSpot = map.listerBuildings.AllBuildingsColonistOfDef(hitchingDef).FirstOrDefault();
-                if (hitchingSpot != null)
-                {
-                    //Logger.Debug($"Using Caravan Hitching/Packing Spot at: {hitchingSpot.Position}");
-                    return hitchingSpot.Position;
-                }
-            }
-            else
-            {
-                Logger.Warning("Caravan Hitching/Packing Spot def not found");
-            }
-
-            // ───────────────────────────────────────────────
-            // 5. Fallback: near average free colonist position
-            // ───────────────────────────────────────────────
-            var freeColonists = map.mapPawns.FreeColonistsSpawned;
-            if (freeColonists.Count > 0)
-            {
-                IntVec3 average = IntVec3.Zero;
-                foreach (var colonist in freeColonists)
-                    average += colonist.Position;
-
-                average /= freeColonists.Count;
-
-                if (CellFinder.TryFindRandomCellNear(average, map, 20,
-                    c => c.Standable(map) && !c.Fogged(map),
-                    out IntVec3 spot))
-                {
-                    //Logger.Debug($"Using central colonist area fallback: {spot}");
-                    return spot;
-                }
-            }
-
-            // ───────────────────────────────────────────────
-            // 6. Underground map → try surface if possible
-            // We have a check that is supposed to catch but 
-            // just in case
-            // ───────────────────────────────────────────────
-            if (IsUndergroundMap(map) && Find.Maps.Any(m => !IsUndergroundMap(m) && m.IsPlayerHome))
-            {
-                Map surface = Find.Maps.First(m => !IsUndergroundMap(m) && m.IsPlayerHome);
-                //Logger.Debug("Underground map detected → falling back to surface map drop spot");
-                return GetCustomDropSpot(surface); // recursive, but surface won't redirect again
-            }
-
-            // ───────────────────────────────────────────────
-            // 7. Absolute last resort: map center
-            // ───────────────────────────────────────────────
-            Logger.Warning("No good drop spot found → using map center");
-            // fail here and return -1000,-1000, 0 to avoid dropping in a map with no valis spots.
+            Logger.Warning("GetCustomDropSpot: no anchor → map center");
             return map.Center;
         }
 
         /// <summary>
-        /// Determines if the given map is considered "underground" based on the percentage of thick natural overhead mountain roof coverage.
+        /// Thick natural rock-roof heuristic for pocket/underground-like maps.
+        /// Cached per map for the current game tick (full scan is expensive).
         /// </summary>
-        /// <param name="map"></param>
-        /// <returns></returns>
         public static bool IsUndergroundMap(Map map)
         {
             if (map == null) return false;
 
+            int tick = Find.TickManager?.TicksGame ?? 0;
+            if (tick != _undergroundCacheTick)
+            {
+                _undergroundByMapId.Clear();
+                _undergroundCacheTick = tick;
+            }
+
+            int id = map.uniqueID;
+            if (_undergroundByMapId.TryGetValue(id, out bool cached))
+                return cached;
+
+            bool result = ComputeIsUndergroundMap(map);
+            _undergroundByMapId[id] = result;
+            return result;
+        }
+
+        private static bool ComputeIsUndergroundMap(Map map)
+        {
             int naturalThickRoofCount = 0;
             int totalCells = 0;
 
@@ -360,80 +597,24 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 totalCells++;
                 RoofDef roof = map.roofGrid.RoofAt(cell);
                 if (roof != null && roof.isNatural && roof == RoofDefOf.RoofRockThick)
-                {
                     naturalThickRoofCount++;
-                }
             }
 
             if (totalCells == 0) return false;
 
             float thickNaturalPercentage = (float)naturalThickRoofCount / totalCells;
-
-            Logger.Debug($"Thick natural overhead mountain roof: {thickNaturalPercentage:P2} ({naturalThickRoofCount}/{totalCells})");
-
-            // Tune this threshold based on testing — 0.88–0.92 works well for most Anomaly pits
             const float UNDERGROUND_THRESHOLD = 0.92f;
 
             if (thickNaturalPercentage > UNDERGROUND_THRESHOLD)
-            {
-                // Logger.Debug($"Detected underground map (> {UNDERGROUND_THRESHOLD:P0} thick natural roof)");
                 return true;
-            }
 
-            // Optional extra safety check for very small + very roofed maps
             if (map.Size.z < 220 && thickNaturalPercentage > 0.80f)
-            {
-                // Logger.Debug("Small map with high thick roof coverage → likely underground");
                 return true;
-            }
 
             return false;
         }
 
-        /// <summary>
-        /// Spawns the given item at a suitable trade spot on the map, preferring Rimazon lockers if available, and falling back to drop pods if necessary.
-        /// THIS IS NOT USED!
-        /// </summary>
-        /// <param name="thing"></param>
-        /// <param name="map"></param>
-        /// <param name="forPawn"></param>
-        public static void SpawnItemAtTradeSpot(Thing thing, Map map, Pawn forPawn = null)
-        {
-            if (map == null)
-            {
-                Logger.Error("SpawnItemAtTradeSpot: Map is null");
-                return;
-            }
-
-            // First, try to deliver to a locker
-            var locker = FindSuitableLockerFor(thing, map, forPawn);
-            if (locker != null && locker.TryAcceptThing(thing))
-            {
-                // Logger.Debug($"Delivered {thing.def.defName} x{thing.stackCount} to RimazonLocker at {locker.Position}");
-
-                // Show delivery effect
-                MoteMaker.ThrowText(locker.DrawPos + new Vector3(0f, 0f, 0.25f), map,
-                    "Delivery Received", Color.white, 2f);
-                return;
-            }
-
-            // Fallback to normal drop at trade spot
-            IntVec3 dropPos = GetCustomDropSpot(map);
-            // Logger.Debug($"Dropping item at trade spot {dropPos} (no suitable locker found)");
-
-            // Use proper drop logic
-            if (DropCellFinder.TryFindDropSpotNear(dropPos, map, out IntVec3 actualDropPos,
-                allowFogged: false, canRoofPunch: true, maxRadius: 15))
-            {
-                GenDrop.TryDropSpawn(thing, actualDropPos, map, ThingPlaceMode.Near, out Thing resultingThing);
-                // Logger.Debug($"Dropped at {actualDropPos} (adjusted from {dropPos})");
-            }
-            else
-            {
-                // Last resort - drop at position
-                GenDrop.TryDropSpawn(thing, dropPos, map, ThingPlaceMode.Near, out Thing resultingThing);
-            }
-        }
+        // SpawnItemAtTradeSpot removed — unused; use SpawnItemForPawn / locker+pod pipeline.
 
         // === ItemDeliveryHelper
         /// <summary>
@@ -556,7 +737,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 DeliveryPosition = IntVec3.Invalid
             };
 
-            Map targetMap = viewerPawn?.Map ?? Find.CurrentMap ?? Find.Maps.FirstOrDefault(m => m.IsPlayerHome);
+            Map targetMap = ResolveDeliveryMap(viewerPawn);
             if (targetMap == null)
             {
                 Logger.Error("No valid map found for pawn delivery");
@@ -818,58 +999,19 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
         }
 
-        /// <summary>
-        /// Determines the appropriate map for delivery based on the pawn's current map, handling underground maps by redirecting to a surface map if necessary.
-        /// </summary>
-        /// <param name="pawn"></param>
-        /// <returns></returns>
+        /// <summary>Map for item delivery — shared ResolveDeliveryMap pipeline.</summary>
         private static Map GetTargetMapForDelivery(Pawn pawn)
         {
-            Map targetMap = pawn?.Map;
-
-            if (targetMap != null && IsUndergroundMap(targetMap))
-            {
-                Map surfaceMap = Find.Maps.FirstOrDefault(m => m.IsPlayerHome && !IsUndergroundMap(m));
-                if (surfaceMap != null)
-                {
-                    //Logger.Debug($"Underground delivery detected → redirecting to surface map");
-                    return surfaceMap;
-                }
-            }
-
-            return targetMap ?? Find.CurrentMap ?? Find.Maps.FirstOrDefault(m => m.IsPlayerHome);
+            return ResolveDeliveryMap(pawn, allowUndergroundRedirect: true);
         }
 
-        /// <summary>
-        /// Finds a suitable delivery position for drop pods, prioritizing proximity to the trade spot, then the pawn's position, and finally falling back to the trade spot if necessary.
-        /// </summary>
-        /// <param name="map"></param>
-        /// <param name="pawn"></param>
-        /// <returns></returns>
+        /// <summary>Drop-pod cell for items on map (shared cell finder).</summary>
         private static IntVec3 GetDeliveryPosition(Map map, Pawn pawn)
         {
-            IntVec3 tradeSpot = GetCustomDropSpot(map);
-            IntVec3 deliveryPos = IntVec3.Invalid;
-
-            // First try near trade spot
-            if (DropCellFinder.TryFindDropSpotNear(tradeSpot, map, out deliveryPos,
-                allowFogged: false, canRoofPunch: true, maxRadius: 15))
-            {
-                // Logger.Debug($"Using drop spot near trade spot: {deliveryPos}");
-                return deliveryPos;
-            }
-
-            // Then try near pawn
-            if (pawn != null && DropCellFinder.TryFindDropSpotNear(pawn.Position, map, out deliveryPos,
-                allowFogged: false, canRoofPunch: true, maxRadius: 15))
-            {
-                // Logger.Debug($"Using position near pawn: {deliveryPos}");
-                return deliveryPos;
-            }
-
-            // Fallback to trade spot
-            // Logger.Debug($"Using trade spot directly: {tradeSpot}");
-            return tradeSpot;
+            if (map == null) return IntVec3.Invalid;
+            if (TryFindDeliveryCell(map, out IntVec3 cell))
+                return cell;
+            return map.Center;
         }
 
         /// <summary>
@@ -978,59 +1120,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return things;
         }
 
-        /// <summary>
-        /// Finds a suitable spawn position for a pawn, prioritizing proximity to the viewer's pawn, then preferred positions, and finally map edges.
-        /// </summary>
-        /// <param name="map"></param>
-        /// <param name="preferredPos"></param>
-        /// <param name="viewerPawn"></param>
-        /// <returns></returns>
-        private static IntVec3 FindPawnSpawnPosition(Map map, IntVec3 preferredPos, Pawn viewerPawn = null)
-        {
-            // First priority: try to spawn near the viewer's pawn if available
-            if (viewerPawn != null && viewerPawn.Map == map && !viewerPawn.Dead)
-            {
-                if (CellFinder.TryFindRandomCellNear(viewerPawn.Position, map, 8,
-                    (IntVec3 c) => c.Standable(map) && !c.Fogged(map) && c.Walkable(map) && c.GetRoom(map) == viewerPawn.GetRoom(),
-                    out IntVec3 spawnPos))
-                {
-                    // Logger.Debug($"Found spawn position near viewer pawn: {spawnPos}");
-                    return spawnPos;
-                }
-
-                // If no room-appropriate position, try any nearby position
-                if (CellFinder.TryFindRandomCellNear(viewerPawn.Position, map, 15,
-                    (IntVec3 c) => c.Standable(map) && !c.Fogged(map) && c.Walkable(map),
-                    out spawnPos))
-                {
-                    // Logger.Debug($"Found nearby spawn position: {spawnPos}");
-                    return spawnPos;
-                }
-            }
-
-            // Second priority: try near preferred position (usually trade spot)
-            if (CellFinder.TryFindRandomCellNear(preferredPos, map, 10,
-                (IntVec3 c) => c.Standable(map) && !c.Fogged(map) && c.Walkable(map),
-                out IntVec3 spawnPos2))
-            {
-                // Logger.Debug($"Found spawn position near preferred position: {spawnPos2}");
-                return spawnPos2;
-            }
-
-            // Fallback: find any valid cell on the map edge
-            if (CellFinder.TryFindRandomEdgeCellWith(
-                (IntVec3 c) => c.Standable(map) && !c.Fogged(map) && c.Walkable(map),
-                map, CellFinder.EdgeRoadChance_Ignore, out spawnPos2))
-            {
-                // Logger.Debug($"Found edge spawn position: {spawnPos2}");
-                return spawnPos2;
-            }
-
-
-            // Final fallback: use the preferred position
-            // //LoggerDebug($"Using preferred position as fallback: {preferredPos}");
-            return preferredPos;
-        }
+        // FindPawnSpawnPosition removed — use TryFindDeliveryCell / TryDeliverGeneratedPawn.
 
         /// <summary>
         /// Validates whether a given position is suitable for drop pod delivery.
@@ -1062,122 +1152,19 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return true;
         }
 
-        /// <summary>
-        /// Logs detailed information about the drop pod delivery attempt, including position, map, and the items being delivered.
-        /// This is a testing Function to help debug drop pod delivery issues.
-        /// </summary>
-        /// <param name="thingsToDeliver"></param>
-        /// <param name="dropPos"></param>
-        /// <param name="map"></param>
-        private static void LogDropPodDetails(List<Thing> thingsToDeliver, IntVec3 dropPos, Map map)
-        {
-            Logger.Debug($"=== DROP POD DELIVERY DEBUG ===");
-            Logger.Debug($"Position: {dropPos}");
-            Logger.Debug($"Map: {map?.info?.parent?.Label ?? "null"}");
-            Logger.Debug($"Things to deliver: {thingsToDeliver.Count}");
-            foreach (var thing in thingsToDeliver)
-            {
-                Logger.Debug($"  - {thing.def.defName} x{thing.stackCount}");
-            }
-            Logger.Debug($"Position valid: {IsValidDeliveryPosition(dropPos, map)}");
-            Logger.Debug($"Position in bounds: {dropPos.InBounds(map)}");
-            Logger.Debug($"Position fogged: {dropPos.Fogged(map)}");
-            Logger.Debug($"Position standable: {dropPos.Standable(map)}");
-            Logger.Debug($"=== END DEBUG ===");
-        }
+        // LogDropPodDetails removed — unused debug helper.
 
         /// <summary>
-        /// Attempts to find a safe drop position for a drop pod on the given map,
-        /// prioritizing Rimazon Drop Markers, trade spots, map edges, and nearby friendly pawns.
-        /// Returns true if a valid position is found, false otherwise.
-        /// Is used by BuyPawnCommandHandler.TrySpawnPawnInSpaceBiome and SpawnItemForPawn for pawn and item deliveries.
+        /// Safe drop cell on this map. Thin wrapper over <see cref="TryFindDeliveryCell"/>.
         /// </summary>
-        /// <param name="map"></param>
-        /// <param name="dropPos"></param>
-        /// <returns></returns>
         public static bool TryFindSafeDropPosition(Map map, out IntVec3 dropPos)
         {
-            dropPos = IntVec3.Invalid;
-            if (map == null) return false;
-
-            try
-            {
-                // 1. Rimazon Drop Marker (new priority)
-                ThingDef markerDef = DefDatabase<ThingDef>.GetNamedSilentFail("RimazonDropMarker");
-                if (markerDef != null)
-                {
-                    var marker = map.listerBuildings.AllBuildingsColonistOfDef(markerDef).FirstOrDefault(b => b.Spawned && !b.Destroyed);
-                    if (marker != null && IsValidDeliveryPosition(marker.Position, map))
-                    {
-                        dropPos = marker.Position;
-                        Logger.Debug($"Using Rimazon Drop Marker at {dropPos}");
-                        return true;
-                    }
-                }
-
-                // 2. Normal drop pod logic near trade spot
-                IntVec3 tradeSpot = GetCustomDropSpot(map);
-                if (DropCellFinder.TryFindDropSpotNear(tradeSpot, map, out dropPos,
-                    allowFogged: false, canRoofPunch: true, maxRadius: 35))
-                {
-                    if (IsValidDeliveryPosition(dropPos, map)) return true;
-                }
-
-                // 3. Map edge
-                if (CellFinder.TryFindRandomEdgeCellWith(
-                    c => c.Standable(map) && !c.Fogged(map) && c.Walkable(map),
-                    map, CellFinder.EdgeRoadChance_Ignore, out dropPos))
-                {
-                    if (IsValidDeliveryPosition(dropPos, map)) return true;
-                }
-
-                // 4. Near a Rimazon Locker
-                var lockers = map.listerThings.AllThings.OfType<Building_RimazonLocker>()
-                    .Where(l => l.Spawned && !l.Destroyed).ToList();
-                if (lockers.Any())
-                {
-                    var nearestLocker = lockers.OrderBy(l => l.Position.DistanceToSquared(tradeSpot)).First();
-                    if (DropCellFinder.TryFindDropSpotNear(nearestLocker.Position, map, out dropPos,
-                        allowFogged: false, canRoofPunch: true, maxRadius: 12))
-                    {
-                        if (IsValidDeliveryPosition(dropPos, map)) return true;
-                    }
-                }
-
-                // 5. Near friendly pawn (animal style)
-                var friendly = map.mapPawns.AllPawnsSpawned
-                    .Where(p => p.Faction == Faction.OfPlayer && p.Spawned && !p.Dead).ToList();
-                if (friendly.Any())
-                {
-                    var nearest = friendly.OrderBy(p => p.Position.DistanceToSquared(tradeSpot)).First();
-                    if (DropCellFinder.TryFindDropSpotNear(nearest.Position, map, out dropPos,
-                        allowFogged: false, canRoofPunch: true, maxRadius: 15))
-                    {
-                        if (IsValidDeliveryPosition(dropPos, map)) return true;
-                    }
-                }
-
-                // Final fallback - relaxed validation
-                if (CellFinderLoose.TryFindRandomNotEdgeCellWith(10,
-                    c => IsValidDeliveryPosition(c, map, strict: false), map, out dropPos))
-                {
-                    Logger.Warning($"Using relaxed valid cell as absolute last resort: {dropPos}");
-                    return true;
-                }
-
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Critical error in TryFindSafeDropPosition: {ex}");
-                dropPos = map?.Center ?? IntVec3.Zero;
-                return false;
-            }
+            return TryFindDeliveryCell(map, out dropPos);
         }
 
         /// <summary>
         /// Specialized pawn delivery used by the general store system (!buy animal, !buy mech, etc.).
-        /// For viewer pawn purchases (!pawn command) see TrySpawnPawnInSpaceBiome in BuyPawnCommandHandler.
+        /// For viewer pawn purchases (!pawn command) see BuyPawnCommandHandler → TryDeliverGeneratedPawn.
         /// </summary>
         /// <param name="pawnDef"></param>
         /// <param name="quantity"></param>
@@ -1288,114 +1275,21 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     Logger.Debug($"Created pawn: {pawn.Name} ({pawn.def.defName})");
                 }
 
-                // === SPAWN PHASE ===
+                // === SPAWN PHASE (shared TryDeliverGeneratedPawn pipeline) ===
                 if (pawnsToDeliver.Count > 0)
                 {
-                    // Get the final spawn position using our improved finder
-                    spawnPosition = FindPawnSpawnPosition(map, GetCustomDropSpot(map), viewerPawn);
-
-                    // Safety: if still invalid, force map center
-                    if (!spawnPosition.InBounds(map) || !IsValidDeliveryPosition(spawnPosition, map, strict: false))
+                    foreach (var deliveredPawn in pawnsToDeliver)
                     {
-                        spawnPosition = map.Center;
-                        Logger.Warning($"Forced spawn at map center due to no valid cells");
-                    }
-
-                    Logger.Debug($"Spawning {pawnsToDeliver.Count} pawns at position: {spawnPosition}");
-
-                    foreach (var pawn in pawnsToDeliver)
-                    {
-                        bool alreadySpawned = false;
-
-                        // === AGGRESSIVE ROOF CRASH HANDLING ===
-                        if (map.roofGrid.RoofAt(spawnPosition) == RoofDefOf.RoofRockThick)
+                        if (TryDeliverGeneratedPawn(deliveredPawn, map, out IntVec3 pos))
                         {
-                            bool movedOffRoof = false;
-
-                            // Try to find a better spot first
-                            if (CellFinder.TryFindRandomCellNear(spawnPosition, map, 8,
-                                c => c.Standable(map) && map.roofGrid.RoofAt(c) != RoofDefOf.RoofRockThick, out var betterSpot))
-                            {
-                                spawnPosition = betterSpot;
-                                movedOffRoof = true;
-                            }
-                            else if (CellFinder.TryFindRandomCellNear(spawnPosition, map, 20,
-                                c => c.Standable(map) && map.roofGrid.RoofAt(c) != RoofDefOf.RoofRockThick && c.Walkable(map), out betterSpot))
-                            {
-                                spawnPosition = betterSpot;
-                                movedOffRoof = true;
-                                Logger.Debug($"Moved pawn off thick roof (wider search) to {betterSpot}");
-                            }
-
-                            // === LAST RESORT: CRASH THROUGH THE ROOF (Aggressive & Immersive) ===
-                            if (!movedOffRoof)
-                            {
-                                Logger.Warning($"CRASH LANDING: No safe non-roof spot found. Pawn smashing through thick roof at {spawnPosition}");
-
-                                // Spawn the pawn
-                                GenSpawn.Spawn(pawn, spawnPosition, map);
-                                alreadySpawned = true;
-
-                                // === DESTRUCTION ===
-                                int radius = 2;
-                                var cells = GenRadial.RadialCellsAround(spawnPosition, radius, true).ToList();
-                                int destroyedCount = 0;
-
-                                foreach (var cell in cells)
-                                {
-                                    if (!cell.InBounds(map)) continue;
-
-                                    var thingsHere = cell.GetThingList(map).ToList();
-                                    foreach (var thing in thingsHere)
-                                    {
-                                        // Never destroy natural rock walls
-                                        if (thing is Building b && b.def.building.isNaturalRock &&
-                                            b.def.passability == Traversability.Impassable)
-                                            continue;
-
-                                        if (thing == pawn) continue;
-
-                                        if (thing.def.destroyable)
-                                        {
-                                            thing.Destroy(DestroyMode.KillFinalize);
-                                            destroyedCount++;
-                                        }
-                                    }
-                                }
-
-                                // === DRAMATIC VISUAL EFFECTS ===
-                                FleckMaker.ThrowDustPuff(spawnPosition, map, 3.5f);
-                                FleckMaker.ThrowDustPuff(spawnPosition, map, 2.8f);
-
-                                foreach (var cell in GenRadial.RadialCellsAround(spawnPosition, 3, true))
-                                {
-                                    if (cell.InBounds(map) && Rand.Chance(0.65f))
-                                    {
-                                        FleckMaker.ThrowDustPuff(cell, map, Rand.Range(1.3f, 2.4f));
-                                    }
-                                }
-
-                                MoteMaker.ThrowText(spawnPosition.ToVector3Shifted(), map, "CRASH!", Color.red, 2.8f);
-
-                                Logger.Debug($"Crash landing destroyed {destroyedCount} things");
-                            }
+                            spawnPosition = pos;
+                            Logger.Debug($"Store pawn delivered {deliveredPawn.LabelShort} at {pos}");
                         }
-
-                        // Normal spawn (if we didn't do the crash path)
-                        if (!alreadySpawned)
+                        else
                         {
-                            GenSpawn.Spawn(pawn, spawnPosition, map);
+                            Logger.Error($"Failed to deliver store pawn {deliveredPawn.LabelShort}");
+                            return (false, spawnPosition);
                         }
-
-                        // Arrival effects (skip extra dust if we already did the dramatic crash effects)
-                        bool isUnderThickRoof = map.roofGrid.RoofAt(spawnPosition) == RoofDefOf.RoofRockThick;
-
-                        if (!isUnderThickRoof || !alreadySpawned)
-                        {
-                            FleckMaker.ThrowDustPuff(spawnPosition, map, 2f);
-                        }
-
-                        Logger.Debug($"Spawned pawn {pawn.Name} ({pawn.def.defName}) at {spawnPosition}");
                     }
 
                     Logger.Debug($"Successfully delivered {pawnsToDeliver.Count}x {pawnDef.defName} at {spawnPosition}");
