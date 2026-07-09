@@ -416,9 +416,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             {
                 if (thing == null || thing.Destroyed) return null;
 
-                // Pawns never go in lockers
-                //if (thing is Pawn) return null; // Can we?
-
                 // Collect EVERY locker on every map
                 var allLockers = new List<Building_RimazonLocker>();
                 if (Find.Maps != null)
