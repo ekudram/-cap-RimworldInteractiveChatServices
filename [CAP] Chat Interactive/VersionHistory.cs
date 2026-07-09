@@ -17,9 +17,21 @@
 
 
 
+using CAP_ChatInteractive.Commands.ViewerCommands;
+using RimWorld;
+using Steamworks;
 using System;
 using System.Collections.Generic;
+using TwitchLib.Client.Models;
+using Unity.Burst.Intrinsics;
+using UnityEngine;
+using UnityEngine.PlayerLoop;
+using UnityEngine.Rendering.VirtualTexturing;
+using UnityEngine.SceneManagement;
 using Verse;
+using Verse.Noise;
+using static RimWorld.MechClusterSketch;
+using static Verse.PawnRenderNodeProperties;
 
 namespace CAP_ChatInteractive
 {
@@ -1071,7 +1083,44 @@ This release includes all changes from June 21–23 plus the June 26 heal logic 
                 "- New commands now able to expose their own toggles, numeric fields, headers, buttons, and gaps in the in-game Command Editor\r\n\r\n" +
                 "<b>TRANSLATIONS</b>\r\n───────────────────\r\n" +
                 "- Updated strings related to the new command settings system\r\n\r\n" +
-                "Full commit history: https://github.com/ekudram/-cap-RimworldInteractiveChatServices/commits/master/"}
+                "Full commit history: https://github.com/ekudram/-cap-RimworldInteractiveChatServices/commits/master/"},
+            { "1.43",
+                @"
+===========================================================
+                RICS 1.43 - Changelog
+                Released: July 10, 2026
+===========================================================
+
+<b>Memorandum</b>
+─────────────────-
+Big improvements to the **purchase system** are here! Viewers can now more reliably buy pawns (including player pawns), animals, mechs, and items with smoother delivery and better handling across the map.
+
+Mechs purchased by a Mechanitor will now spawn properly **under their control**.
+
+Additional refinements to AI chatbot integration and several behind-the-scenes delivery & spawning improvements for a more stable and fun interactive experience.
+
+<b>Updated</b>
+──────────────
+- Major overhaul of the purchasing and delivery system for pawns (colonists, player pawns), animals, mechs, and items
+- Improved pawn drop logic, crash landing effects, and map-wide delivery searching (prioritizes lockers, better fallbacks)
+- Enhanced Mechinator support for purchased mechs
+- AI bot event context and messaging refinements
+
+<b>Fixed</b>
+────────────
+- Mech spawning/control issues when purchased
+-Various delivery and spawn edge cases(space maps, lockers, minified buildings, etc.)
+- Logging and namespace cleanups
+
+<b>Added</b>
+────────────
+-Expanded pawn and item purchase capabilities
+- Better support for player pawns and animals in the queue/purchase flow
+
+<b>Translations</b>
+───────────────────
+-Updated strings for new purchase/delivery behaviors and AI improvements"
+    }
 
 
 /*  Copy this template for future versions and fill in the details
