@@ -119,30 +119,52 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
                 CleanupOldRecords();
         }
 
+        /// <summary>
+        /// Normalize buyable karma strings for counters. doom shares the bad bucket (MaxBadEvents).
+        /// </summary>
+        public static string NormalizeEventType(string eventType)
+        {
+            if (string.IsNullOrEmpty(eventType))
+                return "neutral";
+
+            string lower = eventType.Trim().ToLowerInvariant();
+            return lower switch
+            {
+                "good" => "good",
+                "bad" => "bad",
+                "doom" => "bad",
+                "neutral" => "neutral",
+                _ => "neutral"
+            };
+        }
+
         public bool CanUseEvent(string eventType, CAPGlobalChatSettings settings)
         {
+            if (settings == null)
+            {
+                Logger.Error("CanUseEvent: settings is null");
+                return false;
+            }
+
             if (string.IsNullOrEmpty(eventType))
             {
                 Logger.Error("CanUseEvent called with null/empty eventType");
                 return false;
             }
 
-            // NORMALIZE DOOM → BAD for limit checking (this is the core fix)
-            eventType = eventType.ToLowerInvariant();
-            if (eventType == "doom")
-                eventType = "bad";   // <<< ALL doom events now share the bad counter
+            string original = eventType;
+            eventType = NormalizeEventType(eventType);
 
-            Logger.Debug($"CanUseEvent normalized eventType: {eventType} (original was doom if applicable)");
-            Logger.Debug($"Max good events: {settings.MaxGoodEvents}");
-            Logger.Debug($"Max Bad Events: {settings.MaxBadEvents}");
-            Logger.Debug($"Max Neutral Events: {settings.MaxNeutralEvents}");
+            Logger.Debug(
+                $"CanUseEvent: original='{original}' → bucket='{eventType}' " +
+                $"(max G/B/N = {settings.MaxGoodEvents}/{settings.MaxBadEvents}/{settings.MaxNeutralEvents})");
 
             CleanupOldRecords();
 
             // 0 = infinite for that type
-            if (settings.MaxGoodEvents == 0 && eventType == "good") return true;
-            if (settings.MaxBadEvents == 0 && eventType == "bad") return true;   // doom already normalized
-            if (settings.MaxNeutralEvents == 0 && eventType == "neutral") return true;
+            if (eventType == "good" && settings.MaxGoodEvents == 0) return true;
+            if (eventType == "bad" && settings.MaxBadEvents == 0) return true;
+            if (eventType == "neutral" && settings.MaxNeutralEvents == 0) return true;
 
             var record = GetOrCreateEventRecord(eventType);
             CleanupOldEvents(record, settings.EventCooldownDays);
@@ -150,18 +172,17 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             int maxUses = eventType switch
             {
                 "good" => settings.MaxGoodEvents,
-                "bad" => settings.MaxBadEvents,   // doom now uses this
+                "bad" => settings.MaxBadEvents,
                 "neutral" => settings.MaxNeutralEvents,
-                "doom" => settings.MaxBadEvents,   // just in case, but should never hit this due to normalization
                 _ => settings.MaxBadEvents
             };
 
             bool canUse = record.CurrentPeriodUses < maxUses;
 
             if (!canUse)
-                Logger.Debug($"[LIMIT REACHED] {eventType} events at {record.CurrentPeriodUses}/{maxUses} - blocking further use");
-
-            Logger.Debug($"CanUseEvent result for {eventType}: {canUse} ({record.CurrentPeriodUses}/{maxUses})");
+                Logger.Debug($"[LIMIT REACHED] {eventType} events at {record.CurrentPeriodUses}/{maxUses} — blocking");
+            else
+                Logger.Debug($"CanUseEvent OK for {eventType}: {record.CurrentPeriodUses}/{maxUses}");
 
             return canUse;
         }
@@ -169,39 +190,51 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
         public bool CanUseCommand(string commandName, CommandSettings settings, CAPGlobalChatSettings globalSettings)
         {
             CleanupOldRecords();
-            // Always check per-command game days cooldown first (if enabled)
+
+            if (settings == null || globalSettings == null)
+            {
+                Logger.Error("CanUseCommand: null settings");
+                return false;
+            }
+
+            // Per-command use limit when enabled and MaxUses > 0.
+            // MaxUsesPerCooldownPeriod == 0 means unlimited for THIS command only —
+            // do NOT skip global / karma-type event limits (that was the 8/3 doom bug).
             if (settings.useCommandCooldown && settings.MaxUsesPerCooldownPeriod > 0)
             {
                 var cmdRecord = GetOrCreateCommandRecord(commandName);
                 CleanupOldCommandUses(cmdRecord, globalSettings.EventCooldownDays);
 
                 if (cmdRecord.CurrentPeriodUses >= settings.MaxUsesPerCooldownPeriod)
+                {
+                    Logger.Debug(
+                        $"CanUseCommand: {commandName} at " +
+                        $"{cmdRecord.CurrentPeriodUses}/{settings.MaxUsesPerCooldownPeriod} — blocked");
                     return false;
+                }
             }
 
-            // If per-command limit is 0 (unlimited), skip further checks for this command
-            if (settings.useCommandCooldown && settings.MaxUsesPerCooldownPeriod == 0)
-            {
-                return true;
-            }
-
-            // If event cooldowns are disabled globally, we're done
             if (!globalSettings.EventCooldownsEnabled)
-            {
                 return true;
+
+            // 1. Global total event cap
+            if (!CanUseGlobalEvents(globalSettings))
+            {
+                Logger.Debug($"CanUseCommand: {commandName} blocked by global event total");
+                return false;
             }
 
-            // EVENT COOLDOWN SYSTEM: Only for commands that should count toward event limits
-            // 1. Check total global event limit first
-            if (!CanUseGlobalEvents(globalSettings))
-                return false;
-
-            // 2. Check karma-type specific limits if enabled
+            // 2. Karma bucket for fixed commands (raid/militaryaid/weather).
+            // Generic "!event" must also pass BuyableIncident.KarmaType via CanUseEvent
+            // in IncidentCommandHandler — GetEventTypeForCommand("event") is only "neutral".
             if (globalSettings.KarmaTypeLimitsEnabled)
             {
                 string eventType = GetEventTypeForCommand(commandName);
                 if (!CanUseEvent(eventType, globalSettings))
+                {
+                    Logger.Debug($"CanUseCommand: {commandName} blocked by karma bucket '{eventType}'");
                     return false;
+                }
             }
 
             return true;
@@ -209,10 +242,15 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
 
         public bool CanUseGlobalEvents(CAPGlobalChatSettings settings)
         {
+            if (settings == null) return false;
             if (settings.EventsperCooldown == 0) return true; // Unlimited
 
+            CleanupOldRecords();
             int totalEvents = data.EventUsage.Values.Sum(record => record.CurrentPeriodUses);
-            return totalEvents < settings.EventsperCooldown;
+            bool ok = totalEvents < settings.EventsperCooldown;
+            if (!ok)
+                Logger.Debug($"[LIMIT REACHED] total events {totalEvents}/{settings.EventsperCooldown}");
+            return ok;
         }
         // In GlobalCooldownManager.cs, inside GlobalCooldownManager.RecordEventUse()
 
@@ -220,20 +258,20 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
         {
             if (string.IsNullOrEmpty(eventType)) return;
 
-            eventType = eventType.ToLowerInvariant();
-            if (eventType == "doom")
-                eventType = "bad";   // doom shares the bad counter (existing behavior preserved)
+            string original = eventType;
+            eventType = NormalizeEventType(eventType);
 
             var record = GetOrCreateEventRecord(eventType);
             record.UsageDays.Add(CurrentGameDay);
 
-            Logger.Debug($"Recorded event usage for type: {eventType} (doom normalized to bad)");
-            Logger.Debug($"Current usage for {eventType}: {record.CurrentPeriodUses}");
+            Logger.Debug(
+                $"Recorded event use: original='{original}' → bucket='{eventType}' " +
+                $"now {record.CurrentPeriodUses}");
 
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings as CAPGlobalChatSettings;
             if (settings == null) return;
 
-            // === 1. Karma-type specific message (ONLY when KarmaTypeLimitsEnabled) ===
+            // Karma-type usage feedback
             if (settings.KarmaTypeLimitsEnabled)
             {
                 int maxUses = eventType switch
@@ -245,30 +283,21 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
                 };
 
                 string displayType = eventType == "bad" ? "Bad/Doom" : char.ToUpperInvariant(eventType[0]) + eventType.Substring(1);
-
-                string message = $"Current {displayType} events this period: {record.CurrentPeriodUses}/{maxUses}";
-
-                MessageTypeDef msgType = eventType switch
-                {
-                    "good" => MessageTypeDefOf.PositiveEvent,
-                    "bad" => MessageTypeDefOf.NegativeEvent,
-                    "neutral" => MessageTypeDefOf.NeutralEvent,
-                    _ => MessageTypeDefOf.NeutralEvent
-                };
-
-                Messages.Message(message, msgType);
+                Messages.Message(
+                    $"Current {displayType} events this period: {record.CurrentPeriodUses}/{maxUses}",
+                    eventType == "good" ? MessageTypeDefOf.PositiveEvent
+                        : eventType == "bad" ? MessageTypeDefOf.NegativeEvent
+                        : MessageTypeDefOf.NeutralEvent);
             }
 
-            // === 2. Global event total (ALWAYS shown when EventCooldownsEnabled, even if karma-type limits are off) ===
+            // Global total feedback
             if (settings.EventCooldownsEnabled)
             {
                 int totalEvents = data.EventUsage.Values.Sum(r => r.CurrentPeriodUses);
                 int globalMax = settings.EventsperCooldown;
-
                 string globalMsg = globalMax > 0
                     ? $"Current total events this period: {totalEvents}/{globalMax}"
                     : $"Current total events this period: {totalEvents} (unlimited)";
-
                 Messages.Message(globalMsg, MessageTypeDefOf.NeutralEvent);
             }
         }
@@ -340,50 +369,71 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
         /// "X uses every N days" system (UsesPerCooldownPeriod from BuyableIncident).
         /// Fully backward compatible when usesPerPeriod = 1.
         /// </summary>
-        public bool CanUseIncident(string incidentDefName, int incidentCooldownDays, int usesPerPeriod = 1, CAPGlobalChatSettings settings = null)
+        /// <param name="karmaType">
+        /// From BuyableIncident.KarmaType (good/bad/doom/neutral). Required for correct bucket limits.
+        /// Do not pass DefName — def-name heuristics mis-classified doom/bad as neutral (8/3 bug).
+        /// </param>
+        public bool CanUseIncident(
+            string incidentDefName,
+            int incidentCooldownDays,
+            int usesPerPeriod = 1,
+            CAPGlobalChatSettings settings = null,
+            string karmaType = null)
         {
             if (settings == null)
                 settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
 
-            Logger.Debug($"CanUseIncident: {incidentDefName}, CD={incidentCooldownDays}, UsesPer={usesPerPeriod}");
+            Logger.Debug(
+                $"CanUseIncident: {incidentDefName}, CD={incidentCooldownDays}, UsesPer={usesPerPeriod}, " +
+                $"karma='{karmaType}'");
 
             CleanupOldRecords();
 
             if (settings != null && !settings.EventCooldownsEnabled)
             {
-                Logger.Debug("Event cooldowns disabled globally → allowing");
+                Logger.Debug("Event cooldowns disabled globally → allowing incident");
                 return true;
             }
 
-            if (incidentCooldownDays <= 0)
+            // Per-incident window (independent of global totals)
+            if (incidentCooldownDays > 0)
             {
-                Logger.Debug($"Incident {incidentDefName} has no cooldown (days=0) → allowing");
-                return true;
+                if (usesPerPeriod <= 0) usesPerPeriod = 1;
+
+                var record = GetOrCreateIncidentRecord(incidentDefName);
+                CleanupOldIncidentUses(record, incidentCooldownDays);
+
+                int usesInWindow = record.UsageDays?.Count(d => (CurrentGameDay - d) < incidentCooldownDays) ?? 0;
+                if (usesInWindow >= usesPerPeriod)
+                {
+                    Logger.Debug(
+                        $"Incident {incidentDefName} at {usesInWindow}/{usesPerPeriod} " +
+                        $"in last {incidentCooldownDays} days → BLOCKED");
+                    return false;
+                }
             }
 
-            if (usesPerPeriod <= 0) usesPerPeriod = 1;
-
-            var record = GetOrCreateIncidentRecord(incidentDefName);
-
-            CleanupOldIncidentUses(record, incidentCooldownDays);
-
-            int usesInWindow = record.UsageDays?.Count(d => (CurrentGameDay - d) < incidentCooldownDays) ?? 0;
-
-            if (usesInWindow >= usesPerPeriod)
+            // Global total
+            if (settings != null && !CanUseGlobalEvents(settings))
             {
-                Logger.Debug($"Incident {incidentDefName} at {usesInWindow}/{usesPerPeriod} uses in last {incidentCooldownDays} days → BLOCKED");
+                Logger.Debug($"Global event total reached → blocking {incidentDefName}");
                 return false;
             }
 
-            // Still enforce global + karma-type limits
-            string karmaType = GetKarmaTypeForIncident(incidentDefName);
-            if (!CanUseEvent(karmaType, settings))
+            // Karma-type bucket — use explicit type from BuyableIncident, not def name
+            if (settings != null && settings.KarmaTypeLimitsEnabled)
             {
-                Logger.Debug($"Global {karmaType} event limit reached → blocking {incidentDefName}");
-                return false;
+                string bucket = NormalizeEventType(
+                    !string.IsNullOrEmpty(karmaType) ? karmaType : GetKarmaTypeForIncident(incidentDefName));
+
+                if (!CanUseEvent(bucket, settings))
+                {
+                    Logger.Debug($"Karma bucket '{bucket}' limit reached → blocking {incidentDefName}");
+                    return false;
+                }
             }
 
-            Logger.Debug($"Incident {incidentDefName} allowed ({usesInWindow + 1}/{usesPerPeriod} in window)");
+            Logger.Debug($"Incident {incidentDefName} allowed");
             return true;
         }
 

@@ -60,46 +60,64 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Debug($"CooldownDays: {buyableIncident.CooldownDays}");
 
                 var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
-                if (cooldownManager != null)
+                if (cooldownManager != null && settings.EventCooldownsEnabled)
                 {
-                    // === 1. Global + Karma-type limits FIRST (highest priority for feedback) ===
-                    var commandSettings = CommandSettingsManager.GetSettings("event") ?? new CommandSettings { useCommandCooldown = true, MaxUsesPerCooldownPeriod = 0 };
+                    // Use BuyableIncident.KarmaType for all limit checks (not command name "event" → neutral).
+                    string karmaType = GetKarmaTypeForIncident(buyableIncident.KarmaType);
+                    string karmaBucket = GlobalCooldownManager.NormalizeEventType(karmaType);
 
-                    if (!cooldownManager.CanUseCommand("event", commandSettings, settings))
+                    Logger.Debug(
+                        $"Event limits: cooldownsOn={settings.EventCooldownsEnabled}, " +
+                        $"karmaLimitsOn={settings.KarmaTypeLimitsEnabled}, " +
+                        $"karma='{buyableIncident.KarmaType}' → bucket='{karmaBucket}', " +
+                        $"globalMax={settings.EventsperCooldown}, " +
+                        $"maxBad={settings.MaxBadEvents}, maxGood={settings.MaxGoodEvents}, maxNeutral={settings.MaxNeutralEvents}, " +
+                        $"incidentCD={buyableIncident.CooldownDays}d usesPer={buyableIncident.UsesPerCooldownPeriod}");
+
+                    // === 1. Global total event cap ===
+                    if (!cooldownManager.CanUseGlobalEvents(settings))
                     {
-                        if (!cooldownManager.CanUseGlobalEvents(settings))
-                        {
-                            int total = cooldownManager.data.EventUsage.Values.Sum(r => r.CurrentPeriodUses);
-                            return "RICS.ICH.RETURN.GlobalEventLimitReached".Translate(total, settings.EventsperCooldown);
-                        }
-
-                        if (settings.KarmaTypeLimitsEnabled)
-                        {
-                            string eventType = GetKarmaTypeForIncident(buyableIncident.KarmaType);
-                            if (!cooldownManager.CanUseEvent(eventType, settings))
-                            {
-                                return GetCooldownMessage(eventType, settings, cooldownManager);
-                            }
-                        }
-
-                        return "RICS.ICH.RETURN.CommandCooldownActive".Translate(buyableIncident.Label);
+                        int total = cooldownManager.data.EventUsage.Values.Sum(r => r.CurrentPeriodUses);
+                        Logger.Debug($"BLOCKED: global events {total}/{settings.EventsperCooldown}");
+                        return "RICS.ICH.RETURN.GlobalEventLimitReached".Translate(total, settings.EventsperCooldown);
                     }
 
-                    // === 2. Individual incident cooldown (only checked if global limits passed) ===
-                    if (settings.EventCooldownsEnabled && buyableIncident.CooldownDays > 0)
+                    // === 2. Karma-type bucket (doom counts as bad) ===
+                    if (settings.KarmaTypeLimitsEnabled)
                     {
-                        if (!cooldownManager.CanUseIncident(
-                                    buyableIncident.DefName,
-                                    buyableIncident.CooldownDays,
-                                    buyableIncident.UsesPerCooldownPeriod,   // ← NEW
-                                    settings))
+                        if (!cooldownManager.CanUseEvent(karmaBucket, settings))
                         {
-                            int daysRemaining = GetRemainingCooldownDays(buyableIncident.DefName, buyableIncident.CooldownDays, cooldownManager);
-                            string cooldownMessage = GetIndividualCooldownMessage(buyableIncident.Label, daysRemaining, buyableIncident.CooldownDays);
-                            Logger.Debug($"Individual cooldown blocked: {cooldownMessage}");
+                            Logger.Debug($"BLOCKED: karma bucket '{karmaBucket}' for {buyableIncident.DefName}");
+                            return GetCooldownMessage(karmaBucket, settings, cooldownManager);
+                        }
+                    }
+
+                    // === 3. Per-incident cooldown / uses-per-window ===
+                    if (!cooldownManager.CanUseIncident(
+                            buyableIncident.DefName,
+                            buyableIncident.CooldownDays,
+                            buyableIncident.UsesPerCooldownPeriod,
+                            settings,
+                            karmaType: buyableIncident.KarmaType))
+                    {
+                        // Prefer individual-CD message when that is the gate
+                        if (buyableIncident.CooldownDays > 0)
+                        {
+                            int daysRemaining = GetRemainingCooldownDays(
+                                buyableIncident.DefName, buyableIncident.CooldownDays, cooldownManager);
+                            string cooldownMessage = GetIndividualCooldownMessage(
+                                buyableIncident.Label, daysRemaining, buyableIncident.CooldownDays);
+                            Logger.Debug($"BLOCKED: individual incident CD — {cooldownMessage}");
                             return cooldownMessage;
                         }
+
+                        Logger.Debug($"BLOCKED: CanUseIncident for {buyableIncident.DefName}");
+                        return "RICS.ICH.RETURN.CommandCooldownActive".Translate(buyableIncident.Label);
                     }
+                }
+                else if (cooldownManager == null)
+                {
+                    Logger.Warning("GlobalCooldownManager missing — event limits not enforced this purchase");
                 }
 
                 // === AFFORDABILITY CHECK ===
@@ -136,19 +154,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         }
                     }
 
-                    if (cooldownManager != null)
+                    if (cooldownManager != null && settings.EventCooldownsEnabled)
                     {
-                        if (settings.EventCooldownsEnabled && buyableIncident.CooldownDays > 0)
-                            cooldownManager.RecordIncidentUse(buyableIncident.DefName, buyableIncident.UsesPerCooldownPeriod); // ← pass it
+                        // Always record both: per-incident window + karma/global bucket
+                        cooldownManager.RecordIncidentUse(
+                            buyableIncident.DefName, buyableIncident.UsesPerCooldownPeriod);
 
                         string eventType = GetKarmaTypeForIncident(buyableIncident.KarmaType);
                         cooldownManager.RecordEventUse(eventType);
 
-
-
-                        string logKey = (eventType.ToLowerInvariant() == "doom") ? "bad" : eventType.ToLowerInvariant();
+                        string logKey = GlobalCooldownManager.NormalizeEventType(eventType);
                         var record = cooldownManager.data.EventUsage.GetValueOrDefault(logKey);
-                        Logger.Debug($"Recorded event usage for type: {eventType} (normalized {(eventType.ToLowerInvariant() == "doom" ? "to bad" : "")}) → Current: {record?.CurrentPeriodUses ?? 0}");
+                        Logger.Debug(
+                            $"Recorded success: incident={buyableIncident.DefName}, " +
+                            $"karma='{eventType}' → bucket='{logKey}' uses={record?.CurrentPeriodUses ?? 0}");
                     }
 
                     if (buyableIncident.KarmaType?.ToLowerInvariant() == "doom")
@@ -248,36 +267,37 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
+        /// <summary>Normalize BuyableIncident.KarmaType for logging; bucket limits use NormalizeEventType.</summary>
         private static string GetKarmaTypeForIncident(string karmaTypeFromBuyable)
         {
             if (string.IsNullOrEmpty(karmaTypeFromBuyable))
                 return "neutral";
 
-            string lower = karmaTypeFromBuyable.ToLowerInvariant();
+            string lower = karmaTypeFromBuyable.Trim().ToLowerInvariant();
             return lower switch
             {
                 "good" => "good",
                 "bad" => "bad",
                 "doom" => "doom",
+                "neutral" => "neutral",
                 _ => "neutral"
             };
         }
 
         private static string GetCooldownMessage(string eventType, CAPGlobalChatSettings settings, GlobalCooldownManager cooldownManager)
         {
-            string displayType = eventType.ToLowerInvariant() == "doom" ? "Bad (Doom)" : eventType.ToUpper();
+            string bucket = GlobalCooldownManager.NormalizeEventType(eventType);
+            string displayType = bucket == "bad" ? "Bad/Doom" : char.ToUpperInvariant(bucket[0]) + bucket.Substring(1);
 
-            int maxEvents = eventType.ToLowerInvariant() switch
+            int maxEvents = bucket switch
             {
                 "good" => settings.MaxGoodEvents,
                 "bad" => settings.MaxBadEvents,
-                "doom" => settings.MaxBadEvents,
                 "neutral" => settings.MaxNeutralEvents,
                 _ => 10
             };
 
-            string lookupKey = (eventType.ToLowerInvariant() == "doom") ? "bad" : eventType.ToLowerInvariant();
-            var record = cooldownManager.data.EventUsage.GetValueOrDefault(lookupKey);
+            var record = cooldownManager.data.EventUsage.GetValueOrDefault(bucket);
             int currentUses = record?.CurrentPeriodUses ?? 0;
 
             return "RICS.ICH.RETURN.EventTypeLimitReached".Translate(displayType, currentUses, maxEvents);
