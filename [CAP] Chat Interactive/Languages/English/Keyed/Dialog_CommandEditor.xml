@@ -6,6 +6,17 @@
   <CAP.CommandManager.SelectCommand>Select a command to see details</CAP.CommandManager.SelectCommand>
   <CAP.CommandManager.Search>Search</CAP.CommandManager.Search>
   <CAP.CommandManager.Settings>Settings</CAP.CommandManager.Settings>
+
+  <!-- Bulk store / purchase permission actions -->
+  <CAP.CommandManager.Bulk.StoreSubscriberOnly>Store cmds → Subscriber</CAP.CommandManager.Bulk.StoreSubscriberOnly>
+  <CAP.CommandManager.Bulk.SetToEveryone>Store cmds → Everyone</CAP.CommandManager.Bulk.SetToEveryone>
+  <CAP.CommandManager.Bulk.StoreSubscriberOnly.Tip>Set all purchase/store commands (!buy, !use, !wear, !backpack, !pawn, !event, !weather, etc.) to require Subscriber (or higher). Moderator/broadcaster staff overrides are left unchanged. Saves immediately. (Toggle button switches modes.)</CAP.CommandManager.Bulk.StoreSubscriberOnly.Tip>
+  <CAP.CommandManager.Bulk.StoreSubscriberOnly.Confirm>Set these purchase commands to Subscriber-only?\n\n{0}\n\nStaff (moderator/broadcaster) permissions will not be changed. Settings are saved to CommandSettings.json immediately.</CAP.CommandManager.Bulk.StoreSubscriberOnly.Confirm>
+  <CAP.CommandManager.Bulk.StoreSubscriberOnly.Done>Store commands updated: {0} set to subscriber, {1} staff overrides skipped.</CAP.CommandManager.Bulk.StoreSubscriberOnly.Done>
+
+  <!-- New keys for Everyone toggle -->
+  <CAP.CommandManager.Bulk.SetToEveryone.Confirm>Set these purchase commands back to Everyone (free use)?\n\n{0}\n\nStaff (moderator/broadcaster) permissions will not be changed. Settings are saved to CommandSettings.json immediately.</CAP.CommandManager.Bulk.SetToEveryone.Confirm>
+  <CAP.CommandManager.Bulk.SetToEveryone.Done>Store commands updated: {0} set to everyone, {1} staff overrides skipped.</CAP.CommandManager.Bulk.SetToEveryone.Done>
   
   <!-- Sort Buttons -->
   <CAP.CommandManager.Sort.Name>Name</CAP.CommandManager.Sort.Name>

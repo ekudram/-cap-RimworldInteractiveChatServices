@@ -44,6 +44,32 @@ namespace CAP_ChatInteractive
         private Dictionary<CommandSettings, Dictionary<string, string>> commandSpecificBuffers = new Dictionary<CommandSettings, Dictionary<string, string>>();
         private CAPGlobalChatSettings settingsGlobalChat;
 
+        /// <summary>
+        /// Purchase / store-style commands that spend coins or deliver goods/events.
+        /// Bulk "subscriber only" applies to these keys (commandText, lower-case).
+        /// </summary>
+        private static readonly HashSet<string> PurchaseCommandKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "buy",
+            "use",
+            "wear",
+            "backpack",
+            "pawn",
+            "weather",
+            "event",
+            "surgery",
+            "raid",
+            "militaryaid",
+            "healpawn",
+            "revivepawn",
+            "dye",
+            "addtrait",
+            "removetrait",
+            "replacetrait",
+            "settraits",
+            "trait",
+        };
+
         public override Vector2 InitialSize => new Vector2(1000f, 700f);
 
         public Dialog_CommandManager()
@@ -68,12 +94,12 @@ namespace CAP_ChatInteractive
 
             float bottomBarHeight = 50f; // Space for the 5-button bar
 
-            // Header - increased height for two rows
-            Rect headerRect = new Rect(0f, 0f, inRect.width, 70f);
+            // Header: title + search/sort + bulk store permission action
+            Rect headerRect = new Rect(0f, 0f, inRect.width, 78f);
             DrawHeader(headerRect);
 
             // Main content area — leave room at bottom for button bar
-            Rect contentRect = new Rect(0f, 75f, inRect.width, inRect.height - 75f - bottomBarHeight);
+            Rect contentRect = new Rect(0f, 83f, inRect.width, inRect.height - 83f - bottomBarHeight);
             DrawContent(contentRect);
 
             // ========== BOTTOM BUTTON BAR (Save Backup | Load Backup | Save As... | Load file | Close) ==========
@@ -270,6 +296,24 @@ namespace CAP_ChatInteractive
             Rect sortRect = new Rect(180f, controlsY, 300f, 30f);
             DrawSortButtons(sortRect);
 
+            Rect bulkRect = new Rect(490f, controlsY, 280f, 30f);
+            string bulkLabel = IsStoreCommandsMostlySubscriber()
+                ? "CAP.CommandManager.Bulk.SetToEveryone".Translate()
+                : "CAP.CommandManager.Bulk.StoreSubscriberOnly".Translate();
+            if (Widgets.ButtonText(bulkRect, bulkLabel))
+            {
+                if (IsStoreCommandsMostlySubscriber())
+                {
+                    ShowSetStoreCommandsToEveryoneConfirmation();
+                }
+                else
+                {
+                    ShowSetStoreCommandsSubscriberOnlyConfirmation();
+                }
+            }
+            TooltipHandler.TipRegion(bulkRect,
+                "CAP.CommandManager.Bulk.StoreSubscriberOnly.Tip".Translate());
+
             // Settings gear icon - adjusted position for taller header
             Rect settingsRect = new Rect(rect.width - 30f, 10f, 24f, 24f); // Moved down from 5f to 10f
             Texture2D gearIcon = ContentFinder<Texture2D>.Get("UI/Icons/Options/OptionsGeneral", false);
@@ -418,12 +462,13 @@ namespace CAP_ChatInteractive
             var settings = commandSettings[commandKey];
             if (!settings.Enabled) return Color.gray;
 
-            return command.permissionLevel switch
+            string permLevel = settings.PermissionLevel ?? command.permissionLevel ?? "everyone";
+            return permLevel.ToLowerInvariant() switch
             {
                 "broadcaster" => new Color(0.9f, 0.3f, 0.3f),
-                "moderator" => new Color(0.2f, 0.8f, 0.2f),
+                "moderator" => new Color(0.2f, 0.8f, 0.2f),  // green for mod
                 "vip" => new Color(0.8f, 0.6f, 0.2f),
-                "subscriber" => new Color(0.4f, 0.6f, 1f),
+                "subscriber" => new Color(0.2f, 0.6f, 1.0f),  // bright blue for subscriber (as requested)
                 _ => Color.white
             };
         }
@@ -511,7 +556,17 @@ namespace CAP_ChatInteractive
                     permLevelTranslated = effectivePerm.CapitalizeFirst();
                 }
 
-                Widgets.Label(permRect, "CAP.CommandManager.PermissionLevel".Translate() + ": " + permLevelTranslated);
+                // Color the permission level text (bright blue for subscriber as requested)
+                string coloredPerm = effectivePerm.ToLowerInvariant() switch
+                {
+                    "everyone" => permLevelTranslated.Colorize(Color.white),    
+                    "subscriber" => permLevelTranslated.Colorize(new Color(0.2f, 0.6f, 1.0f)),  // bright blue
+                    "moderator" => permLevelTranslated.Colorize(new Color(0.2f, 0.8f, 0.2f)),
+                    "broadcaster" => permLevelTranslated.Colorize(new Color(0.9f, 0.3f, 0.3f)),
+                    _ => permLevelTranslated
+                };
+
+                Widgets.Label(permRect, "CAP.CommandManager.PermissionLevel".Translate() + ": " + coloredPerm);
 
                 // Add "Change" button for monetized access (subscriber/everyone) — skip for moderator+ commands
                 bool isModCommand = effectivePerm.Equals("moderator", StringComparison.OrdinalIgnoreCase) ||
@@ -1031,11 +1086,41 @@ namespace CAP_ChatInteractive
         private void ShowCommandSettingsMenu()
         {
             List<FloatMenuOption> options = new List<FloatMenuOption>
-    {
-        new FloatMenuOption("CAP.CommandManager.ResetAll".Translate(), () => ShowResetConfirmationDialog())  // // Do Tranlslate
-    };
+            {
+                new FloatMenuOption("CAP.CommandManager.ResetAll".Translate(), () => ShowResetConfirmationDialog()),
+                new FloatMenuOption(
+                    "CAP.CommandManager.Bulk.StoreSubscriberOnly".Translate(),
+                    () => ShowSetStoreCommandsSubscriberOnlyConfirmation()),
+            };
 
             Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        // In Dialog_CommandManager.cs (added after ShowCommandSettingsMenu() or near other bulk methods)
+
+        /// <summary>
+        /// Checks if most purchase/store commands are set to subscriber (for toggle button label)
+        /// </summary>
+        private bool IsStoreCommandsMostlySubscriber()
+        {
+            int subscriberCount = 0;
+            int totalRelevant = 0;
+
+            foreach (string key in PurchaseCommandKeys)
+            {
+                string cmdKey = key.ToLowerInvariant();
+                if (commandSettings.TryGetValue(cmdKey, out var settings))
+                {
+                    string perm = (settings.PermissionLevel ?? "everyone").ToLowerInvariant();
+                    if (perm == "subscriber")
+                    {
+                        subscriberCount++;
+                    }
+                    totalRelevant++;
+                }
+            }
+
+            return totalRelevant > 0 && subscriberCount >= totalRelevant * 0.6f;  // majority threshold
         }
 
         private void SetCommandPermission(string newLevel)
@@ -1051,6 +1136,159 @@ namespace CAP_ChatInteractive
 
                 // The display will refresh on next draw because we read from settings
             }
+        }
+
+        private void ShowSetStoreCommandsSubscriberOnlyConfirmation()
+        {
+            string listPreview = string.Join(", ", PurchaseCommandKeys.OrderBy(k => k).Select(k => "!" + k));
+            TaggedString body = "CAP.CommandManager.Bulk.StoreSubscriberOnly.Confirm".Translate(listPreview);
+
+            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                body,
+                () => ApplyStoreCommandsSubscriberOnly(),
+                destructive: true,
+                title: "CAP.CommandManager.Bulk.StoreSubscriberOnly".Translate()
+            ));
+        }
+
+        private void ShowSetStoreCommandsToEveryoneConfirmation()
+        {
+            string listPreview = string.Join(", ", PurchaseCommandKeys.OrderBy(k => k).Select(k => "!" + k));
+            TaggedString body = "CAP.CommandManager.Bulk.SetToEveryone.Confirm".Translate(listPreview);
+
+            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                body,
+                () => ApplyStoreCommandsToEveryone(),
+                destructive: true,
+                title: "CAP.CommandManager.Bulk.SetToEveryone".Translate()
+            ));
+        }
+
+        /// <summary>
+        /// Mass-set purchase/store commands back to "everyone". Skips staff overrides.
+        /// Saves JSON immediately so runtime permission checks pick it up.
+        /// </summary>
+        private void ApplyStoreCommandsToEveryone()
+        {
+            int updated = 0;
+            int skippedStaff = 0;
+            int missing = 0;
+            var changedKeys = new List<string>();
+
+            foreach (string key in PurchaseCommandKeys)
+            {
+                string cmdKey = key.ToLowerInvariant();
+
+                if (!commandSettings.TryGetValue(cmdKey, out var settings))
+                {
+                    // Ensure entry exists for known defs
+                    var def = DefDatabase<ChatCommandDef>.AllDefs
+                        .FirstOrDefault(d =>
+                            string.Equals(d.commandText, cmdKey, StringComparison.OrdinalIgnoreCase));
+                    if (def == null)
+                    {
+                        missing++;
+                        continue;
+                    }
+
+                    settings = new CommandSettings
+                    {
+                        PermissionLevel = def.permissionLevel,
+                        CooldownSeconds = def.cooldownSeconds
+                    };
+                    commandSettings[cmdKey] = settings;
+                }
+
+                string current = (settings.PermissionLevel ?? "everyone").ToLowerInvariant();
+                if (current == "moderator" || current == "broadcaster")
+                {
+                    skippedStaff++;
+                    continue;
+                }
+
+                if (current != "everyone")
+                {
+                    settings.PermissionLevel = "everyone";
+                    updated++;
+                    changedKeys.Add(cmdKey);
+                }
+            }
+
+            SaveCommandSettings();
+            FilterCommands();
+            SoundDefOf.Click.PlayOneShotOnCamera();
+
+            Logger.Message(
+                $"Bulk store→everyone: updated={updated}, skippedStaff={skippedStaff}, " +
+                $"missingDefs={missing}. Changed: {string.Join(", ", changedKeys)}");
+
+            Messages.Message(
+                "CAP.CommandManager.Bulk.SetToEveryone.Done".Translate(updated, skippedStaff),
+                MessageTypeDefOf.PositiveEvent);
+        }
+        /// <summary>
+        /// Mass-set purchase/store commands to PermissionLevel = subscriber.
+        /// Skips commands that are already moderator/broadcaster (staff overrides).
+        /// Saves JSON immediately so runtime permission checks pick it up.
+        /// </summary>
+        private void ApplyStoreCommandsSubscriberOnly()
+        {
+            int updated = 0;
+            int skippedStaff = 0;
+            int missing = 0;
+            var changedKeys = new List<string>();
+
+            foreach (string key in PurchaseCommandKeys)
+            {
+                string cmdKey = key.ToLowerInvariant();
+
+                // Ensure entry exists for known defs
+                if (!commandSettings.TryGetValue(cmdKey, out var settings))
+                {
+                    // Still create if we have a matching def
+                    var def = DefDatabase<ChatCommandDef>.AllDefs
+                        .FirstOrDefault(d =>
+                            string.Equals(d.commandText, cmdKey, StringComparison.OrdinalIgnoreCase));
+                    if (def == null)
+                    {
+                        missing++;
+                        continue;
+                    }
+
+                    settings = new CommandSettings
+                    {
+                        PermissionLevel = def.permissionLevel,
+                        CooldownSeconds = def.cooldownSeconds
+                    };
+                    commandSettings[cmdKey] = settings;
+                }
+
+                string current = (settings.PermissionLevel ?? "everyone").ToLowerInvariant();
+                if (current == "moderator" || current == "broadcaster")
+                {
+                    skippedStaff++;
+                    continue;
+                }
+
+                if (current != "subscriber")
+                {
+                    settings.PermissionLevel = "subscriber";
+                    updated++;
+                    changedKeys.Add(cmdKey);
+                }
+            }
+
+            SaveCommandSettings();
+            FilterCommands();
+            SoundDefOf.Click.PlayOneShotOnCamera();
+
+            Logger.Message(
+                $"Bulk store→subscriber: updated={updated}, skippedStaff={skippedStaff}, " +
+                $"missingDefs={missing}. Changed: {string.Join(", ", changedKeys)}");
+
+            Messages.Message(
+                "CAP.CommandManager.Bulk.StoreSubscriberOnly.Done".Translate(updated, skippedStaff),
+                MessageTypeDefOf.PositiveEvent);
         }
 
         private void FilterCommands()
