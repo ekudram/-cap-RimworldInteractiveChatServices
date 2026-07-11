@@ -325,13 +325,40 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 allSpawnedItems.AddRange(deliveryResult.DropPodDeliveredItems);
                 allSpawnedItems.AddRange(deliveryResult.DirectlyDeliveredItems);
 
+                // Map for letters / look targets — works for nomadic pocket (no IsPlayerHome)
+                Map deliveryLookMap = ItemDeliveryHelper.ResolveDeliveryMap(
+                    viewerPawn, allowUndergroundRedirect: false)
+                    ?? viewerPawn?.Map
+                    ?? Find.CurrentMap
+                    ?? Find.Maps?.FirstOrDefault(m => m != null);
+
+                Logger.Debug(
+                    $"[BuyItem] spawn result method={deliveryResult.PrimaryMethod} " +
+                    $"pos={deliveryResult.DeliveryPosition} " +
+                    $"locker={deliveryResult.LockerDeliveredCount} " +
+                    $"podStacks={deliveryResult.DropPodDeliveredItems.Count} " +
+                    $"direct={deliveryResult.DirectlyDeliveredItems.Count} " +
+                    $"lookMap={ItemDeliveryHelper.DescribeMap(deliveryLookMap)} " +
+                    $"totalThings={allSpawnedItems.Count}");
+
+                if (allSpawnedItems.Count == 0 &&
+                    deliveryResult.LockerDeliveredCount == 0 &&
+                    deliveryResult.DropPodDeliveredCount == 0)
+                {
+                    Logger.Warning(
+                        $"[BuyItem] Purchase paid but NOTHING spawned for {itemName} x{quantity} " +
+                        $"(user={messageWrapper.Username}). Check [ItemSpawn] logs / maps.");
+                    ItemDeliveryHelper.LogMapSnapshot("[BuyItem empty delivery maps]");
+                }
+
                 // Set ownership for each spawned item if this is a direct pawn delivery
-                Logger.Debug($"Setting ownership for spawned items - requireEquippable: {requireEquippable}, requireWearable: {requireWearable}, addToInventory: {addToInventory}");
+                Logger.Debug(
+                    $"Setting ownership — equip={requireEquippable} wear={requireWearable} inv={addToInventory}");
                 if (requireEquippable || requireWearable || addToInventory)
                 {
                     foreach (Thing spawnedItem in allSpawnedItems)
                     {
-                        Logger.Debug($"Setting ownership for {spawnedItem.def.defName} to {viewerPawn.Name}");
+                        Logger.Debug($"Setting ownership for {spawnedItem.def.defName} to {viewerPawn?.Name}");
                         TrySetItemOwnership(spawnedItem, viewerPawn);
                     }
                 }
@@ -339,54 +366,41 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // Create look targets - use the delivery position we know items will be at
                 LookTargets lookTargets = null;
 
-                // For the LookTargets code, update to use deliveryResult.DeliveryPosition:
                 if (thingDef.thingClass == typeof(Verse.Pawn))
                 {
-                    // For animal deliveries, target the EXACT SPAWN POSITION
-                    if (deliveryResult.DeliveryPosition.IsValid)
+                    if (deliveryResult.DeliveryPosition.IsValid && deliveryLookMap != null)
                     {
-                        Map targetMap = viewerPawn?.Map ?? Find.CurrentMap ?? Find.Maps.FirstOrDefault(m => m.IsPlayerHome);
-                        if (targetMap != null)
-                        {
-                            lookTargets = new LookTargets(deliveryResult.DeliveryPosition, targetMap);
-                            Logger.Debug($"Created LookTargets for exact animal spawn position: {deliveryResult.DeliveryPosition}");
-                        }
+                        lookTargets = new LookTargets(deliveryResult.DeliveryPosition, deliveryLookMap);
+                        Logger.Debug($"LookTargets animal spawn @ {deliveryResult.DeliveryPosition}");
                     }
                 }
                 else if (requireEquippable || requireWearable || addToInventory)
                 {
-                    // For direct pawn interactions, target the pawn
                     lookTargets = viewerPawn != null ? new LookTargets(viewerPawn) : null;
-                    Logger.Debug($"Created LookTargets for pawn: {viewerPawn?.Name}");
+                    Logger.Debug($"LookTargets pawn: {viewerPawn?.Name}");
                 }
                 else if (deliveryResult.PrimaryMethod == DeliveryMethod.Locker)
                 {
-                    // For locker deliveries, target the locker position
-                    if (deliveryResult.DeliveryPosition.IsValid)
+                    if (deliveryResult.DeliveryPosition.IsValid && deliveryLookMap != null)
                     {
-                        Map targetMap = viewerPawn?.Map ?? Find.CurrentMap ?? Find.Maps.FirstOrDefault(m => m.IsPlayerHome);
-                        if (targetMap != null)
-                        {
-                            lookTargets = new LookTargets(deliveryResult.DeliveryPosition, targetMap);
-                            Logger.Debug($"Created LookTargets for locker position: {deliveryResult.DeliveryPosition}");
-                        }
+                        lookTargets = new LookTargets(deliveryResult.DeliveryPosition, deliveryLookMap);
+                        Logger.Debug($"LookTargets locker @ {deliveryResult.DeliveryPosition}");
                     }
                 }
-                else if (deliveryResult.DeliveryPosition.IsValid)
+                else if (deliveryResult.DeliveryPosition.IsValid && deliveryLookMap != null)
                 {
-                    // For drop pod deliveries, target the delivery position
-                    Map targetMap = viewerPawn?.Map ?? Find.CurrentMap ?? Find.Maps.FirstOrDefault(m => m.IsPlayerHome);
-                    if (targetMap != null)
-                    {
-                        lookTargets = new LookTargets(deliveryResult.DeliveryPosition, targetMap);
-                        Logger.Debug($"Created LookTargets for delivery position: {deliveryResult.DeliveryPosition} on map {targetMap}");
-                    }
+                    lookTargets = new LookTargets(deliveryResult.DeliveryPosition, deliveryLookMap);
+                    Logger.Debug(
+                        $"LookTargets drop @ {deliveryResult.DeliveryPosition} on " +
+                        $"{ItemDeliveryHelper.DescribeMap(deliveryLookMap)}");
                 }
 
                 Logger.Debug($"Final LookTargets: {lookTargets?.ToString() ?? "null"}");
 
                 // Log success
-                Logger.Debug($"Purchase successful: {messageWrapper.Username} bought {quantity} {itemName} for {finalPrice} {currencySymbol}");
+                Logger.Debug(
+                    $"[BuyItem] OK {messageWrapper.Username} bought {quantity} {itemName} " +
+                    $"for {finalPrice} {currencySymbol} → {deliveryResult.PrimaryMethod}");
 
                 // Send appropriate letter notification
                 string itemLabel = thingDef?.LabelCap ?? itemName;

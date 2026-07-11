@@ -55,21 +55,24 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         // DELIVERY PIPELINE (single source of truth)
         //
         // Map / cell (shared):
-        //   1) ResolveDeliveryMap  — which map
+        //   1) ResolveDeliveryMap — which map for pods/spawn (not for locker *search*)
         //   2) TryFindDeliveryCell — which cell on that map only
         //
         // HOW things arrive (do not mix these):
         //   • LOOSE ITEMS (not equip / wear / backpack):
-        //       1) Lockers on LOCAL map (CurrentMap / pocket / where streamer is) — no surface redirect first
-        //       2) Lockers on surface home (if different and local had no room)
-        //       3) Drop pod (prefer surface if local is underground/pocket)
+        //       1) Rimazon lockers FIRST — FindSuitableLockerFor scans ALL loaded maps;
+        //          preferredMap only sorts which accepting locker wins (no map gate).
+        //          Accepts() still applies storage filters + space.
+        //       2) Drop pod for leftovers (surface home if underground+home exists;
+        //          nomadic pocket keeps the local underground map).
+        //       3) GenSpawn near colonist/center if pod fails underground/nomadic.
         //       Entry: HandleRegularDelivery / HandleRegularDeliveryWithPreCreated
         //   • EQUIP / WEAR / BACKPACK:
-        //       Try put on pawn → locker fallback if that fails
+        //       On pawn first → locker fallback (any accepting locker, all maps) if that fails
         //   • PAWNS (!pawn viewer colonist, !buy animals/mechs):
-        //       ALWAYS drop pod first → GenSpawn near locker/colonist/center as fallback.
-        //       May redirect underground → surface for pod placement.
-        //       Entry: TryDeliverGeneratedPawn (never stuff living pawns into lockers)
+        //       Drop pod first → GenSpawn near locker/colonist/center (position only;
+        //       never put living pawns inside lockers). Mechs may assign overseer after spawn.
+        //       Entry: TryDeliverGeneratedPawn
         // ═══════════════════════════════════════════════════════════════════════
 
         private static int _undergroundCacheTick = -1;
@@ -77,60 +80,183 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
         /// <summary>
         /// Chooses the map for any RICS delivery (items, !pawn, store animals/mechs).
-        /// Priority: anchor pawn map → CurrentMap → player home → map with colonists/lockers.
-        /// Underground/pocket maps redirect to a non-underground player home when available.
+        /// Priority: anchor pawn → CurrentMap → player home → any map with colonists/lockers/player pawns.
+        /// Underground redirect to surface home only when a non-underground home exists.
+        /// Nomadic pocket (underground, no home map): keep the pocket map and deliver there.
         /// </summary>
         public static Map ResolveDeliveryMap(Pawn anchorPawn = null, bool allowUndergroundRedirect = true)
         {
             try
             {
                 Map candidate = null;
+                string reason = "none";
 
                 if (anchorPawn != null && !anchorPawn.Destroyed && anchorPawn.Spawned && anchorPawn.Map != null)
+                {
                     candidate = anchorPawn.Map;
+                    reason = $"anchorPawn={anchorPawn.LabelShort}";
+                }
 
                 if (candidate == null && Find.CurrentMap != null)
+                {
                     candidate = Find.CurrentMap;
+                    reason = "CurrentMap";
+                }
 
                 if (candidate == null)
+                {
                     candidate = Find.Maps?.FirstOrDefault(m => m != null && m.IsPlayerHome);
+                    if (candidate != null) reason = "IsPlayerHome";
+                }
+
+                // Nomadic / caravan / pocket: no formal home, but colony is on a map
+                if (candidate == null)
+                {
+                    candidate = Find.Maps?.FirstOrDefault(m =>
+                        m != null && m.mapPawns?.FreeColonistsSpawned?.Count > 0);
+                    if (candidate != null) reason = "FreeColonistsSpawned";
+                }
 
                 if (candidate == null)
                 {
                     candidate = Find.Maps?.FirstOrDefault(m =>
                         m != null &&
-                        (m.mapPawns?.FreeColonistsSpawned?.Count > 0 ||
-                         m.listerThings?.AllThings?.OfType<Building_RimazonLocker>().Any(l => l.Spawned) == true));
+                        m.listerThings?.AllThings?.OfType<Building_RimazonLocker>().Any(l => l.Spawned) == true);
+                    if (candidate != null) reason = "hasRimazonLocker";
                 }
 
                 if (candidate == null)
                 {
-                    Logger.Debug("ResolveDeliveryMap: no suitable map found");
+                    candidate = Find.Maps?.FirstOrDefault(m =>
+                        m != null &&
+                        m.mapPawns?.AllPawnsSpawned?.Any(p => p.Faction == Faction.OfPlayer && !p.Dead) == true);
+                    if (candidate != null) reason = "playerFactionPawns";
+                }
+
+                if (candidate == null)
+                {
+                    LogMapSnapshot("ResolveDeliveryMap: no suitable map");
                     return null;
                 }
 
-                if (allowUndergroundRedirect && IsUndergroundMap(candidate))
+                bool underground = IsUndergroundMap(candidate);
+                Map surfaceHome = GetSurfaceHomeMap();
+
+                if (allowUndergroundRedirect && underground)
                 {
-                    Map surface = Find.Maps?.FirstOrDefault(m =>
-                        m != null && m.IsPlayerHome && !IsUndergroundMap(m));
-                    if (surface != null && surface != candidate)
+                    if (surfaceHome != null && surfaceHome != candidate)
                     {
                         Logger.Debug(
-                            $"Delivery map redirected underground/pocket → surface " +
-                            $"{surface.Parent?.LabelCap ?? surface.ToString()}");
-                        return surface;
+                            $"ResolveDeliveryMap: underground/pocket → surface home " +
+                            $"{DescribeMap(surfaceHome)} (from {DescribeMap(candidate)}, reason={reason})");
+                        return surfaceHome;
                     }
+
+                    // Nomadic pocket: living underground with no surface home map
+                    Logger.Debug(
+                        $"ResolveDeliveryMap: NOMADIC/POCKET — no surface home; " +
+                        $"keeping {DescribeMap(candidate)} (reason={reason}, underground=true)");
+                    return candidate;
                 }
 
                 Logger.Debug(
-                    $"ResolveDeliveryMap: {candidate.Parent?.LabelCap ?? candidate.ToString()} " +
-                    $"(home={candidate.IsPlayerHome}, underground={IsUndergroundMap(candidate)})");
+                    $"ResolveDeliveryMap: {DescribeMap(candidate)} " +
+                    $"(reason={reason}, home={candidate.IsPlayerHome}, underground={underground}, " +
+                    $"surfaceHome={(surfaceHome != null ? DescribeMap(surfaceHome) : "none")})");
                 return candidate;
             }
             catch (Exception ex)
             {
                 Logger.Error($"ResolveDeliveryMap failed: {ex.Message}");
-                return Find.Maps?.FirstOrDefault(m => m != null && m.IsPlayerHome);
+                return Find.Maps?.FirstOrDefault(m => m != null && m.IsPlayerHome)
+                    ?? Find.CurrentMap
+                    ?? Find.Maps?.FirstOrDefault(m => m != null);
+            }
+        }
+
+        /// <summary>Short map label for logs.</summary>
+        public static string DescribeMap(Map map)
+        {
+            if (map == null) return "null";
+            string label = map.Parent?.LabelCap ?? map.ToString();
+            return $"{label}[home={map.IsPlayerHome}, size={map.Size.x}x{map.Size.z}]";
+        }
+
+        /// <summary>Dump all loaded maps (debug aid for nomadic / multi-map).</summary>
+        public static void LogMapSnapshot(string prefix = "Maps")
+        {
+            if (Find.Maps == null || Find.Maps.Count == 0)
+            {
+                Logger.Debug($"{prefix}: no maps loaded");
+                return;
+            }
+
+            foreach (Map m in Find.Maps)
+            {
+                if (m == null) continue;
+                int colonists = m.mapPawns?.FreeColonistsSpawned?.Count ?? 0;
+                int lockers = m.listerThings?.AllThings?.OfType<Building_RimazonLocker>().Count(l => l.Spawned) ?? 0;
+                Logger.Debug(
+                    $"{prefix}: {DescribeMap(m)} under={IsUndergroundMap(m)} " +
+                    $"colonists={colonists} lockers={lockers} current={m == Find.CurrentMap}");
+            }
+        }
+
+        /// <summary>
+        /// Map used for drop pods after locker miss.
+        /// Prefers surface home when available; otherwise local map (nomadic pocket OK).
+        /// </summary>
+        public static Map GetDropMapForItems(Map preferredLocal)
+        {
+            Map surface = GetSurfaceHomeMap();
+            if (preferredLocal != null && IsUndergroundMap(preferredLocal) && surface != null)
+            {
+                Logger.Debug(
+                    $"GetDropMapForItems: underground local → surface {DescribeMap(surface)}");
+                return surface;
+            }
+
+            Map map = preferredLocal ?? surface ?? Find.CurrentMap
+                ?? Find.Maps?.FirstOrDefault(m => m != null && m.mapPawns?.FreeColonistsSpawned?.Count > 0)
+                ?? Find.Maps?.FirstOrDefault(m => m != null);
+
+            if (map != null && IsUndergroundMap(map) && surface == null)
+                Logger.Debug($"GetDropMapForItems: NOMADIC drop on underground {DescribeMap(map)}");
+
+            return map;
+        }
+
+        /// <summary>Structured log after an item delivery completes.</summary>
+        public static void LogItemSpawnResult(
+            ThingDef thingDef, int quantity, DeliveryResult result, string path, Pawn forPawn = null)
+        {
+            try
+            {
+                string defName = thingDef?.defName ?? "null";
+                string method = result?.PrimaryMethod.ToString() ?? "null";
+                string pos = result?.DeliveryPosition.IsValid == true
+                    ? result.DeliveryPosition.ToString()
+                    : "invalid";
+                int locker = result?.LockerDeliveredCount ?? 0;
+                int pod = result?.DropPodDeliveredCount ?? 0;
+                int direct = result?.DirectlyDeliveredItems?.Sum(t => t?.stackCount ?? 0) ?? 0;
+
+                Logger.Debug(
+                    $"[ItemSpawn] path={path} def={defName} qty={quantity} method={method} " +
+                    $"pos={pos} locker={locker} pod={pod} direct={direct} " +
+                    $"forPawn={(forPawn?.LabelShort ?? "none")} " +
+                    $"pawnMap={(forPawn?.Map != null ? DescribeMap(forPawn.Map) : "none")}");
+
+                if (result != null && locker == 0 && pod == 0 && direct == 0)
+                {
+                    Logger.Warning(
+                        $"[ItemSpawn] NOTHING delivered for {defName} x{quantity} via {path} — check maps/lockers");
+                    LogMapSnapshot("[ItemSpawn maps]");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"LogItemSpawnResult failed: {ex.Message}");
             }
         }
 
@@ -614,45 +740,66 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 PrimaryMethod = DeliveryMethod.DropPod
             };
 
+            string path = "unknown";
             try
             {
+                Logger.Debug(
+                    $"[ItemSpawn] BEGIN def={thingDef?.defName ?? "null"} qty={quantity} " +
+                    $"equip={equipItem} wear={wearItem} inv={addToInventory} " +
+                    $"preCreated={preCreatedItem != null} " +
+                    $"forPawn={(pawn?.LabelShort ?? "none")} " +
+                    $"pawnMap={(pawn?.Map != null ? DescribeMap(pawn.Map) : "none")} " +
+                    $"currentMap={(Find.CurrentMap != null ? DescribeMap(Find.CurrentMap) : "none")}");
+
                 if (preCreatedItem != null)
                 {
-                    // UNIQUE WEAPON PATH — reuse the already-created item with traits
-                    Logger.Debug($"Using pre-created unique weapon for delivery: {preCreatedItem.def.defName}");
+                    Logger.Debug($"[ItemSpawn] pre-created item: {preCreatedItem.def.defName}");
 
-                    // For direct interactions (equip/wear/inventory)
                     if (equipItem || wearItem || addToInventory)
                     {
-                        return HandleDirectPawnInteractionWithPreCreated(preCreatedItem, pawn, equipItem, wearItem, addToInventory, result);
+                        path = "preCreated+direct";
+                        result = HandleDirectPawnInteractionWithPreCreated(
+                            preCreatedItem, pawn, equipItem, wearItem, addToInventory, result);
                     }
                     else
                     {
-                        // Regular delivery
-                        return HandleRegularDeliveryWithPreCreated(preCreatedItem, pawn, result);
+                        path = "preCreated+regular";
+                        result = HandleRegularDeliveryWithPreCreated(preCreatedItem, pawn, result);
                     }
+
+                    LogItemSpawnResult(thingDef, quantity, result, path, pawn);
+                    return result;
                 }
-                // Logger.Debug($"Spawning item: {thingDef.defName}, quantity: {quantity}, for pawn: {pawn?.Name}, " +
-                //             $"addToInventory: {addToInventory}, equipItem: {equipItem}, wearItem: {wearItem}");
 
                 // Living things (store animals / mechs): drop-pod first — never locker
                 if (IsPawnThingDef(thingDef))
                 {
-                    return HandlePawnDelivery(thingDef, quantity, quality, material, pawn);
+                    path = "pawnDelivery";
+                    result = HandlePawnDelivery(thingDef, quantity, quality, material, pawn);
+                    LogItemSpawnResult(thingDef, quantity, result, path, pawn);
+                    return result;
                 }
 
                 // Equip / wear / backpack: on-pawn first, locker only if that fails
                 if (equipItem || wearItem || addToInventory)
                 {
-                    return HandleDirectPawnInteraction(thingDef, quantity, quality, material, pawn, equipItem, wearItem, addToInventory);
+                    path = "directPawn";
+                    result = HandleDirectPawnInteraction(
+                        thingDef, quantity, quality, material, pawn, equipItem, wearItem, addToInventory);
+                    LogItemSpawnResult(thingDef, quantity, result, path, pawn);
+                    return result;
                 }
 
                 // Loose store items (!buy without equip/wear/backpack): LOCKER first, then drop pod
-                return HandleRegularDelivery(thingDef, quantity, quality, material, pawn);
+                path = "regularLoose";
+                result = HandleRegularDelivery(thingDef, quantity, quality, material, pawn);
+                LogItemSpawnResult(thingDef, quantity, result, path, pawn);
+                return result;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error spawning item for pawn: {ex}");
+                Logger.Error($"[ItemSpawn] ERROR path={path} def={thingDef?.defName}: {ex}");
+                LogMapSnapshot("[ItemSpawn error maps]");
                 throw;
             }
         }
@@ -826,9 +973,15 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             // Preferred map for ordering + drop-pod fallback only (locker search is all maps)
             Map preferredMap = ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
             Map surfaceMap = GetSurfaceHomeMap();
+            bool nomadicPocket = preferredMap != null && IsUndergroundMap(preferredMap) && surfaceMap == null;
+
             Logger.Debug(
-                $"Item delivery: preferredMap={preferredMap?.Parent?.LabelCap ?? "null"} " +
-                $"(underground={IsUndergroundMap(preferredMap)}), maps loaded={Find.Maps?.Count ?? 0}");
+                $"[ItemSpawn] regularLoose maps: preferred={DescribeMap(preferredMap)} " +
+                $"surface={DescribeMap(surfaceMap)} nomadicPocket={nomadicPocket} " +
+                $"loadedMaps={Find.Maps?.Count ?? 0}");
+
+            if (nomadicPocket || preferredMap == null)
+                LogMapSnapshot("[ItemSpawn regularLoose]");
 
             // ── STEP 1: lockers anywhere that Accepts the item ──
             var undeliveredItems = new List<Thing>();
@@ -838,41 +991,54 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     undeliveredItems.Add(item);
             }
 
-            // ── STEP 2: leftovers → drop pod ──
+            // ── STEP 2: leftovers → drop pod (or GenSpawn on nomadic pocket) ──
             if (undeliveredItems.Count > 0)
             {
                 int dropCount = undeliveredItems.Sum(t => t?.stackCount ?? 0);
-                Map dropMap = preferredMap ?? surfaceMap ?? Find.CurrentMap;
-                if (dropMap != null && IsUndergroundMap(dropMap) && surfaceMap != null)
-                    dropMap = surfaceMap;
+                Map dropMap = GetDropMapForItems(preferredMap);
 
                 if (dropMap == null)
                 {
-                    Logger.Error("No map for drop-pod fallback after locker miss");
+                    Logger.Error("[ItemSpawn] No map for drop-pod fallback after locker miss");
+                    LogMapSnapshot("[ItemSpawn no-drop-map]");
                     return result;
                 }
 
                 Logger.Debug(
-                    $"Item delivery: {result.LockerDeliveredCount} units in locker(s), " +
-                    $"{undeliveredItems.Count} stack(s)/{dropCount} units → drop pod on " +
-                    $"{dropMap.Parent?.LabelCap ?? dropMap.ToString()}");
+                    $"[ItemSpawn] locker filled={result.LockerDeliveredCount}, " +
+                    $"{undeliveredItems.Count} stack(s)/{dropCount} units → " +
+                    $"{(nomadicPocket ? "pod/spawn on NOMADIC pocket" : "drop pod")} " +
+                    $"on {DescribeMap(dropMap)}");
 
                 result.DropPodDeliveredItems.AddRange(undeliveredItems);
 
                 IntVec3 dropPos = GetDeliveryPosition(dropMap, pawn);
-                if (TryShuttleDelivery(undeliveredItems, dropPos, dropMap))
+                bool delivered = TryShuttleDelivery(undeliveredItems, dropPos, dropMap);
+
+                // Nomadic underground: if drop pod fails (thick roof / edge cases), GenSpawn near colonists
+                if (!delivered && (nomadicPocket || IsUndergroundMap(dropMap)))
+                {
+                    Logger.Warning(
+                        $"[ItemSpawn] Drop pod failed on {DescribeMap(dropMap)} — " +
+                        "trying GenSpawn near colonist/center (nomadic/underground fallback)");
+                    delivered = TryDirectSpawnItemsNearColony(undeliveredItems, dropMap, out dropPos);
+                }
+
+                if (delivered)
                 {
                     result.DropPodDeliveredCount += dropCount;
                     result.DeliveryPosition = dropPos;
+                    Logger.Debug($"[ItemSpawn] map delivery OK at {dropPos} on {DescribeMap(dropMap)}");
                 }
                 else
                 {
-                    Logger.Error("Drop pod delivery failed after locker search");
+                    Logger.Error("[ItemSpawn] Drop pod AND GenSpawn fallback failed after locker search");
+                    LogMapSnapshot("[ItemSpawn deliver-fail]");
                 }
             }
             else
             {
-                Logger.Debug($"Item delivery: all {result.LockerDeliveredCount} units accepted by locker(s)");
+                Logger.Debug($"[ItemSpawn] all {result.LockerDeliveredCount} units accepted by locker(s)");
             }
 
             DeterminePrimaryDeliveryMethod(result);
@@ -885,11 +1051,53 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
 
             Logger.Debug(
-                $"Delivery result: Method={result.PrimaryMethod}, Position={result.DeliveryPosition}, " +
-                $"LockerCount={result.LockerDeliveredCount}, " +
-                $"DropPodItems={result.DropPodDeliveredItems.Sum(t => t.stackCount)}");
+                $"[ItemSpawn] regularLoose DONE method={result.PrimaryMethod} pos={result.DeliveryPosition} " +
+                $"locker={result.LockerDeliveredCount} pod={result.DropPodDeliveredItems.Sum(t => t.stackCount)}");
 
             return result;
+        }
+
+        /// <summary>
+        /// Last-resort item placement when drop pods cannot land (nomadic thick-roof maps).
+        /// Spawns each stack near a free colonist or map center.
+        /// </summary>
+        private static bool TryDirectSpawnItemsNearColony(List<Thing> items, Map map, out IntVec3 spawnPos)
+        {
+            spawnPos = IntVec3.Invalid;
+            if (map == null || items == null || items.Count == 0) return false;
+
+            try
+            {
+                if (!TryFindDeliveryCell(map, out spawnPos))
+                    spawnPos = map.Center;
+
+                // Prefer standable cell near a free colonist
+                var colonist = map.mapPawns?.FreeColonistsSpawned?.FirstOrDefault();
+                if (colonist != null &&
+                    CellFinder.TryFindRandomCellNear(colonist.Position, map, 8,
+                        c => c.Standable(map) && c.Walkable(map) && !c.Fogged(map), out IntVec3 near))
+                {
+                    spawnPos = near;
+                }
+
+                int ok = 0;
+                foreach (Thing item in items)
+                {
+                    if (item == null || item.Destroyed) continue;
+                    if (GenPlace.TryPlaceThing(item, spawnPos, map, ThingPlaceMode.Near))
+                        ok++;
+                    else
+                        Logger.Warning($"[ItemSpawn] GenPlace failed for {item.def.defName} at {spawnPos}");
+                }
+
+                Logger.Debug($"[ItemSpawn] GenSpawn fallback placed {ok}/{items.Count} stacks at {spawnPos}");
+                return ok > 0;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"TryDirectSpawnItemsNearColony: {ex.Message}");
+                return false;
+            }
         }
 
         /// <summary>
@@ -951,7 +1159,10 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
         }
 
-        /// <summary>Best non-underground player-home map, if any (for pod fallback after lockers).</summary>
+        /// <summary>
+        /// Best non-underground player-home map, if any (for pod fallback after lockers).
+        /// Returns null for pure nomadic play (no home base on surface).
+        /// </summary>
         private static Map GetSurfaceHomeMap()
         {
             return Find.Maps?.FirstOrDefault(m => m != null && m.IsPlayerHome && !IsUndergroundMap(m));
@@ -1581,6 +1792,11 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         {
             Map preferredMap = ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
             Map surfaceMap = GetSurfaceHomeMap();
+            bool nomadicPocket = preferredMap != null && IsUndergroundMap(preferredMap) && surfaceMap == null;
+
+            Logger.Debug(
+                $"[ItemSpawn] preCreated maps preferred={DescribeMap(preferredMap)} " +
+                $"surface={DescribeMap(surfaceMap)} nomadicPocket={nomadicPocket}");
 
             // Any map's locker that Accepts this item
             if (TryDeliverToLocker(item, preferredMap, pawn, result))
@@ -1589,29 +1805,34 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 return result;
             }
 
-            Map dropMap = preferredMap ?? surfaceMap ?? Find.CurrentMap;
-            if (dropMap != null && IsUndergroundMap(dropMap) && surfaceMap != null)
-                dropMap = surfaceMap;
-
+            Map dropMap = GetDropMapForItems(preferredMap);
             if (dropMap == null)
             {
-                Logger.Error("No map for pre-created item drop-pod fallback");
+                Logger.Error("[ItemSpawn] No map for pre-created item drop-pod fallback");
+                LogMapSnapshot("[ItemSpawn preCreated no-map]");
                 return result;
             }
 
             IntVec3 dropPos = GetDeliveryPosition(dropMap, pawn);
-            if (TryShuttleDelivery(new List<Thing> { item }, dropPos, dropMap))
+            var stack = new List<Thing> { item };
+            bool ok = TryShuttleDelivery(stack, dropPos, dropMap);
+            if (!ok && (nomadicPocket || IsUndergroundMap(dropMap)))
+            {
+                Logger.Warning("[ItemSpawn] preCreated pod failed — GenSpawn fallback");
+                ok = TryDirectSpawnItemsNearColony(stack, dropMap, out dropPos);
+            }
+
+            if (ok)
             {
                 result.DropPodDeliveredItems.Add(item);
                 result.PrimaryMethod = DeliveryMethod.DropPod;
                 result.DeliveryPosition = dropPos;
                 Logger.Debug(
-                    $"Pre-created {item.LabelCap} → drop pod at {dropPos} on " +
-                    $"{dropMap.Parent?.LabelCap} (no accepting locker on any map)");
+                    $"[ItemSpawn] preCreated {item.LabelCap} → map at {dropPos} on {DescribeMap(dropMap)}");
             }
             else
             {
-                Logger.Error($"Pre-created item {item.def.defName} failed locker and drop pod");
+                Logger.Error($"[ItemSpawn] preCreated {item.def.defName} failed locker and map delivery");
             }
 
             return result;
