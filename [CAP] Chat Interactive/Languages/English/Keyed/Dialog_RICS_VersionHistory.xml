@@ -3,7 +3,12 @@
   <!-- Dialog_RICS_VersionHistory.cs Translations -->
 
   <RICS.VersionHistory.Title>Version History</RICS.VersionHistory.Title>
+  <RICS.VersionHistory.Subtitle>RICS changelog</RICS.VersionHistory.Subtitle>
+  <RICS.VersionHistory.SubtitleCurrent>Current: {0}</RICS.VersionHistory.SubtitleCurrent>
+  <RICS.VersionHistory.ListHeader>Versions</RICS.VersionHistory.ListHeader>
   <RICS.VersionHistory.SelectVersion>Select a version on the left.</RICS.VersionHistory.SelectVersion>
   <RICS.VersionHistory.VersionPrefix>Version {0}</RICS.VersionHistory.VersionPrefix>
+  <RICS.VersionHistory.Discord>Discord</RICS.VersionHistory.Discord>
+  <RICS.VersionHistory.Wiki>Wiki</RICS.VersionHistory.Wiki>
 
 </LanguageData>

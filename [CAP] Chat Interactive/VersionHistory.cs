@@ -1093,33 +1093,35 @@ This release includes all changes from June 21–23 plus the June 26 heal logic 
 
 <b>Memorandum</b>
 ─────────────────-
-Big improvements to the **purchase system** are here! Viewers can now more reliably buy pawns (including player pawns), animals, mechs, and items with smoother delivery and better handling across the map.
+Major Spawn & Delivery Overhaul is live! We've greatly improved how and where items, pawns, animals, and mechs appear in your colony.
 
 Mechs purchased by a Mechanitor will now spawn properly **under their control**.
 
-Additional refinements to AI chatbot integration and several behind-the-scenes delivery & spawning improvements for a more stable and fun interactive experience.
+!rescueme command added for rescuing pawns from being captured.
 
 <b>Updated</b>
 ──────────────
-- Major overhaul of the purchasing and delivery system for pawns (colonists, player pawns), animals, mechs, and items
-- Improved pawn drop logic, crash landing effects, and map-wide delivery searching (prioritizes lockers, better fallbacks)
-- Enhanced Mechinator support for purchased mechs
-- AI bot event context and messaging refinements
+- Complete overhaul of the pawn/item/mech spawn & delivery pipeline
+- Prioritized locker delivery for items (pawns use colony-aware placement)
+- Enhanced Mechinator bandwidth checks and control assignment
+- Improved handling for nomadic colonies and underground maps
 
 <b>Fixed</b>
 ────────────
 - Mech spawning/control issues when purchased
--Various delivery and spawn edge cases(space maps, lockers, minified buildings, etc.)
+- Various delivery and spawn edge cases(space maps, lockers, minified buildings, etc.)
 - Logging and namespace cleanups
 
 <b>Added</b>
 ────────────
--Expanded pawn and item purchase capabilities
-- Better support for player pawns and animals in the queue/purchase flow
+- Nomadic/no-homebase spawn support
+- Partial underground map compatibility
+- Smarter multi-map delivery logic
+
 
 <b>Translations</b>
 ───────────────────
--Updated strings for new purchase/delivery behaviors and AI improvements"
+- Updated strings for new purchase/delivery behaviors and AI improvements"
     }
 
 
