@@ -312,6 +312,27 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
+    /// <summary>
+    /// !rescueme — recover vanished viewer pawns (captured → world site, left behind → drop pod).
+    /// </summary>
+    public class RescueMe : ChatCommand
+    {
+        public override string Name => RescueMeCommandHandler.CommandName;
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            try
+            {
+                return RescueMeCommandHandler.HandleRescueMe(messageWrapper, args);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in rescueme command: {ex}");
+                return "RICS.RMCH.GenericError".Translate();
+            }
+        }
+    }
+
     public class HealPawn : ChatCommand
     {
         public override string Name => "healpawn";

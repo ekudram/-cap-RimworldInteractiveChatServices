@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LanguageData>
+  <RICS.RMCH.GameNotReady>Game is not ready for rescue requests.</RICS.RMCH.GameNotReady>
+  <RICS.RMCH.GenericError>Something went wrong processing !rescueme.</RICS.RMCH.GenericError>
+  <RICS.RMCH.CooldownActive>!rescueme is on cooldown or event limits are full. Try again later.</RICS.RMCH.CooldownActive>
+  <RICS.RMCH.NoAssignment>You do not have an assigned pawn. Use !pawn to buy one first.</RICS.RMCH.NoAssignment>
+  <RICS.RMCH.Missing>Your pawn assignment is missing from the world (stale ID). Ask the streamer, or buy a new pawn with !pawn.</RICS.RMCH.Missing>
+  <RICS.RMCH.DeadUseRevive>{0} is dead. Use !revivepawn instead of !rescueme.</RICS.RMCH.DeadUseRevive>
+  <RICS.RMCH.AlreadySafe>{0} is already safe with the colony on {1}.</RICS.RMCH.AlreadySafe>
+  <RICS.RMCH.CannotAfford>Need {0} {1} for rescue (you have {2} {3}).</RICS.RMCH.CannotAfford>
+  <RICS.RMCH.CostPaid>Paid {0} {1}. Remaining: {2} {3}.</RICS.RMCH.CostPaid>
+  <RICS.RMCH.NoMap>No colony map is available for drop-pod return.</RICS.RMCH.NoMap>
+  <RICS.RMCH.DropFailed>Could not drop {0} back to the colony.</RICS.RMCH.DropFailed>
+  <RICS.RMCH.DropSuccess>{0} is returning to {1} by drop pod!</RICS.RMCH.DropSuccess>
+  <RICS.RMCH.DropSuccessFallback>Could not open a field site; extracted {0} directly.</RICS.RMCH.DropSuccessFallback>
+  <RICS.RMCH.MissionFailed>Could not create a rescue mission. Try again later.</RICS.RMCH.MissionFailed>
+  <RICS.RMCH.MissionSuccess>Rescue mission for {0} (held by {1}) is on the world map. Send a caravan!</RICS.RMCH.MissionSuccess>
+  <RICS.RMCH.StatusCaptured>{0} is CAPTURED by {1}. !rescueme will open a world rescue site (costs coins).</RICS.RMCH.StatusCaptured>
+  <RICS.RMCH.StatusLeftBehind>{0} is left behind (not captive). !rescueme will drop-pod them home (costs coins).</RICS.RMCH.StatusLeftBehind>
+  <RICS.RMCH.Letter.DropLabel>Viewer rescue drop — {0}</RICS.RMCH.Letter.DropLabel>
+  <RICS.RMCH.Letter.DropBody>{0} paid to extract {1}. They are dropping near the colony on {2} at ({3}, {4}).</RICS.RMCH.Letter.DropBody>
+  <RICS.RMCH.Letter.MissionLabel>Viewer rescue mission — {0}</RICS.RMCH.Letter.MissionLabel>
+  <RICS.RMCH.Letter.MissionBody>{0} paid for intel on {1}, held by {2}. A rescue camp is marked on the world map. Travel there, free them, and they will join.</RICS.RMCH.Letter.MissionBody>
+</LanguageData>

@@ -1038,6 +1038,41 @@
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
+    <defName>RescueMe</defName>
+    <commandText>rescueme</commandText>
+    <label>rescue me</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.RescueMe</commandClass>
+    <requiresMod>false</requiresMod>
+    <commandDescription>Request recovery of your vanished pawn. Captured/kidnapped creates a world rescue site; left-behind drop-pods home. Dead pawns use !revivepawn.</commandDescription>
+    <permissionLevel>subscriber</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+    <CustomData>
+      <li>
+        <type>HeaderLabel</type>
+        <label>Rescue Me Settings</label>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>leftBehindCost</name>
+        <label>Left-behind drop cost</label>
+        <defaultValue>400</defaultValue>
+        <min>0</min>
+        <max>100000</max>
+      </li>
+      <li>
+        <type>NumericTextBox</type>
+        <name>capturedCost</name>
+        <label>Captured rescue-mission cost</label>
+        <defaultValue>800</defaultValue>
+        <min>0</min>
+        <max>100000</max>
+      </li>
+    </CustomData>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
     <defName>RevivePawn</defName>
     <commandText>revivepawn</commandText>
     <label>revive pawn</label>

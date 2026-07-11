@@ -68,6 +68,7 @@ namespace CAP_ChatInteractive
             "replacetrait",
             "settraits",
             "trait",
+            "rescueme",
         };
 
         public override Vector2 InitialSize => new Vector2(1000f, 700f);
