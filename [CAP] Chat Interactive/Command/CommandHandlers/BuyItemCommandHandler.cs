@@ -291,20 +291,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
 
 
-                // Deduct coins and process purchase
-                viewer.TakeCoins(finalPrice);
-
-                // Use the new dedicated store karma setting (per item purchased)
-                float karmaEarned = finalPrice * (settings.KarmaPerStoreItem / 100f);
-                if (karmaEarned > 0f)
-                {
-                    viewer.GiveKarma(karmaEarned);
-                    Logger.Debug($"Awarded {karmaEarned:F2} karma ({finalPrice} × settings.KarmaPerStoreItem) for store purchase");
-                }
-
-                // Deliver purchase:
+                // Deliver FIRST, then charge only for what landed (no overcharge when no space).
                 // - equip / wear / backpack → on-pawn first (locker only if that fails)
-                // - loose !buy items → LOCKER first, then drop pod (HandleRegularDelivery*)
+                // - loose !buy items → LOCKER first, then map overflow (HandleRegularDelivery*)
                 // - animals / mechs → drop pod first (never locker)
                 DeliveryResult deliveryResult;
 
@@ -315,7 +304,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 else
                 {
-                    // Colony delivery: Rimazon locker before any drop pod
+                    // Colony delivery: Rimazon locker before any drop pod / GenPlace
                     deliveryResult = ItemDeliveryHelper.SpawnItemForPawn(thingDef, quantity, quality, material,
                         viewerPawn, addToInventory: false, equipItem: false, wearItem: false, preCreatedItem: finalItem);
                 }
@@ -324,6 +313,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 allSpawnedItems.AddRange(deliveryResult.LockerDeliveredItems);
                 allSpawnedItems.AddRange(deliveryResult.DropPodDeliveredItems);
                 allSpawnedItems.AddRange(deliveryResult.DirectlyDeliveredItems);
+
+                int deliveredUnits = deliveryResult.TotalUnitsDelivered;
+                if (deliveredUnits <= 0 && allSpawnedItems.Count > 0)
+                    deliveredUnits = allSpawnedItems.Sum(t => t?.stackCount ?? 0);
+
+                int undeliveredUnits = deliveryResult.UndeliveredCount;
+                if (undeliveredUnits <= 0 && deliveredUnits < quantity)
+                    undeliveredUnits = quantity - deliveredUnits;
 
                 // Map for letters / look targets — works for nomadic pocket (no IsPlayerHome)
                 Map deliveryLookMap = ItemDeliveryHelper.ResolveDeliveryMap(
@@ -338,17 +335,50 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     $"locker={deliveryResult.LockerDeliveredCount} " +
                     $"podStacks={deliveryResult.DropPodDeliveredItems.Count} " +
                     $"direct={deliveryResult.DirectlyDeliveredItems.Count} " +
+                    $"delivered={deliveredUnits}/{quantity} undelivered={undeliveredUnits} " +
                     $"lookMap={ItemDeliveryHelper.DescribeMap(deliveryLookMap)} " +
                     $"totalThings={allSpawnedItems.Count}");
 
-                if (allSpawnedItems.Count == 0 &&
-                    deliveryResult.LockerDeliveredCount == 0 &&
-                    deliveryResult.DropPodDeliveredCount == 0)
+                // Nothing landed — do not charge
+                if (deliveredUnits <= 0)
                 {
                     Logger.Warning(
-                        $"[BuyItem] Purchase paid but NOTHING spawned for {itemName} x{quantity} " +
-                        $"(user={messageWrapper.Username}). Check [ItemSpawn] logs / maps.");
-                    ItemDeliveryHelper.LogMapSnapshot("[BuyItem empty delivery maps]");
+                        $"[BuyItem] No space — cancelled {itemName} x{quantity} for {messageWrapper.Username} " +
+                        $"(no charge). locker full + map full.");
+                    ItemDeliveryHelper.LogMapSnapshot("[BuyItem no-space maps]");
+                    return "RICS.BICH.Return.NoSpace".Translate(itemName, quantity);
+                }
+
+                // Charge only for units that actually delivered (partial cull support)
+                int chargeQty = deliveredUnits;
+                int chargePrice;
+                if (chargeQty >= quantity)
+                {
+                    chargePrice = finalPrice;
+                }
+                else if (isUniqueWeapon && finalItem != null)
+                {
+                    chargePrice = Math.Max(1, (int)(finalItem.MarketValue * chargeQty));
+                }
+                else
+                {
+                    chargePrice = ItemConfigHelper.CalculateFinalPrice(storeItem, chargeQty, quality, material);
+                    if (chargePrice <= 0 && finalPrice > 0 && quantity > 0)
+                        chargePrice = Math.Max(1, (int)((long)finalPrice * chargeQty / quantity));
+                }
+
+                // Affordability already checked for full qty; partial charge is always ≤ that.
+                viewer.TakeCoins(chargePrice);
+                finalPrice = chargePrice; // invoices / letters use actual charge
+                quantity = chargeQty;     // messages report delivered amount
+
+                float karmaEarned = chargePrice * (settings.KarmaPerStoreItem / 100f);
+                if (karmaEarned > 0f)
+                {
+                    viewer.GiveKarma(karmaEarned);
+                    Logger.Debug(
+                        $"Awarded {karmaEarned:F2} karma ({chargePrice} × KarmaPerStoreItem) " +
+                        $"for store purchase (delivered {chargeQty})");
                 }
 
                 // Set ownership for each spawned item if this is a direct pawn delivery
@@ -397,10 +427,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 Logger.Debug($"Final LookTargets: {lookTargets?.ToString() ?? "null"}");
 
-                // Log success
+                // Log success (quantity / finalPrice already adjusted to delivered charge)
                 Logger.Debug(
                     $"[BuyItem] OK {messageWrapper.Username} bought {quantity} {itemName} " +
-                    $"for {finalPrice} {currencySymbol} → {deliveryResult.PrimaryMethod}");
+                    $"for {finalPrice} {currencySymbol} → {deliveryResult.PrimaryMethod}" +
+                    (undeliveredUnits > 0 ? $" (culled {undeliveredUnits} no-space)" : ""));
 
                 // Send appropriate letter notification
                 string itemLabel = thingDef?.LabelCap ?? itemName;
@@ -466,8 +497,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                 addToInventory ? "RICS.BICH.Return.Action.AddedToInventory".Translate() :
                                 "RICS.BICH.Return.Action.Delivered".Translate();
 
-                // return $"Purchased {quantity} {itemName} for {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} and {action}! Remaining: {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
-                return "RICS.BICH.Return.Success".Translate(quantity, itemName, StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol), action, StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
+                string success = "RICS.BICH.Return.Success".Translate(
+                    quantity,
+                    itemName,
+                    StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
+                    action,
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
+
+                if (undeliveredUnits > 0)
+                {
+                    success += " " + "RICS.BICH.Return.PartialNoSpace".Translate(undeliveredUnits, itemName);
+                }
+
+                return success;
             }
             catch (Exception ex)
             {

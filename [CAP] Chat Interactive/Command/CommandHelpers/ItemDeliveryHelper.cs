@@ -36,8 +36,21 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         public List<Thing> DirectlyDeliveredItems { get; set; } = new List<Thing>();
         public int LockerDeliveredCount { get; set; } = 0;
         public int DropPodDeliveredCount { get; set; } = 0;
+        /// <summary>Units requested for this delivery (stack counts).</summary>
+        public int RequestedCount { get; set; } = 0;
+        /// <summary>Units that could not be placed (locker full + map full). Culled / not charged.</summary>
+        public int UndeliveredCount { get; set; } = 0;
         public IntVec3 DeliveryPosition { get; set; }
         public DeliveryMethod PrimaryMethod { get; set; }
+
+        /// <summary>Units successfully placed (locker + map overflow + direct).</summary>
+        public int TotalUnitsDelivered =>
+            LockerDeliveredCount
+            + DropPodDeliveredCount
+            + (DirectlyDeliveredItems?.Sum(t => t?.stackCount ?? 0) ?? 0);
+
+        public bool NothingDelivered => TotalUnitsDelivered <= 0;
+        public bool PartiallyDelivered => TotalUnitsDelivered > 0 && UndeliveredCount > 0;
     }
 
     public enum DeliveryMethod
@@ -47,7 +60,9 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         Inventory,
         Equipped,
         Worn,
-        PawnDelivery
+        PawnDelivery,
+        /// <summary>Nothing landed (no space).</summary>
+        Failed
     }
     public static class ItemDeliveryHelper
     {
@@ -1212,6 +1227,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 finalMaterial = GenStuff.RandomStuffFor(thingDef);
 
             List<Thing> itemsToDeliver = CreateItemsForDelivery(thingDef, quantity, quality, finalMaterial);
+            result.RequestedCount = quantity;
 
             // Preferred map for ordering + map overflow only (locker search is all maps)
             Map preferredMap = ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
@@ -1242,8 +1258,10 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                 if (dropMap == null)
                 {
-                    Logger.Error("[ItemSpawn] No map for drop-pod fallback after locker miss");
+                    Logger.Error("[ItemSpawn] No map for overflow after locker miss — culling leftovers");
+                    result.UndeliveredCount += CullUndeliveredThings(undeliveredItems);
                     LogMapSnapshot("[ItemSpawn no-drop-map]");
+                    FinalizeRegularLooseResult(result, preferredMap, surfaceMap);
                     return result;
                 }
 
@@ -1255,41 +1273,55 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     $"on {DescribeMap(dropMap)}");
 
                 IntVec3 dropPos = GetDeliveryPosition(dropMap, pawn);
-                bool delivered;
+                var placedStacks = new List<Thing>();
+                var failedStacks = new List<Thing>();
 
-                // Sealed/tiny: never call DropThingsNear — it "succeeds" while pods fail at (-1000,-1000,-1000)
+                // Sealed/tiny: never call DropThingsNear — pods fail at (-1000,-1000,-1000)
                 if (sealedDrop)
                 {
                     Logger.Debug(
                         $"[ItemSpawn] skip drop pod on sealed/tiny {DescribeMap(dropMap)} — GenPlace overflow");
-                    delivered = TryDirectSpawnItemsNearColony(undeliveredItems, dropMap, out dropPos);
+                    TryDirectSpawnItemsNearColony(undeliveredItems, dropMap, out dropPos, placedStacks, failedStacks);
                 }
                 else
                 {
-                    delivered = TryShuttleDelivery(undeliveredItems, dropPos, dropMap);
-                    if (!delivered)
+                    bool podOk = TryShuttleDelivery(undeliveredItems, dropPos, dropMap);
+                    if (podOk)
+                    {
+                        // Pod accepted stacks (held in pod container) — treat all non-destroyed as placed
+                        foreach (var t in undeliveredItems)
+                        {
+                            if (t != null && !t.Destroyed && (t.Spawned || t.ParentHolder != null))
+                                placedStacks.Add(t);
+                            else if (t != null && !t.Destroyed)
+                                failedStacks.Add(t);
+                        }
+                    }
+                    else
                     {
                         Logger.Warning(
                             $"[ItemSpawn] Drop pod failed on {DescribeMap(dropMap)} — GenPlace fallback");
-                        delivered = TryDirectSpawnItemsNearColony(undeliveredItems, dropMap, out dropPos);
+                        TryDirectSpawnItemsNearColony(undeliveredItems, dropMap, out dropPos, placedStacks, failedStacks);
                     }
                 }
 
-                if (delivered)
+                if (placedStacks.Count > 0)
                 {
-                    // Count only stacks that still exist (destroyed = failed place / bad pod)
-                    var survived = undeliveredItems.Where(t => t != null && !t.Destroyed).ToList();
-                    result.DropPodDeliveredItems.AddRange(survived);
-                    result.DropPodDeliveredCount += survived.Sum(t => t.stackCount);
+                    result.DropPodDeliveredItems.AddRange(placedStacks);
+                    result.DropPodDeliveredCount += placedStacks.Sum(t => t.stackCount);
                     result.DeliveryPosition = dropPos;
                     Logger.Debug(
                         $"[ItemSpawn] map delivery OK at {dropPos} on {DescribeMap(dropMap)} " +
-                        $"(overflow stacks={survived.Count}/{undeliveredItems.Count})");
+                        $"(overflow stacks={placedStacks.Count} placed, {failedStacks.Count} culled)");
                 }
-                else
+
+                if (failedStacks.Count > 0)
                 {
-                    Logger.Error("[ItemSpawn] Drop pod AND GenPlace overflow failed after locker search");
-                    LogMapSnapshot("[ItemSpawn deliver-fail]");
+                    int culled = CullUndeliveredThings(failedStacks);
+                    result.UndeliveredCount += culled;
+                    Logger.Warning(
+                        $"[ItemSpawn] no space for {culled} units — culled (locker full + map full)");
+                    LogMapSnapshot("[ItemSpawn deliver-partial-or-fail]");
                 }
             }
             else
@@ -1297,6 +1329,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 Logger.Debug($"[ItemSpawn] all {result.LockerDeliveredCount} units accepted by locker(s)");
             }
 
+            FinalizeRegularLooseResult(result, preferredMap, surfaceMap);
+            return result;
+        }
+
+        private static void FinalizeRegularLooseResult(DeliveryResult result, Map preferredMap, Map surfaceMap)
+        {
             DeterminePrimaryDeliveryMethod(result);
 
             if (result.DeliveryPosition == IntVec3.Invalid || result.DeliveryPosition == default(IntVec3))
@@ -1306,22 +1344,58 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     result.DeliveryPosition = GetFallbackDeliveryPosition(fallbackMap, result);
             }
 
+            // Sanity: undelivered should match request − delivered when we tracked culls
+            int delivered = result.TotalUnitsDelivered;
+            if (result.RequestedCount > 0 && result.UndeliveredCount == 0 && delivered < result.RequestedCount)
+                result.UndeliveredCount = result.RequestedCount - delivered;
+
             Logger.Debug(
                 $"[ItemSpawn] regularLoose DONE method={result.PrimaryMethod} pos={result.DeliveryPosition} " +
-                $"locker={result.LockerDeliveredCount} pod={result.DropPodDeliveredItems.Sum(t => t.stackCount)}");
+                $"locker={result.LockerDeliveredCount} map={result.DropPodDeliveredCount} " +
+                $"undelivered={result.UndeliveredCount} requested={result.RequestedCount}");
+        }
 
-            return result;
+        /// <summary>Destroy unspawned leftover stacks so they are not charged or leaked.</summary>
+        private static int CullUndeliveredThings(IEnumerable<Thing> things)
+        {
+            int units = 0;
+            if (things == null) return 0;
+            foreach (Thing t in things)
+            {
+                if (t == null || t.Destroyed) continue;
+                units += t.stackCount;
+                try
+                {
+                    if (t.Spawned)
+                        t.Destroy(DestroyMode.Vanish);
+                    else
+                        t.Destroy(DestroyMode.Vanish);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"[ItemSpawn] cull failed for {t.def?.defName}: {ex.Message}");
+                }
+            }
+            return units;
         }
 
         /// <summary>
         /// Place loose stacks on the map when drop pods cannot land (sealed/pocket/tiny maps).
-        /// Tries locker area → free colonist → any player pawn → delivery cell → center.
-        /// Uses <see cref="ThingPlaceMode.Near"/> so bulk overflow can scatter on small interiors.
+        /// Fills <paramref name="placed"/> / <paramref name="failed"/>; does not destroy failed stacks
+        /// (caller culls so purchase can charge only delivered units).
         /// </summary>
-        private static bool TryDirectSpawnItemsNearColony(List<Thing> items, Map map, out IntVec3 spawnPos)
+        private static bool TryDirectSpawnItemsNearColony(
+            List<Thing> items,
+            Map map,
+            out IntVec3 spawnPos,
+            List<Thing> placed = null,
+            List<Thing> failed = null)
         {
             spawnPos = IntVec3.Invalid;
             if (map == null || items == null || items.Count == 0) return false;
+
+            placed = placed ?? new List<Thing>();
+            failed = failed ?? new List<Thing>();
 
             try
             {
@@ -1359,36 +1433,39 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 if (!spawnPos.IsValid)
                     spawnPos = map.Center;
 
-                int ok = 0;
                 foreach (Thing item in items)
                 {
                     if (item == null || item.Destroyed) continue;
-                    if (item.Spawned) { ok++; continue; }
+                    if (item.Spawned)
+                    {
+                        placed.Add(item);
+                        continue;
+                    }
 
-                    // Near scatter; if full, try another standable cell
                     if (GenPlace.TryPlaceThing(item, spawnPos, map, ThingPlaceMode.Near))
                     {
-                        ok++;
+                        placed.Add(item);
                         continue;
                     }
 
                     if (CellFinder.TryFindRandomCell(map, standable, out var alt) &&
                         GenPlace.TryPlaceThing(item, alt, map, ThingPlaceMode.Near))
                     {
-                        ok++;
+                        placed.Add(item);
                         spawnPos = alt;
                         continue;
                     }
 
+                    failed.Add(item);
                     Logger.Warning(
                         $"[ItemSpawn] GenPlace failed for {item.def.defName} x{item.stackCount} " +
                         $"on {DescribeMap(map)} at/near {spawnPos}");
                 }
 
                 Logger.Debug(
-                    $"[ItemSpawn] GenPlace overflow placed {ok}/{items.Count} stacks " +
-                    $"near {spawnPos} on {DescribeMap(map)}");
-                return ok > 0;
+                    $"[ItemSpawn] GenPlace overflow placed {placed.Count}/{items.Count} stacks " +
+                    $"(failed={failed.Count}) near {spawnPos} on {DescribeMap(map)}");
+                return placed.Count > 0;
             }
             catch (Exception ex)
             {
@@ -1480,25 +1557,30 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         /// <param name="result"></param>
         private static void DeterminePrimaryDeliveryMethod(DeliveryResult result)
         {
+            if (result.NothingDelivered)
+            {
+                result.PrimaryMethod = DeliveryMethod.Failed;
+                return;
+            }
+
             if (result.LockerDeliveredCount > 0)
             {
                 if (result.DropPodDeliveredCount > 0)
-                {
-                    result.PrimaryMethod = DeliveryMethod.DropPod; // mixed → show as drop pod (conservative letter)
-                }
+                    result.PrimaryMethod = DeliveryMethod.DropPod; // mixed
                 else
-                {
                     result.PrimaryMethod = DeliveryMethod.Locker;
-                }
             }
             else if (result.DropPodDeliveredCount > 0)
             {
                 result.PrimaryMethod = DeliveryMethod.DropPod;
             }
+            else if (result.DirectlyDeliveredItems?.Count > 0)
+            {
+                result.PrimaryMethod = DeliveryMethod.Inventory;
+            }
             else
             {
-                // fallback (should rarely hit)
-                result.PrimaryMethod = DeliveryMethod.DropPod;
+                result.PrimaryMethod = DeliveryMethod.Failed;
             }
         }
 
@@ -2137,8 +2219,11 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 return result;
             }
 
+            result.RequestedCount = Math.Max(result.RequestedCount, item.stackCount);
             IntVec3 dropPos = GetDeliveryPosition(dropMap, pawn);
             var stack = new List<Thing> { item };
+            var placed = new List<Thing>();
+            var failed = new List<Thing>();
             bool sealedDrop = IsSealedOrPocketMap(dropMap) || dropMap.Size.x < 40 || dropMap.Size.z < 40;
             bool ok;
 
@@ -2146,18 +2231,21 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             {
                 Logger.Debug(
                     $"[ItemSpawn] preCreated skip drop pod on sealed/tiny {DescribeMap(dropMap)} — GenPlace");
-                ok = TryDirectSpawnItemsNearColony(stack, dropMap, out dropPos);
+                ok = TryDirectSpawnItemsNearColony(stack, dropMap, out dropPos, placed, failed);
             }
             else
             {
                 ok = TryShuttleDelivery(stack, dropPos, dropMap);
-                if (!ok)
-                    ok = TryDirectSpawnItemsNearColony(stack, dropMap, out dropPos);
+                if (ok && item != null && !item.Destroyed && (item.Spawned || item.ParentHolder != null))
+                    placed.Add(item);
+                else if (!ok)
+                    ok = TryDirectSpawnItemsNearColony(stack, dropMap, out dropPos, placed, failed);
             }
 
-            if (ok && item != null && !item.Destroyed)
+            if (ok && placed.Count > 0)
             {
-                result.DropPodDeliveredItems.Add(item);
+                result.DropPodDeliveredItems.AddRange(placed);
+                result.DropPodDeliveredCount += placed.Sum(t => t.stackCount);
                 result.PrimaryMethod = DeliveryMethod.DropPod;
                 result.DeliveryPosition = dropPos;
                 Logger.Debug(
@@ -2165,7 +2253,9 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
             else
             {
-                Logger.Error($"[ItemSpawn] preCreated {item.def.defName} failed locker and map delivery");
+                result.UndeliveredCount += CullUndeliveredThings(failed.Count > 0 ? failed : stack);
+                result.PrimaryMethod = DeliveryMethod.Failed;
+                Logger.Error($"[ItemSpawn] preCreated {item.def.defName} failed locker and map delivery — culled");
             }
 
             return result;

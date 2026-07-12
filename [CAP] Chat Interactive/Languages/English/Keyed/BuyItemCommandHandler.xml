@@ -25,6 +25,12 @@
   <!-- Success message (used in final return) -->
   <RICS.BICH.Return.Success>Purchased {0} {1} for {2} and {3}! Remaining: {4}.</RICS.BICH.Return.Success>
 
+  <!-- No space: locker full + floor full — purchase cancelled, no charge -->
+  <RICS.BICH.Return.NoSpace>Sorry, cannot deliver {1}x {0} — no space for delivery (locker and floor full). You were not charged.</RICS.BICH.Return.NoSpace>
+
+  <!-- Partial: some units delivered and charged; remainder culled -->
+  <RICS.BICH.Return.PartialNoSpace>Could not fit {0} more {1} (no space) — those units were cancelled and not charged.</RICS.BICH.Return.PartialNoSpace>
+
   <!-- Success action types (for the {3} placeholder above) -->
   <RICS.BICH.Return.Action.AddedToInventory>added to your pawn's inventory</RICS.BICH.Return.Action.AddedToInventory>
   <RICS.BICH.Return.Action.Equipped>equipped to your pawn</RICS.BICH.Return.Action.Equipped>
