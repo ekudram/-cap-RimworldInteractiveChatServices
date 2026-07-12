@@ -459,7 +459,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 Logger.Debug($"GenerateAndSpawnPawn:   xenotypeName: {xenotypeName}");
 
-                // Shared delivery map pipeline (anchor none for !pawn — current/home/surface redirect)
+                // Prefer where the streamer is (CurrentMap / pocket). Sealed→surface only when
+                // ResolveDeliveryMap decides the sealed map has no colony presence.
                 Map map = ItemDeliveryHelper.ResolveDeliveryMap(anchorPawn: null, allowUndergroundRedirect: true);
                 if (map == null)
                 {

@@ -146,16 +146,20 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                 bool sealedMap = IsSealedOrPocketMap(candidate);
                 Map surfaceHome = GetSurfaceHomeMap();
-                bool colonyOnCandidate = MapHasFreeColonists(candidate);
+                bool preferSealedLocal = ShouldPreferSealedLocalMap(candidate, reason);
 
                 if (allowUndergroundRedirect && sealedMap)
                 {
-                    // Living in the pocket/interior — stay there (VIM RV, Anomaly pocket colony, etc.)
-                    if (colonyOnCandidate)
+                    // Stay on RV interior / pocket when the player is there or colony is present.
+                    // FreeColonistsSpawned alone is too strict (empty-looking interiors while CurrentMap
+                    // is the pocket → was wrongly redirecting to surface Colony home).
+                    if (preferSealedLocal)
                     {
                         Logger.Debug(
-                            $"ResolveDeliveryMap: sealed map has colonists — keeping " +
-                            $"{DescribeMap(candidate)} (reason={reason})");
+                            $"ResolveDeliveryMap: sealed local preferred — keeping " +
+                            $"{DescribeMap(candidate)} (reason={reason}, " +
+                            $"freeCol={MapFreeColonistCount(candidate)}, " +
+                            $"playerPawns={MapPlayerPawnCount(candidate)}, current={candidate == Find.CurrentMap})");
                         return candidate;
                     }
 
@@ -220,8 +224,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
         /// <summary>
         /// Map used for drop pods after locker miss.
-        /// Sealed local map with free colonists wins (RV interior). Otherwise surface home
-        /// when the local map is sealed/empty; nomadic sealed keeps local.
+        /// Sealed local preferred when colony is present or player is viewing that map.
         /// </summary>
         public static Map GetDropMapForItems(Map preferredLocal)
         {
@@ -229,10 +232,10 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             if (preferredLocal != null && IsSealedOrPocketMap(preferredLocal))
             {
-                if (MapHasFreeColonists(preferredLocal))
+                if (ShouldPreferSealedLocalMap(preferredLocal, reason: "dropPreferred"))
                 {
                     Logger.Debug(
-                        $"GetDropMapForItems: sealed local has colonists — keep {DescribeMap(preferredLocal)}");
+                        $"GetDropMapForItems: sealed local preferred — keep {DescribeMap(preferredLocal)}");
                     return preferredLocal;
                 }
 
@@ -256,7 +259,49 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
         private static bool MapHasFreeColonists(Map map)
         {
-            return map?.mapPawns?.FreeColonistsSpawned?.Count > 0;
+            return MapFreeColonistCount(map) > 0;
+        }
+
+        private static int MapFreeColonistCount(Map map)
+        {
+            return map?.mapPawns?.FreeColonistsSpawned?.Count ?? 0;
+        }
+
+        private static int MapPlayerPawnCount(Map map)
+        {
+            if (map?.mapPawns?.AllPawnsSpawned == null) return 0;
+            return map.mapPawns.AllPawnsSpawned.Count(p =>
+                p != null && !p.Dead && p.Faction == Faction.OfPlayer);
+        }
+
+        /// <summary>
+        /// Whether a sealed/pocket map should keep deliveries instead of redirecting to surface home.
+        /// CurrentMap alone is enough (streamer is inside the RV). FreeColonists is unreliable alone
+        /// on some vehicle interiors.
+        /// </summary>
+        private static bool ShouldPreferSealedLocalMap(Map map, string reason)
+        {
+            if (map == null) return false;
+
+            // Player is viewing this map (inside RV / pocket)
+            if (Find.CurrentMap == map)
+                return true;
+
+            // Candidate chosen because of who's on the map
+            if (!string.IsNullOrEmpty(reason) &&
+                (reason.StartsWith("CurrentMap", StringComparison.Ordinal) ||
+                 reason.StartsWith("anchorPawn", StringComparison.Ordinal) ||
+                 reason.StartsWith("FreeColonistsSpawned", StringComparison.Ordinal) ||
+                 reason.StartsWith("playerFactionPawns", StringComparison.Ordinal)))
+                return true;
+
+            if (MapFreeColonistCount(map) > 0)
+                return true;
+
+            if (MapPlayerPawnCount(map) > 0)
+                return true;
+
+            return false;
         }
 
         /// <summary>Structured log after an item delivery completes.</summary>
@@ -400,8 +445,11 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         }
 
         /// <summary>
-        /// Places an already-generated pawn on the map: drop pod preferred, then GenSpawn near locker/colonist/center.
-        /// Equips vacsuit on space/vacuum maps before pod.
+        /// Places an already-generated pawn on the map.
+        /// Open-sky maps: drop pod preferred (only success if pawn ends up Spawned).
+        /// Sealed/pocket/tiny interiors: skip pods (they fail out-of-bounds) → GenSpawn near
+        /// locker / colonist / standable cell / center.
+        /// Equips vacsuit on space/vacuum maps before placement.
         /// </summary>
         public static bool TryDeliverGeneratedPawn(Pawn pawn, Map map, out IntVec3 deliveryPosition)
         {
@@ -410,57 +458,176 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             try
             {
-                if (IsSpaceMap(map) || map.Biome?.inVacuum == true)
+                // Only real vacuum/space maps — never vehicle interiors named *Space* (e.g. Furia_InteriorSpace)
+                if (IsSpaceMap(map))
                     EquipVacsuitIfNeeded(pawn);
 
-                // Priority 1: drop pod at delivery cell
-                if (TryFindDeliveryCell(map, out IntVec3 safePos))
+                bool sealedMap = IsSealedOrPocketMap(map);
+                bool tinyMap = map.Size.x < 40 || map.Size.z < 40;
+
+                // Priority 1: drop pod — only on open-sky maps large enough for pods
+                if (!sealedMap && !tinyMap && TryFindDeliveryCell(map, out IntVec3 safePos))
                 {
-                    deliveryPosition = safePos;
-                    DropPodUtility.DropThingsNear(
-                        safePos, map, new List<Thing> { pawn },
-                        openDelay: 110, leaveSlag: false, canRoofPunch: true, forbid: true);
-                    Logger.Debug($"TryDeliverGeneratedPawn: drop pod at {safePos} on {map.Parent?.LabelCap}");
-                    return true;
+                    try
+                    {
+                        DropPodUtility.DropThingsNear(
+                            safePos, map, new List<Thing> { pawn },
+                            openDelay: 110, leaveSlag: false, canRoofPunch: true, forbid: true);
+                    }
+                    catch (Exception podEx)
+                    {
+                        Logger.Warning($"TryDeliverGeneratedPawn: DropThingsNear threw: {podEx.Message}");
+                    }
+
+                    // DropThingsNear can "succeed" while spawning DropPodIncoming at (-1000,-1000,-1000)
+                    // and leaving the pawn unspawned — never treat that as delivery.
+                    if (IsPawnDeliveredOnMap(pawn, map))
+                    {
+                        deliveryPosition = pawn.Position.IsValid ? pawn.Position : safePos;
+                        Logger.Debug(
+                            $"TryDeliverGeneratedPawn: drop pod OK at {deliveryPosition} on {DescribeMap(map)}");
+                        return true;
+                    }
+
+                    Logger.Warning(
+                        $"TryDeliverGeneratedPawn: drop pod did not place pawn on {DescribeMap(map)} " +
+                        $"(requested {safePos}) — falling back to GenSpawn");
+                }
+                else if (sealedMap || tinyMap)
+                {
+                    Logger.Debug(
+                        $"TryDeliverGeneratedPawn: skip drop pod on " +
+                        $"{(sealedMap ? "sealed/pocket" : "tiny")} {DescribeMap(map)}");
                 }
 
-                // Priority 2: GenSpawn near locker
-                var locker = FindSuitableLockerFor(pawn, map) ??
-                             map.listerThings.AllThings.OfType<Building_RimazonLocker>()
-                                 .FirstOrDefault(l => l.Spawned && !l.Destroyed);
-                if (locker != null &&
-                    CellFinder.TryFindRandomCellNear(locker.Position, map, 6,
-                        c => c.Standable(map) && c.Walkable(map), out var nearLocker))
-                {
-                    GenSpawn.Spawn(pawn, nearLocker, map);
-                    deliveryPosition = nearLocker;
-                    Logger.Debug($"TryDeliverGeneratedPawn: GenSpawn near locker at {nearLocker}");
+                // Priority 2–4: direct GenSpawn (required for vehicle interiors / sealed maps)
+                if (TryGenSpawnPawnOnMap(pawn, map, out deliveryPosition))
                     return true;
-                }
 
-                // Priority 3: near any player pawn
-                var anyPlayerPawn = map.mapPawns.AllPawnsSpawned
-                    .FirstOrDefault(p => p.Faction == Faction.OfPlayer && p.Spawned && !p.Dead);
-                if (anyPlayerPawn != null &&
-                    CellFinder.TryFindRandomCellNear(anyPlayerPawn.Position, map, 8,
-                        c => c.Standable(map) && c.Walkable(map), out var nearPawn))
-                {
-                    GenSpawn.Spawn(pawn, nearPawn, map);
-                    deliveryPosition = nearPawn;
-                    Logger.Debug($"TryDeliverGeneratedPawn: GenSpawn near colonist at {nearPawn}");
-                    return true;
-                }
-
-                // Priority 4: center
-                GenSpawn.Spawn(pawn, map.Center, map);
-                deliveryPosition = map.Center;
-                Logger.Warning("TryDeliverGeneratedPawn: GenSpawn at map center");
-                return true;
+                Logger.Error($"TryDeliverGeneratedPawn: all strategies failed on {DescribeMap(map)}");
+                return false;
             }
             catch (Exception ex)
             {
                 Logger.Error($"TryDeliverGeneratedPawn failed: {ex}");
                 deliveryPosition = map?.Center ?? IntVec3.Invalid;
+                return false;
+            }
+        }
+
+        /// <summary>True if pawn is alive and currently spawned on the given map.</summary>
+        private static bool IsPawnDeliveredOnMap(Pawn pawn, Map map)
+        {
+            return pawn != null && map != null && !pawn.Destroyed && pawn.Spawned && pawn.Map == map;
+        }
+
+        /// <summary>
+        /// Direct placement for sealed/pocket maps or when drop pods fail.
+        /// Order: near locker → near free colonist → near any player pawn →
+        /// standable near map center → map center.
+        /// </summary>
+        private static bool TryGenSpawnPawnOnMap(Pawn pawn, Map map, out IntVec3 deliveryPosition)
+        {
+            deliveryPosition = IntVec3.Invalid;
+            if (pawn == null || map == null) return false;
+
+            // Already delivered (e.g. pod opened same tick in some edge cases)
+            if (IsPawnDeliveredOnMap(pawn, map))
+            {
+                deliveryPosition = pawn.Position;
+                return true;
+            }
+
+            // Must not already be held by a broken drop pod / container
+            if (pawn.Spawned)
+            {
+                try { pawn.DeSpawn(); }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"TryGenSpawnPawnOnMap: DeSpawn before re-place: {ex.Message}");
+                }
+            }
+
+            Predicate<IntVec3> standable = c =>
+                c.InBounds(map) && c.Standable(map) && c.Walkable(map) && !c.Fogged(map);
+
+            // Near locker
+            var locker = map.listerThings?.AllThings?
+                .OfType<Building_RimazonLocker>()
+                .FirstOrDefault(l => l.Spawned && !l.Destroyed);
+            if (locker != null &&
+                CellFinder.TryFindRandomCellNear(locker.Position, map, 6, standable, out var nearLocker))
+            {
+                if (TrySpawnPawnAt(pawn, nearLocker, map, out deliveryPosition, "locker"))
+                    return true;
+            }
+
+            // Near free colonist
+            var colonist = map.mapPawns?.FreeColonistsSpawned?.FirstOrDefault();
+            if (colonist != null &&
+                CellFinder.TryFindRandomCellNear(colonist.Position, map, 8, standable, out var nearCol))
+            {
+                if (TrySpawnPawnAt(pawn, nearCol, map, out deliveryPosition, "colonist"))
+                    return true;
+            }
+
+            // Near any player pawn
+            var anyPlayer = map.mapPawns?.AllPawnsSpawned?
+                .FirstOrDefault(p => p != pawn && p.Faction == Faction.OfPlayer && p.Spawned && !p.Dead);
+            if (anyPlayer != null &&
+                CellFinder.TryFindRandomCellNear(anyPlayer.Position, map, 8, standable, out var nearAny))
+            {
+                if (TrySpawnPawnAt(pawn, nearAny, map, out deliveryPosition, "playerPawn"))
+                    return true;
+            }
+
+            // Any standable cell (small interiors: center may be wall)
+            if (CellFinder.TryFindRandomCell(map, standable, out var randomStandable))
+            {
+                if (TrySpawnPawnAt(pawn, randomStandable, map, out deliveryPosition, "randomStandable"))
+                    return true;
+            }
+
+            // Last resort: map center even if imperfect
+            if (TrySpawnPawnAt(pawn, map.Center, map, out deliveryPosition, "center"))
+                return true;
+
+            return false;
+        }
+
+        private static bool TrySpawnPawnAt(
+            Pawn pawn, IntVec3 cell, Map map, out IntVec3 deliveryPosition, string via)
+        {
+            deliveryPosition = IntVec3.Invalid;
+            try
+            {
+                if (!cell.InBounds(map))
+                    return false;
+
+                // Nudge to standable if needed
+                if (!cell.Standable(map) || !cell.Walkable(map))
+                {
+                    if (!CellFinder.TryFindRandomCellNear(cell, map, 10,
+                            c => c.InBounds(map) && c.Standable(map) && c.Walkable(map), out cell))
+                        return false;
+                }
+
+                GenSpawn.Spawn(pawn, cell, map);
+                if (!IsPawnDeliveredOnMap(pawn, map))
+                {
+                    Logger.Warning(
+                        $"TrySpawnPawnAt: GenSpawn reported but pawn not on map at {cell} via {via}");
+                    return false;
+                }
+
+                deliveryPosition = pawn.Position;
+                Logger.Debug(
+                    $"TryDeliverGeneratedPawn: GenSpawn via {via} at {deliveryPosition} on {DescribeMap(map)}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"TrySpawnPawnAt failed via {via} at {cell}: {ex.Message}");
                 return false;
             }
         }
@@ -720,6 +887,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (map.Parent is PocketMapParent)
                 return true;
 
+            // Soft label match (some pocket parents report as "Pocket map" without typed Parent)
+            string parentLabel = map.Parent?.LabelCap ?? map.Parent?.def?.defName ?? "";
+            if (!string.IsNullOrEmpty(parentLabel) &&
+                parentLabel.IndexOf("pocket", StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
             // Thick-roof scan: any thick roof (VIM uses non-natural custom ceilings) + natural rock
             int anyThickRoofCount = 0;
             int naturalThickRoofCount = 0;
@@ -748,9 +921,13 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (anyThickPct > THRESHOLD || naturalThickPct > THRESHOLD)
                 return true;
 
-            // Vehicle interiors are often small (e.g. 21×13); lower threshold for small maps
+            // Vehicle interiors are often small (e.g. 13×9 / 21×13); lower threshold for small maps
             if (map.Size.x < 220 && map.Size.z < 220 &&
                 (anyThickPct > SMALL_MAP_THRESHOLD || naturalThickPct > SMALL_MAP_THRESHOLD))
+                return true;
+
+            // Tiny fully enclosed interiors with any significant thick roof
+            if ((map.Size.x < 40 || map.Size.z < 40) && anyThickPct > 0.5f)
                 return true;
 
             return false;
@@ -1790,28 +1967,39 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         }
 
         /// <summary>
-        /// Determines if the given map is a space map.
+        /// True for real vacuum / orbital space maps (vacsuits needed).
+        /// Not true for vehicle pocket interiors whose biome merely contains "Space"
+        /// (e.g. VIM <c>Furia_InteriorSpace</c>).
         /// </summary>
-        /// <param name="map"></param>
-        /// <returns></returns>
-        /// <remarks
-        /// Why: Space maps are a distinct case from underground; pawns need vacsuits immediately.
-        /// </remarks>
         public static bool IsSpaceMap(Map map)
         {
             if (map == null) return false;
 
-            // Primary: BiomeDef.inVacuum flag (most accurate for Odyssey)
+            // Odyssey / vacuum biomes — authoritative
             if (map.Biome?.inVacuum == true)
                 return true;
 
-            // Secondary: Space / Orbit in biome name (current maps) for mod compatibility
-            if (map.Biome?.defName?.Contains("Space", StringComparison.OrdinalIgnoreCase) == true ||
-                map.Biome?.defName?.Contains("Orbit", StringComparison.OrdinalIgnoreCase) == true)
+            // Space map parent (orbital encounters, etc.)
+            if (map.Parent is SpaceMapParent)
                 return true;
 
-            // Fallback: SpaceMapParent
-            return map.Parent is SpaceMapParent;
+            // Pocket / sealed interiors are never "space" unless biome is actually vacuum
+            // (avoids Furia_InteriorSpace matching a naive "Space" substring check).
+            if (IsSealedOrPocketMap(map))
+                return false;
+
+            string name = map.Biome?.defName;
+            if (string.IsNullOrEmpty(name))
+                return false;
+
+            // Conservative name tokens only — not "InteriorSpace", "PersonalSpace", etc.
+            if (name.Equals("Space", StringComparison.OrdinalIgnoreCase) ||
+                name.StartsWith("Space_", StringComparison.OrdinalIgnoreCase) ||
+                name.EndsWith("_Space", StringComparison.OrdinalIgnoreCase) ||
+                name.IndexOf("Orbit", StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
+            return false;
         }
         /// <summary>
         /// Handles direct pawn interaction with pre-created items, such as equipping, wearing, or adding to inventory.
