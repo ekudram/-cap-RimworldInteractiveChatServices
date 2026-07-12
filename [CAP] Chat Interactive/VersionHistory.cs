@@ -1084,10 +1084,10 @@ This release includes all changes from June 21–23 plus the June 26 heal logic 
                 "<b>TRANSLATIONS</b>\r\n───────────────────\r\n" +
                 "- Updated strings related to the new command settings system\r\n\r\n" +
                 "Full commit history: https://github.com/ekudram/-cap-RimworldInteractiveChatServices/commits/master/"},
-            { "1.43",
+            { "1.43a",
                 @"
 ===========================================================
-                RICS 1.43 - Changelog
+                RICS 1.43a - Changelog
                 Released: July 10, 2026
 ===========================================================
 
@@ -1098,6 +1098,8 @@ Major Spawn & Delivery Overhaul is live! We've greatly improved how and where it
 Mechs purchased by a Mechanitor will now spawn properly **under their control**.
 
 !rescueme command added for rescuing pawns from being captured.
+
+HOTFIX for sealed maps: !mypawn and !mypawn gear now work properly on sealed maps (e.g. space colonies, underground bunkers, RV's etc.).
 
 <b>Updated</b>
 ──────────────
