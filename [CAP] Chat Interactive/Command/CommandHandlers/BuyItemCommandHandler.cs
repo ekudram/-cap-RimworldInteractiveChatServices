@@ -316,7 +316,21 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 int deliveredUnits = deliveryResult.TotalUnitsDelivered;
                 if (deliveredUnits <= 0 && allSpawnedItems.Count > 0)
-                    deliveredUnits = allSpawnedItems.Sum(t => t?.stackCount ?? 0);
+                {
+                    // Animals/mechs: one Thing each, stackCount usually 1
+                    deliveredUnits = allSpawnedItems.Sum(t => t?.stackCount > 0 ? t.stackCount : 1);
+                }
+
+                // Safety net: animal/mech path used to leave counts at 0 while still spawning
+                if (deliveredUnits <= 0 &&
+                    deliveryResult.PrimaryMethod == DeliveryMethod.PawnDelivery &&
+                    deliveryResult.DeliveryPosition.IsValid)
+                {
+                    deliveredUnits = quantity;
+                    Logger.Warning(
+                        $"[BuyItem] PawnDelivery position OK but counts were 0 — " +
+                        $"charging full qty {quantity} for {itemName}");
+                }
 
                 int undeliveredUnits = deliveryResult.UndeliveredCount;
                 if (undeliveredUnits <= 0 && deliveredUnits < quantity)

@@ -1089,27 +1089,56 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             var result = new DeliveryResult
             {
                 PrimaryMethod = DeliveryMethod.PawnDelivery,
-                DeliveryPosition = IntVec3.Invalid
+                DeliveryPosition = IntVec3.Invalid,
+                RequestedCount = quantity
             };
 
             Map targetMap = ResolveDeliveryMap(viewerPawn);
             if (targetMap == null)
             {
                 Logger.Error("No valid map found for pawn delivery");
+                result.UndeliveredCount = quantity;
+                result.PrimaryMethod = DeliveryMethod.Failed;
                 return result;
             }
 
             if (!TryFindSafeDropPosition(targetMap, out IntVec3 deliveryPos))
             {
                 Logger.Error("No safe drop position found for pawn delivery");
+                result.UndeliveredCount = quantity;
+                result.PrimaryMethod = DeliveryMethod.Failed;
                 return result;
             }
 
-            var pawnDeliveryResult = TryDeliverPawnFromStore(thingDef, quantity, quality, material, deliveryPos, targetMap, viewerPawn);
-            if (pawnDeliveryResult.success)
+            var pawnDeliveryResult = TryDeliverPawnFromStore(
+                thingDef, quantity, quality, material, deliveryPos, targetMap, viewerPawn);
+
+            // CRITICAL for charge-after-delivery: animals/mechs must report delivered units
+            // (was only setting position → TotalUnitsDelivered=0 → free animals)
+            if (pawnDeliveryResult.deliveredPawns != null)
             {
-                result.DeliveryPosition = pawnDeliveryResult.spawnPosition;
-                // Logger.Debug($"Pawn delivery successful at position: {result.DeliveryPosition}");
+                foreach (Pawn p in pawnDeliveryResult.deliveredPawns)
+                {
+                    if (p == null || p.Destroyed) continue;
+                    result.DropPodDeliveredItems.Add(p);
+                }
+            }
+
+            result.DropPodDeliveredCount = pawnDeliveryResult.deliveredCount;
+            result.UndeliveredCount = Math.Max(0, quantity - pawnDeliveryResult.deliveredCount);
+            result.DeliveryPosition = pawnDeliveryResult.spawnPosition;
+
+            if (pawnDeliveryResult.deliveredCount > 0)
+            {
+                result.PrimaryMethod = DeliveryMethod.PawnDelivery;
+                Logger.Debug(
+                    $"[ItemSpawn] pawnDelivery OK {pawnDeliveryResult.deliveredCount}/{quantity} " +
+                    $"{thingDef.defName} at {result.DeliveryPosition} on {DescribeMap(targetMap)}");
+            }
+            else
+            {
+                result.PrimaryMethod = DeliveryMethod.Failed;
+                Logger.Warning($"[ItemSpawn] pawnDelivery FAILED 0/{quantity} {thingDef.defName}");
             }
 
             return result;
@@ -1716,11 +1745,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         /// <param name="map"></param>
         /// <param name="viewerPawn"></param>
         /// <returns></returns>
-        private static (bool success, IntVec3 spawnPosition) TryDeliverPawnFromStore(
-    ThingDef pawnDef, int quantity, QualityCategory? quality, ThingDef material,
-    IntVec3 dropPos, Map map, Pawn viewerPawn = null)
+        private static (int deliveredCount, IntVec3 spawnPosition, List<Pawn> deliveredPawns) TryDeliverPawnFromStore(
+            ThingDef pawnDef, int quantity, QualityCategory? quality, ThingDef material,
+            IntVec3 dropPos, Map map, Pawn viewerPawn = null)
         {
             IntVec3 spawnPosition = IntVec3.Invalid;
+            var deliveredPawns = new List<Pawn>();
 
             try
             {
@@ -1729,13 +1759,13 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 if (map == null)
                 {
                     Logger.Error("Map is null for pawn delivery");
-                    return (false, spawnPosition);
+                    return (0, spawnPosition, deliveredPawns);
                 }
 
                 if (!dropPos.InBounds(map))
                 {
                     Logger.Error($"Pawn delivery position {dropPos} is out of map bounds");
-                    return (false, spawnPosition);
+                    return (0, spawnPosition, deliveredPawns);
                 }
 
                 // Prefer spawning near the nearest RimazonLocker if one exists
@@ -1815,36 +1845,39 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 }
 
                 // === SPAWN PHASE (shared TryDeliverGeneratedPawn pipeline) ===
-                if (pawnsToDeliver.Count > 0)
+                foreach (var deliveredPawn in pawnsToDeliver)
                 {
-                    foreach (var deliveredPawn in pawnsToDeliver)
+                    if (TryDeliverGeneratedPawn(deliveredPawn, map, out IntVec3 pos))
                     {
-                        if (TryDeliverGeneratedPawn(deliveredPawn, map, out IntVec3 pos))
-                        {
-                            spawnPosition = pos;
-                            Logger.Debug($"Store pawn delivered {deliveredPawn.LabelShort} at {pos}");
+                        spawnPosition = pos;
+                        deliveredPawns.Add(deliveredPawn);
+                        Logger.Debug($"Store pawn delivered {deliveredPawn.LabelShort} at {pos}");
 
-                            // Mechanoids: try bind to viewer's pawn if they are a mechanitor with bandwidth
-                            if (deliveredPawn.RaceProps.IsMechanoid)
-                                TryAssignMechToViewer(deliveredPawn, viewerPawn);
-                        }
-                        else
-                        {
-                            Logger.Error($"Failed to deliver store pawn {deliveredPawn.LabelShort}");
-                            return (false, spawnPosition);
-                        }
+                        // Mechanoids: try bind to viewer's pawn if they are a mechanitor with bandwidth
+                        if (deliveredPawn.RaceProps.IsMechanoid)
+                            TryAssignMechToViewer(deliveredPawn, viewerPawn);
                     }
-
-                    Logger.Debug($"Successfully delivered {pawnsToDeliver.Count}x {pawnDef.defName} at {spawnPosition}");
-                    return (true, spawnPosition);
+                    else
+                    {
+                        Logger.Error($"Failed to deliver store pawn {deliveredPawn.LabelShort} — culling");
+                        try
+                        {
+                            if (!deliveredPawn.Destroyed)
+                                deliveredPawn.Destroy(DestroyMode.Vanish);
+                        }
+                        catch { /* ignore */ }
+                    }
                 }
 
-                return (false, spawnPosition);
+                Logger.Debug(
+                    $"Store pawn delivery result: {deliveredPawns.Count}/{quantity}x {pawnDef.defName} " +
+                    $"at {spawnPosition}");
+                return (deliveredPawns.Count, spawnPosition, deliveredPawns);
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in pawn delivery: {ex}");
-                return (false, spawnPosition);
+                return (deliveredPawns.Count, spawnPosition, deliveredPawns);
             }
         }
 
