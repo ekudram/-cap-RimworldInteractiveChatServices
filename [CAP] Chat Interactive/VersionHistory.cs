@@ -1100,6 +1100,7 @@ Mechs purchased by a Mechanitor will now spawn properly **under their control**.
 !rescueme command added for rescuing pawns from being captured.
 
 HOTFIX for sealed maps: !mypawn and !mypawn gear now work properly on sealed maps (e.g. space colonies, underground bunkers, RV's etc.).
+HOTFIX for animal spawning. Was sending free pets.
 
 <b>Updated</b>
 ──────────────
