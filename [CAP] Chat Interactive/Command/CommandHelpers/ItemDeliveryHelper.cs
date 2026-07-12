@@ -63,9 +63,10 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         //       1) Rimazon lockers FIRST — FindSuitableLockerFor scans ALL loaded maps;
         //          preferredMap only sorts which accepting locker wins (no map gate).
         //          Accepts() still applies storage filters + space.
-        //       2) Drop pod for leftovers (surface home if underground+home exists;
-        //          nomadic pocket keeps the local underground map).
-        //       3) GenSpawn near colonist/center if pod fails underground/nomadic.
+        //       2) Drop pod for leftovers. Sealed/pocket maps with free colonists keep the
+        //          local map (vehicle interiors, Anomaly pockets). Surface home only if the
+        //          sealed map has no free colonists.
+        //       3) GenSpawn near colonist/center if pod fails on any sealed/pocket map.
         //       Entry: HandleRegularDelivery / HandleRegularDeliveryWithPreCreated
         //   • EQUIP / WEAR / BACKPACK:
         //       On pawn first → locker fallback (any accepting locker, all maps) if that fails
@@ -73,6 +74,10 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         //       Drop pod first → GenSpawn near locker/colonist/center (position only;
         //       never put living pawns inside lockers). Mechs may assign overseer after spawn.
         //       Entry: TryDeliverGeneratedPawn
+        //
+        // Sealed / no-sky maps (IsUndergroundMap / IsSealedOrPocketMap):
+        //   map.IsPocketMap | PocketMapParent | high % any thick roof | natural thick rock.
+        //   Covers VIM vehicle interiors (custom non-natural thick roof) without third-party types.
         // ═══════════════════════════════════════════════════════════════════════
 
         private static int _undergroundCacheTick = -1;
@@ -81,8 +86,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         /// <summary>
         /// Chooses the map for any RICS delivery (items, !pawn, store animals/mechs).
         /// Priority: anchor pawn → CurrentMap → player home → any map with colonists/lockers/player pawns.
-        /// Underground redirect to surface home only when a non-underground home exists.
-        /// Nomadic pocket (underground, no home map): keep the pocket map and deliver there.
+        /// Sealed/pocket maps with free colonists stay local (e.g. RV interior). Surface redirect
+        /// only when the sealed map has no free colonists and a non-sealed home exists.
         /// </summary>
         public static Map ResolveDeliveryMap(Pawn anchorPawn = null, bool allowUndergroundRedirect = true)
         {
@@ -139,29 +144,38 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     return null;
                 }
 
-                bool underground = IsUndergroundMap(candidate);
+                bool sealedMap = IsSealedOrPocketMap(candidate);
                 Map surfaceHome = GetSurfaceHomeMap();
+                bool colonyOnCandidate = MapHasFreeColonists(candidate);
 
-                if (allowUndergroundRedirect && underground)
+                if (allowUndergroundRedirect && sealedMap)
                 {
+                    // Living in the pocket/interior — stay there (VIM RV, Anomaly pocket colony, etc.)
+                    if (colonyOnCandidate)
+                    {
+                        Logger.Debug(
+                            $"ResolveDeliveryMap: sealed map has colonists — keeping " +
+                            $"{DescribeMap(candidate)} (reason={reason})");
+                        return candidate;
+                    }
+
                     if (surfaceHome != null && surfaceHome != candidate)
                     {
                         Logger.Debug(
-                            $"ResolveDeliveryMap: underground/pocket → surface home " +
+                            $"ResolveDeliveryMap: sealed empty → surface home " +
                             $"{DescribeMap(surfaceHome)} (from {DescribeMap(candidate)}, reason={reason})");
                         return surfaceHome;
                     }
 
-                    // Nomadic pocket: living underground with no surface home map
                     Logger.Debug(
                         $"ResolveDeliveryMap: NOMADIC/POCKET — no surface home; " +
-                        $"keeping {DescribeMap(candidate)} (reason={reason}, underground=true)");
+                        $"keeping {DescribeMap(candidate)} (reason={reason}, sealed=true)");
                     return candidate;
                 }
 
                 Logger.Debug(
                     $"ResolveDeliveryMap: {DescribeMap(candidate)} " +
-                    $"(reason={reason}, home={candidate.IsPlayerHome}, underground={underground}, " +
+                    $"(reason={reason}, home={candidate.IsPlayerHome}, sealed={sealedMap}, " +
                     $"surfaceHome={(surfaceHome != null ? DescribeMap(surfaceHome) : "none")})");
                 return candidate;
             }
@@ -179,7 +193,9 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         {
             if (map == null) return "null";
             string label = map.Parent?.LabelCap ?? map.ToString();
-            return $"{label}[home={map.IsPlayerHome}, size={map.Size.x}x{map.Size.z}]";
+            bool pocket = false;
+            try { pocket = map.IsPocketMap; } catch { /* older API edge */ }
+            return $"{label}[home={map.IsPlayerHome}, pocket={pocket}, size={map.Size.x}x{map.Size.z}]";
         }
 
         /// <summary>Dump all loaded maps (debug aid for nomadic / multi-map).</summary>
@@ -197,33 +213,50 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 int colonists = m.mapPawns?.FreeColonistsSpawned?.Count ?? 0;
                 int lockers = m.listerThings?.AllThings?.OfType<Building_RimazonLocker>().Count(l => l.Spawned) ?? 0;
                 Logger.Debug(
-                    $"{prefix}: {DescribeMap(m)} under={IsUndergroundMap(m)} " +
+                    $"{prefix}: {DescribeMap(m)} sealed={IsSealedOrPocketMap(m)} " +
                     $"colonists={colonists} lockers={lockers} current={m == Find.CurrentMap}");
             }
         }
 
         /// <summary>
         /// Map used for drop pods after locker miss.
-        /// Prefers surface home when available; otherwise local map (nomadic pocket OK).
+        /// Sealed local map with free colonists wins (RV interior). Otherwise surface home
+        /// when the local map is sealed/empty; nomadic sealed keeps local.
         /// </summary>
         public static Map GetDropMapForItems(Map preferredLocal)
         {
             Map surface = GetSurfaceHomeMap();
-            if (preferredLocal != null && IsUndergroundMap(preferredLocal) && surface != null)
+
+            if (preferredLocal != null && IsSealedOrPocketMap(preferredLocal))
             {
-                Logger.Debug(
-                    $"GetDropMapForItems: underground local → surface {DescribeMap(surface)}");
-                return surface;
+                if (MapHasFreeColonists(preferredLocal))
+                {
+                    Logger.Debug(
+                        $"GetDropMapForItems: sealed local has colonists — keep {DescribeMap(preferredLocal)}");
+                    return preferredLocal;
+                }
+
+                if (surface != null && surface != preferredLocal)
+                {
+                    Logger.Debug(
+                        $"GetDropMapForItems: sealed empty → surface {DescribeMap(surface)}");
+                    return surface;
+                }
+
+                Logger.Debug($"GetDropMapForItems: NOMADIC sealed drop on {DescribeMap(preferredLocal)}");
+                return preferredLocal;
             }
 
             Map map = preferredLocal ?? surface ?? Find.CurrentMap
                 ?? Find.Maps?.FirstOrDefault(m => m != null && m.mapPawns?.FreeColonistsSpawned?.Count > 0)
                 ?? Find.Maps?.FirstOrDefault(m => m != null);
 
-            if (map != null && IsUndergroundMap(map) && surface == null)
-                Logger.Debug($"GetDropMapForItems: NOMADIC drop on underground {DescribeMap(map)}");
-
             return map;
+        }
+
+        private static bool MapHasFreeColonists(Map map)
+        {
+            return map?.mapPawns?.FreeColonistsSpawned?.Count > 0;
         }
 
         /// <summary>Structured log after an item delivery completes.</summary>
@@ -640,10 +673,18 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         }
 
         /// <summary>
-        /// Thick natural rock-roof heuristic for pocket/underground-like maps.
-        /// Cached per map for the current game tick (full scan is expensive).
+        /// Sealed / no-sky map: vanilla pocket maps, PocketMapParent, or high thick-roof coverage
+        /// (any thick roof — not only natural rock). Covers Anomaly pockets and vehicle interiors
+        /// (e.g. VIM/RVwithPD custom ceilings) without third-party type refs.
+        /// Cached per map for the current game tick (roof scan is expensive).
+        /// Alias of <see cref="IsSealedOrPocketMap"/>.
         /// </summary>
-        public static bool IsUndergroundMap(Map map)
+        public static bool IsUndergroundMap(Map map) => IsSealedOrPocketMap(map);
+
+        /// <summary>
+        /// Preferred name for sealed/no-sky detection used by delivery policy.
+        /// </summary>
+        public static bool IsSealedOrPocketMap(Map map)
         {
             if (map == null) return false;
 
@@ -658,33 +699,58 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (_undergroundByMapId.TryGetValue(id, out bool cached))
                 return cached;
 
-            bool result = ComputeIsUndergroundMap(map);
+            bool result = ComputeIsSealedOrPocketMap(map);
             _undergroundByMapId[id] = result;
             return result;
         }
 
-        private static bool ComputeIsUndergroundMap(Map map)
+        private static bool ComputeIsSealedOrPocketMap(Map map)
         {
+            // Vanilla pocket maps (Anomaly, PocketMapUtility vehicle interiors, etc.)
+            try
+            {
+                if (map.IsPocketMap)
+                    return true;
+            }
+            catch
+            {
+                // IsPocketMap missing on unexpected API — fall through to roof heuristics
+            }
+
+            if (map.Parent is PocketMapParent)
+                return true;
+
+            // Thick-roof scan: any thick roof (VIM uses non-natural custom ceilings) + natural rock
+            int anyThickRoofCount = 0;
             int naturalThickRoofCount = 0;
             int totalCells = 0;
 
             foreach (IntVec3 cell in map.AllCells)
             {
                 totalCells++;
-                RoofDef roof = map.roofGrid.RoofAt(cell);
-                if (roof != null && roof.isNatural && roof == RoofDefOf.RoofRockThick)
+                RoofDef roof = map.roofGrid?.RoofAt(cell);
+                if (roof == null) continue;
+
+                if (roof.isThickRoof)
+                    anyThickRoofCount++;
+
+                if (roof.isNatural && roof == RoofDefOf.RoofRockThick)
                     naturalThickRoofCount++;
             }
 
             if (totalCells == 0) return false;
 
-            float thickNaturalPercentage = (float)naturalThickRoofCount / totalCells;
-            const float UNDERGROUND_THRESHOLD = 0.92f;
+            float anyThickPct = (float)anyThickRoofCount / totalCells;
+            float naturalThickPct = (float)naturalThickRoofCount / totalCells;
+            const float THRESHOLD = 0.92f;
+            const float SMALL_MAP_THRESHOLD = 0.80f;
 
-            if (thickNaturalPercentage > UNDERGROUND_THRESHOLD)
+            if (anyThickPct > THRESHOLD || naturalThickPct > THRESHOLD)
                 return true;
 
-            if (map.Size.z < 220 && thickNaturalPercentage > 0.80f)
+            // Vehicle interiors are often small (e.g. 21×13); lower threshold for small maps
+            if (map.Size.x < 220 && map.Size.z < 220 &&
+                (anyThickPct > SMALL_MAP_THRESHOLD || naturalThickPct > SMALL_MAP_THRESHOLD))
                 return true;
 
             return false;
@@ -973,14 +1039,17 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             // Preferred map for ordering + drop-pod fallback only (locker search is all maps)
             Map preferredMap = ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
             Map surfaceMap = GetSurfaceHomeMap();
-            bool nomadicPocket = preferredMap != null && IsUndergroundMap(preferredMap) && surfaceMap == null;
+            bool sealedPreferred = preferredMap != null && IsSealedOrPocketMap(preferredMap);
+            // Sealed with no open-sky home (or colony living on sealed map) → expect GenSpawn fallback
+            bool sealedDelivery = sealedPreferred &&
+                                  (surfaceMap == null || MapHasFreeColonists(preferredMap));
 
             Logger.Debug(
                 $"[ItemSpawn] regularLoose maps: preferred={DescribeMap(preferredMap)} " +
-                $"surface={DescribeMap(surfaceMap)} nomadicPocket={nomadicPocket} " +
+                $"surface={DescribeMap(surfaceMap)} sealed={sealedPreferred} " +
                 $"loadedMaps={Find.Maps?.Count ?? 0}");
 
-            if (nomadicPocket || preferredMap == null)
+            if (sealedPreferred || preferredMap == null)
                 LogMapSnapshot("[ItemSpawn regularLoose]");
 
             // ── STEP 1: lockers anywhere that Accepts the item ──
@@ -991,7 +1060,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     undeliveredItems.Add(item);
             }
 
-            // ── STEP 2: leftovers → drop pod (or GenSpawn on nomadic pocket) ──
+            // ── STEP 2: leftovers → drop pod (or GenSpawn on sealed/pocket) ──
             if (undeliveredItems.Count > 0)
             {
                 int dropCount = undeliveredItems.Sum(t => t?.stackCount ?? 0);
@@ -1004,10 +1073,11 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     return result;
                 }
 
+                bool sealedDrop = IsSealedOrPocketMap(dropMap);
                 Logger.Debug(
                     $"[ItemSpawn] locker filled={result.LockerDeliveredCount}, " +
                     $"{undeliveredItems.Count} stack(s)/{dropCount} units → " +
-                    $"{(nomadicPocket ? "pod/spawn on NOMADIC pocket" : "drop pod")} " +
+                    $"{(sealedDrop ? "pod/spawn on sealed/pocket" : "drop pod")} " +
                     $"on {DescribeMap(dropMap)}");
 
                 result.DropPodDeliveredItems.AddRange(undeliveredItems);
@@ -1015,12 +1085,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 IntVec3 dropPos = GetDeliveryPosition(dropMap, pawn);
                 bool delivered = TryShuttleDelivery(undeliveredItems, dropPos, dropMap);
 
-                // Nomadic underground: if drop pod fails (thick roof / edge cases), GenSpawn near colonists
-                if (!delivered && (nomadicPocket || IsUndergroundMap(dropMap)))
+                // Sealed/pocket (VIM interiors, Anomaly, thick roof): pods fail → GenSpawn near colonists
+                if (!delivered && (sealedDelivery || sealedDrop || IsSealedOrPocketMap(dropMap)))
                 {
                     Logger.Warning(
                         $"[ItemSpawn] Drop pod failed on {DescribeMap(dropMap)} — " +
-                        "trying GenSpawn near colonist/center (nomadic/underground fallback)");
+                        "trying GenSpawn near colonist/center (sealed/pocket fallback)");
                     delivered = TryDirectSpawnItemsNearColony(undeliveredItems, dropMap, out dropPos);
                 }
 
@@ -1160,12 +1230,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         }
 
         /// <summary>
-        /// Best non-underground player-home map, if any (for pod fallback after lockers).
-        /// Returns null for pure nomadic play (no home base on surface).
+        /// Best non-sealed player-home map, if any (open-sky home for pod fallback).
+        /// Returns null for pure nomadic / pocket-only play.
         /// </summary>
         private static Map GetSurfaceHomeMap()
         {
-            return Find.Maps?.FirstOrDefault(m => m != null && m.IsPlayerHome && !IsUndergroundMap(m));
+            return Find.Maps?.FirstOrDefault(m => m != null && m.IsPlayerHome && !IsSealedOrPocketMap(m));
         }
 
         /// <summary>Drop-pod cell for items on map (shared cell finder).</summary>
@@ -1792,11 +1862,11 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         {
             Map preferredMap = ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
             Map surfaceMap = GetSurfaceHomeMap();
-            bool nomadicPocket = preferredMap != null && IsUndergroundMap(preferredMap) && surfaceMap == null;
+            bool sealedPreferred = preferredMap != null && IsSealedOrPocketMap(preferredMap);
 
             Logger.Debug(
                 $"[ItemSpawn] preCreated maps preferred={DescribeMap(preferredMap)} " +
-                $"surface={DescribeMap(surfaceMap)} nomadicPocket={nomadicPocket}");
+                $"surface={DescribeMap(surfaceMap)} sealed={sealedPreferred}");
 
             // Any map's locker that Accepts this item
             if (TryDeliverToLocker(item, preferredMap, pawn, result))
@@ -1816,9 +1886,9 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             IntVec3 dropPos = GetDeliveryPosition(dropMap, pawn);
             var stack = new List<Thing> { item };
             bool ok = TryShuttleDelivery(stack, dropPos, dropMap);
-            if (!ok && (nomadicPocket || IsUndergroundMap(dropMap)))
+            if (!ok && IsSealedOrPocketMap(dropMap))
             {
-                Logger.Warning("[ItemSpawn] preCreated pod failed — GenSpawn fallback");
+                Logger.Warning("[ItemSpawn] preCreated pod failed on sealed/pocket — GenSpawn fallback");
                 ok = TryDirectSpawnItemsNearColony(stack, dropMap, out dropPos);
             }
 
