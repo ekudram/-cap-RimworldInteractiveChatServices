@@ -1213,13 +1213,10 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             List<Thing> itemsToDeliver = CreateItemsForDelivery(thingDef, quantity, quality, finalMaterial);
 
-            // Preferred map for ordering + drop-pod fallback only (locker search is all maps)
+            // Preferred map for ordering + map overflow only (locker search is all maps)
             Map preferredMap = ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);
             Map surfaceMap = GetSurfaceHomeMap();
             bool sealedPreferred = preferredMap != null && IsSealedOrPocketMap(preferredMap);
-            // Sealed with no open-sky home (or colony living on sealed map) → expect GenSpawn fallback
-            bool sealedDelivery = sealedPreferred &&
-                                  (surfaceMap == null || MapHasFreeColonists(preferredMap));
 
             Logger.Debug(
                 $"[ItemSpawn] regularLoose maps: preferred={DescribeMap(preferredMap)} " +
@@ -1237,7 +1234,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     undeliveredItems.Add(item);
             }
 
-            // ── STEP 2: leftovers → drop pod (or GenSpawn on sealed/pocket) ──
+            // ── STEP 2: leftovers → drop pod (open sky) or GenPlace (sealed/pocket) ──
             if (undeliveredItems.Count > 0)
             {
                 int dropCount = undeliveredItems.Sum(t => t?.stackCount ?? 0);
@@ -1250,36 +1247,48 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     return result;
                 }
 
-                bool sealedDrop = IsSealedOrPocketMap(dropMap);
+                bool sealedDrop = IsSealedOrPocketMap(dropMap) || dropMap.Size.x < 40 || dropMap.Size.z < 40;
                 Logger.Debug(
                     $"[ItemSpawn] locker filled={result.LockerDeliveredCount}, " +
                     $"{undeliveredItems.Count} stack(s)/{dropCount} units → " +
-                    $"{(sealedDrop ? "pod/spawn on sealed/pocket" : "drop pod")} " +
+                    $"{(sealedDrop ? "GenPlace on sealed/pocket" : "drop pod")} " +
                     $"on {DescribeMap(dropMap)}");
 
-                result.DropPodDeliveredItems.AddRange(undeliveredItems);
-
                 IntVec3 dropPos = GetDeliveryPosition(dropMap, pawn);
-                bool delivered = TryShuttleDelivery(undeliveredItems, dropPos, dropMap);
+                bool delivered;
 
-                // Sealed/pocket (VIM interiors, Anomaly, thick roof): pods fail → GenSpawn near colonists
-                if (!delivered && (sealedDelivery || sealedDrop || IsSealedOrPocketMap(dropMap)))
+                // Sealed/tiny: never call DropThingsNear — it "succeeds" while pods fail at (-1000,-1000,-1000)
+                if (sealedDrop)
                 {
-                    Logger.Warning(
-                        $"[ItemSpawn] Drop pod failed on {DescribeMap(dropMap)} — " +
-                        "trying GenSpawn near colonist/center (sealed/pocket fallback)");
+                    Logger.Debug(
+                        $"[ItemSpawn] skip drop pod on sealed/tiny {DescribeMap(dropMap)} — GenPlace overflow");
                     delivered = TryDirectSpawnItemsNearColony(undeliveredItems, dropMap, out dropPos);
+                }
+                else
+                {
+                    delivered = TryShuttleDelivery(undeliveredItems, dropPos, dropMap);
+                    if (!delivered)
+                    {
+                        Logger.Warning(
+                            $"[ItemSpawn] Drop pod failed on {DescribeMap(dropMap)} — GenPlace fallback");
+                        delivered = TryDirectSpawnItemsNearColony(undeliveredItems, dropMap, out dropPos);
+                    }
                 }
 
                 if (delivered)
                 {
-                    result.DropPodDeliveredCount += dropCount;
+                    // Count only stacks that still exist (destroyed = failed place / bad pod)
+                    var survived = undeliveredItems.Where(t => t != null && !t.Destroyed).ToList();
+                    result.DropPodDeliveredItems.AddRange(survived);
+                    result.DropPodDeliveredCount += survived.Sum(t => t.stackCount);
                     result.DeliveryPosition = dropPos;
-                    Logger.Debug($"[ItemSpawn] map delivery OK at {dropPos} on {DescribeMap(dropMap)}");
+                    Logger.Debug(
+                        $"[ItemSpawn] map delivery OK at {dropPos} on {DescribeMap(dropMap)} " +
+                        $"(overflow stacks={survived.Count}/{undeliveredItems.Count})");
                 }
                 else
                 {
-                    Logger.Error("[ItemSpawn] Drop pod AND GenSpawn fallback failed after locker search");
+                    Logger.Error("[ItemSpawn] Drop pod AND GenPlace overflow failed after locker search");
                     LogMapSnapshot("[ItemSpawn deliver-fail]");
                 }
             }
@@ -1305,8 +1314,9 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         }
 
         /// <summary>
-        /// Last-resort item placement when drop pods cannot land (nomadic thick-roof maps).
-        /// Spawns each stack near a free colonist or map center.
+        /// Place loose stacks on the map when drop pods cannot land (sealed/pocket/tiny maps).
+        /// Tries locker area → free colonist → any player pawn → delivery cell → center.
+        /// Uses <see cref="ThingPlaceMode.Near"/> so bulk overflow can scatter on small interiors.
         /// </summary>
         private static bool TryDirectSpawnItemsNearColony(List<Thing> items, Map map, out IntVec3 spawnPos)
         {
@@ -1315,29 +1325,69 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             try
             {
-                if (!TryFindDeliveryCell(map, out spawnPos))
-                    spawnPos = map.Center;
+                Predicate<IntVec3> standable = c =>
+                    c.InBounds(map) && c.Standable(map) && c.Walkable(map) && !c.Fogged(map);
 
-                // Prefer standable cell near a free colonist
-                var colonist = map.mapPawns?.FreeColonistsSpawned?.FirstOrDefault();
-                if (colonist != null &&
-                    CellFinder.TryFindRandomCellNear(colonist.Position, map, 8,
-                        c => c.Standable(map) && c.Walkable(map) && !c.Fogged(map), out IntVec3 near))
+                // Anchor: near locker → colonist → player pawn → delivery cell → center
+                var locker = map.listerThings?.AllThings?
+                    .OfType<Building_RimazonLocker>()
+                    .FirstOrDefault(l => l.Spawned && !l.Destroyed);
+                if (locker != null &&
+                    CellFinder.TryFindRandomCellNear(locker.Position, map, 6, standable, out var nearLocker))
+                    spawnPos = nearLocker;
+
+                if (!spawnPos.IsValid)
                 {
-                    spawnPos = near;
+                    var colonist = map.mapPawns?.FreeColonistsSpawned?.FirstOrDefault();
+                    if (colonist != null &&
+                        CellFinder.TryFindRandomCellNear(colonist.Position, map, 8, standable, out var nearCol))
+                        spawnPos = nearCol;
                 }
+
+                if (!spawnPos.IsValid)
+                {
+                    var anyPlayer = map.mapPawns?.AllPawnsSpawned?
+                        .FirstOrDefault(p => p.Faction == Faction.OfPlayer && p.Spawned && !p.Dead);
+                    if (anyPlayer != null &&
+                        CellFinder.TryFindRandomCellNear(anyPlayer.Position, map, 8, standable, out var nearAny))
+                        spawnPos = nearAny;
+                }
+
+                if (!spawnPos.IsValid && TryFindDeliveryCell(map, out var cell))
+                    spawnPos = cell;
+
+                if (!spawnPos.IsValid)
+                    spawnPos = map.Center;
 
                 int ok = 0;
                 foreach (Thing item in items)
                 {
                     if (item == null || item.Destroyed) continue;
+                    if (item.Spawned) { ok++; continue; }
+
+                    // Near scatter; if full, try another standable cell
                     if (GenPlace.TryPlaceThing(item, spawnPos, map, ThingPlaceMode.Near))
+                    {
                         ok++;
-                    else
-                        Logger.Warning($"[ItemSpawn] GenPlace failed for {item.def.defName} at {spawnPos}");
+                        continue;
+                    }
+
+                    if (CellFinder.TryFindRandomCell(map, standable, out var alt) &&
+                        GenPlace.TryPlaceThing(item, alt, map, ThingPlaceMode.Near))
+                    {
+                        ok++;
+                        spawnPos = alt;
+                        continue;
+                    }
+
+                    Logger.Warning(
+                        $"[ItemSpawn] GenPlace failed for {item.def.defName} x{item.stackCount} " +
+                        $"on {DescribeMap(map)} at/near {spawnPos}");
                 }
 
-                Logger.Debug($"[ItemSpawn] GenSpawn fallback placed {ok}/{items.Count} stacks at {spawnPos}");
+                Logger.Debug(
+                    $"[ItemSpawn] GenPlace overflow placed {ok}/{items.Count} stacks " +
+                    $"near {spawnPos} on {DescribeMap(map)}");
                 return ok > 0;
             }
             catch (Exception ex)
@@ -1811,11 +1861,20 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         {
             try
             {
-                Logger.Debug($"Attempting delivery at position: {dropPos}, map: {map?.info?.parent?.Label ?? "null"}, map size: {map?.Size}, in bounds: {dropPos.InBounds(map)}");
+                Logger.Debug(
+                    $"Attempting delivery at position: {dropPos}, map: {map?.info?.parent?.Label ?? "null"}, " +
+                    $"map size: {map?.Size}, in bounds: {(map != null && dropPos.InBounds(map))}");
 
                 if (map == null)
                 {
                     Logger.Error("Map is null for delivery");
+                    return false;
+                }
+
+                // Drop pods cannot land on sealed/pocket/tiny interiors — caller should GenPlace instead
+                if (IsSealedOrPocketMap(map) || map.Size.x < 40 || map.Size.z < 40)
+                {
+                    Logger.Debug($"TryShuttleDelivery: refused sealed/tiny {DescribeMap(map)}");
                     return false;
                 }
 
@@ -1825,16 +1884,13 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     return false;
                 }
 
-                //LoggerDebug($"Calling DropPodUtility.DropThingsNear with {thingsToDeliver.Count} stacks at position {dropPos}");
-                // LogDropPodDetails(thingsToDeliver, dropPos, map);
+                if (thingsToDeliver == null || thingsToDeliver.Count == 0)
+                    return false;
 
-                // Use DropPodUtility which automatically handles both shuttles and drop pods
-                // IMPORTANT: Set instigator to null to prevent automatic letter generation
                 DropPodUtility.DropThingsNear(
                     dropPos,
                     map,
                     thingsToDeliver,
-                    // instigator: null, // This prevents the automatic "Cargo pod crash" letter
                     openDelay: 110,
                     leaveSlag: false,
                     canRoofPunch: true,
@@ -1842,7 +1898,17 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     allowFogged: false
                 );
 
-                //LoggerDebug($"Successfully called DropPodUtility for {thingsToDeliver.Count} items at {dropPos}");
+                // DropThingsNear can "succeed" while spawning pods at (-1000,-1000,-1000).
+                // If every stack is still unheld and unspawned, treat as failure.
+                bool anyPlaced = thingsToDeliver.Any(t =>
+                    t != null && !t.Destroyed && (t.Spawned || t.ParentHolder != null));
+                if (!anyPlaced)
+                {
+                    Logger.Warning(
+                        $"TryShuttleDelivery: DropThingsNear left 0 stacks placed on {DescribeMap(map)}");
+                    return false;
+                }
+
                 return true;
             }
             catch (Exception ex)
@@ -2073,14 +2139,23 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             IntVec3 dropPos = GetDeliveryPosition(dropMap, pawn);
             var stack = new List<Thing> { item };
-            bool ok = TryShuttleDelivery(stack, dropPos, dropMap);
-            if (!ok && IsSealedOrPocketMap(dropMap))
+            bool sealedDrop = IsSealedOrPocketMap(dropMap) || dropMap.Size.x < 40 || dropMap.Size.z < 40;
+            bool ok;
+
+            if (sealedDrop)
             {
-                Logger.Warning("[ItemSpawn] preCreated pod failed on sealed/pocket — GenSpawn fallback");
+                Logger.Debug(
+                    $"[ItemSpawn] preCreated skip drop pod on sealed/tiny {DescribeMap(dropMap)} — GenPlace");
                 ok = TryDirectSpawnItemsNearColony(stack, dropMap, out dropPos);
             }
+            else
+            {
+                ok = TryShuttleDelivery(stack, dropPos, dropMap);
+                if (!ok)
+                    ok = TryDirectSpawnItemsNearColony(stack, dropMap, out dropPos);
+            }
 
-            if (ok)
+            if (ok && item != null && !item.Destroyed)
             {
                 result.DropPodDeliveredItems.Add(item);
                 result.PrimaryMethod = DeliveryMethod.DropPod;
