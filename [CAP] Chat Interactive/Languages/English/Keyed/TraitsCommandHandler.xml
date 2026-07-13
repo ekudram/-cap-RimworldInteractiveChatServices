@@ -11,9 +11,9 @@
 
   <!-- Trait info formatting (simple view) -->
 
-  <RICS.TCH.SimpleInfo.Format>📖 {0}: Add - {1}{3}, Remove - {2}{3}</RICS.TCH.SimpleInfo.Format>
+  <RICS.TCH.SimpleInfo.Format>📖 {0}: Add - {1} {3}, Remove - {2} {3}</RICS.TCH.SimpleInfo.Format>
 
-  <RICS.TCH.SimpleInfo.WithDescription>📖 {0}: Add - {1}{3}, Remove - {2}{3} | {4}</RICS.TCH.SimpleInfo.WithDescription>
+  <RICS.TCH.SimpleInfo.WithDescription>📖 {0}: Add - {1} {3}, Remove - {2} {3} | {4}</RICS.TCH.SimpleInfo.WithDescription>
 
   <!-- Add Trait Command (RICS.TCH.Add.*) -->
 
@@ -31,9 +31,9 @@
 
   <RICS.TCH.Add.TraitDefMissing>Error: Trait definition for '{0}' not found.</RICS.TCH.Add.TraitDefMissing>
 
-  <RICS.TCH.Add.NotEnoughCoins>You need {0}{2} to add this trait, but you only have {1}{2}.</RICS.TCH.Add.NotEnoughCoins>
+  <RICS.TCH.Add.NotEnoughCoins>You need {0} {2} to add this trait, but you only have {1} {2}.</RICS.TCH.Add.NotEnoughCoins>
 
-  <RICS.TCH.Add.Success>✅ Added trait '{0}' to {1} for {2}{3}!</RICS.TCH.Add.Success>
+  <RICS.TCH.Add.Success>✅ Added trait '{0}' to {1} for {2} {3}!</RICS.TCH.Add.Success>
 
   <RICS.TCH.Error.add>An error occurred while adding the trait.</RICS.TCH.Error.add>
 
@@ -52,9 +52,9 @@
 
   <RICS.TCH.Remove.ForcedTrait>❌ The trait '{0}' is forced (e.g. from genes) and cannot be removed.</RICS.TCH.Remove.ForcedTrait>
 
-  <RICS.TCH.Remove.NotEnoughCoins>You need {0}{2} to remove this trait, but you only have {1}{2}.</RICS.TCH.Remove.NotEnoughCoins>
+  <RICS.TCH.Remove.NotEnoughCoins>You need {0} {2} to remove this trait, but you only have {1} {2}.</RICS.TCH.Remove.NotEnoughCoins>
 
-  <RICS.TCH.Remove.Success>✅ Removed trait '{0}' from {1} for {2}{3}!</RICS.TCH.Remove.Success>
+  <RICS.TCH.Remove.Success>✅ Removed trait '{0}' from {1} for {2} {3}!</RICS.TCH.Remove.Success>
 
   <!-- Reuse the same generic error key as add command -->
   <RICS.TCH.Errorremove>An error occurred while removing the trait.</RICS.TCH.Errorremove> 
@@ -81,9 +81,9 @@
 
   <RICS.TCH.Replace.ConflictWithExisting>❌ {0} conflicts with your pawn's existing trait {1}.</RICS.TCH.Replace.ConflictWithExisting>
 
-  <RICS.TCH.Replace.NotEnoughCoins>You need {0}{3} to replace {1} with {2}, but you only have {4}{3}.</RICS.TCH.Replace.NotEnoughCoins>
+  <RICS.TCH.Replace.NotEnoughCoins>You need {0} {3} to replace {1} with {2}, but you only have {4} {3}.</RICS.TCH.Replace.NotEnoughCoins>
 
-  <RICS.TCH.Replace.Success>✅ Replaced trait '{0}' with '{1}' on {2} for {3}{4}!</RICS.TCH.Replace.Success>
+  <RICS.TCH.Replace.Success>✅ Replaced trait '{0}' with '{1}' on {2} for {3} {4}!</RICS.TCH.Replace.Success>
 
   <RICS.TCH.Error.Replace>An error occurred while replacing traits.</RICS.TCH.Error.Replace>
 
@@ -108,7 +108,7 @@
 
   <RICS.TCH.Set.NotEnoughCoins>You need {0} {1} to set traits, but you only have {2} {1}.</RICS.TCH.Set.NotEnoughCoins>
 
-  <RICS.TCH.Set.Success>✅ Set new traits: {0} for {1}{2}</RICS.TCH.Set.Success>
+  <RICS.TCH.Set.Success>✅ Set new traits: {0} for {1} {2}</RICS.TCH.Set.Success>
 
   <RICS.TCH.Error.setting>An error occurred while setting traits.</RICS.TCH.Error.setting>
 
