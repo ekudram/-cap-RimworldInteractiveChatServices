@@ -73,6 +73,8 @@ namespace CAP_ChatInteractive.Commands.TestCommands
                     "Good prompt engineering is basically \"How do I speak to a superintelligent alien who has no cultural context and takes everything literally?\" - Grok",
                     "Ok so the one thing I learned with AI is to be direct. And the english language is if full of ambiquity. -- Captolamia",
                     "LenzaRNG is a Pretty Princess.!",
+                    "The !event command can be used to trigger events in the colony.  Example: !event psychic soothe will trigger a psychic soothe event.",
+                    "LenzaRNG, KillerKeo, JennaDorDor all streamers that tested RICS during development and provided feedback to make RICS better.  They are all amazing streamers and I highly recommend checking them out.",
 
 
 
