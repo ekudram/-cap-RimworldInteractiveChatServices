@@ -72,6 +72,8 @@ namespace CAP_ChatInteractive.Commands.TestCommands
                     "Meow!",
                     "Good prompt engineering is basically \"How do I speak to a superintelligent alien who has no cultural context and takes everything literally?\" - Grok",
                     "Ok so the one thing I learned with AI is to be direct. And the english language is if full of ambiquity. -- Captolamia",
+                    "LenzaRNG is a Pretty Princess.!",
+
 
 
                     // Add more tips here later - they will be picked randomly

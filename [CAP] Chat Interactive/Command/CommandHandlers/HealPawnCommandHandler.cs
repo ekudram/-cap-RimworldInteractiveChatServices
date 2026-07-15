@@ -426,7 +426,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return pick.Description;
         }
 
-        /// <summary>True if vanilla Healer Mech Serum use-effects accept this pawn right now.</summary>
+        /// <summary>
+        /// Only the real heal comp counts. MechSerumHealer also has PlaySound + DestroySelf;
+        /// those always "accept" and caused infinite free/paid fake doses after heal was done.
+        /// </summary>
+        private static bool IsPrimaryHealUseEffect(CompUseEffect comp)
+        {
+            if (comp == null) return false;
+            string n = comp.GetType().Name;
+            // Vanilla: CompUseEffect_FixWorstHealthCondition
+            return n.IndexOf("FixWorstHealth", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        /// <summary>True if the serum's heal-comp can still fix something on this pawn.</summary>
         private static bool CanApplyHealerSerum(Pawn pawn)
         {
             if (pawn == null || pawn.Dead) return false;
@@ -442,8 +454,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 foreach (var comp in twc.AllComps)
                 {
-                    if (comp is CompUseEffect use && use.CanBeUsedBy(pawn).Accepted)
-                        return true;
+                    if (comp is CompUseEffect use && IsPrimaryHealUseEffect(use))
+                        return use.CanBeUsedBy(pawn).Accepted;
                 }
                 return false;
             }
@@ -459,8 +471,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         /// <summary>
-        /// Apply up to <paramref name="maxDoses"/> vanilla Healer Mech Serum effects.
-        /// Returns dose count + human-readable list of what each dose fixed (hediff snapshot diff).
+        /// Apply up to <paramref name="maxDoses"/> real Healer Mech Serum heals.
+        /// Only counts a dose if FixWorstHealth ran AND hediff state changed.
         /// </summary>
         private static (int doses, List<string> descriptions) ApplyHealerSerumDoses(Pawn pawn, int maxDoses)
         {
@@ -477,8 +489,24 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!ApplyHealerSerumEffect(pawn))
                     break;
 
-                doses++;
                 string what = DescribeHealDiff(before, pawn);
+                // Reject no-op "success" (should not happen if only FixWorst runs, but belt+suspenders)
+                if (string.IsNullOrEmpty(what) ||
+                    what.IndexOf("unspecified", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    // Verify snapshot actually changed
+                    var afterKeys = new HashSet<string>(SnapshotHediffs(pawn).Select(s => s.Key));
+                    bool changed = before.Any(b => !afterKeys.Contains(b.Key))
+                                   || afterKeys.Count != before.Count;
+                    if (!changed)
+                    {
+                        Logger.Warning(
+                            $"Healer serum reported effect but hediffs unchanged on {pawn.LabelShort} — stopping loop (no charge for no-ops).");
+                        break;
+                    }
+                }
+
+                doses++;
                 descriptions.Add(what);
                 Logger.Debug($"Healer serum dose {doses} on {pawn.LabelShort}: {what}");
             }
@@ -663,9 +691,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         /// <summary>
-        /// Applies the EXACT vanilla effect of one Healer Mech Serum to the pawn.
-        /// Delegates hediff selection to vanilla CompUseEffect (never strips implants).
-        /// Map may be null (caravan) — skip sound only.
+        /// One real Healer Mech Serum heal (FixWorstHealthCondition only).
+        /// Ignores PlaySound / DestroySelf comps — those were falsely counting as successful doses
+        /// after "no healable injuries", burning the viewer's entire bank.
         /// </summary>
         private static bool ApplyHealerSerumEffect(Pawn pawn)
         {
@@ -684,46 +712,49 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 serum = ThingMaker.MakeThing(serumDef);
 
-                if (serum is ThingWithComps thingWithComps)
+                if (!(serum is ThingWithComps thingWithComps))
+                    return false;
+
+                CompUseEffect healComp = null;
+                foreach (var comp in thingWithComps.AllComps)
                 {
-                    bool anyEffectApplied = false;
-
-                    foreach (var comp in thingWithComps.AllComps)
+                    if (comp is CompUseEffect use && IsPrimaryHealUseEffect(use))
                     {
-                        if (comp is CompUseEffect compUseEffect)
-                        {
-                            AcceptanceReport report = compUseEffect.CanBeUsedBy(pawn);
-                            if (report.Accepted)
-                            {
-                                compUseEffect.DoEffect(pawn);
-                                anyEffectApplied = true;
-                                Logger.Debug($"Applied {comp.GetType().Name} (Healer Serum) to {pawn.Name}");
-                            }
-                            else
-                            {
-                                Logger.Debug($"CompUseEffect {comp.GetType().Name} rejected: {report.Reason}");
-                            }
-                        }
-                    }
-
-                    if (anyEffectApplied)
-                    {
-                        if (pawn.Map != null && pawn.Spawned)
-                            SoundDefOf.MechSerumUsed.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
-                        return true;
+                        healComp = use;
+                        break;
                     }
                 }
+
+                if (healComp == null)
+                {
+                    Logger.Error("MechSerumHealer has no FixWorstHealth CompUseEffect.");
+                    return false;
+                }
+
+                AcceptanceReport report = healComp.CanBeUsedBy(pawn);
+                if (!report.Accepted)
+                {
+                    Logger.Debug($"Healer serum heal-comp rejected: {report.Reason}");
+                    return false;
+                }
+
+                healComp.DoEffect(pawn);
+                Logger.Debug($"Applied {healComp.GetType().Name} (Healer Serum) to {pawn.Name}");
+
+                if (pawn.Map != null && pawn.Spawned)
+                    SoundDefOf.MechSerumUsed.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+
+                return true;
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error applying Healer Serum effect: {ex}");
+                return false;
             }
             finally
             {
                 SafeDestroyThing(serum);
             }
-
-            return false;
         }
     }
 }

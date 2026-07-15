@@ -16,6 +16,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Represents a weather event that can be purchased and triggered in the game.
+using System.Linq;
 using RimWorld;
 using Verse;
 
@@ -31,7 +32,10 @@ namespace CAP_ChatInteractive.Incidents
         public int BaseCost { get; set; } = 200;
         public string KarmaType { get; set; } = "Neutral";
         public int EventCap { get; set; } = 3;
-        public bool Enabled { get; set; } = true;
+        /// <summary>
+        /// Default false like BuyableIncident; constructor enables Core/DLC and leaves third-party mod weather off.
+        /// </summary>
+        public bool Enabled { get; set; } = false;
 
         // Additional data
         public string ModSource { get; set; } = "RimWorld";
@@ -53,6 +57,35 @@ namespace CAP_ChatInteractive.Incidents
             ModSource = weatherDef.modContentPack?.Name ?? "RimWorld";
 
             SetDefaultPricing(weatherDef);
+
+            // Match events store: Core + official DLC weather on; third-party mod weather off until enabled manually
+            if (ShouldAutoDisableModWeather(weatherDef))
+                Enabled = false;
+            else
+                Enabled = true;
+        }
+
+        /// <summary>
+        /// Same policy as BuyableIncident.ShouldAutoDisableModEvent:
+        /// Core/RimWorld and official DLC stay available; third-party mod weather defaults off.
+        /// </summary>
+        private bool ShouldAutoDisableModWeather(WeatherDef weatherDef)
+        {
+            if (ModSource == "RimWorld" || ModSource == "Core")
+                return false;
+
+            // Official DLCs (same set as events; Anomaly intentionally not listed)
+            string[] officialDLCs = { "Royalty", "Ideology", "Biotech", "Odyssey" };
+            if (officialDLCs.Any(dlc => ModSource != null && ModSource.Contains(dlc)))
+                return false;
+
+            // Also treat Ludeon package ids / content as vanilla-side if name is odd
+            string packageId = weatherDef?.modContentPack?.PackageId;
+            if (!string.IsNullOrEmpty(packageId) &&
+                packageId.StartsWith("Ludeon.", System.StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return true;
         }
 
         private void SetDefaultPricing(WeatherDef weatherDef)
