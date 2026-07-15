@@ -318,8 +318,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 pawnsTreated++;
                 if (descs != null)
                 {
+                    // Prefer pawn nick / viewer display name — not raw platform IDs (twitch:123)
+                    string patientLabel = FormatHealPatientLabel(username, pawn);
                     foreach (var d in descs)
-                        allHealedDescriptions.Add($"{username}: {d}");
+                        allHealedDescriptions.Add($"{patientLabel}: {d}");
                 }
             }
 
@@ -348,6 +350,73 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         // ─── Serum helpers (vanilla MechSerumHealer use-effects only) ───
+
+        /// <summary>
+        /// Human-readable label for mass-heal invoice lines.
+        /// Prefer pawn nickname, then viewer DisplayName/Username — never raw "twitch:12345".
+        /// </summary>
+        private static string FormatHealPatientLabel(string assignmentKey, Pawn pawn)
+        {
+            // 1) Pawn nickname (often set to chat name on !pawn)
+            try
+            {
+                if (pawn?.Name is NameTriple triple && !string.IsNullOrWhiteSpace(triple.Nick))
+                    return triple.Nick;
+                if (pawn != null && !string.IsNullOrWhiteSpace(pawn.LabelShort))
+                {
+                    // LabelShort may be "First 'Nick' Last" — still better than platform id
+                    string shortName = pawn.LabelShort;
+                    // Prefer Nick extraction if Name is NameTriple already handled
+                    if (pawn.Name is NameSingle single && !string.IsNullOrWhiteSpace(single.Name))
+                        return single.Name;
+                    if (!(pawn.Name is NameTriple))
+                        return shortName;
+                    // NameTriple without Nick: use full short label
+                    if (string.IsNullOrWhiteSpace((pawn.Name as NameTriple)?.Nick))
+                        return shortName;
+                }
+            }
+            catch { /* fall through */ }
+
+            // 2) Viewer display / username from platform assignment key
+            try
+            {
+                Viewer viewer = null;
+                if (!string.IsNullOrEmpty(assignmentKey))
+                {
+                    viewer = Viewers.GetViewerByPlatformIdentifier(assignmentKey);
+                    if (viewer == null && !assignmentKey.Contains(":"))
+                        viewer = Viewers.GetViewerNoAdd(assignmentKey);
+                }
+
+                if (viewer != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(viewer.DisplayName))
+                        return viewer.DisplayName;
+                    if (!string.IsNullOrWhiteSpace(viewer.Username) &&
+                        viewer.Username.IndexOf(':') < 0)
+                        return viewer.Username;
+                }
+            }
+            catch { /* fall through */ }
+
+            // 3) Last resort: strip "platform:" prefix if present
+            if (!string.IsNullOrEmpty(assignmentKey) && assignmentKey.Contains(":"))
+            {
+                int idx = assignmentKey.IndexOf(':');
+                if (idx >= 0 && idx < assignmentKey.Length - 1)
+                {
+                    // Still an id — better than nothing; try pawn name full
+                    if (pawn?.Name != null)
+                        return pawn.Name.ToStringShort;
+                }
+            }
+
+            return pawn?.Name?.ToStringShort
+                   ?? pawn?.LabelShort
+                   ?? assignmentKey
+                   ?? "unknown";
+        }
 
         private struct HediffSnap
         {
