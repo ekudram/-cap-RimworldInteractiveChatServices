@@ -35,7 +35,9 @@
   <RICS.AI.BotName>Bot Display Name (used in chat and as AI "viewer"):</RICS.AI.BotName>
   <RICS.AI.SendGameState>Send full game state snapshot with prompts</RICS.AI.SendGameState>
   <RICS.AI.SendChatHistory>Send recent chat history with prompts</RICS.AI.SendChatHistory>
-  <RICS.AI.UpdateInterval>Game State Push Interval (minutes, 0 = disabled)</RICS.AI.UpdateInterval>
+  <RICS.AI.UpdateInterval>Game State Push Interval (hours, 0 = disabled)</RICS.AI.UpdateInterval>
+  <RICS.AI.UpdateIntervalValue>{0} hours</RICS.AI.UpdateIntervalValue>
+  <RICS.AI.UpdateIntervalDisabled>disabled</RICS.AI.UpdateIntervalDisabled>
   <RICS.AI.Timeout>Response Timeout (ms)</RICS.AI.Timeout>
   <RICS.AI.PushEndpoint>Game State Push Endpoint (POST target for bot):</RICS.AI.PushEndpoint>
   <RICS.AI.CanExecuteCommands>Allow bot to execute in-game commands via file interface (powerful but risky)</RICS.AI.CanExecuteCommands>

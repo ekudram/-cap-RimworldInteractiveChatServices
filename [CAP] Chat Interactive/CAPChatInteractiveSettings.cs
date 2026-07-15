@@ -293,11 +293,12 @@ namespace CAP_ChatInteractive
         public int AIChatBotTimeoutMs = 8000;                       // Max wait for bot response before graceful fallback
         public bool AIChatBotSendGameState = true;                  // Whether to include colony/pawn snapshot in context
         public bool AIChatBotSendChatHistory = true;                // Include recent chat context (privacy note: viewer names only when necessary)
-        // How often (in real minutes) we refresh the cached game state JSON that the external Python bot can poll via GET /gamestate.
-        // Default 15 minutes keeps the data reasonably fresh for periodic "colony report" style interactions without hammering every few seconds.
-        // Set to 0 to disable periodic updates entirely (the bot will still receive fresh state on explicit !ricsaichatbot commands).
-
-        public int AIChatBotGameStateUpdateIntervalMinutes = 15;  // <--- Need to add to Dialog_GlobalSettings in the UI to be adjustable by users
+        // How often (in real minutes) we refresh + push game state for the external AI bot colony report.
+        // Stored in minutes; UI shows hours (0–48). Default 24 hours. Max 48 hours. 0 = disabled.
+        // Tick math: minutes * 2500. Explicit !ricsaichatbot commands still get fresh state when enabled.
+        public const int AIChatBotGameStateIntervalMaxHours = 48;
+        public const int AIChatBotGameStateIntervalDefaultHours = 24;
+        public int AIChatBotGameStateUpdateIntervalMinutes = AIChatBotGameStateIntervalDefaultHours * 60;
         public string AIChatBotGameStatePushEndpoint = "http://127.0.0.1:5000/gamestate_update"; // New in 1.39+ — where the external AI bot listens for pushed game state JSON (POST). Change if your bot runs on a different host/port.
         public bool AIChatBotCanExecuteCommands = true; // Whether the AI chatbot is allowed to execute in-game commands (e.g. via special syntax in its response that RICS recognizes). This is a powerful feature that can enable deep integration and emergent storytelling, but it also carries risks if the bot generates unexpected commands. Use with caution and consider starting with this disabled until you are confident in the bot's behavior.
 
@@ -458,7 +459,18 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref AIChatBotTimeoutMs, "aiChatBotTimeoutMs", 8000);
             Scribe_Values.Look(ref AIChatBotSendGameState, "aiChatBotSendGameState", true);
             Scribe_Values.Look(ref AIChatBotSendChatHistory, "aiChatBotSendChatHistory", true);
-            Scribe_Values.Look(ref AIChatBotGameStateUpdateIntervalMinutes, "aiChatBotGameStateUpdateIntervalMinutes", 15);
+            Scribe_Values.Look(
+                ref AIChatBotGameStateUpdateIntervalMinutes,
+                "aiChatBotGameStateUpdateIntervalMinutes",
+                AIChatBotGameStateIntervalDefaultHours * 60);
+            // Clamp after load (UI stores minutes; max 48 hours)
+            if (Scribe.mode == LoadSaveMode.LoadingVars || Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                AIChatBotGameStateUpdateIntervalMinutes = UnityEngine.Mathf.Clamp(
+                    AIChatBotGameStateUpdateIntervalMinutes,
+                    0,
+                    AIChatBotGameStateIntervalMaxHours * 60);
+            }
             Scribe_Values.Look(ref AIChatBotGameStatePushEndpoint, "aiChatBotGameStatePushEndpoint", "http://127.0.0.1:5000/gamestate_update");
             Scribe_Values.Look(ref AIChatBotCanExecuteCommands, "aiChatBotCanExecuteCommands", true);
 

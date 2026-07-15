@@ -115,9 +115,18 @@ namespace _CAP__Chat_Interactive
 
                 listing.Gap(6f);
 
-                // Interval slider
-                listing.Label(string.Format("RICS.AI.UpdateInterval".Translate() + ": {0} min", settings.AIChatBotGameStateUpdateIntervalMinutes));
-                settings.AIChatBotGameStateUpdateIntervalMinutes = (int)listing.Slider(settings.AIChatBotGameStateUpdateIntervalMinutes, 0, 60);
+                // Interval slider — stored as minutes, UI in hours (0–48, default 24)
+                int maxMinutes = CAPGlobalChatSettings.AIChatBotGameStateIntervalMaxHours * 60;
+                int minutes = Mathf.Clamp(settings.AIChatBotGameStateUpdateIntervalMinutes, 0, maxMinutes);
+                float hours = minutes / 60f;
+                string intervalLabel = minutes <= 0
+                    ? "RICS.AI.UpdateIntervalDisabled".Translate()
+                    : "RICS.AI.UpdateIntervalValue".Translate(Mathf.RoundToInt(hours));
+                listing.Label("RICS.AI.UpdateInterval".Translate() + ": " + intervalLabel);
+                hours = listing.Slider(hours, 0f, CAPGlobalChatSettings.AIChatBotGameStateIntervalMaxHours);
+                // Snap to whole hours so tick math stays clean
+                settings.AIChatBotGameStateUpdateIntervalMinutes =
+                    Mathf.Clamp(Mathf.RoundToInt(hours) * 60, 0, maxMinutes);
 
                 // Timeout
                 listing.Label(string.Format("RICS.AI.Timeout".Translate() + ": {0} ms", settings.AIChatBotTimeoutMs));
@@ -157,7 +166,8 @@ namespace _CAP__Chat_Interactive
                     settings.AIChatBotName = "Masie Lamia";
                     settings.AIChatBotGameStatePushEndpoint = "http://127.0.0.1:5000/gamestate_update";
                     settings.AIChatBotTimeoutMs = 8000;
-                    settings.AIChatBotGameStateUpdateIntervalMinutes = 15;
+                    settings.AIChatBotGameStateUpdateIntervalMinutes =
+                        CAPGlobalChatSettings.AIChatBotGameStateIntervalDefaultHours * 60; // 24 hours
                     settings.AIChatBotSendGameState = true;
                     settings.AIChatBotSendChatHistory = true;
                     settings.AIChatBotCanExecuteCommands = true;

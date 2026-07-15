@@ -501,7 +501,9 @@ namespace CAP_ChatInteractive.AI
                         name = map.Parent?.Label ?? "Unknown Colony",
                         biome = map.Biome?.label ?? "Unknown",
                         outdoorTemp = map.mapTemperature?.OutdoorTemp ?? 0f
-                    }
+                    },
+                    // Weather for Masie colony reports (additive — all prior fields unchanged)
+                    weather = BuildWeatherSnapshot(map)
                 };
 
                 Logger.Debug("AI Cache Complete");
@@ -667,6 +669,37 @@ namespace CAP_ChatInteractive.AI
         }
 
         public string GetCachedGameStateJson() => _cachedGameStateJson;
+
+        /// <summary>
+        /// Compact weather block for colony report JSON (current + last weather labels).
+        /// </summary>
+        private static object BuildWeatherSnapshot(Map map)
+        {
+            try
+            {
+                var wm = map?.weatherManager;
+                var cur = wm?.curWeather;
+                var last = wm?.lastWeather;
+                string desc = cur?.description;
+                if (!string.IsNullOrEmpty(desc) && desc.Length > 240)
+                    desc = desc.Substring(0, 240) + "...";
+
+                return new
+                {
+                    current = cur?.label ?? "Unknown",
+                    currentDef = cur?.defName,
+                    description = desc,
+                    last = last?.label,
+                    outdoorTempC = map?.mapTemperature != null
+                        ? Math.Round(map.mapTemperature.OutdoorTemp, 1)
+                        : (double?)null
+                };
+            }
+            catch
+            {
+                return new { current = "Unknown" };
+            }
+        }
 
         /// <summary>
         /// Pushes the current cached game state JSON to the external AI bot (Masie V9+) via POST to /gamestate_update.

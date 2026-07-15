@@ -193,11 +193,23 @@ namespace CAP_ChatInteractive.Commands.AICommands
                 description = pawn.needs.mood.MoodString
             } : null;
 
+            // Gender only when the race uses it (not Gender.None)
+            string genderLabel = pawn.gender == Gender.None ? null : pawn.gender.ToString();
+
+            bool isSlave = false;
+            try
+            {
+                if (ModsConfig.IdeologyActive)
+                    isSlave = pawn.IsSlave;
+            }
+            catch { /* Ideology optional */ }
+
             var report = new
             {
                 status = "pawn_report",
-                chatUsername = chatUsername,                    // ← NEW
+                chatUsername = chatUsername,
                 pawnName = pawn.Name?.ToStringFull ?? pawn.LabelShort,
+                gender = genderLabel,
                 ageBiological = pawn.ageTracker?.AgeBiologicalYears ?? 0,
                 ageChronological = pawn.ageTracker?.AgeChronologicalYears ?? 0,
 
@@ -253,6 +265,9 @@ namespace CAP_ChatInteractive.Commands.AICommands
                 },
 
                 isColonist = pawn.IsColonist,
+                isFreeColonist = pawn.IsFreeColonist,
+                isPrisoner = pawn.IsPrisoner || pawn.IsPrisonerOfColony,
+                isSlave = isSlave,
                 faction = pawn.Faction?.Name ?? "None",
                 ideo = pawn.Ideo?.name ?? "None"
             };
