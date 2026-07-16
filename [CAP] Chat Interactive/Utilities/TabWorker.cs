@@ -31,10 +31,10 @@ using Verse;
 namespace CAP_ChatInteractive
 {
     /// <summary>
-    /// Represents a single tab item in the tabbed interface.
-    /// Needs a lot of work,
-    /// Needs to handle multiple lines of tabs
+    /// Legacy custom tab item. Settings dialog now uses Verse.TabRecord + Verse.TabDrawer
+    /// (multi-row / TabAtlas). Kept for reference; do not use for new UI.
     /// </summary>
+    [Obsolete("Use Verse.TabRecord + Verse.TabDrawer (see Dialog_ChatInteractiveSettings).")]
     public class TabItem
     {
         public string Label { get; set; }
@@ -50,6 +50,10 @@ namespace CAP_ChatInteractive
         }
     }
 
+    /// <summary>
+    /// Legacy single-row custom tab bar. Prefer Verse.TabDrawer.DrawTabs / DrawTabsOverflow.
+    /// </summary>
+    [Obsolete("Use Verse.TabRecord + Verse.TabDrawer (see Dialog_ChatInteractiveSettings).")]
     public class TabWorker
     {
         private readonly List<TabItem> _tabItems = new();

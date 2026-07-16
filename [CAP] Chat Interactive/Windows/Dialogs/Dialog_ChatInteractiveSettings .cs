@@ -1,26 +1,27 @@
 ﻿// Dialog_ChatInteractiveSettings.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
-// 
+//
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // CAP Chat Interactive is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Affero General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-// A dialog window for configuring Chat Interactive settings with multiple tabs
-
-// Sets up the Tabs and window for Settings, but the actual content of each tab is drawn in separate classes for better organization and maintainability.
+//
+// Settings window — uses RimWorld Verse.TabDrawer + TabRecord (multi-row overflow,
+// vanilla TabAtlas look). Tab *content* still lives in TabDrawer_* static drawers.
 
 using _CAP__Chat_Interactive;
 using Newtonsoft.Json;
 using RimWorld;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Verse;
@@ -29,15 +30,32 @@ namespace CAP_ChatInteractive
 {
     public class Dialog_ChatInteractiveSettings : Window
     {
-        private readonly TabWorker _tabWorker = new();
-        private Vector2 _scrollPosition = Vector2.zero;
+        private enum SettingsTab
+        {
+            Global,
+            Twitch,
+            YouTube,
+            Kick,
+            Economy,
+            GameEvents,
+            Rewards,
+            AI
+        }
 
-        public override Vector2 InitialSize => new Vector2(800f, 700f);
+        private SettingsTab selectedTab = SettingsTab.Global;
+        private readonly List<TabRecord> tabs = new List<TabRecord>();
+
+        // Min/max tab chip width for overflow layout (vanilla-style multi-row)
+        private const float MinTabWidth = 90f;
+        private const float MaxTabWidth = 150f;
+        private const float BottomBarHeight = 50f;
+
+        public override Vector2 InitialSize => new Vector2(820f, 720f);
 
         public Dialog_ChatInteractiveSettings()
         {
             doCloseButton = false;
-            forcePause = false; // Changed from true to false since this is now the main settings
+            forcePause = false;
             absorbInputAroundWindow = true;
             closeOnAccept = false;
             closeOnCancel = true;
@@ -48,105 +66,158 @@ namespace CAP_ChatInteractive
         public override void PreOpen()
         {
             base.PreOpen();
+            // Rebuild every open so we never stack tabs if PreOpen runs again
+            RebuildTabs();
+            if (!IsValidSelectedTab())
+                selectedTab = SettingsTab.Global;
+        }
 
-            // Register all tab drawers
-
-            _tabWorker.AddTab(new TabItem
+        private bool IsValidSelectedTab()
+        {
+            foreach (var t in Enum.GetValues(typeof(SettingsTab)))
             {
-                Label = "RICS.CIS.Global".Translate(),
-                Tooltip = "RICS.CIS.Global.Tooltip".Translate(),
-                ContentDrawer = TabDrawer_Global.Draw
-            });
+                if ((SettingsTab)t == selectedTab)
+                    return true;
+            }
+            return false;
+        }
 
-            _tabWorker.AddTab(new TabItem
-            {
-                Label = "RICS.CIS.Twitch".Translate(),
-                Tooltip = "RICS.CIS.Global.Tooltip".Translate(),
-                ContentDrawer = TabDrawer_Twitch.Draw
-            });
+        private void RebuildTabs()
+        {
+            tabs.Clear();
 
-            _tabWorker.AddTab(new TabItem
-            {
-                Label = "RICS.CIS.YouTube".Translate(),
-                Tooltip = "RICS.CIS.Twitch.Tooltip".Translate(),
-                ContentDrawer = TabDrawer_YouTube.Draw
-            });
+            // selectedGetter keeps Selected state live without mutating TabRecord.selected each frame
+            tabs.Add(new TabRecord(
+                "RICS.CIS.Global".Translate(),
+                () => selectedTab = SettingsTab.Global,
+                () => selectedTab == SettingsTab.Global));
 
-            /// <summary>
-            /// NEEDS TABS FIXED — currently commented out because the Kick tab is not fully implemented yet. Uncomment when ready to test.
-            /// NEEDS TABS SYSTEM FIXED SO WE CAN ADD MORE TABS TO A SECOND LINE
-            /// </summary>
-            /*
-            // Kick tab — added for full multi-platform support (Discord/Steam-ready pattern)
-            _tabWorker.AddTab(new TabItem   // ← uncomment when you're ready to test
-            {
-                Label = "RICS.CIS.Kick".Translate(),
-                Tooltip = "RICS.CIS.Kick.Tooltip".Translate(),
-                ContentDrawer = TabDrawer_Kick.Draw
-            });
-            */
-            //_tabWorker.AddTab(new TabItem
-            //{
-            //    Label = "OAuth",
-            //    Tooltip = "Configure YouTube OAuth settings",
-            //    ContentDrawer = TabDrawer_OAuth.Draw
-            //});
+            tabs.Add(new TabRecord(
+                "RICS.CIS.Twitch".Translate(),
+                () => selectedTab = SettingsTab.Twitch,
+                () => selectedTab == SettingsTab.Twitch));
 
-            _tabWorker.AddTab(new TabItem
-            {
-                Label = "RICS.CIS.Economy".Translate(),
-                Tooltip = "RICS.CIS.Economy.Tooltip".Translate(),
-                ContentDrawer = TabDrawer_Economy.Draw
-            });
+            tabs.Add(new TabRecord(
+                "RICS.CIS.YouTube".Translate(),
+                () => selectedTab = SettingsTab.YouTube,
+                () => selectedTab == SettingsTab.YouTube));
 
-            _tabWorker.AddTab(new TabItem
-            {
-                Label = "RICS.CIS.GameEvents".Translate(),
-                Tooltip = "RICS.CIS.GameEvents.Tooltip".Translate(),
-                ContentDrawer = TabDrawer_GameEvents.Draw
-            });
+            // Kick re-enabled — multi-row TabDrawer has room for more tabs
+            tabs.Add(new TabRecord(
+                "RICS.CIS.Kick".Translate(),
+                () => selectedTab = SettingsTab.Kick,
+                () => selectedTab == SettingsTab.Kick));
 
-            _tabWorker.AddTab(new TabItem
-            {
-                Label = "RICS.CIS.Rewards".Translate(),
-                Tooltip = "RICS.CIS.Rewards.Tooltip".Translate(),
-                ContentDrawer = TabDrawer_Rewards.Draw
-            });
+            tabs.Add(new TabRecord(
+                "RICS.CIS.Economy".Translate(),
+                () => selectedTab = SettingsTab.Economy,
+                () => selectedTab == SettingsTab.Economy));
 
-            _tabWorker.AddTab(new TabItem
-            {
-                Label = "RICS.CIS.AI".Translate(),
-                Tooltip = "RICS.CIS.AI.Tooltip".Translate(),
-                ContentDrawer = TabDrawer_AI.Draw
-            });
+            tabs.Add(new TabRecord(
+                "RICS.CIS.GameEvents".Translate(),
+                () => selectedTab = SettingsTab.GameEvents,
+                () => selectedTab == SettingsTab.GameEvents));
+
+            tabs.Add(new TabRecord(
+                "RICS.CIS.Rewards".Translate(),
+                () => selectedTab = SettingsTab.Rewards,
+                () => selectedTab == SettingsTab.Rewards));
+
+            tabs.Add(new TabRecord(
+                "RICS.CIS.AI".Translate(),
+                () => selectedTab = SettingsTab.AI,
+                () => selectedTab == SettingsTab.AI));
         }
 
         public override void DoWindowContents(Rect inRect)
         {
-            // Calculate areas — reserves space for our custom bottom button bar
-            var tabBarRect = new Rect(0f, 0f, inRect.width, Text.LineHeight * 1.5f);
-            float bottomBarHeight = 50f;
-            var tabContentRect = new Rect(0f, tabBarRect.height, inRect.width, inRect.height - tabBarRect.height - bottomBarHeight);
+            if (tabs.Count == 0)
+                RebuildTabs();
 
-            // Draw tab bar
-            GUI.BeginGroup(tabBarRect);
-            _tabWorker.Draw(tabBarRect.AtZero(), paneled: true);
+            // How much vertical space the tab strip needs (1+ rows)
+            float tabStripHeight = Verse.TabDrawer.GetOverflowTabHeight(
+                new Rect(0f, 0f, inRect.width, 200f),
+                tabs,
+                MinTabWidth,
+                MaxTabWidth);
+            if (tabStripHeight < Verse.TabDrawer.TabHeight)
+                tabStripHeight = Verse.TabDrawer.TabHeight;
+
+            // Content panel must sit fully below the tab strip so scroll views / headers
+            // do not paint over the tab titles.
+            Rect contentRect = new Rect(
+                0f,
+                tabStripHeight,
+                inRect.width,
+                inRect.height - tabStripHeight - BottomBarHeight);
+
+            Widgets.DrawMenuSection(contentRect);
+
+            // DrawTabsOverflow does NOT use the same contract as DrawTabs.
+            // DrawTabs draws tabs *above* the given rect (rect.y - TabHeight).
+            // DrawTabsOverflow expects a rect whose *top* is the top of the tab strip:
+            // for a single row it does baseRect.y += TabHeight, then DrawTabs (tabs land at original y).
+            // Passing contentRect here made tabs and content share the same top edge (overlap).
+            Rect tabsBaseRect = new Rect(
+                0f,
+                0f,
+                inRect.width,
+                inRect.height - BottomBarHeight);
+            Verse.TabDrawer.DrawTabsOverflow(tabsBaseRect, tabs, MinTabWidth, MaxTabWidth);
+
+            // Inner content (padding) — scroll views start here, under the tabs
+            Rect inner = contentRect.ContractedBy(12f);
+            GUI.BeginGroup(inner);
+            Rect drawRect = inner.AtZero();
+            DrawSelectedTabContent(drawRect);
             GUI.EndGroup();
 
-            // Draw tab content
-            GUI.BeginGroup(tabContentRect);
-            _tabWorker.SelectedTab?.Draw(tabContentRect.AtZero());
-            GUI.EndGroup();
+            DrawBottomBar(inRect);
+        }
 
-            // ========== BOTTOM BUTTON BAR (Save Backup | Load Backup | Save As... | Load file | Delete file | Close) ==========
-            // WHY: Now fully consistent with Command Manager, Events, Store, Traits, Weather, and Pawn Race Settings.
+        private void DrawSelectedTabContent(Rect region)
+        {
+            switch (selectedTab)
+            {
+                case SettingsTab.Global:
+                    TabDrawer_Global.Draw(region);
+                    break;
+                case SettingsTab.Twitch:
+                    TabDrawer_Twitch.Draw(region);
+                    break;
+                case SettingsTab.YouTube:
+                    TabDrawer_YouTube.Draw(region);
+                    break;
+                case SettingsTab.Kick:
+                    TabDrawer_Kick.Draw(region);
+                    break;
+                case SettingsTab.Economy:
+                    TabDrawer_Economy.Draw(region);
+                    break;
+                case SettingsTab.GameEvents:
+                    TabDrawer_GameEvents.Draw(region);
+                    break;
+                case SettingsTab.Rewards:
+                    TabDrawer_Rewards.Draw(region);
+                    break;
+                case SettingsTab.AI:
+                    TabDrawer_AI.Draw(region);
+                    break;
+                default:
+                    TabDrawer_Global.Draw(region);
+                    break;
+            }
+        }
+
+        private void DrawBottomBar(Rect inRect)
+        {
+            // Save Backup | Load Backup | … | Close — same pattern as other RICS editors
             float btnH = 38f;
             float btnW = 130f;
             float gap = 6f;
             float padding = 10f;
-            float currentY = inRect.yMax - bottomBarHeight + (bottomBarHeight - btnH) / 2f;
+            float currentY = inRect.yMax - BottomBarHeight + (BottomBarHeight - btnH) / 2f;
 
-            // Save Backup (quick timestamped)
             Rect saveRect = new Rect(padding, currentY, btnW, btnH);
             if (Widgets.ButtonText(saveRect, "RICS.Editor.SaveBackup".Translate()))
             {
@@ -158,7 +229,6 @@ namespace CAP_ChatInteractive
                 }
             }
 
-            // Load Backup (latest timestamped)
             float loadX = padding + btnW + gap;
             Rect loadRect = new Rect(loadX, currentY, btnW, btnH);
             if (Widgets.ButtonText(loadRect, "RICS.Editor.LoadBackup".Translate()))
@@ -167,7 +237,9 @@ namespace CAP_ChatInteractive
                 if (backup != null)
                 {
                     JsonFileManager.ApplyBackupToCurrentSettings(backup);
-                    Messages.Message("RICS settings restored from backup. Close and reopen this window to fully refresh.", MessageTypeDefOf.NeutralEvent);
+                    Messages.Message(
+                        "RICS settings restored from backup. Close and reopen this window to fully refresh.",
+                        MessageTypeDefOf.NeutralEvent);
                 }
                 else
                 {
@@ -175,38 +247,11 @@ namespace CAP_ChatInteractive
                 }
             }
 
-            // Save As... 
-            //float saveAsX = loadX + btnW + gap;
-            //Rect saveAsRect = new Rect(saveAsX, currentY, btnW, btnH);
-            //if (Widgets.ButtonText(saveAsRect, "Save As..."))
-            //{
-            //    ShowSaveAsMenu();
-            //}
-
-            // Load file by name (advanced) — optional, can be added later if needed
-            //float loadFileX = saveAsX + btnW + gap;
-            //Rect loadFileRect = new Rect(loadFileX, currentY, btnW, btnH);
-            //if (Widgets.ButtonText(loadFileRect, "Load file"))
-            //{
-            //    ShowLoadFileMenu();
-            //}
-
-            // Delete file FIX! so we can delete files from ingame — optional, can be added later if needed
-            //float deleteX = loadFileX + btnW + gap;
-            //float deleteX = loadX + btnW + gap;
-            //Rect deleteRect = new Rect(deleteX, currentY, btnW, btnH);
-            //if (Widgets.ButtonText(deleteRect, "RICS.Editor.DeleteFile".Translate()))
-            //{
-            //    ShowDeleteFileMenu();
-            //}
-
-            // Close (right-aligned)
-            // float closeX = inRect.xMax - btnW - padding;
             float closeX = inRect.xMax - btnW;
             Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
             if (Widgets.ButtonText(closeRect, "RICS.Editor.Close".Translate()))
             {
-                this.Close();
+                Close();
             }
         }
 
@@ -231,17 +276,16 @@ namespace CAP_ChatInteractive
                     var modSettings = CAPChatInteractiveMod.Instance?.Settings;
                     if (modSettings != null)
                     {
-                        string json = JsonConvert.SerializeObject(modSettings, Formatting.Indented); // Safe because we control serialization in JsonFileManager
                         Find.WindowStack.Add(new Dialog_TextInput(
                             "Enter backup name (e.g. GrimwarSettings)",
                             name =>
                             {
                                 if (!string.IsNullOrWhiteSpace(name))
                                 {
-                                    // We can extend JsonFileManager later with a named version if needed.
-                                    // For now we use quick save + message.
                                     JsonFileManager.SaveSettingsBackup(modSettings);
-                                    Messages.Message($"Named backup saved as {name} (timestamped).", MessageTypeDefOf.NeutralEvent);
+                                    Messages.Message(
+                                        $"Named backup saved as {name} (timestamped).",
+                                        MessageTypeDefOf.NeutralEvent);
                                 }
                             }));
                     }
@@ -250,13 +294,9 @@ namespace CAP_ChatInteractive
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
-        /// <summary>
-        /// NEEDS WORK TO BE FULLY FUNCTIONAL — currently just loads the latest backup and shows a message.
-        /// </summary>
+
         private void ShowLoadFileMenu()
         {
-            // For main settings we keep it simple — Load Latest is the primary path.
-            // Advanced named loading can be added later if needed.
             var backup = JsonFileManager.LoadLatestSettingsBackup();
             if (backup != null)
             {
@@ -268,13 +308,12 @@ namespace CAP_ChatInteractive
                 Messages.Message("No backup found.", MessageTypeDefOf.RejectInput);
             }
         }
-        /// <summary>
-        /// NEEDS WORK TO BE FULLY FUNCTIONAL — currently just shows a message that deletion is handled via the Backups folder.
-        /// </summary>
+
         private void ShowDeleteFileMenu()
         {
-            // Placeholder for future — main settings backups are managed in the Backups folder.
-            Messages.Message("Backup management for main settings is currently handled via the Backups folder.", MessageTypeDefOf.NeutralEvent);
+            Messages.Message(
+                "Backup management for main settings is currently handled via the Backups folder.",
+                MessageTypeDefOf.NeutralEvent);
         }
     }
 }
