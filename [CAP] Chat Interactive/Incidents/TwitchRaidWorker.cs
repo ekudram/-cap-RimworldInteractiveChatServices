@@ -1,21 +1,25 @@
 ﻿// Source/RICS/Incidents/TwitchRaidWorker.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive. RICS Rimworld Chat Interactive Service
-// 
+//
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // CAP Chat Interactive is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Affero General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-// Source/RICS/Incidents/TwitchRaidWorker.cs
+//
+// Named Twitch raiders: wealth/points-scaled combat kinds + vacuum gear on space maps.
+
+using _CAP__Chat_Interactive.Command.CommandHelpers;
 using RimWorld;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -30,7 +34,9 @@ namespace CAP_ChatInteractive.Incidents
 
         protected override bool TryExecuteWorker(IncidentParms parms)
         {
-            Logger.Twitch($"[TWITCH RAID WORKER] Starting custom raid | Names in list: {CurrentRaidUsernames.Count} | Faction: {parms.faction?.Name ?? "null"}");
+            Logger.Twitch(
+                $"[TWITCH RAID WORKER] Starting custom raid | Names: {CurrentRaidUsernames.Count} | " +
+                $"Faction: {parms.faction?.Name ?? "null"} | points={parms.points:F0}");
 
             if (parms.target is not Map map)
             {
@@ -39,19 +45,18 @@ namespace CAP_ChatInteractive.Incidents
                 return false;
             }
 
-            // Default to edge walk-in first (as you requested)
+            // Default to edge walk-in first
             parms.raidArrivalMode = PawnsArrivalModeDefOf.EdgeWalkIn;
 
-            // Resolve spawn center (fixes -1000,-1000 out-of-bounds)
             if (!parms.raidArrivalMode.Worker.TryResolveRaidSpawnCenter(parms))
             {
                 Logger.Twitch("EdgeWalkIn spawn failed → falling back to weighted drop mode");
 
                 var dropOptions = new List<(PawnsArrivalModeDef mode, float weight)>
                 {
-                    (PawnsArrivalModeDefOf.CenterDrop, 1.0f),   // High danger - rare
-                    (PawnsArrivalModeDefOf.EdgeDrop,   2.5f),   // Medium danger - common
-                    (PawnsArrivalModeDefOf.RandomDrop, 1.5f)    // Chaos - medium
+                    (PawnsArrivalModeDefOf.CenterDrop, 1.0f),
+                    (PawnsArrivalModeDefOf.EdgeDrop, 2.5f),
+                    (PawnsArrivalModeDefOf.RandomDrop, 1.5f)
                 };
 
                 var chosen = dropOptions.RandomElementByWeight(t => t.weight);
@@ -60,7 +65,6 @@ namespace CAP_ChatInteractive.Incidents
                 Logger.Twitch($"Fallback arrival mode: {parms.raidArrivalMode.defName}");
             }
 
-            // === Generate named raiders ===
             var raidNames = CurrentRaidUsernames
                 .Where(u => !string.IsNullOrWhiteSpace(u))
                 .ToList();
@@ -73,7 +77,16 @@ namespace CAP_ChatInteractive.Incidents
             }
 
             var onlyRaiders = CAPChatInteractiveMod.Instance.Settings.GlobalSettings.TwitchRaidsOnlyRaiders;
-            int maxRaiders = onlyRaiders ? raidNames.Count : 10;
+            int maxRaiders = onlyRaiders ? raidNames.Count : Math.Min(10, raidNames.Count);
+            if (maxRaiders <= 0) maxRaiders = raidNames.Count;
+
+            float colonyWealth = map.wealthWatcher?.WealthTotal ?? 0f;
+            float pointsPerRaider = parms.points / Math.Max(1, maxRaiders);
+            bool vacuumMap = ItemDeliveryHelper.IsSpaceMap(map) || (map.Biome?.inVacuum == true);
+
+            Logger.Twitch(
+                $"[TWITCH RAID WORKER] Wealth={colonyWealth:F0} points={parms.points:F0} " +
+                $"perRaider={pointsPerRaider:F0} vacuumMap={vacuumMap} maxRaiders={maxRaiders}");
 
             var spawnedPawns = new List<Pawn>();
 
@@ -81,78 +94,172 @@ namespace CAP_ChatInteractive.Incidents
             {
                 string viewer = raidNames[i];
 
-                PawnKindDef kind = GetAppropriateRaidKind();
+                PawnKindDef kind = PickCombatKindForRaid(map, parms.faction, pointsPerRaider, colonyWealth);
+                float biocodeChance = BiocodeChanceForWealth(colonyWealth, pointsPerRaider);
 
-                var request = new PawnGenerationRequest(kind, parms.faction,
+                var request = new PawnGenerationRequest(
+                    kind: kind,
+                    faction: parms.faction,
+                    context: PawnGenerationContext.NonPlayer,
                     forceGenerateNewPawn: true,
-                    forceRedressWorldPawnIfFormerColonist: true);
+                    allowDead: false,
+                    allowDowned: false,
+                    canGeneratePawnRelations: false,
+                    mustBeCapableOfViolence: true,
+                    colonistRelationChanceFactor: 0f,
+                    forceAddFreeWarmLayerIfNeeded: true,
+                    allowGay: true,
+                    allowPregnant: false,
+                    allowFood: true,
+                    allowAddictions: true,
+                    inhabitant: false,
+                    certainlyBeenInCryptosleep: false,
+                    forceRedressWorldPawnIfFormerColonist: true,
+                    worldPawnFactionDoesntMatter: true,
+                    biocodeWeaponChance: biocodeChance,
+                    biocodeApparelChance: biocodeChance * 0.85f);
 
                 Pawn pawn = PawnGenerator.GeneratePawn(request);
 
-                // Name injection - first raider is always the streamer
+                // Name injection — first list entry is typically the raiding streamer
                 if (pawn.Name is NameTriple triple)
-                {
                     pawn.Name = new NameTriple(triple.First, viewer, triple.Last);
-                }
                 else
-                {
                     pawn.Name = new NameSingle(viewer);
-                }
 
-                // Optional: Limit gear to colony tech level to prevent overpowered raids
-                // Removed for now. Lets test how it feels to have some high-tech gear in the raid, and we can always add this back as a setting if needed.
-                // LimitRaiderGearToColonyTech(pawn);
+                // Vacuum / space: vacsuit unless already in Vac-rated armor (Recon, Cataphract, etc.)
+                if (vacuumMap)
+                    ItemDeliveryHelper.EquipVacsuitIfNeeded(pawn);
 
                 spawnedPawns.Add(pawn);
 
-                Logger.Twitch($"Generated pawn → @{viewer} (kind: {kind.defName})");
+                string weapon = pawn.equipment?.Primary?.LabelCap ?? "unarmed";
+                Logger.Twitch(
+                    $"Generated @{viewer} kind={kind.defName} combatPower={kind.combatPower:F0} " +
+                    $"weapon={weapon} biocode={biocodeChance:F2}");
             }
 
-            // Let vanilla arrival system spawn them
             parms.pawnGroups = null;
             parms.raidArrivalMode.Worker.Arrive(spawnedPawns, parms);
 
-            // === CRITICAL: Create the raid lord so they actually attack the colony ===
-            // This is what was missing — without a Lord they just wander off
             if (spawnedPawns.Count > 0)
             {
-                LordMaker.MakeNewLord(parms.faction, new LordJob_AssaultColony(parms.faction, canKidnap: true), map, spawnedPawns);
-                Logger.Twitch($"[TWITCH RAID WORKER] Created AssaultColony lord for {spawnedPawns.Count} named raiders");
+                LordMaker.MakeNewLord(
+                    parms.faction,
+                    new LordJob_AssaultColony(parms.faction, canKidnap: true),
+                    map,
+                    spawnedPawns);
+                Logger.Twitch(
+                    $"[TWITCH RAID WORKER] AssaultColony lord for {spawnedPawns.Count} named raiders");
             }
 
-            Logger.Twitch($"[TWITCH RAID WORKER] Successfully spawned {spawnedPawns.Count} named raiders");
+            Logger.Twitch($"[TWITCH RAID WORKER] Spawned {spawnedPawns.Count} named raiders");
             CurrentRaidUsernames.Clear();
-
             return true;
         }
 
-        private PawnKindDef GetAppropriateRaidKind()
+        /// <summary>
+        /// Combat humanlike kind near target combat power derived from raid points + colony wealth.
+        /// Avoids weak Villager defaults that made Twitch raids feel poor.
+        /// </summary>
+        private static PawnKindDef PickCombatKindForRaid(
+            Map map, Faction faction, float pointsPerRaider, float colonyWealth)
         {
-            // Official, stable way to read colony tech level in RimWorld 1.6
-            TechLevel colonyTech = Faction.OfPlayer.def.techLevel;
+            float targetPower = Mathf.Clamp(pointsPerRaider * 0.5f, 45f, 280f);
 
-            Logger.Twitch($"[TWITCH RAID WORKER] Colony tech level detected: {colonyTech} (using Faction.OfPlayer.def.techLevel)");
+            // Wealth pulls gear tier up even when raider count dilutes points
+            if (colonyWealth >= 600000f) targetPower = Mathf.Max(targetPower, 180f);
+            else if (colonyWealth >= 300000f) targetPower = Mathf.Max(targetPower, 130f);
+            else if (colonyWealth >= 120000f) targetPower = Mathf.Max(targetPower, 90f);
+            else if (colonyWealth >= 40000f) targetPower = Mathf.Max(targetPower, 65f);
 
+            TechLevel colonyTech = Faction.OfPlayer?.def?.techLevel ?? TechLevel.Industrial;
             if (colonyTech >= TechLevel.Spacer)
-                return PawnKindDefOf.SpaceRefugee;
+                targetPower = Mathf.Max(targetPower, 100f);
 
-            if (colonyTech >= TechLevel.Industrial)
-                return PawnKindDefOf.Pirate;
+            var combatKinds = DefDatabase<PawnKindDef>.AllDefsListForReading
+                .Where(k => k != null && k.race != null)
+                .Where(k => k.RaceProps.Humanlike && !k.RaceProps.IsMechanoid)
+                .Where(k => k.combatPower >= 40f && k.combatPower <= 320f)
+                .Where(IsCombatCapableKind)
+                .ToList();
 
-            // Neolithic / Tribal
-            return PawnKindDefOf.Villager;
+            if (combatKinds.Count == 0)
+            {
+                Logger.Twitch("[TWITCH RAID WORKER] No combat kinds found — fallback Pirate");
+                return PawnKindDefOf.Pirate ?? PawnKindDefOf.Colonist;
+            }
+
+            // Prefer kinds near target combat power
+            var band = combatKinds
+                .Where(k => k.combatPower >= targetPower * 0.55f && k.combatPower <= targetPower * 1.4f)
+                .ToList();
+
+            if (band.Count == 0)
+            {
+                band = combatKinds
+                    .OrderBy(k => Mathf.Abs(k.combatPower - targetPower))
+                    .Take(12)
+                    .ToList();
+            }
+
+            // Slight bias toward pirate/raider-named kinds when available (matches hostile raid fantasy)
+            var hostileNamed = band
+                .Where(k =>
+                {
+                    string n = k.defName ?? "";
+                    return n.IndexOf("Pirate", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                           n.IndexOf("Raider", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                           n.IndexOf("Merc", StringComparison.OrdinalIgnoreCase) >= 0;
+                })
+                .ToList();
+            if (hostileNamed.Count > 0 && Rand.Chance(0.65f))
+                band = hostileNamed;
+
+            PawnKindDef pick = band.RandomElement();
+            Logger.Twitch(
+                $"[TWITCH RAID WORKER] Kind pick targetPower={targetPower:F0} → {pick.defName} " +
+                $"(cp={pick.combatPower:F0}, pool={band.Count})");
+            return pick;
         }
 
+        private static bool IsCombatCapableKind(PawnKindDef k)
+        {
+            if (k == null) return false;
+            // Prefer fighters / weapon-tagged kinds; exclude pure civilians when possible
+            if (k.isFighter) return true;
+            if (k.weaponTags != null && k.weaponTags.Count > 0) return true;
+            if (k.modExtensions != null && k.combatPower >= 60f) return true;
+            // Name heuristics for pirate / mercenary / scavenger packs
+            string n = k.defName ?? "";
+            if (n.IndexOf("Pirate", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            if (n.IndexOf("Mercenary", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            if (n.IndexOf("Raider", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            if (n.IndexOf("Scavenger", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            if (n.IndexOf("Drifter", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            if (n.IndexOf("Soldier", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            return k.combatPower >= 80f;
+        }
+
+        /// <summary>Higher wealth / points → more biocoded gear rolls on generate.</summary>
+        private static float BiocodeChanceForWealth(float colonyWealth, float pointsPerRaider)
+        {
+            float chance = 0.05f;
+            if (colonyWealth >= 40000f || pointsPerRaider >= 80f) chance = 0.12f;
+            if (colonyWealth >= 120000f || pointsPerRaider >= 150f) chance = 0.22f;
+            if (colonyWealth >= 300000f || pointsPerRaider >= 250f) chance = 0.38f;
+            if (colonyWealth >= 600000f || pointsPerRaider >= 350f) chance = 0.55f;
+            return Mathf.Clamp01(chance);
+        }
+
+        // Kept for optional future setting — not applied by default
         private void LimitRaiderGearToColonyTech(Pawn pawn)
         {
             if (pawn == null) return;
 
-            // Official, stable colony tech level (same as GetAppropriateRaidKind)
             TechLevel colonyTech = Faction.OfPlayer.def.techLevel;
-
             int itemsStripped = 0;
 
-            // Strip over-tech apparel
             if (pawn.apparel != null)
             {
                 foreach (var apparel in pawn.apparel.WornApparel.ToList())
@@ -166,21 +273,18 @@ namespace CAP_ChatInteractive.Incidents
                 }
             }
 
-            // Strip over-tech primary weapon
-            if (pawn.equipment?.Primary != null)
+            if (pawn.equipment?.Primary != null &&
+                pawn.equipment.Primary.def.techLevel > colonyTech)
             {
-                if (pawn.equipment.Primary.def.techLevel > colonyTech)
-                {
-                    pawn.equipment.DestroyEquipment(pawn.equipment.Primary);
-                    itemsStripped++;
-                }
+                pawn.equipment.DestroyEquipment(pawn.equipment.Primary);
+                itemsStripped++;
             }
 
             if (itemsStripped > 0)
             {
-                Logger.Twitch($"Gear limited to {colonyTech} | Stripped {itemsStripped} over-tech items from @{pawn.Name}");
+                Logger.Twitch(
+                    $"Gear limited to {colonyTech} | Stripped {itemsStripped} over-tech items from @{pawn.Name}");
             }
         }
-
     }
 }

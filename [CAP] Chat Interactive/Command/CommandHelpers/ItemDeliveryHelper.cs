@@ -713,12 +713,96 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return IntVec3.Invalid;
         }
 
-        /// <summary>Equips vacsuit + helmet when available (space / vacuum maps).</summary>
+        /// <summary>
+        /// True if worn apparel already provides vacuum/space survival
+        /// (vacsuit, Recon/Cataphract/marine power armor, Odyssey vac-rated gear, etc.).
+        /// </summary>
+        public static bool HasVacuumProtection(Pawn pawn)
+        {
+            if (pawn?.apparel?.WornApparel == null) return false;
+
+            foreach (Apparel a in pawn.apparel.WornApparel)
+            {
+                if (a?.def == null) continue;
+                if (ApparelProvidesVacuumProtection(a))
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>Single apparel piece vacuum-capable?</summary>
+        public static bool ApparelProvidesVacuumProtection(Apparel apparel)
+        {
+            if (apparel?.def == null) return false;
+
+            // Odyssey / mod stats if present (name lookup — no hard type dependency)
+            try
+            {
+                string[] vacStatNames =
+                {
+                    "VacuumResistance",
+                    "VacuumEnvironmentResistance",
+                    "ApparelVacuumResistance",
+                    "SpaceSuit"
+                };
+                foreach (string sn in vacStatNames)
+                {
+                    StatDef stat = DefDatabase<StatDef>.GetNamedSilentFail(sn);
+                    if (stat == null) continue;
+                    if (apparel.GetStatValue(stat) > 0.05f)
+                        return true;
+                }
+            }
+            catch { /* stats optional */ }
+
+            string n = apparel.def.defName ?? "";
+            string label = apparel.def.label ?? "";
+
+            // Explicit vacsuit / space suit
+            if (ContainsIgnoreCase(n, "Vacsuit") || ContainsIgnoreCase(label, "vac suit") ||
+                ContainsIgnoreCase(n, "SpaceSuit") || ContainsIgnoreCase(label, "space suit"))
+                return true;
+
+            // Power armor families that typically include vacuum integrity (vanilla + common mods)
+            // User request: do not overwrite Recon Marine / Cataphract with a cheap vacsuit
+            if (ContainsIgnoreCase(n, "Cataphract") || ContainsIgnoreCase(label, "cataphract"))
+                return true;
+            if (ContainsIgnoreCase(n, "ReconArmor") || ContainsIgnoreCase(n, "Apparel_ArmorRecon") ||
+                (ContainsIgnoreCase(n, "Recon") && ContainsIgnoreCase(n, "Armor")) ||
+                (ContainsIgnoreCase(label, "recon") && ContainsIgnoreCase(label, "marine")))
+                return true;
+            if ((ContainsIgnoreCase(n, "Marine") || ContainsIgnoreCase(label, "marine")) &&
+                (ContainsIgnoreCase(n, "Armor") || ContainsIgnoreCase(n, "Power") ||
+                 ContainsIgnoreCase(label, "armor") || ContainsIgnoreCase(label, "power")))
+                return true;
+            if (ContainsIgnoreCase(n, "PowerArmor") || ContainsIgnoreCase(label, "power armor"))
+                return true;
+
+            return false;
+        }
+
+        private static bool ContainsIgnoreCase(string hay, string needle)
+        {
+            return !string.IsNullOrEmpty(hay) && !string.IsNullOrEmpty(needle) &&
+                   hay.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        /// <summary>
+        /// Equips vacsuit + helmet when available (space / vacuum maps).
+        /// Skips if pawn already wears vacuum-rated armor (Recon, Cataphract, vacsuit, etc.).
+        /// </summary>
         public static void EquipVacsuitIfNeeded(Pawn pawn)
         {
             try
             {
                 if (pawn?.apparel == null) return;
+
+                if (HasVacuumProtection(pawn))
+                {
+                    Logger.Debug(
+                        $"Vacuum gear: {pawn.LabelShort} already has vacuum-capable apparel — skip vacsuit");
+                    return;
+                }
 
                 ThingDef suitDef = pawn.ageTracker.CurLifeStageIndex <= 1
                     ? DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_VacsuitChildren")
@@ -729,15 +813,21 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 {
                     Apparel suit = PawnApparelGenerator.GenerateApparelOfDefFor(pawn, suitDef);
                     if (suit != null && ApparelUtility.HasPartsToWear(pawn, suit.def))
-                        pawn.apparel.Wear(suit);
+                        pawn.apparel.Wear(suit); // drops conflicting layer apparel
                 }
 
                 if (helmetDef != null)
                 {
-                    Apparel helmet = PawnApparelGenerator.GenerateApparelOfDefFor(pawn, helmetDef);
-                    if (helmet != null && ApparelUtility.HasPartsToWear(pawn, helmet.def))
-                        pawn.apparel.Wear(helmet);
+                    // Only add helmet if still no vacuum-capable piece after suit
+                    if (!HasVacuumProtection(pawn))
+                    {
+                        Apparel helmet = PawnApparelGenerator.GenerateApparelOfDefFor(pawn, helmetDef);
+                        if (helmet != null && ApparelUtility.HasPartsToWear(pawn, helmet.def))
+                            pawn.apparel.Wear(helmet);
+                    }
                 }
+
+                Logger.Debug($"Vacuum gear: equipped vacsuit on {pawn.LabelShort}");
             }
             catch (Exception ex)
             {
