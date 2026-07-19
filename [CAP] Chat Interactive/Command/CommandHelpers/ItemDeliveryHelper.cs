@@ -357,8 +357,10 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         /// Finds a delivery cell on <paramref name="map"/> only (never returns coords from another map).
         /// Order: Drop Marker → labeled drop spot → trade beacon → ship beacon → hitching →
         /// colonists → drop near anchor → locker → friendly pawn → edge → relaxed → center.
+        /// When <paramref name="allowRoofPunch"/> is false, prefers open/thin-roof cells and
+        /// rejects thick roofs (store animals/pawns should not smash mountain / modded thick roofs).
         /// </summary>
-        public static bool TryFindDeliveryCell(Map map, out IntVec3 cell)
+        public static bool TryFindDeliveryCell(Map map, out IntVec3 cell, bool allowRoofPunch = true)
         {
             cell = IntVec3.Invalid;
             if (map == null) return false;
@@ -368,16 +370,25 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 // 1–6: preferred anchors on THIS map
                 IntVec3 anchor = GetPreferredDropAnchorOnMap(map);
 
-                // Prefer a real drop-pod cell near the anchor
+                // Prefer a real drop-pod cell near the anchor (no thick-roof punch first)
                 if (anchor.IsValid && DropCellFinder.TryFindDropSpotNear(
-                        anchor, map, out cell, allowFogged: false, canRoofPunch: true, maxRadius: 35)
-                    && IsValidDeliveryPosition(cell, map))
+                        anchor, map, out cell, allowFogged: false, canRoofPunch: allowRoofPunch, maxRadius: 35)
+                    && IsValidDeliveryPosition(cell, map, strict: true, rejectThickRoof: !allowRoofPunch))
                 {
-                    Logger.Debug($"TryFindDeliveryCell: drop near anchor {anchor} → {cell}");
+                    Logger.Debug($"TryFindDeliveryCell: drop near anchor {anchor} → {cell} (roofPunch={allowRoofPunch})");
                     return true;
                 }
 
-                if (anchor.IsValid && IsValidDeliveryPosition(anchor, map, strict: false))
+                // If caller asked for no roof punch but failed, still try open-sky search wider
+                if (!allowRoofPunch && anchor.IsValid && DropCellFinder.TryFindDropSpotNear(
+                        anchor, map, out cell, allowFogged: false, canRoofPunch: false, maxRadius: 55)
+                    && IsValidDeliveryPosition(cell, map, strict: true, rejectThickRoof: true))
+                {
+                    Logger.Debug($"TryFindDeliveryCell: wider no-punch near anchor {anchor} → {cell}");
+                    return true;
+                }
+
+                if (anchor.IsValid && IsValidDeliveryPosition(anchor, map, strict: false, rejectThickRoof: !allowRoofPunch))
                 {
                     cell = anchor;
                     Logger.Debug($"TryFindDeliveryCell: using anchor cell {cell}");
@@ -392,14 +403,15 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     var nearest = lockers.OrderBy(l => l.Position.DistanceToSquared(
                         anchor.IsValid ? anchor : map.Center)).First();
                     if (DropCellFinder.TryFindDropSpotNear(
-                            nearest.Position, map, out cell, allowFogged: false, canRoofPunch: true, maxRadius: 12)
-                        && IsValidDeliveryPosition(cell, map))
+                            nearest.Position, map, out cell, allowFogged: false, canRoofPunch: allowRoofPunch, maxRadius: 12)
+                        && IsValidDeliveryPosition(cell, map, strict: true, rejectThickRoof: !allowRoofPunch))
                     {
                         Logger.Debug($"TryFindDeliveryCell: near locker {nearest.Position} → {cell}");
                         return true;
                     }
                     if (CellFinder.TryFindRandomCellNear(nearest.Position, map, 6,
-                            c => c.Standable(map) && c.Walkable(map), out cell))
+                            c => c.Standable(map) && c.Walkable(map)
+                                 && (allowRoofPunch || !IsThickRoofed(c, map)), out cell))
                     {
                         Logger.Debug($"TryFindDeliveryCell: standable near locker → {cell}");
                         return true;
@@ -414,14 +426,15 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     var nearest = friendly.OrderBy(p => p.Position.DistanceToSquared(
                         anchor.IsValid ? anchor : map.Center)).First();
                     if (DropCellFinder.TryFindDropSpotNear(
-                            nearest.Position, map, out cell, allowFogged: false, canRoofPunch: true, maxRadius: 15)
-                        && IsValidDeliveryPosition(cell, map))
+                            nearest.Position, map, out cell, allowFogged: false, canRoofPunch: allowRoofPunch, maxRadius: 15)
+                        && IsValidDeliveryPosition(cell, map, strict: true, rejectThickRoof: !allowRoofPunch))
                     {
                         Logger.Debug($"TryFindDeliveryCell: near colonist {nearest.LabelShort} → {cell}");
                         return true;
                     }
                     if (CellFinder.TryFindRandomCellNear(nearest.Position, map, 8,
-                            c => c.Standable(map) && c.Walkable(map), out cell))
+                            c => c.Standable(map) && c.Walkable(map)
+                                 && (allowRoofPunch || !IsThickRoofed(c, map)), out cell))
                     {
                         Logger.Debug($"TryFindDeliveryCell: standable near colonist → {cell}");
                         return true;
@@ -461,9 +474,9 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
         /// <summary>
         /// Places an already-generated pawn on the map.
-        /// Open-sky maps: drop pod preferred (only success if pawn ends up Spawned).
-        /// Sealed/pocket/tiny interiors: skip pods (they fail out-of-bounds) → GenSpawn near
-        /// locker / colonist / standable cell / center.
+        /// Open-sky maps: drop pod preferred. Drop pods are ASYNC — the pawn sits in the pod
+        /// container (ParentHolder) until open; it is NOT Spawned immediately.
+        /// Sealed/pocket/tiny interiors: skip pods → GenSpawn near locker / colonist / center.
         /// Equips vacsuit on space/vacuum maps before placement.
         /// </summary>
         public static bool TryDeliverGeneratedPawn(Pawn pawn, Map map, out IntVec3 deliveryPosition)
@@ -481,38 +494,62 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 bool tinyMap = map.Size.x < 40 || map.Size.z < 40;
 
                 // Priority 1: drop pod — only on open-sky maps large enough for pods
-                if (!sealedMap && !tinyMap && TryFindDeliveryCell(map, out IntVec3 safePos))
+                // Prefer cells that do not require roof punch (avoids Simply More Roofs / thick roofs).
+                if (!sealedMap && !tinyMap &&
+                    TryFindDeliveryCell(map, out IntVec3 safePos, allowRoofPunch: false))
                 {
                     try
                     {
+                        // canRoofPunch: false — chat store animals/pawns should not smash thick roofs
                         DropPodUtility.DropThingsNear(
                             safePos, map, new List<Thing> { pawn },
-                            openDelay: 110, leaveSlag: false, canRoofPunch: true, forbid: true);
+                            openDelay: 110, leaveSlag: false, canRoofPunch: false, forbid: true,
+                            allowFogged: false);
                     }
                     catch (Exception podEx)
                     {
                         Logger.Warning($"TryDeliverGeneratedPawn: DropThingsNear threw: {podEx.Message}");
                     }
 
-                    // DropThingsNear can "succeed" while spawning DropPodIncoming at (-1000,-1000,-1000)
-                    // and leaving the pawn unspawned — never treat that as delivery.
-                    if (IsPawnDeliveredOnMap(pawn, map))
+                    // SUCCESS if pawn is already on the map OR held by an in-flight drop pod.
+                    // Checking only Spawned was wrong: pods land later, so we used to GenSpawn
+                    // the same pawn out of the pod → empty pods + double animals.
+                    if (IsPawnEnRouteOrOnMap(pawn, map))
                     {
-                        deliveryPosition = pawn.Position.IsValid ? pawn.Position : safePos;
+                        deliveryPosition = pawn.Spawned && pawn.Position.IsValid
+                            ? pawn.Position
+                            : safePos;
+                        string how = pawn.Spawned
+                            ? "spawned"
+                            : $"in-flight (holder={pawn.ParentHolder?.GetType().Name ?? "null"})";
                         Logger.Debug(
-                            $"TryDeliverGeneratedPawn: drop pod OK at {deliveryPosition} on {DescribeMap(map)}");
+                            $"TryDeliverGeneratedPawn: drop pod OK ({how}) target {deliveryPosition} " +
+                            $"on {DescribeMap(map)}");
                         return true;
                     }
 
                     Logger.Warning(
-                        $"TryDeliverGeneratedPawn: drop pod did not place pawn on {DescribeMap(map)} " +
-                        $"(requested {safePos}) — falling back to GenSpawn");
+                        $"TryDeliverGeneratedPawn: drop pod did not accept pawn on {DescribeMap(map)} " +
+                        $"(requested {safePos}, holder={pawn.ParentHolder?.GetType().Name ?? "null"}) " +
+                        "— falling back to GenSpawn");
                 }
                 else if (sealedMap || tinyMap)
                 {
                     Logger.Debug(
                         $"TryDeliverGeneratedPawn: skip drop pod on " +
                         $"{(sealedMap ? "sealed/pocket" : "tiny")} {DescribeMap(map)}");
+                }
+
+                // Never GenSpawn a pawn that is already inside a drop pod / transporter
+                if (IsPawnHeldInTransit(pawn))
+                {
+                    deliveryPosition = pawn.Spawned && pawn.Position.IsValid
+                        ? pawn.Position
+                        : (map.Center);
+                    Logger.Warning(
+                        $"TryDeliverGeneratedPawn: pawn already in transit " +
+                        $"(holder={pawn.ParentHolder?.GetType().Name}) — skip GenSpawn fallback");
+                    return true;
                 }
 
                 // Priority 2–4: direct GenSpawn (required for vehicle interiors / sealed maps)
@@ -537,6 +574,24 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         }
 
         /// <summary>
+        /// Drop-pod delivery success: either already on the map, or held in a pod/transporter
+        /// (ParentHolder set) waiting to land. Matches item-path TryShuttleDelivery checks.
+        /// </summary>
+        private static bool IsPawnEnRouteOrOnMap(Pawn pawn, Map map)
+        {
+            if (pawn == null || map == null || pawn.Destroyed) return false;
+            if (pawn.Spawned && pawn.Map == map) return true;
+            // In drop pod / active drop / transporter — NOT Spawned yet
+            return IsPawnHeldInTransit(pawn);
+        }
+
+        /// <summary>True if the pawn is inside a container (drop pod, etc.) and not free on a map.</summary>
+        private static bool IsPawnHeldInTransit(Pawn pawn)
+        {
+            return pawn != null && !pawn.Destroyed && !pawn.Spawned && pawn.ParentHolder != null;
+        }
+
+        /// <summary>
         /// Direct placement for sealed/pocket maps or when drop pods fail.
         /// Order: near locker → near free colonist → near any player pawn →
         /// standable near map center → map center.
@@ -551,6 +606,15 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             {
                 deliveryPosition = pawn.Position;
                 return true;
+            }
+
+            // Do NOT pull pawns out of in-flight drop pods — that creates empty pods + free animals
+            if (IsPawnHeldInTransit(pawn))
+            {
+                Logger.Warning(
+                    $"TryGenSpawnPawnOnMap: refusing to GenSpawn pawn held by " +
+                    $"{pawn.ParentHolder?.GetType().Name} (in-flight delivery)");
+                return false;
             }
 
             // Must not already be held by a broken drop pod / container
@@ -1790,10 +1854,14 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         /// <param name="map"></param>
         /// <param name="strict"></param>
         /// <returns></returns>
-        public static bool IsValidDeliveryPosition(IntVec3 pos, Map map, bool strict = true)
+        public static bool IsValidDeliveryPosition(
+            IntVec3 pos, Map map, bool strict = true, bool rejectThickRoof = false)
         {
             if (map == null) return false;
             if (!pos.InBounds(map)) return false;
+
+            if (rejectThickRoof && IsThickRoofed(pos, map))
+                return false;
 
             if (strict)
             {
@@ -1811,6 +1879,14 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
 
             return true;
+        }
+
+        /// <summary>Thick roof (vanilla mountain or modded e.g. Simply More Roofs).</summary>
+        private static bool IsThickRoofed(IntVec3 pos, Map map)
+        {
+            if (map?.roofGrid == null || !pos.InBounds(map)) return false;
+            RoofDef roof = map.roofGrid.RoofAt(pos);
+            return roof != null && roof.isThickRoof;
         }
 
         // LogDropPodDetails removed — unused debug helper.
@@ -2092,13 +2168,14 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 if (thingsToDeliver == null || thingsToDeliver.Count == 0)
                     return false;
 
+                // Prefer no thick-roof punch for store deliveries (modded roofs / mountain bases)
                 DropPodUtility.DropThingsNear(
                     dropPos,
                     map,
                     thingsToDeliver,
                     openDelay: 110,
                     leaveSlag: false,
-                    canRoofPunch: true,
+                    canRoofPunch: false,
                     forbid: false,
                     allowFogged: false
                 );
