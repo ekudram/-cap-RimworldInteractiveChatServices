@@ -1126,7 +1126,42 @@ HOTFIX for !healpawn command. Was removing implants and bionics instead of heali
 <b>Translations</b>
 ───────────────────
 - Updated strings for new purchase/delivery behaviors and AI improvements"
-    }
+    },
+            {
+    "1.44",
+    @"===========================================================
+                         RICS 1.44 - Changelog
+                         Released: July 19, 2026
+===========================================================
+
+<b>MEMORANDUM</b>
+─────────────────
+GitHub Price List was updated
+- You can now upload your CommandSettings.json file for the new Commands Tab
+- Added Dark Mode for the GitHub Price List
+
+You will need to sync your fork to the main branch or copy the new files from the main branch to your fork.
+- Files changed: index.html, rics-store.js, rics-store.css, and CommandSettings.json
+
+<b>UPDATED</b>
+──────────────
+- Improved item and pawn delivery system (better handling of roofs and tricky colony layouts like underground bases or space maps)
+- Revamped Tabs in the Settings dialog for better organization and clarity
+
+<b>FIXED</b>
+────────────
+- Animals and Mechs should now spawn properly again. No more empty pods.
+- Fixed bug where usernames were not being shown in the mass heal letter
+
+<b>ADDED</b>
+────────────
+- New Gear and Apparel system for Twitch Raids. Should make raids significantly more challenging.
+
+<b>TRANSLATIONS</b>
+───────────────────
+- Fixed spacing in the Traits Command Handler translation keys.
+"
+}
 
 
 /*  Copy this template for future versions and fill in the details
