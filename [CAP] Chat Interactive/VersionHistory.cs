@@ -1156,6 +1156,7 @@ You will need to sync your fork to the main branch or copy the new files from th
 <b>ADDED</b>
 ────────────
 - New Gear and Apparel system for Twitch Raids. Should make raids significantly more challenging.
+- !mypawn genes command added for viewing a pawn's genes (if Biotech is installed)
 
 <b>TRANSLATIONS</b>
 ───────────────────
