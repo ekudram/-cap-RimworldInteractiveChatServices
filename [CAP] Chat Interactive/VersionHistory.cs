@@ -1156,11 +1156,13 @@ You will need to sync your fork to the main branch or copy the new files from th
 <b>ADDED</b>
 ────────────
 - New Gear and Apparel system for Twitch Raids. Should make raids significantly more challenging.
-- !mypawn genes command added for viewing a pawn's genes (if Biotech is installed)
+- New !mypawn genes command to display a viewer's pawn genes.
 
 <b>TRANSLATIONS</b>
 ───────────────────
 - Fixed spacing in the Traits Command Handler translation keys.
+
+<b>Special thanks to Kanboru</b> for the `!mypawn genes` command contribution!
 "
 }
 
