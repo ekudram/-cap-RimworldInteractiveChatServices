@@ -1021,6 +1021,12 @@
         <label>Mechs</label>
         <defaultValue>true</defaultValue>
       </li>
+	  <li>
+		<type>CheckBox</type>
+		<name>enableGenes</name>
+		<label>Genes</label>
+		<defaultValue>true</defaultValue>
+	  </li>
     </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 

@@ -135,6 +135,13 @@
   <RICS.MPCH.WeaponMaterial>  Material: {0}</RICS.MPCH.WeaponMaterial>
   <RICS.MPCH.WeaponMaterialUnknown>  Material: Unknown</RICS.MPCH.WeaponMaterialUnknown>
   <RICS.MPCH.WeaponTraits>🎯 Weapon Traits:</RICS.MPCH.WeaponTraits>
+	
+  <!-- Genes-->
+  <RICS.MPCH.NoGenes>Your pawn has no genes</RICS.MPCH.NoGenes>
+  <RICS.MPCH.Endogenes>Endogenes:{0} | </RICS.MPCH.Endogenes>
+  <RICS.MPCH.Xenogenes>Xenogenes:{0} | </RICS.MPCH.Xenogenes>
+  <RICS.MPCH.Complexity>Complexity({0})</RICS.MPCH.Complexity>
+  <RICS.MPCH.Metabolism>-Metabolism({0})</RICS.MPCH.Metabolism>
 
   
 </LanguageData>

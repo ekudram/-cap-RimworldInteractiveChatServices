@@ -97,6 +97,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "mechs":
                     case "mechanoid":
                     case "mechanoids": settingKey = "enableMechs"; break;
+                    case "genes":
+                    case "xeno":
+                    case "xenotype": settingKey = "enableGenes"; break;
                 }
                 if (settingKey != null)
                 {
@@ -149,6 +152,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "mechanoid":
                     case "mechanoids":
                         return HandleMechsInfo(pawn);
+                    case "genes":
+                    case "xeno":
+                    case "xenotype":
+                        return HandleGeneInfo(pawn);
                     default:
                         return "RICS.MPCH.UnknownSubcommand".Translate(subCommand ?? "none");
                 }
@@ -1254,6 +1261,38 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             string listStr = string.Join(" • ", groups);
             return $"{bwPrefix} | {listStr}";
+        }
+
+        private static string HandleGeneInfo(Pawn pawn)
+        {
+            if (!ModsConfig.BiotechActive)
+            {
+                return "RICS.CC.xenotype.dlcrequired".Translate();
+            }
+
+            if (pawn.genes == null || pawn.genes.GenesListForReading.Count == 0)
+                return "RICS.MPCH.NoGenes".Translate();
+            string name = pawn.genes?.XenotypeLabelCap ?? pawn.genes.xenotypeName;
+            var germline = pawn.genes.Endogenes.Select(g =>
+                g.Active ? g.LabelCap : $"✗ {g.LabelCap}");
+
+            var xeno = pawn.genes.Xenogenes.Select(g =>
+                g.Active ? g.LabelCap : $"✗ {g.LabelCap}");
+
+            var genestring = new StringBuilder();
+            genestring.Append($"[{name}]");
+            if (germline != null && germline.Count() > 0)
+                //genestring.Append($"Endogenes:{string.Join(", ", germline)} | ");
+                genestring.Append("RICS.MPCH.Endogenes".Translate(string.Join(", ", germline)));
+            if (xeno != null && xeno.Count() > 0)
+                //genestring.Append($"Xenogenes:{string.Join(", ", xeno)} | ");
+                genestring.Append("RICS.MPCH.Xenogenes".Translate(string.Join(", ", xeno)));
+            //genestring.Append($"Complexity({pawn.genes.GenesListForReading.Where(g => g.Active).Sum(g => g.def.biostatCpx)})");
+            //genestring.Append($"-Metabolism({pawn.genes.GenesListForReading.Where(g => g.Active).Sum(g => g.def.biostatMet)})");
+            genestring.Append("RICS.MPCH.Complexity".Translate(pawn.genes.GenesListForReading.Where(g => g.Active).Sum(g => g.def.biostatCpx)));
+            genestring.Append("RICS.MPCH.Metabolism".Translate(pawn.genes.GenesListForReading.Where(g => g.Active).Sum(g => g.def.biostatMet)));
+
+            return genestring.ToString();
         }
     }
 }
