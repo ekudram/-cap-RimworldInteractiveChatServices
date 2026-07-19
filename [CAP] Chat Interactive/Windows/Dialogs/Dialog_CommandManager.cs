@@ -246,6 +246,8 @@ namespace CAP_ChatInteractive
 
                     // Ensure custom settings declared in the Def have entries (with defaults) in CustomData
                     var s = commandSettings[commandKey];
+                    // Label + description from XML for pricelist / docs export
+                    s.ApplyDefMetadata(commandDef);
                     if (commandDef.CustomData != null && commandDef.CustomData.Count > 0)
                     {
                         s.EnsureCustomDefaults(commandDef.CustomData);
@@ -258,6 +260,15 @@ namespace CAP_ChatInteractive
         {
             try
             {
+                // Refresh XML metadata so CommandSettings.json always carries current descriptions
+                foreach (var commandDef in DefDatabase<ChatCommandDef>.AllDefs)
+                {
+                    if (string.IsNullOrEmpty(commandDef.commandText)) continue;
+                    string commandKey = commandDef.commandText.ToLowerInvariant();
+                    if (commandSettings.TryGetValue(commandKey, out var s))
+                        s.ApplyDefMetadata(commandDef);
+                }
+
                 // Save using the same commandText keys we loaded with
                 string json = JsonConvert.SerializeObject(commandSettings, Formatting.Indented);
                 JsonFileManager.SaveFile("CommandSettings.json", json);

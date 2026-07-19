@@ -120,7 +120,7 @@ namespace CAP_ChatInteractive
                 bool changed = false;
                 foreach (var def in DefDatabase<ChatCommandDef>.AllDefsListForReading)
                 {
-                    if (string.IsNullOrEmpty(def.commandText) || def.CustomData == null || def.CustomData.Count == 0)
+                    if (string.IsNullOrEmpty(def.commandText))
                         continue;
 
                     string key = def.commandText.ToLowerInvariant();
@@ -129,15 +129,27 @@ namespace CAP_ChatInteractive
                         s = new CommandSettings { Enabled = def.enabled, CooldownSeconds = def.cooldownSeconds, PermissionLevel = def.permissionLevel, useCommandCooldown = def.useCommandCooldown };
                         // PermissionLevel starts from Def but can be overridden later by user in Command Editor
                         current[key] = s;
+                        changed = true;
                     }
-                    s.EnsureCustomDefaults(def.CustomData);
-                    changed = true;
+
+                    // Always refresh label/description from XML (not user-editable)
+                    string prevLabel = s.Label;
+                    string prevDesc = s.CommandDescription;
+                    s.ApplyDefMetadata(def);
+                    if (prevLabel != s.Label || prevDesc != s.CommandDescription)
+                        changed = true;
+
+                    if (def.CustomData != null && def.CustomData.Count > 0)
+                    {
+                        s.EnsureCustomDefaults(def.CustomData);
+                        changed = true;
+                    }
                 }
 
                 if (changed)
                 {
                     JsonFileManager.SaveFile("CommandSettings.json", JsonConvert.SerializeObject(current, Formatting.Indented));
-                    Logger.Message("Ensured custom settings defaults for commands declaring them");
+                    Logger.Message("Ensured custom settings defaults / command descriptions for CommandSettings.json");
                 }
             }
             catch (Exception ex)
@@ -185,6 +197,14 @@ namespace CAP_ChatInteractive
 
                         // Ensure custom settings defaults (from XML <CustomData>) are present
                         var settings = currentSettings[commandName];
+
+                        // Always refresh label/description from Commands.xml for pricelist export
+                        string prevLabel = settings.Label;
+                        string prevDesc = settings.CommandDescription;
+                        settings.ApplyDefMetadata(def);
+                        if (prevLabel != settings.Label || prevDesc != settings.CommandDescription)
+                            settingsChanged = true;
+
                         if (def.CustomData != null && def.CustomData.Count > 0)
                         {
                             settings.EnsureCustomDefaults(def.CustomData);

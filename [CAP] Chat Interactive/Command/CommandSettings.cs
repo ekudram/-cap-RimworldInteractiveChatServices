@@ -41,6 +41,20 @@ public class CommandSettings
     public bool useCommandCooldown = false;           // Enable per-command event cooldown
     public int MaxUsesPerCooldownPeriod = 0;        // 0 = unlimited, 1+ = specific limit
 
+    /// <summary>
+    /// Display label from ChatCommandDef (&lt;label&gt; in Commands.xml).
+    /// Metadata for pricelist / docs — not edited in the Command Manager.
+    /// Refreshed from Defs on load/save so XML updates appear in CommandSettings.json.
+    /// </summary>
+    public string Label = "";
+
+    /// <summary>
+    /// Description from ChatCommandDef (&lt;commandDescription&gt; in Commands.xml).
+    /// Metadata for pricelist / docs — not edited in the Command Manager.
+    /// Refreshed from Defs on load/save so XML updates appear in CommandSettings.json.
+    /// </summary>
+    public string CommandDescription = "";
+
     // Raid command specific fields (lists)
     // Note: Wager values have been moved to per-command CustomData via <CustomData> in Commands.xml
     // to avoid polluting settings JSON for commands that don't use them.
@@ -180,5 +194,16 @@ public class CommandSettings
     {
         // Don't initialize raid-specific lists here - they'll be initialized when needed
         // by the specific commands that use them
+    }
+
+    /// <summary>
+    /// Copy non-editable metadata (label + description) from the command's Def / XML.
+    /// Safe to call on every load — these fields are not user settings.
+    /// </summary>
+    public void ApplyDefMetadata(CAP_ChatInteractive.ChatCommandDef def)
+    {
+        if (def == null) return;
+        Label = !string.IsNullOrEmpty(def.label) ? def.label : (def.DisplayLabel ?? "");
+        CommandDescription = def.commandDescription ?? "";
     }
 }
