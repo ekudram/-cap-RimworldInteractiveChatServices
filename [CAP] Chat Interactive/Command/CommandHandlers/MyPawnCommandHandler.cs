@@ -361,13 +361,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             var report = new StringBuilder();
 
-            // Family relations (always show all)
+            // Family: use vanilla relation workers (Child/Sibling/etc. are often implied, not DirectRelations).
+            // DirectRelationExists(Child) always fails — Child is stored as Parent on the child only.
             var family = pawn.relations.RelatedPawns
-                .Where(p => p.relations.DirectRelationExists(PawnRelationDefOf.Spouse, pawn) ||
-                           p.relations.DirectRelationExists(PawnRelationDefOf.Lover, pawn) ||
-                           p.relations.DirectRelationExists(PawnRelationDefOf.Child, pawn) ||
-                           p.relations.DirectRelationExists(PawnRelationDefOf.Parent, pawn) ||
-                           p.relations.DirectRelationExists(PawnRelationDefOf.Sibling, pawn))
+                .Where(p => IsFamilyRelation(pawn, p))
+                .OrderByDescending(p => pawn.GetMostImportantRelation(p)?.importance ?? 0f)
                 .ToList();
 
             if (family.Count > 0)
@@ -442,22 +440,69 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return report.ToString();
         }
 
+        /// <summary>
+        /// True if the most important vanilla relation is family (blood) or a love/ex partner.
+        /// Uses GetMostImportantRelation so implied relations (Child, Sibling, Grandchild, …) work.
+        /// </summary>
+        private static bool IsFamilyRelation(Pawn me, Pawn other)
+        {
+            if (me == null || other == null || me == other)
+                return false;
+
+            var rel = me.GetMostImportantRelation(other);
+            if (rel == null)
+                return false;
+
+            // Blood family (Child, Parent, Sibling, Grand*, Kin, etc.)
+            if (rel.familyByBloodRelation)
+                return true;
+
+            // Romance / marriage (not familyByBlood on the def)
+            return rel == PawnRelationDefOf.Spouse
+                || rel == PawnRelationDefOf.Lover
+                || rel == PawnRelationDefOf.Fiance
+                || rel == PawnRelationDefOf.ExSpouse
+                || rel == PawnRelationDefOf.ExLover;
+        }
+
+        /// <summary>
+        /// Label from the viewpoint of <paramref name="pawn"/> toward <paramref name="relative"/>
+        /// (e.g. Son/Daughter, Father/Mother — not a generic "Blood Relative").
+        /// </summary>
         private static string GetFamilyRelation(Pawn pawn, Pawn relative)
         {
-            if (pawn.relations.DirectRelationExists(PawnRelationDefOf.Spouse, relative)) return "Spouse 💍";
-            if (pawn.relations.DirectRelationExists(PawnRelationDefOf.Lover, relative)) return "Lover ❤️";
-            if (pawn.relations.DirectRelationExists(PawnRelationDefOf.Fiance, relative)) return "Fiancé 💑";
-            if (pawn.relations.DirectRelationExists(PawnRelationDefOf.Child, relative)) return "Child 👶";
-            if (pawn.relations.DirectRelationExists(PawnRelationDefOf.Parent, relative)) return "Parent 👨‍👦";
-            if (pawn.relations.DirectRelationExists(PawnRelationDefOf.Sibling, relative)) return "Sibling 👫";
-            if (pawn.relations.DirectRelationExists(PawnRelationDefOf.ExSpouse, relative)) return "Ex-Spouse 💔";
-            if (pawn.relations.DirectRelationExists(PawnRelationDefOf.ExLover, relative)) return "Ex-Lover 💔";
+            // Vanilla: Child/Sibling/etc. are often implied (Worker.InRelation via GetFather/GetMother),
+            // not present as DirectRelations. DirectRelationExists(Child) always returns false.
+            var relDef = pawn.GetMostImportantRelation(relative);
+            if (relDef != null)
+            {
+                // Gender-specific label of what *relative* is to *pawn* (Son, Daughter, Wife, …)
+                string label = relDef.GetGenderSpecificLabelCap(relative);
+                string emoji = GetRelationEmoji(relDef);
+                return string.IsNullOrEmpty(emoji) ? label : $"{label} {emoji}";
+            }
 
-            // Check for indirect relations if no direct relation found
-            if (pawn.relations.FamilyByBlood.Contains(relative)) return "Blood Relative 👨‍👩‍👧‍👦";
-            if (pawn.GetRelations(relative).Any()) return "Relative";
+            // Fallback if workers returned nothing but blood family still lists them
+            if (pawn.relations.FamilyByBlood.Contains(relative))
+                return "Blood Relative 👨‍👩‍👧‍👦";
 
-            return "Relation"; // Fallback
+            return "Relative";
+        }
+
+        private static string GetRelationEmoji(PawnRelationDef rel)
+        {
+            if (rel == null)
+                return "";
+            if (rel == PawnRelationDefOf.Spouse) return "💍";
+            if (rel == PawnRelationDefOf.Lover) return "❤️";
+            if (rel == PawnRelationDefOf.Fiance) return "💑";
+            if (rel == PawnRelationDefOf.ExSpouse || rel == PawnRelationDefOf.ExLover) return "💔";
+            if (rel == PawnRelationDefOf.Child) return "👶";
+            if (rel == PawnRelationDefOf.Parent) return "👨‍👧";
+            if (rel == PawnRelationDefOf.Sibling || rel == PawnRelationDefOf.HalfSibling) return "👫";
+            if (rel == PawnRelationDefOf.Grandchild || rel == PawnRelationDefOf.GreatGrandchild) return "👶";
+            if (rel == PawnRelationDefOf.Grandparent || rel == PawnRelationDefOf.GreatGrandparent) return "👴";
+            return "👨‍👩‍👧‍👦";
         }
 
 
