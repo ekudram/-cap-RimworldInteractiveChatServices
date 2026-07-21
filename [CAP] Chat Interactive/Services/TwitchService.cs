@@ -66,11 +66,15 @@ namespace CAP_ChatInteractive
 
         // === Twitch Raids Feature - Join System ===
         // Supports multiple simultaneous raids by merging into one collection window + combined raid
+        // Twitch IRC OnUserJoined (JOIN) is often late or missing; chat auto-add is the reliable fallback.
         private readonly List<string> _raidJoinList = new List<string>(30);
-        private const int RaidJoinWindowSeconds = 180; // 3 minutes - Twitch can take up to ~3min to register all raiders joining the channel
         private bool _raidJoinWindowActive = false;
         private DateTime _raidJoinStartTime = DateTime.MinValue;
         private string _primaryRaiderName = null;
+        // Diagnostic counters for end-of-window summary (reset when a new window opens)
+        private int _raidJoinCountFromIrc;
+        private int _raidJoinCountFromChat;
+        private int _raidJoinCountFromCommand;
 
         /// <summary>
         /// Public read-only view of whether a raid join window is currently active.
@@ -78,6 +82,16 @@ namespace CAP_ChatInteractive
         /// when no raid has occurred (eliminates the main source of stutter when the feature is enabled but idle).
         /// </summary>
         public bool IsRaidJoinWindowActive => _raidJoinWindowActive;
+
+        /// <summary>
+        /// Configured join-collection window in seconds (default 240). Twitch can delay JOIN ~2+ min.
+        /// Clamped 60–360 so bad saves cannot break the feature.
+        /// </summary>
+        private int GetRaidJoinWindowSeconds()
+        {
+            int seconds = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.TwitchRaidJoinWindowSeconds ?? 240;
+            return Mathf.Clamp(seconds, 60, 360);
+        }
 
         public bool IsConnected => _client?.IsConnected == true;
 
@@ -516,15 +530,16 @@ namespace CAP_ChatInteractive
 
                 // Extend window slightly if near end so new raiders from this raid have time to !joinraid or auto-join
                 float remaining = GetRaidJoinTimeLeft();
+                int windowSec = GetRaidJoinWindowSeconds();
                 if (remaining > 0f && remaining < 60f)
                 {
                     // Ensure at least ~60s remain for the new group
-                    _raidJoinStartTime = DateTime.Now - TimeSpan.FromSeconds(RaidJoinWindowSeconds - 60);
+                    _raidJoinStartTime = DateTime.Now - TimeSpan.FromSeconds(windowSec - 60);
                 }
 
                 if (added)
                 {
-                    SendMessage($"@{raiderName} also raided! Their viewers can still !joinraid to join the combined raid.");
+                    SendMessage($"@{raiderName} also raided! Their viewers can still !joinraid (or chat) to join the combined raid.");
                 }
 
                 // Do not spawn duplicate dialogs; the existing one polls live data via GetCurrentRaidJoinList/GetRaidJoinTimeLeft
@@ -533,18 +548,26 @@ namespace CAP_ChatInteractive
 
             // Normal path: first (or new after previous ended) raid
             _raidJoinList.Clear();
+            _raidJoinCountFromIrc = 0;
+            _raidJoinCountFromChat = 0;
+            _raidJoinCountFromCommand = 0;
             if (!string.IsNullOrWhiteSpace(raiderName))
                 _raidJoinList.Add(raiderName);
             _raidJoinStartTime = DateTime.Now;
             _raidJoinWindowActive = true;
             _primaryRaiderName = raiderName;
 
-            Logger.Twitch($"[RAID JOIN] Window opened for @{raiderName} | Initial list count: {_raidJoinList.Count} | Window active: {_raidJoinWindowActive}");
+            int joinWindowSec = GetRaidJoinWindowSeconds();
+            bool chatFallback = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.TwitchRaidsAutoAddChatDuringWindow ?? true;
+            Logger.Twitch($"[RAID JOIN] Window opened for @{raiderName} | list={_raidJoinList.Count} | window={joinWindowSec}s | chatAutoAdd={chatFallback}");
 
             // Show nice countdown dialog (only for the initiating raid of a collection)
             Find.WindowStack.Add(new Dialog_TwitchRaidJoin(raiderName, viewerCount));
 
-            SendMessage($"@{raiderName} just raided us! Type !joinraid or just hang out — anyone who joins in the next {RaidJoinWindowSeconds} seconds will be in the raid!");
+            string chatHint = chatFallback
+                ? "chat or type !joinraid"
+                : "type !joinraid";
+            SendMessage($"@{raiderName} just raided us! {chatHint.CapitalizeFirst()} — anyone who participates in the next {joinWindowSec} seconds will be in the raid!");
         }
 
         public void ProcessJoinRaidCommand(string username)
@@ -561,8 +584,8 @@ namespace CAP_ChatInteractive
                 return;
             }
 
-            _raidJoinList.Add(username);
-            SendMessage($"@{username} joined the raid! ({_raidJoinList.Count} total)");
+            if (TryAddRaidJoiner(username, "command"))
+                SendMessage($"@{username} joined the raid! ({_raidJoinList.Count} total)");
         }
 
         /// <summary>
@@ -587,13 +610,16 @@ namespace CAP_ChatInteractive
             string primary = !string.IsNullOrWhiteSpace(_primaryRaiderName) ? _primaryRaiderName :
                              (snapshot.Count > 0 ? snapshot[0] : raiderName);
 
-            Logger.Twitch($"[RAID JOIN] TriggerRaidNow called | Snapshot count: {count} | Primary: {primary}");
+            Logger.Twitch($"[RAID JOIN] TriggerRaidNow called | Snapshot count: {count} | Primary: {primary} | irc={_raidJoinCountFromIrc} chat={_raidJoinCountFromChat} cmd={_raidJoinCountFromCommand}");
 
             // Transfer to the static used by worker, then clear our collection list
             IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
             IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(snapshot);
             _raidJoinList.Clear();
             _primaryRaiderName = null;
+            _raidJoinCountFromIrc = 0;
+            _raidJoinCountFromChat = 0;
+            _raidJoinCountFromCommand = 0;
 
             Logger.Twitch($"[RAID JOIN] Manual raid start. Final raiders: {IncidentWorker_TwitchRaid.CurrentRaidUsernames.Count}");
             Logger.Twitch($"[RAID JOIN] Names sent: {string.Join(", ", IncidentWorker_TwitchRaid.CurrentRaidUsernames)}");
@@ -781,10 +807,10 @@ namespace CAP_ChatInteractive
         {
             if (!_raidJoinWindowActive) return;
 
-            float secondsLeft = RaidJoinWindowSeconds - (float)(DateTime.Now - _raidJoinStartTime).TotalSeconds;
-            // Logger.Twitch($"[RAID JOIN] Timer tick - seconds left: {secondsLeft:F1} | Current list count: {_raidJoinList.Count}");
+            int windowSec = GetRaidJoinWindowSeconds();
+            // Logger.Twitch($"[RAID JOIN] Timer tick - seconds left: {windowSec - (DateTime.Now - _raidJoinStartTime).TotalSeconds:F1} | Current list count: {_raidJoinList.Count}");
 
-            if ((DateTime.Now - _raidJoinStartTime).TotalSeconds >= RaidJoinWindowSeconds)
+            if ((DateTime.Now - _raidJoinStartTime).TotalSeconds >= windowSec)
             {
                 _raidJoinWindowActive = false;
 
@@ -793,12 +819,16 @@ namespace CAP_ChatInteractive
                 string primary = !string.IsNullOrWhiteSpace(_primaryRaiderName) ? _primaryRaiderName :
                                  (count > 0 ? snapshot[0] : "UnknownRaider");
 
+                Logger.Twitch($"[RAID JOIN] Window closed | total={count} | via IRC JOIN={_raidJoinCountFromIrc} | via chat={_raidJoinCountFromChat} | via !joinraid={_raidJoinCountFromCommand}");
                 Logger.Twitch($"[RAID JOIN] Timer expired - final list: {string.Join(", ", snapshot)}");
 
                 IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
                 IncidentWorker_TwitchRaid.CurrentRaidUsernames.AddRange(snapshot);
                 _raidJoinList.Clear();
                 _primaryRaiderName = null;
+                _raidJoinCountFromIrc = 0;
+                _raidJoinCountFromChat = 0;
+                _raidJoinCountFromCommand = 0;
 
                 TryTriggerRimWorldRaid(primary, count);
             }
@@ -829,6 +859,10 @@ namespace CAP_ChatInteractive
                     Logger.Debug($"Skipping command processing (ShouldIgnoreForCommands=true): {messageWrapper.Message}");
                 }
 
+                // Raid join fallback: Twitch IRC JOIN (OnUserJoined) is often delayed ~2+ min or missing entirely.
+                // Anyone who chats during the window is added when the setting is on (default true).
+                TryAutoAddChatterDuringRaidWindow(messageWrapper.Username);
+
                 // Example: Check for first-time chatters
                 if (messageWrapper.PlatformMessage is ChatMessage twitchMessage &&
                     twitchMessage.IsFirstMessage)
@@ -840,6 +874,22 @@ namespace CAP_ChatInteractive
             {
                 Logger.Error($"Error processing Twitch message: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// During an active raid join window, optionally add anyone who chats (not only IRC JOIN).
+        /// Compensates for Twitch not sending reliable JOIN events for raiders.
+        /// </summary>
+        private void TryAutoAddChatterDuringRaidWindow(string username)
+        {
+            if (!_raidJoinWindowActive || string.IsNullOrWhiteSpace(username))
+                return;
+
+            var gs = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (gs == null || !gs.TwitchRaidsAutoAddChatDuringWindow)
+                return;
+
+            TryAddRaidJoiner(username, "chat");
         }
 
         private void ProcessWhisperOnMainThread(ChatMessageWrapper whisperWrapper)
@@ -921,32 +971,73 @@ namespace CAP_ChatInteractive
 
         public static void OnUserJoined(object sender, OnUserJoinedArgs e)
         {
-            var service = CAPChatInteractiveMod.Instance.TwitchService;
-            if (service != null)
-            {
-                // Queue to main thread because list mutation + logs are touched by UI/timer too; TwitchLib events can arrive off-thread
-                LongEventHandler.QueueLongEvent(() => service.ProcessUserJoined(e.Username), null, false, null, showExtraUIInfo: false);
-            }
+            var service = CAPChatInteractiveMod.Instance?.TwitchService;
+            if (service == null)
+                return;
+
+            // Always log at Twitch level so we can tell platform vs RICS if JOINs never fire
+            string name = e?.Username ?? "(null)";
+            Logger.Twitch($"[RAID JOIN] OnUserJoined event received for @{name} | windowActive={service._raidJoinWindowActive}");
+
+            // Queue to main thread because list mutation + logs are touched by UI/timer too; TwitchLib events can arrive off-thread
+            LongEventHandler.QueueLongEvent(() => service.ProcessUserJoined(e.Username), null, false, null, showExtraUIInfo: false);
         }
 
         public void ProcessUserJoined(string username)
         {
-            Logger.Twitch($"[RAID JOIN] OnUserJoined fired for @{username} | Window active: {_raidJoinWindowActive} | Current list count: {_raidJoinList.Count}");
+            Logger.Twitch($"[RAID JOIN] ProcessUserJoined @{username} | Window active: {_raidJoinWindowActive} | list: {_raidJoinList.Count}");
 
             if (!_raidJoinWindowActive)
             {
-                Logger.Twitch($"[RAID JOIN] Ignored @{username} - window is no longer active");
+                Logger.Twitch($"[RAID JOIN] Ignored @{username} - window is no longer active (JOIN may have arrived late — extend join window if this is common)");
                 return;
+            }
+
+            TryAddRaidJoiner(username, "irc");
+        }
+
+        /// <summary>
+        /// Shared add path for IRC JOIN, chat auto-add, and !joinraid.
+        /// Ignores bot/self and duplicates. Returns true if the username was newly added.
+        /// </summary>
+        private bool TryAddRaidJoiner(string username, string source)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+                return false;
+
+            username = username.Trim();
+
+            // Never put the bot account in the raid roster
+            if (!string.IsNullOrEmpty(_settings?.BotUsername) &&
+                string.Equals(username, _settings.BotUsername, StringComparison.OrdinalIgnoreCase))
+            {
+                Logger.Twitch($"[RAID JOIN] Skipped bot account @{username} (source={source})");
+                return false;
             }
 
             if (_raidJoinList.Contains(username, StringComparer.OrdinalIgnoreCase))
             {
-                Logger.Twitch($"[RAID JOIN] @{username} already in list - skipping");
-                return;
+                if (source == "irc")
+                    Logger.Twitch($"[RAID JOIN] @{username} already in list - skipping (source={source})");
+                return false;
             }
 
             _raidJoinList.Add(username);
-            Logger.Twitch($"[RAID JOIN] SUCCESS - Added @{username} to raid list | New total: {_raidJoinList.Count}");
+            switch (source)
+            {
+                case "irc":
+                    _raidJoinCountFromIrc++;
+                    break;
+                case "chat":
+                    _raidJoinCountFromChat++;
+                    break;
+                case "command":
+                    _raidJoinCountFromCommand++;
+                    break;
+            }
+
+            Logger.Twitch($"[RAID JOIN] SUCCESS - Added @{username} via {source} | total={_raidJoinList.Count} (irc={_raidJoinCountFromIrc}, chat={_raidJoinCountFromChat}, cmd={_raidJoinCountFromCommand})");
+            return true;
         }
 
         public string ProcessUserJoinRaidCommand(ChatMessageWrapper message)
@@ -959,8 +1050,9 @@ namespace CAP_ChatInteractive
             {
                 return "RICS.CC.joinraid.alreadyJoined".Translate();
             }
-            _raidJoinList.Add(message.Username);
-            return "RICS.CC.joinraid.success".Translate();
+            if (TryAddRaidJoiner(message.Username, "command"))
+                return "RICS.CC.joinraid.success".Translate();
+            return "RICS.CC.joinraid.alreadyJoined".Translate();
         }
 
         public List<string> GetCurrentRaidJoinList()
@@ -978,7 +1070,7 @@ namespace CAP_ChatInteractive
             if (!_raidJoinWindowActive || _raidJoinStartTime == DateTime.MinValue)
                 return 0f;
             float elapsed = (float)(DateTime.Now - _raidJoinStartTime).TotalSeconds;
-            return Mathf.Max(0f, RaidJoinWindowSeconds - elapsed);
+            return Mathf.Max(0f, GetRaidJoinWindowSeconds() - elapsed);
         }
 
         public static void OnUserLeft(object sender, OnUserLeftArgs e)

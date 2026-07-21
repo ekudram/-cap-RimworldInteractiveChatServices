@@ -307,6 +307,16 @@ namespace CAP_ChatInteractive
         public bool TwitchRaidsOnlyRaiders = true;     // only twitch raiders and !joinraid in the raid 
         public int TwitchRaidDelayMinutes = 1;            // delay before triggering in-game raid (minutes)
         public int TwitchRaidMinRaiders = 5;              // anti-troll protection (default 5)
+        /// <summary>
+        /// Seconds to collect joiners after a Twitch raid (IRC JOIN is often delayed 1–3+ min).
+        /// Default 240s. Clamped 60–360 in TwitchService.
+        /// </summary>
+        public int TwitchRaidJoinWindowSeconds = 240;
+        /// <summary>
+        /// When true, anyone who chats during the join window is added to the raid list.
+        /// Fallback when Twitch IRC OnUserJoined (JOIN) events are missing/late.
+        /// </summary>
+        public bool TwitchRaidsAutoAddChatDuringWindow = true;
 
         public CAPGlobalChatSettings()
         {
@@ -499,6 +509,8 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref TwitchRaidsOnlyRaiders, "twitchRaidsOnlyRaiders", true);
             Scribe_Values.Look(ref TwitchRaidDelayMinutes, "twitchRaidDelayMinutes", 1);
             Scribe_Values.Look(ref TwitchRaidMinRaiders, "twitchRaidMinRaiders", 5);
+            Scribe_Values.Look(ref TwitchRaidJoinWindowSeconds, "twitchRaidJoinWindowSeconds", 240);
+            Scribe_Values.Look(ref TwitchRaidsAutoAddChatDuringWindow, "twitchRaidsAutoAddChatDuringWindow", true);
         }
     }
 

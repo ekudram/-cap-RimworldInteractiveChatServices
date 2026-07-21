@@ -281,6 +281,26 @@ When "Force whisper-only commands" is enabled, this controls how often the remin
   </RICS.Twitch.RaidsMinRaidersTooltip>
   <RICS.Twitch.RaidsMinRaidersHelper>Will trigger only if raid has ≥ {0} raiders</RICS.Twitch.RaidsMinRaidersHelper>
 
+  <!-- Join window + chat fallback (Twitch IRC JOIN often late/missing) -->
+  <RICS.Twitch.RaidsJoinWindowLabel>Join collection window (seconds):</RICS.Twitch.RaidsJoinWindowLabel>
+  <RICS.Twitch.RaidsJoinWindowTooltip>
+    <![CDATA[How long to collect raider names after a Twitch raid is detected.
+
+• Twitch often delays IRC JOIN events by ~2 minutes (or never sends them).
+• Default 240 seconds (4 minutes) gives JOINs and chat time to arrive.
+• Range: 60–360 seconds.]]>
+  </RICS.Twitch.RaidsJoinWindowTooltip>
+  <RICS.Twitch.RaidsJoinWindowHelper>Collect joiners for {0} seconds after raid detection</RICS.Twitch.RaidsJoinWindowHelper>
+
+  <RICS.Twitch.RaidsChatAutoAddLabel>Auto-add chatters during join window</RICS.Twitch.RaidsChatAutoAddLabel>
+  <RICS.Twitch.RaidsChatAutoAddTooltip>
+    <![CDATA[When enabled, anyone who sends a chat message during the join window is added to the raid roster.
+
+• Strongly recommended: Twitch IRC OnUserJoined is unreliable for raids.
+• Still supports !joinraid and IRC JOIN when they work.
+• Does not add your bot account.]]>
+  </RICS.Twitch.RaidsChatAutoAddTooltip>
+
   <!-- Twitch Raid Letters -->
   <RICS.TwitchRaid.LetterLabel>Twitch Raid from @{0} ({1} raiders)!</RICS.TwitchRaid.LetterLabel>
   <RICS.TwitchRaid.LetterText>A massive raid from Twitch channel @{0} with approximately {1} viewers just hit your colony!\n\nGood luck, streamer!</RICS.TwitchRaid.LetterText>

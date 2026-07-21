@@ -581,6 +581,32 @@ namespace _CAP__Chat_Interactive
             Widgets.Label(minHelperRect, "RICS.Twitch.RaidsMinRaidersHelper".Translate(globalSettings.TwitchRaidMinRaiders));
             GUI.color = Color.white;
 
+            // Join collection window (IRC JOIN is often delayed ~2+ min by Twitch)
+            listing.Gap(12f);
+            Rect joinWindowLabelRect = listing.GetRect(24f);
+            Widgets.Label(joinWindowLabelRect, "RICS.Twitch.RaidsJoinWindowLabel".Translate());
+            TooltipHandler.TipRegion(joinWindowLabelRect, "RICS.Twitch.RaidsJoinWindowTooltip".Translate());
+
+            Rect joinWindowFieldRect = listing.GetRect(30f);
+            string joinWindowBuffer = globalSettings.TwitchRaidJoinWindowSeconds.ToString();
+            UIUtilities.TextFieldNumericFlexible(joinWindowFieldRect,
+                ref globalSettings.TwitchRaidJoinWindowSeconds,
+                ref joinWindowBuffer, 60, 360);
+
+            Rect joinWindowHelperRect = listing.GetRect(20f);
+            GUI.color = Color.gray;
+            Widgets.Label(joinWindowHelperRect, "RICS.Twitch.RaidsJoinWindowHelper".Translate(globalSettings.TwitchRaidJoinWindowSeconds));
+            GUI.color = Color.white;
+
+            // Chat auto-add fallback when OnUserJoined is missing/late
+            listing.Gap(8f);
+            Rect chatAutoAddRect = listing.GetRect(30f);
+            Widgets.CheckboxLabeled(chatAutoAddRect,
+                "RICS.Twitch.RaidsChatAutoAddLabel".Translate(),
+                ref globalSettings.TwitchRaidsAutoAddChatDuringWindow);
+            TooltipHandler.TipRegion(chatAutoAddRect, "RICS.Twitch.RaidsChatAutoAddTooltip".Translate());
+
+            listing.Gap(12f);
             Rect tipsRect = listing.GetRect(85f); // More height for tips
             //string tips =
             //    "💡 <b>Common Issues & Solutions:</b>\n" +
@@ -631,8 +657,9 @@ namespace _CAP__Chat_Interactive
             // Whisper Settings: Header 30 + gap 6 + gap 4 + checkbox 30 + gap 12 + checkbox 30 + gap 12 + label 24 + field 30 + helper 20 + gap 12 + note 40 + gap 24 = 254
             height += 254f;
 
-            // Twitch Raids section: Header 30 + gap 6 + gap 4 + checkbox 30 + label 24 + field 30 + helper 20 + gap 24 = 168
-            height += 168f;
+            // Twitch Raids section: enable + delay + min raiders + join window + chat auto-add
+            // Header 30 + enable 30 + delay (24+30+20) + min (12+24+30+20) + join (12+24+30+20) + chatAuto (8+30) + gaps ≈ 350
+            height += 350f;
 
             // Quick Tips: Header 30 + gap 6 + gap 4 + content 85 = 125
             height += 125f;

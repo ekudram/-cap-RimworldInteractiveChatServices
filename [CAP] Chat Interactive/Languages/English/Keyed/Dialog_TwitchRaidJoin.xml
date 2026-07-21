@@ -5,7 +5,7 @@
   <RICS.TwitchRaidJoin.Title>TWITCH RAID INCOMING!</RICS.TwitchRaidJoin.Title>
   <RICS.TwitchRaidJoin.CompactView>Compact View</RICS.TwitchRaidJoin.CompactView>
   <RICS.TwitchRaidJoin.StartRaidNow>START RAID NOW!</RICS.TwitchRaidJoin.StartRaidNow>
-  <RICS.TwitchRaidJoin.Note> Note: Twitch can take up to 3 minutes for all raiders to join.</RICS.TwitchRaidJoin.Note>
+  <RICS.TwitchRaidJoin.Note> Note: Twitch JOIN events can lag 2+ minutes (or never fire). Chat and !joinraid still count.</RICS.TwitchRaidJoin.Note>
   <RICS.TwitchRaidJoin.RaidersSoFar>Raiders so far ({0}):</RICS.TwitchRaidJoin.RaidersSoFar>
   <RICS.TwitchRaidJoin.RaiderInfo>@{0} raided with ~{1} viewers</RICS.TwitchRaidJoin.RaiderInfo>
   <RICS.TwitchRaidJoin.TimeLeft>{0:F0} seconds left to join!</RICS.TwitchRaidJoin.TimeLeft>
