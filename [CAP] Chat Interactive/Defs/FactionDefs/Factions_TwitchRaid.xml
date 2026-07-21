@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <!--
+    Static Twitch Raid factions (RICS).
+    One world instance per tier is created on demand — never runtime-cloned FactionDefs
+    (those break on save/load). Gear era comes from techLevel + pawn group kinds;
+    storyteller threat scales combatPower within the pool.
+  -->
+
+  <FactionDef Name="RICS_TwitchRaidBase" ParentName="FactionBase" Abstract="True">
+    <hidden>true</hidden>
+    <permanentEnemy>true</permanentEnemy>
+    <humanlikeFaction>true</humanlikeFaction>
+    <settlementGenerationWeight>0</settlementGenerationWeight>
+    <requiredCountAtGameStart>0</requiredCountAtGameStart>
+    <maxConfigurableAtWorldCreation>0</maxConfigurableAtWorldCreation>
+    <canSiege>false</canSiege>
+    <canStageAttacks>true</canStageAttacks>
+    <canRequestTraders>false</canRequestTraders>
+    <canRequestMilitaryAid>false</canRequestMilitaryAid>
+    <canGenerateQuestSites>false</canGenerateQuestSites>
+    <listOrderPriority>-100</listOrderPriority>
+    <allowedArrivalTemperatureRange>-40~45</allowedArrivalTemperatureRange>
+    <maxPawnCostPerTotalPointsCurve>
+      <points>
+        <li>(0,35)</li>
+        <li>(70, 50)</li>
+        <li>(700, 100)</li>
+        <li>(1300, 150)</li>
+        <li>(100000, 10000)</li>
+      </points>
+    </maxPawnCostPerTotalPointsCurve>
+    <requiredMemes>
+      <li MayRequire="Ludeon.RimWorld.Ideology">Raider</li>
+    </requiredMemes>
+  </FactionDef>
+
+  <!-- Neolithic: tribal kit -->
+  <FactionDef ParentName="RICS_TwitchRaidBase">
+    <defName>RICS_TwitchRaid_Tribal</defName>
+    <label>Twitch tribal raiders</label>
+    <fixedName>Twitch Tribal Raiders</fixedName>
+    <description>Named raiders from Twitch, equipped for neolithic / tribal warfare. Gear tracks colony research and start tech; threat scales how strong they are within this era.</description>
+    <pawnSingular>tribal raider</pawnSingular>
+    <pawnsPlural>tribal raiders</pawnsPlural>
+    <leaderTitle>war chief</leaderTitle>
+    <techLevel>Neolithic</techLevel>
+    <factionIconPath>World/WorldObjects/Expanding/VillageSavage</factionIconPath>
+    <colorSpectrum>
+      <li>(0.85, 0.15, 0.1)</li>
+      <li>(1, 0.55, 0.4)</li>
+    </colorSpectrum>
+    <allowedCultures><li>Corunan</li></allowedCultures>
+    <backstoryFilters>
+      <li>
+        <categories>
+          <li>Tribal</li>
+        </categories>
+      </li>
+    </backstoryFilters>
+    <raidLootMaker>TribeRaidLootMaker</raidLootMaker>
+    <pawnGroupMakers>
+      <li>
+        <kindDef>Combat</kindDef>
+        <commonality>100</commonality>
+        <options>
+          <Tribal_Penitent>5</Tribal_Penitent>
+          <Tribal_Warrior>8</Tribal_Warrior>
+          <Tribal_Archer>10</Tribal_Archer>
+          <Tribal_Hunter>10</Tribal_Hunter>
+          <Tribal_HeavyArcher>10</Tribal_HeavyArcher>
+          <Tribal_Berserker>6</Tribal_Berserker>
+          <Tribal_ChiefRanged>3</Tribal_ChiefRanged>
+          <Tribal_ChiefMelee>2</Tribal_ChiefMelee>
+        </options>
+      </li>
+      <li>
+        <kindDef>Combat</kindDef>
+        <commonality>40</commonality>
+        <options>
+          <Tribal_Warrior>10</Tribal_Warrior>
+          <Tribal_Berserker>10</Tribal_Berserker>
+          <Tribal_Penitent>8</Tribal_Penitent>
+          <Tribal_ChiefMelee>5</Tribal_ChiefMelee>
+        </options>
+      </li>
+    </pawnGroupMakers>
+  </FactionDef>
+
+  <!-- Medieval: pre-gun era (melee-heavy; techLevel Medieval) -->
+  <FactionDef ParentName="RICS_TwitchRaidBase">
+    <defName>RICS_TwitchRaid_Medieval</defName>
+    <label>Twitch medieval raiders</label>
+    <fixedName>Twitch Medieval Raiders</fixedName>
+    <description>Named raiders from Twitch, equipped for medieval-era warfare (melee and early arms). Used when the colony has smithing / plate research but not full industrial guns.</description>
+    <pawnSingular>medieval raider</pawnSingular>
+    <pawnsPlural>medieval raiders</pawnsPlural>
+    <leaderTitle>captain</leaderTitle>
+    <techLevel>Medieval</techLevel>
+    <factionIconPath>World/WorldObjects/Expanding/VillageRough</factionIconPath>
+    <colorSpectrum>
+      <li>(0.45, 0.35, 0.55)</li>
+      <li>(0.7, 0.55, 0.85)</li>
+    </colorSpectrum>
+    <allowedCultures><li>Corunan</li></allowedCultures>
+    <backstoryFilters>
+      <li>
+        <categories>
+          <li>Tribal</li>
+          <li>Pirate</li>
+        </categories>
+      </li>
+    </backstoryFilters>
+    <raidLootMaker>TribeRaidLootMaker</raidLootMaker>
+    <pawnGroupMakers>
+      <li>
+        <kindDef>Combat</kindDef>
+        <commonality>100</commonality>
+        <options>
+          <Tribal_Warrior>10</Tribal_Warrior>
+          <Tribal_Berserker>8</Tribal_Berserker>
+          <Tribal_Penitent>6</Tribal_Penitent>
+          <Tribal_ChiefMelee>4</Tribal_ChiefMelee>
+          <Mercenary_Slasher>10</Mercenary_Slasher>
+          <Thrasher>5</Thrasher>
+        </options>
+      </li>
+    </pawnGroupMakers>
+  </FactionDef>
+
+  <!-- Industrial: guns / flak era (not spacer) -->
+  <FactionDef ParentName="RICS_TwitchRaidBase">
+    <defName>RICS_TwitchRaid_Industrial</defName>
+    <label>Twitch industrial raiders</label>
+    <fixedName>Twitch Industrial Raiders</fixedName>
+    <description>Named raiders from Twitch with industrial-era weapons and armor (guns, flak). Threat still scales how elite they are within this pool.</description>
+    <pawnSingular>industrial raider</pawnSingular>
+    <pawnsPlural>industrial raiders</pawnsPlural>
+    <leaderTitle>boss</leaderTitle>
+    <techLevel>Industrial</techLevel>
+    <factionIconPath>World/WorldObjects/Expanding/TownRough</factionIconPath>
+    <colorSpectrum>
+      <li>(0.1, 0.35, 0.75)</li>
+      <li>(0.5, 0.7, 1)</li>
+    </colorSpectrum>
+    <allowedCultures><li>Kriminul</li></allowedCultures>
+    <backstoryFilters>
+      <li>
+        <categories>
+          <li>Pirate</li>
+          <li>Outlander</li>
+        </categories>
+      </li>
+    </backstoryFilters>
+    <raidLootMaker>OutlanderRaidLootMaker</raidLootMaker>
+    <pawnGroupMakers>
+      <li>
+        <kindDef>Combat</kindDef>
+        <commonality>100</commonality>
+        <options>
+          <Scavenger>8</Scavenger>
+          <Drifter>6</Drifter>
+          <Pirate>10</Pirate>
+          <Town_Guard>8</Town_Guard>
+          <Grenadier_Destructive>2</Grenadier_Destructive>
+          <Mercenary_Slasher>6</Mercenary_Slasher>
+          <Mercenary_Gunner>12</Mercenary_Gunner>
+          <Mercenary_Sniper>6</Mercenary_Sniper>
+          <Mercenary_Heavy>5</Mercenary_Heavy>
+        </options>
+      </li>
+    </pawnGroupMakers>
+  </FactionDef>
+
+  <!-- Spacer: pirate high-end kit -->
+  <FactionDef ParentName="RICS_TwitchRaidBase">
+    <defName>RICS_TwitchRaid_Spacer</defName>
+    <label>Twitch spacer raiders</label>
+    <fixedName>Twitch Spacer Raiders</fixedName>
+    <description>Named raiders from Twitch with spacer-era gear (charge weapons, advanced armor). Used when colony research and start tech support this era.</description>
+    <pawnSingular>spacer raider</pawnSingular>
+    <pawnsPlural>spacer raiders</pawnsPlural>
+    <leaderTitle>boss</leaderTitle>
+    <techLevel>Spacer</techLevel>
+    <factionIconPath>World/WorldObjects/Expanding/PirateOutpost</factionIconPath>
+    <colorSpectrum>
+      <li>(0.78, 0, 0.27)</li>
+      <li>(1, 0.55, 0.7)</li>
+    </colorSpectrum>
+    <allowedCultures><li>Kriminul</li></allowedCultures>
+    <backstoryFilters>
+      <li>
+        <categories>
+          <li>Pirate</li>
+        </categories>
+      </li>
+    </backstoryFilters>
+    <raidLootMaker>PirateRaidLootMaker</raidLootMaker>
+    <pawnGroupMakers>
+      <li>
+        <kindDef>Combat</kindDef>
+        <commonality>100</commonality>
+        <options>
+          <Drifter>6</Drifter>
+          <Thrasher>3</Thrasher>
+          <Scavenger>8</Scavenger>
+          <Pirate>10</Pirate>
+          <Grenadier_Destructive>2</Grenadier_Destructive>
+          <Mercenary_Gunner>10</Mercenary_Gunner>
+          <Mercenary_Heavy>7</Mercenary_Heavy>
+          <Mercenary_Slasher>4</Mercenary_Slasher>
+          <Mercenary_Sniper>8</Mercenary_Sniper>
+          <Mercenary_Elite>10</Mercenary_Elite>
+          <PirateBoss>4</PirateBoss>
+        </options>
+      </li>
+    </pawnGroupMakers>
+  </FactionDef>
+
+</Defs>

@@ -84,9 +84,15 @@ namespace CAP_ChatInteractive.Incidents
             float pointsPerRaider = parms.points / Math.Max(1, maxRaiders);
             bool vacuumMap = ItemDeliveryHelper.IsSpaceMap(map) || (map.Biome?.inVacuum == true);
 
+            // Prefer kinds from the static Twitch tier faction pool (era kit)
+            HashSet<PawnKindDef> tierKinds = null;
+            if (parms.faction?.def != null)
+                tierKinds = TwitchRaidGearTier.CollectCombatKinds(parms.faction.def);
+
             Logger.Twitch(
                 $"[TWITCH RAID WORKER] Wealth={colonyWealth:F0} points={parms.points:F0} " +
-                $"perRaider={pointsPerRaider:F0} vacuumMap={vacuumMap} maxRaiders={maxRaiders}");
+                $"perRaider={pointsPerRaider:F0} vacuumMap={vacuumMap} maxRaiders={maxRaiders} " +
+                $"faction={parms.faction?.def?.defName ?? "null"} tierKinds={tierKinds?.Count ?? 0}");
 
             var spawnedPawns = new List<Pawn>();
 
@@ -94,7 +100,7 @@ namespace CAP_ChatInteractive.Incidents
             {
                 string viewer = raidNames[i];
 
-                PawnKindDef kind = PickCombatKindForRaid(map, parms.faction, pointsPerRaider, colonyWealth);
+                PawnKindDef kind = PickCombatKindForRaid(map, parms.faction, pointsPerRaider, colonyWealth, tierKinds);
                 float biocodeChance = BiocodeChanceForWealth(colonyWealth, pointsPerRaider);
 
                 var request = new PawnGenerationRequest(
@@ -159,30 +165,39 @@ namespace CAP_ChatInteractive.Incidents
         }
 
         /// <summary>
-        /// Combat humanlike kind near target combat power derived from raid points + colony wealth.
-        /// Avoids weak Villager defaults that made Twitch raids feel poor.
+        /// Combat kind near target combat power from raid threat points + wealth.
+        /// Prefer kinds from the static Twitch tier faction pool (era-appropriate kit).
+        /// Threat raises power within the pool — does not change tech era.
         /// </summary>
         private static PawnKindDef PickCombatKindForRaid(
-            Map map, Faction faction, float pointsPerRaider, float colonyWealth)
+            Map map, Faction faction, float pointsPerRaider, float colonyWealth,
+            HashSet<PawnKindDef> tierKinds)
         {
             float targetPower = Mathf.Clamp(pointsPerRaider * 0.5f, 45f, 280f);
 
-            // Wealth pulls gear tier up even when raider count dilutes points
+            // Wealth / threat pulls combat power up within the tier (not tech era)
             if (colonyWealth >= 600000f) targetPower = Mathf.Max(targetPower, 180f);
             else if (colonyWealth >= 300000f) targetPower = Mathf.Max(targetPower, 130f);
             else if (colonyWealth >= 120000f) targetPower = Mathf.Max(targetPower, 90f);
             else if (colonyWealth >= 40000f) targetPower = Mathf.Max(targetPower, 65f);
 
-            TechLevel colonyTech = Faction.OfPlayer?.def?.techLevel ?? TechLevel.Industrial;
-            if (colonyTech >= TechLevel.Spacer)
-                targetPower = Mathf.Max(targetPower, 100f);
-
-            var combatKinds = DefDatabase<PawnKindDef>.AllDefsListForReading
-                .Where(k => k != null && k.race != null)
-                .Where(k => k.RaceProps.Humanlike && !k.RaceProps.IsMechanoid)
-                .Where(k => k.combatPower >= 40f && k.combatPower <= 320f)
-                .Where(IsCombatCapableKind)
-                .ToList();
+            List<PawnKindDef> combatKinds;
+            if (tierKinds != null && tierKinds.Count > 0)
+            {
+                combatKinds = tierKinds
+                    .Where(k => k != null && k.race != null)
+                    .Where(k => k.RaceProps.Humanlike && !k.RaceProps.IsMechanoid)
+                    .ToList();
+            }
+            else
+            {
+                combatKinds = DefDatabase<PawnKindDef>.AllDefsListForReading
+                    .Where(k => k != null && k.race != null)
+                    .Where(k => k.RaceProps.Humanlike && !k.RaceProps.IsMechanoid)
+                    .Where(k => k.combatPower >= 40f && k.combatPower <= 320f)
+                    .Where(IsCombatCapableKind)
+                    .ToList();
+            }
 
             if (combatKinds.Count == 0)
             {
@@ -190,7 +205,7 @@ namespace CAP_ChatInteractive.Incidents
                 return PawnKindDefOf.Pirate ?? PawnKindDefOf.Colonist;
             }
 
-            // Prefer kinds near target combat power
+            // Prefer kinds near target combat power (threat scaling within tier)
             var band = combatKinds
                 .Where(k => k.combatPower >= targetPower * 0.55f && k.combatPower <= targetPower * 1.4f)
                 .ToList();
@@ -203,23 +218,10 @@ namespace CAP_ChatInteractive.Incidents
                     .ToList();
             }
 
-            // Slight bias toward pirate/raider-named kinds when available (matches hostile raid fantasy)
-            var hostileNamed = band
-                .Where(k =>
-                {
-                    string n = k.defName ?? "";
-                    return n.IndexOf("Pirate", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                           n.IndexOf("Raider", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                           n.IndexOf("Merc", StringComparison.OrdinalIgnoreCase) >= 0;
-                })
-                .ToList();
-            if (hostileNamed.Count > 0 && Rand.Chance(0.65f))
-                band = hostileNamed;
-
             PawnKindDef pick = band.RandomElement();
             Logger.Twitch(
                 $"[TWITCH RAID WORKER] Kind pick targetPower={targetPower:F0} → {pick.defName} " +
-                $"(cp={pick.combatPower:F0}, pool={band.Count})");
+                $"(cp={pick.combatPower:F0}, band={band.Count}, tierPool={combatKinds.Count})");
             return pick;
         }
 

@@ -668,9 +668,13 @@ namespace CAP_ChatInteractive
             _lastRaidTriggerTime = DateTime.Now;
 
             int raiderCount = Math.Max(0, viewerCount); // the 'viewerCount' param here is actually the collected named raider count at trigger time
-            Logger.Twitch($"[CUSTOM FACTION RAID] Starting custom faction raid for @{raiderName} | Raider count: {raiderCount} | OnlyRaiders setting: {globalSettings.TwitchRaidsOnlyRaiders}");
 
-            Faction raidFaction = GetOrCreateRaidFaction(raiderName);
+            // Static tier faction (research + start tech). Threat/points scale strength within tier.
+            var gearTier = TwitchRaidGearTier.Resolve(map, out string tierNotes);
+            Faction raidFaction = TwitchRaidGearTier.GetOrCreateFaction(gearTier);
+
+            Logger.Twitch(
+                $"[CUSTOM FACTION RAID] @{raiderName} | raiders={raiderCount} | onlyRaiders={globalSettings.TwitchRaidsOnlyRaiders} | {tierNotes} | faction={raidFaction?.def?.defName ?? "null"}");
 
             IncidentParms parms = StorytellerUtility.DefaultParmsNow(IncidentCategoryDefOf.ThreatBig, map);
             parms.forced = true;
@@ -679,6 +683,7 @@ namespace CAP_ChatInteractive
             float basePoints = parms.points;
             float raidBonus = Mathf.Clamp(raiderCount * 80f, 200f, 4000f);
             parms.points = Mathf.Min(basePoints + raidBonus, basePoints * 2.5f);
+            Logger.Twitch($"[CUSTOM FACTION RAID] Threat points base={basePoints:F0} +bonus → {parms.points:F0} (scales combatPower within {gearTier})");
 
             parms.raidArrivalMode = PawnsArrivalModeDefOf.EdgeWalkIn;
             if (!HasValidEdgeForRaid(map))
@@ -710,69 +715,8 @@ namespace CAP_ChatInteractive
             Logger.Twitch($"Custom faction raid completed. Faction: {raidFaction.Name} | Success: {success}");
         }
 
-        private Faction GetOrCreateRaidFaction(string raiderChannel)
-        {
-            // Reuse existing faction if this streamer raided before
-            Faction existing = Find.FactionManager.AllFactionsListForReading
-                .FirstOrDefault(f => f.Name == raiderChannel);
-
-            if (existing != null)
-            {
-                Logger.Twitch($"[CUSTOM FACTION] Reusing existing faction for @{raiderChannel}");
-                return existing;
-            }
-
-            // Clone a real hostile faction (Pirate) so we inherit full pawnGroupMakers + hostility behavior
-            FactionDef baseDef = DefDatabase<FactionDef>.GetNamedSilentFail("Pirate")
-                              ?? DefDatabase<FactionDef>.GetNamedSilentFail("Outlander")
-                              ?? FactionDefOf.Pirate;
-
-            FactionDef raidDef = new FactionDef
-            {
-                defName = "TwitchRaid_" + raiderChannel,
-                label = raiderChannel,
-                isPlayer = false,
-                permanentEnemy = true,
-                humanlikeFaction = true,
-                techLevel = Faction.OfPlayer.def.techLevel,
-                settlementGenerationWeight = 0f,
-                hidden = true,
-
-                // === Copy everything needed to stop backstory spam ===
-                pawnGroupMakers = baseDef.pawnGroupMakers?.ListFullCopy(),
-                backstoryFilters = baseDef.backstoryFilters?.ListFullCopy(),   // Correct 1.6 field (from your FactionDef decompile)
-                raidLootMaker = baseDef.raidLootMaker
-            };
-
-            Faction newFaction = new Faction
-            {
-                def = raidDef,
-                loadID = Find.UniqueIDsManager.GetNextFactionID(),
-                Name = raiderChannel
-            };
-
-            Find.FactionManager.Add(newFaction);
-
-            // === FORCE HOSTILITY TO PLAYER (both directions) ===
-            newFaction.TryMakeInitialRelationsWith(Faction.OfPlayer);
-            newFaction.SetRelationDirect(Faction.OfPlayer, FactionRelationKind.Hostile, canSendHostilityLetter: false);
-
-            Faction.OfPlayer.TryMakeInitialRelationsWith(newFaction);
-            Faction.OfPlayer.SetRelationDirect(newFaction, FactionRelationKind.Hostile, canSendHostilityLetter: false);
-
-            // === CRITICAL: Initialize relations with EVERY other faction in the world ===
-            // This is what stops the 5000+ "null relation" spam messages
-            foreach (Faction other in Find.FactionManager.AllFactionsListForReading)
-            {
-                if (other != newFaction)
-                {
-                    newFaction.TryMakeInitialRelationsWith(other);
-                }
-            }
-
-            Logger.Twitch($"[CUSTOM FACTION] Created new hidden raid faction for @{raiderChannel} (based on {baseDef.defName} - FORCED HOSTILE + full relations + backstoryFilters)");
-            return newFaction;
-        }
+        // Per-streamer runtime FactionDefs removed — use TwitchRaidGearTier.GetOrCreateFaction
+        // (static XML defs survive save/load; streamer name stays on the letter/chat only).
 
         /// <summary>
         /// Simple check if EdgeWalkIn is likely to work on this map.
