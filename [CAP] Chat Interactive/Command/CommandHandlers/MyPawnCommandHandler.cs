@@ -1101,9 +1101,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         }
                         else
                         {
+                            string query = string.Join(" ", args);
+                            if (classInfo != null && classInfo.HasSuggestions)
+                            {
+                                string suggestions = string.Join(" • ", classInfo.SuggestedClassLabels);
+                                Logger.Debug($"[MyPawn Psycasts] VPE class no match for '{args[0]}' — suggestions: {suggestions}");
+                                return $"Unknown psycast class '{query}'. Did you mean: {suggestions}?";
+                            }
+
                             string err = classInfo?.Error != null ? $" ({classInfo.Error})" : "";
                             Logger.Debug($"[MyPawn Psycasts] VPE class query no match for '{args[0]}'{err}");
-                            return $"Unknown psycast class '{string.Join(" ", args)}'{err}. Try !mypawn psycast for stats or a valid class name.";
+                            return $"Unknown psycast class '{query}'{err}. Try !mypawn psycast for stats or a valid class name.";
                         }
                     }
 

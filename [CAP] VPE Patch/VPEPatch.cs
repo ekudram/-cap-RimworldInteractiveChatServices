@@ -125,19 +125,63 @@ namespace CAP_ChatInteractive.Patch.VPE
 
                 int currentLevel = hediff.level;
 
-                string search = classIdentifier.ToLowerInvariant()
-                    .Replace(" ", "").Replace("_", "").Replace("-", "").Replace(".", "");
+                string search = NormalizeClassKey(classIdentifier);
+                if (string.IsNullOrEmpty(search))
+                    return new VPEClassInfo { Level = currentLevel, Error = "Invalid class name" };
 
+                // 1) Primary: contains match on defName / label (existing behavior)
                 PsycasterPathDef matchedPath = null;
                 foreach (var p in DefDatabase<PsycasterPathDef>.AllDefsListForReading)
                 {
                     if (p == null) continue;
-                    string dn = (p.defName ?? "").ToLowerInvariant().Replace(" ", "").Replace("_", "").Replace("-", "");
-                    string lb = (p.LabelCap.ToString() ?? "").ToLowerInvariant().Replace(" ", "").Replace("_", "").Replace("-", "");
-                    if (dn.Contains(search) || lb.Contains(search) || search.Contains(dn) || search.Contains(lb))
+                    string dn = NormalizeClassKey(p.defName);
+                    string lb = NormalizeClassKey(p.LabelCap.ToString());
+                    if (dn.Contains(search) || lb.Contains(search) ||
+                        (!string.IsNullOrEmpty(dn) && search.Contains(dn)) ||
+                        (!string.IsNullOrEmpty(lb) && search.Contains(lb)))
                     {
                         matchedPath = p;
                         break;
+                    }
+                }
+
+                // 2) Fallback: paths whose defName/label start with the first letter of the arg
+                if (matchedPath == null)
+                {
+                    char first = search[0];
+                    var firstLetterHits = DefDatabase<PsycasterPathDef>.AllDefsListForReading
+                        .Where(p => p != null)
+                        .Where(p =>
+                        {
+                            string dn = NormalizeClassKey(p.defName);
+                            string lb = NormalizeClassKey(p.LabelCap.ToString());
+                            return (!string.IsNullOrEmpty(dn) && dn[0] == first) ||
+                                   (!string.IsNullOrEmpty(lb) && lb[0] == first);
+                        })
+                        .OrderBy(p => p.LabelCap.ToString() ?? p.defName ?? "", StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                    if (firstLetterHits.Count == 1)
+                    {
+                        matchedPath = firstLetterHits[0];
+                        Logger.Debug($"VPE Patch: first-letter auto-match '{classIdentifier}' → '{matchedPath.LabelCap}'");
+                    }
+                    else if (firstLetterHits.Count > 1)
+                    {
+                        const int maxSuggest = 8;
+                        var labels = firstLetterHits
+                            .Take(maxSuggest)
+                            .Select(p => (p.LabelCap.ToString() ?? p.defName ?? "?").Trim())
+                            .Where(s => !string.IsNullOrEmpty(s))
+                            .ToList();
+                        Logger.Debug($"VPE Patch: first-letter suggestions for '{classIdentifier}': {string.Join(", ", labels)}");
+                        return new VPEClassInfo
+                        {
+                            Level = currentLevel,
+                            HasMatchingClass = false,
+                            Error = $"No class matching '{classIdentifier}'",
+                            SuggestedClassLabels = labels
+                        };
                     }
                 }
 
@@ -212,6 +256,16 @@ namespace CAP_ChatInteractive.Patch.VPE
                 Logger.Error($"VPE Patch GetPsycastsInClass error: {ex}");
                 return new VPEClassInfo { Error = ex.Message };
             }
+        }
+
+        private static string NormalizeClassKey(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return "";
+            return s.ToLowerInvariant()
+                .Replace(" ", "")
+                .Replace("_", "")
+                .Replace("-", "")
+                .Replace(".", "");
         }
 
         /// <summary>

@@ -107,7 +107,14 @@ namespace _CAP__Chat_Interactive.Interfaces
         public bool HasMatchingClass { get; set; } = false;
         public string Error { get; set; }
 
+        /// <summary>
+        /// Labels of close matches when no single class resolved (for "Did you mean…").
+        /// Filled when primary match fails but one or more paths start with the same first letter.
+        /// </summary>
+        public List<string> SuggestedClassLabels { get; set; } = new List<string>();
+
         public bool HasAnyAbilities => Abilities != null && Abilities.Count > 0;
+        public bool HasSuggestions => SuggestedClassLabels != null && SuggestedClassLabels.Count > 0;
     }
 
     /// <summary>
