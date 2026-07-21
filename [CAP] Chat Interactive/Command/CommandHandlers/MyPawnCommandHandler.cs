@@ -699,7 +699,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 if (statsShown >= MAX_STATS_TO_SHOW) break;
 
-                var statDef = FindStatDef(statName);
+                var statDef = FindStatDef(statName, pawn);
                 if (statDef != null)
                 {
                     if (!foundDefs.Add(statDef.defName)) continue; // already shown - skip duplicate
@@ -714,7 +714,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         description = description.Substring(0, 57) + "...";
                     }
 
-                    report.AppendLine($"• {StripTags(statDef.LabelCap)}: {formattedValue}");
+                    // Include defName when label is ambiguous (e.g. "beauty" = PawnBeauty vs thing Beauty)
+                    string label = StripTags(statDef.LabelCap);
+                    report.AppendLine($"• {label} ({statDef.defName}): {formattedValue}");
                     if (!string.IsNullOrEmpty(description))
                     {
                         report.AppendLine($"  {description}");
@@ -744,38 +746,103 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return report.ToString();
         }
 
-        private static StatDef FindStatDef(string statName)
+        /// <summary>
+        /// Resolve a stat name for !mypawn stats. When <paramref name="forPawn"/> is set,
+        /// prefer stats that actually show on that pawn (e.g. "beauty" → PawnBeauty, not thing Beauty).
+        /// </summary>
+        private static StatDef FindStatDef(string statName, Pawn forPawn = null)
         {
             if (string.IsNullOrWhiteSpace(statName)) return null;
 
-            string search = statName.ToLower().Trim().Replace("_", "").Replace(" ", "");
+            string search = NormalizeStatKey(statName);
+            if (string.IsNullOrEmpty(search)) return null;
 
             var allStats = DefDatabase<StatDef>.AllDefsListForReading;
 
-            // 1. Exact defName match (highest priority - vanilla best practice)
-            var exact = allStats.FirstOrDefault(s =>
-                string.Equals(s.defName.Replace("_", ""), search, StringComparison.OrdinalIgnoreCase));
-            if (exact != null) return exact;
-
-            // 2. Exact label match (e.g. "psychic sensitivity")
-            exact = allStats.FirstOrDefault(s =>
-                string.Equals(s.label.Replace(" ", ""), search, StringComparison.OrdinalIgnoreCase));
-            if (exact != null) return exact;
-
-            // 3. Smart contains: prefer base stats over Offset/Factor variants (fixes the reported bug)
-            //    + shorter defName first (PsychicSensitivity beats PsychicSensitivityOffset)
-            return allStats
-                .Where(s =>
+            // Collect all plausible matches — do not short-circuit on first exact defName.
+            // Both Beauty (thing) and PawnBeauty (colonist attractiveness) label as "beauty";
+            // exact defName "Beauty" would wrongly win over PawnBeauty without ranking.
+            var matches = allStats
+                .Where(s => s != null && !string.IsNullOrEmpty(s.defName))
+                .Select(s =>
                 {
-                    string defClean = s.defName.ToLower().Replace("_", "");
-                    string labelClean = s.label.ToLower().Replace(" ", "");
-                    return defClean.Contains(search) || labelClean.Contains(search);
+                    string defClean = NormalizeStatKey(s.defName);
+                    string labelClean = NormalizeStatKey(s.label);
+                    return (stat: s, defClean, labelClean);
                 })
-                .OrderBy(s => (s.defName.ToLower().EndsWith("offset") || s.defName.ToLower().EndsWith("factor")) &&
-                               !search.Contains("offset") && !search.Contains("factor") ? 1 : 0)
-                .ThenBy(s => s.defName.Length)   // shorter = more likely the "real" stat
-                .ThenBy(s => s.label.Length)
+                .Where(x =>
+                    x.defClean == search ||
+                    x.labelClean == search ||
+                    x.defClean.Contains(search) ||
+                    x.labelClean.Contains(search))
+                .ToList();
+
+            if (matches.Count == 0)
+                return null;
+
+            return matches
+                .OrderByDescending(x => RankStatMatch(x.stat, x.defClean, x.labelClean, search, forPawn))
+                .ThenBy(x => x.stat.defName.Length)
+                .Select(x => x.stat)
                 .FirstOrDefault();
+        }
+
+        private static string NormalizeStatKey(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return "";
+            return s.ToLowerInvariant().Trim().Replace("_", "").Replace(" ", "").Replace("-", "");
+        }
+
+        /// <summary>
+        /// Higher = better match for this pawn / search string.
+        /// </summary>
+        private static int RankStatMatch(StatDef stat, string defClean, string labelClean, string search, Pawn forPawn)
+        {
+            int rank = 0;
+
+            // Text match quality
+            if (defClean == search) rank += 1000;
+            else if (labelClean == search) rank += 900;
+            else if (defClean.StartsWith(search) || labelClean.StartsWith(search)) rank += 500;
+            else if (defClean.Contains(search) || labelClean.Contains(search)) rank += 200;
+
+            // Prefer the "main" stat over Offset/Factor variants
+            if ((defClean.EndsWith("offset") || defClean.EndsWith("factor")) &&
+                !search.Contains("offset") && !search.Contains("factor"))
+                rank -= 400;
+
+            // Prefer closer name length when both contain the search (PsychicSensitivity vs long mods)
+            rank -= Math.Min(defClean.Length, 80);
+
+            if (forPawn == null)
+                return rank;
+
+            // Prefer stats that the character info panel would show for this pawn
+            bool showsForPawn = false;
+            try
+            {
+                showsForPawn = stat.Worker != null && stat.Worker.ShouldShowFor(StatRequest.For(forPawn));
+            }
+            catch
+            {
+                // Some workers throw on edge cases — treat as not shown
+            }
+
+            if (showsForPawn)
+                rank += 600;
+            else
+                rank -= 350;
+
+            if (stat.showOnPawns)
+                rank += 80;
+
+            string cat = stat.category?.defName ?? "";
+            if (cat.IndexOf("NonPawn", StringComparison.OrdinalIgnoreCase) >= 0)
+                rank -= 500; // Beauty (objects) is BasicsNonPawn
+            else if (cat.IndexOf("Pawn", StringComparison.OrdinalIgnoreCase) >= 0)
+                rank += 250; // PawnBeauty is PawnSocial
+
+            return rank;
         }
 
         private static string FormatStatValue(StatDef statDef, float value)
