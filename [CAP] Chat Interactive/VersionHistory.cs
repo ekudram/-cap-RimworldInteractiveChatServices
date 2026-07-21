@@ -1168,8 +1168,8 @@ You will need to sync your fork to the main branch or copy the new files from th
 },
             {"1.45",
                 @"===========================================================
-                         RICS version - Changelog
-                         Released: Month Day, Year
+                         RICS version 1.45- Changelog
+                         Released: July 25, 2026
 ===========================================================
 
 <b>MEMORANDUM</b>
