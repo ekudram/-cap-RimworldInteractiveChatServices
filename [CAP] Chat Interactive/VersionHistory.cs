@@ -18,6 +18,7 @@
 
 
 using CAP_ChatInteractive.Commands.ViewerCommands;
+using NAudio.SoundFont;
 using RimWorld;
 using Steamworks;
 using System;
@@ -1164,7 +1165,67 @@ You will need to sync your fork to the main branch or copy the new files from th
 
 <b>Special thanks to Kanboru</b> for the `!mypawn genes` command contribution!
 "
-}
+},
+            {"1.45",
+                @"===========================================================
+                         RICS version - Changelog
+                         Released: Month Day, Year
+===========================================================
+
+<b>MEMORANDUM</b>
+─────────────────
+
+Updates to how the Twitch Raids system works.
+Updates to !mypawn Command to show more information about the viewer's pawn.
+
+<b>UPDATED</b>
+──────────────
+- Twitch Raids system now properly respects the colony's current state and adjusts raid difficulty accordingly.
+- Twitch Raiders might have a better chance of joining from chat.
+  -This is a Twitch limitation and not a RICS issue, but we have improved the detection logic to help with this.
+- Updated command handler and VPE patch to display suggestions in error messages.
+
+<b>FIXED</b>
+────────────
+- !mypawn relations command now properly shows the relationships of the viewer's pawn, including lovers, spouses, and family members.
+- !mypawn stats command now properly shows the stats of the viewer's pawn, including health, skills, and beauty.
+
+<b>ADDED</b>
+────────────
+- Setting to change Twitch Raid join window duration (default 240 seconds). This allows streamers to adjust how long the system collects raider names after a raid is detected.
+- Added logic to suggest similar psycast class names when user input does not match any known class.
+
+<b>TRANSLATIONS</b>
+───────────────────
+TabDrawer_Twitch.xml
+-   <RICS.TwitchRaidJoin.Note> Note: Twitch JOIN events can lag 2+ minutes (or never fire). Chat and !joinraid still count.</RICS.TwitchRaidJoin.Note>
+
+TabDrawer_Twitch.xml
+  <!-- Join window + chat fallback (Twitch IRC JOIN often late/missing) -->
+  <RICS.Twitch.RaidsJoinWindowLabel>Join collection window (seconds):</RICS.Twitch.RaidsJoinWindowLabel>
+  <RICS.Twitch.RaidsJoinWindowTooltip>
+    <![CDATA[How long to collect raider names after a Twitch raid is detected.
+ 
+• Twitch often delays IRC JOIN events by ~2 minutes (or never sends them).
+• Default 240 seconds (4 minutes) gives JOINs and chat time to arrive.
+• Range: 60–360 seconds.]]>
+  </RICS.Twitch.RaidsJoinWindowTooltip>
+  <RICS.Twitch.RaidsJoinWindowHelper>Collect joiners for {0} seconds after raid detection</RICS.Twitch.RaidsJoinWindowHelper>
+ 
+  <RICS.Twitch.RaidsChatAutoAddLabel>Auto-add chatters during join window</RICS.Twitch.RaidsChatAutoAddLabel>
+  <RICS.Twitch.RaidsChatAutoAddTooltip>
+    <![CDATA[When enabled, anyone who sends a chat message during the join window is added to the raid roster.
+ 
+• Strongly recommended: Twitch IRC OnUserJoined is unreliable for raids.
+• Still supports !joinraid and IRC JOIN when they work.
+• Does not add your bot account.]]>
+  </RICS.Twitch.RaidsChatAutoAddTooltip>
+
+"
+
+
+
+                }
 
 
 /*  Copy this template for future versions and fill in the details
