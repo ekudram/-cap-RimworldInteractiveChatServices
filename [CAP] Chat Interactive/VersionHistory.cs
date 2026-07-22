@@ -1194,6 +1194,9 @@ Updates to !mypawn Command to show more information about the viewer's pawn.
 ────────────
 - Setting to change Twitch Raid join window duration (default 240 seconds). This allows streamers to adjust how long the system collects raider names after a raid is detected.
 - Added logic to suggest similar psycast class names when user input does not match any known class.
+- !mypawn family command added to show the family members of the viewer's pawn, including parents, siblings, and children.
+- !mypawn friends command added to show the friends of the viewer's pawn, including best friends and acquaintances.
+- !mypawn rivals command added to show the rivals of the viewer's pawn, including enemies and competitors.
 
 <b>TRANSLATIONS</b>
 ───────────────────
