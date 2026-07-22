@@ -82,7 +82,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "kills":
                     case "killcount": settingKey = "enableKills"; break;
                     case "needs": settingKey = "enableNeeds"; break;
-                    case "relations": settingKey = "enableRelations"; break;
+                    case "relations":
+                    case "family":
+                    case "kin":
+                    case "friends":
+                    case "friend":
+                    case "kith":
+                    case "rivals":
+                    case "rival":
+                    case "enemies":
+                    case "adversaries":
+                    case "adversary":
+                        settingKey = "enableRelations"; break;
                     case "skills": settingKey = "enableSkills"; break;
                     case "stats": settingKey = "enableStats"; break;
                     case "story": settingKey = "enableStory"; break;
@@ -130,6 +141,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         return HandleNeedsInfo(pawn, args);
                     case "relations":
                         return HandleRelationsInfo(pawn, viewer, args);
+                    case "family":
+                    case "kin":
+                        return HandleFamilyOnly(pawn);
+                    case "friends":
+                    case "friend":
+                    case "kith":
+                        return HandleFriendsOnly(pawn);
+                    case "rivals":
+                    case "rival":
+                    case "enemies":
+                    case "adversaries":
+                    case "adversary":
+                        return HandleRivalsOnly(pawn);
                     case "skills":
                         return HandleSkillsInfo(pawn, args);
                     case "stats":
@@ -357,20 +381,150 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return report.ToString();
         }
 
+        /// <summary>!mypawn family | kin — family/kin only.</summary>
+        private static string HandleFamilyOnly(Pawn pawn)
+        {
+            var report = new StringBuilder();
+            report.AppendLine("RICS.MPCH.FamilyHeader".Translate());
+
+            var family = GetFamilyList(pawn);
+            if (family.Count == 0)
+            {
+                report.AppendLine("RICS.MPCH.NoFamily".Translate());
+                return report.ToString();
+            }
+
+            foreach (var relative in family)
+            {
+                string relation = GetFamilyRelation(pawn, relative);
+                string viewerName = GetViewerNameFromPawn(relative);
+                report.AppendLine($"  • {viewerName}: {relation}");
+            }
+
+            return report.ToString();
+        }
+
+        /// <summary>!mypawn friends | friend | kith | kilth — viewer friends only.</summary>
+        private static string HandleFriendsOnly(Pawn pawn)
+        {
+            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+            if (assignmentManager == null)
+                return "RICS.MPCH.RelationsUnavailable".Translate();
+
+            var report = new StringBuilder();
+            report.AppendLine("RICS.MPCH.ViewerFriendsHeader".Translate());
+
+            var family = GetFamilyList(pawn);
+            // Friends-only: show more than the overview (10 vs 5)
+            var friends = GetViewerFriendsList(pawn, assignmentManager, family, take: 10);
+            if (friends.Count == 0)
+            {
+                report.AppendLine("RICS.MPCH.NoFriends".Translate());
+                return report.ToString();
+            }
+
+            foreach (var friend in friends)
+            {
+                int opinion = pawn.relations.OpinionOf(friend);
+                string friendViewerName = GetViewerNameFromPawn(friend);
+                report.AppendLine($"  • {friendViewerName}: +{opinion} 😊");
+            }
+
+            return report.ToString();
+        }
+
+        /// <summary>!mypawn rivals | rival — viewer rivals only.</summary>
+        private static string HandleRivalsOnly(Pawn pawn)
+        {
+            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+            if (assignmentManager == null)
+                return "RICS.MPCH.RelationsUnavailable".Translate();
+
+            var report = new StringBuilder();
+            report.AppendLine("RICS.MPCH.ViewerRivalsHeader".Translate());
+
+            var family = GetFamilyList(pawn);
+            var rivals = GetViewerRivalsList(pawn, assignmentManager, family, take: 10);
+            if (rivals.Count == 0)
+            {
+                report.AppendLine("RICS.MPCH.NoRivals".Translate());
+                return report.ToString();
+            }
+
+            foreach (var rival in rivals)
+            {
+                int opinion = pawn.relations.OpinionOf(rival);
+                string rivalViewerName = GetViewerNameFromPawn(rival);
+                report.AppendLine($"  • {rivalViewerName}: {opinion} 😠");
+            }
+
+            return report.ToString();
+        }
+
+        private static List<Pawn> GetFamilyList(Pawn pawn)
+        {
+            if (pawn?.relations == null)
+                return new List<Pawn>();
+
+            // Family: vanilla relation workers (Child/Sibling/etc. are often implied, not DirectRelations).
+            return pawn.relations.RelatedPawns
+                .Where(p => IsFamilyRelation(pawn, p))
+                .OrderByDescending(p => pawn.GetMostImportantRelation(p)?.importance ?? 0f)
+                .ToList();
+        }
+
+        private static List<Pawn> GetViewerFriendsList(
+            Pawn pawn,
+            GameComponent_PawnAssignmentManager assignmentManager,
+            List<Pawn> family,
+            int take = 5)
+        {
+            if (pawn?.relations == null || assignmentManager == null)
+                return new List<Pawn>();
+
+            var familySet = family != null
+                ? new HashSet<Pawn>(family)
+                : new HashSet<Pawn>();
+
+            return assignmentManager.GetAllViewerPawns()
+                .Where(p => p != pawn &&
+                       pawn.relations.OpinionOf(p) > 10 &&
+                       !familySet.Contains(p))
+                .OrderByDescending(p => pawn.relations.OpinionOf(p))
+                .Take(take)
+                .ToList();
+        }
+
+        private static List<Pawn> GetViewerRivalsList(
+            Pawn pawn,
+            GameComponent_PawnAssignmentManager assignmentManager,
+            List<Pawn> family,
+            int take = 5)
+        {
+            if (pawn?.relations == null || assignmentManager == null)
+                return new List<Pawn>();
+
+            var familySet = family != null
+                ? new HashSet<Pawn>(family)
+                : new HashSet<Pawn>();
+
+            return assignmentManager.GetAllViewerPawns()
+                .Where(p => p != pawn &&
+                       pawn.relations.OpinionOf(p) < -10 &&
+                       !familySet.Contains(p))
+                .OrderBy(p => pawn.relations.OpinionOf(p))
+                .Take(take)
+                .ToList();
+        }
+
         private static string GetRelationsOverview(Pawn pawn, GameComponent_PawnAssignmentManager assignmentManager)
         {
             var report = new StringBuilder();
 
-            // Family: use vanilla relation workers (Child/Sibling/etc. are often implied, not DirectRelations).
-            // DirectRelationExists(Child) always fails — Child is stored as Parent on the child only.
-            var family = pawn.relations.RelatedPawns
-                .Where(p => IsFamilyRelation(pawn, p))
-                .OrderByDescending(p => pawn.GetMostImportantRelation(p)?.importance ?? 0f)
-                .ToList();
+            var family = GetFamilyList(pawn);
 
             if (family.Count > 0)
             {
-                // report.AppendLine("👨‍👩‍👧‍👦 Family:");
                 report.AppendLine("RICS.MPCH.FamilyHeader".Translate());
                 foreach (var relative in family)
                 {
@@ -381,17 +535,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // Viewer friends (top 5 by opinion) - EXCLUDE family members
-            var viewerFriends = assignmentManager.GetAllViewerPawns()
-                .Where(p => p != pawn &&
-                       pawn.relations.OpinionOf(p) > 10 &&
-                       !family.Contains(p)) // Exclude family members
-                .OrderByDescending(p => pawn.relations.OpinionOf(p))
-                .Take(5)
-                .ToList();
+            var viewerFriends = GetViewerFriendsList(pawn, assignmentManager, family, take: 5);
 
             if (viewerFriends.Count > 0)
             {
-                // report.AppendLine("🎮 Viewer Friends:");
                 report.AppendLine("RICS.MPCH.ViewerFriendsHeader".Translate());
                 foreach (var friend in viewerFriends)
                 {
@@ -402,17 +549,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // Viewer rivals (top 5 by negative opinion) - EXCLUDE family members
-            var viewerRivals = assignmentManager.GetAllViewerPawns()
-                .Where(p => p != pawn &&
-                       pawn.relations.OpinionOf(p) < -10 &&
-                       !family.Contains(p)) // Exclude family members
-                .OrderBy(p => pawn.relations.OpinionOf(p))
-                .Take(5)
-                .ToList();
+            var familySet = new HashSet<Pawn>(family);
+            var viewerRivals = GetViewerRivalsList(pawn, assignmentManager, family, take: 5);
 
             if (viewerRivals.Count > 0)
             {
-                // report.AppendLine("⚔️ Viewer Rivals:");
                 report.AppendLine("RICS.MPCH.ViewerRivalsHeader".Translate());
                 foreach (var rival in viewerRivals)
                 {
@@ -424,16 +565,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             // Overall social summary - EXCLUDE family members from counts
             int totalFriends = assignmentManager.GetAllViewerPawns()
-                .Count(p => p != pawn && pawn.relations.OpinionOf(p) > 10 && !family.Contains(p));
+                .Count(p => p != pawn && pawn.relations.OpinionOf(p) > 10 && !familySet.Contains(p));
             int totalRivals = assignmentManager.GetAllViewerPawns()
-                .Count(p => p != pawn && pawn.relations.OpinionOf(p) < -10 && !family.Contains(p));
+                .Count(p => p != pawn && pawn.relations.OpinionOf(p) < -10 && !familySet.Contains(p));
 
-            // report.AppendLine($"📊 Social Summary: {family.Count} family, {totalFriends} viewer friends, {totalRivals} viewer rivals");
-            report.AppendLine("RICS.MPCH.SocialSummary".Translate(family.Count, totalFriends, totalRivals));    
+            report.AppendLine("RICS.MPCH.SocialSummary".Translate(family.Count, totalFriends, totalRivals));
 
             if (family.Count == 0 && viewerFriends.Count == 0 && viewerRivals.Count == 0)
             {
-                // report.AppendLine("No significant relationships found.");
                 report.AppendLine("RICS.MPCH.NoRelations".Translate());
             }
 

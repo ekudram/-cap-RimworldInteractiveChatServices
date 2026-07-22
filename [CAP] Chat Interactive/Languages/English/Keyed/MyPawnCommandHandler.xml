@@ -71,6 +71,9 @@
   <RICS.MPCH.Opinion>• Opinion: {0} {1}</RICS.MPCH.Opinion>
   <RICS.MPCH.ActiveRelationship>• Relationship: Active 💑</RICS.MPCH.ActiveRelationship>
   <RICS.MPCH.FamilyHeader>👨‍👩‍👧‍👦 Family:</RICS.MPCH.FamilyHeader>
+  <RICS.MPCH.NoFamily>No family or kin found.</RICS.MPCH.NoFamily>
+  <RICS.MPCH.NoFriends>No viewer friends found (opinion &gt; 10).</RICS.MPCH.NoFriends>
+  <RICS.MPCH.NoRivals>No viewer rivals found (opinion &lt; -10).</RICS.MPCH.NoRivals>
   <RICS.MPCH.ViewerFriendsHeader>🎮 Viewer Friends:</RICS.MPCH.ViewerFriendsHeader>
   <RICS.MPCH.ViewerRivalsHeader>⚔️ Viewer Rivals:</RICS.MPCH.ViewerRivalsHeader>
   <RICS.MPCH.SocialSummary>📊 Social Summary: {0} family, {1} viewer friends, {2} viewer rivals</RICS.MPCH.SocialSummary>

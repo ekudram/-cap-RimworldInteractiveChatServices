@@ -916,7 +916,7 @@
     <enabled>true</enabled>
     <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.MyPawn</commandClass>
     <requiresMod>false</requiresMod>
-    <commandDescription>Show information about your pawn</commandDescription>
+    <commandDescription>Show information about your pawn. Social: relations, family/kin, friends/kith, rivals</commandDescription>
     <cooldownSeconds>0</cooldownSeconds>
     <useCommandCooldown>true</useCommandCooldown>
     <!-- CustomData for !mypawn sub-commands (enables/disables individual sub-features) -->
