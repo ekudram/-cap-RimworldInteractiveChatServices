@@ -26,6 +26,9 @@
   <RICS.MPCH.ComfortRange>🌡️ Comfort Range: {0} ~ {1}</RICS.MPCH.ComfortRange>
   <RICS.MPCH.NoIssuesOnPart>No visible issues on {0}. ✅</RICS.MPCH.NoIssuesOnPart>
   <RICS.MPCH.NoHealthIssues>No visible health issues. ✅</RICS.MPCH.NoHealthIssues>
+  <RICS.MPCH.BodyPartHealth>❤️ {0} integrity: {1}/{2}</RICS.MPCH.BodyPartHealth>
+  <RICS.MPCH.BodyHealthySummary>📊 Pain: {0} ({1}) | Overall HP: {2}</RICS.MPCH.BodyHealthySummary>
+  <RICS.MPCH.BodyHealthyTip>💡 !mypawn health = capacities · !mypawn implants = bionics</RICS.MPCH.BodyHealthyTip>
   <RICS.MPCH.HealthConditionsHeader>Health Conditions:</RICS.MPCH.HealthConditionsHeader>
   <RICS.MPCH.HiddenParts>... and {0} more body parts with conditions</RICS.MPCH.HiddenParts>
   <RICS.MPCH.TotalInjuries>({0} individual injuries across all body)</RICS.MPCH.TotalInjuries>

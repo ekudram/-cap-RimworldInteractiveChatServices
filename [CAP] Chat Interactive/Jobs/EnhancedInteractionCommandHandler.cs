@@ -15,10 +15,12 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+using CAP_ChatInteractive.Utilities;
 using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using Verse;
 using Verse.AI;
 
@@ -31,16 +33,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         static EnhancedInteractionCommandHandler()
         {
             // Safely add only non-null InteractionDefs (some require DLC like Ideology)
-            AddIfNotNull(InteractionDefOf.Chitchat, new InteractionInfo { IsNegative = false, Cost = 10, KarmaCost = 0 });
-            AddIfNotNull(InteractionDefOf.DeepTalk, new InteractionInfo { IsNegative = false, Cost = 15, KarmaCost = 0 });
-            AddIfNotNull(InteractionDefOf.Insult, new InteractionInfo { IsNegative = true, Cost = 5, KarmaCost = 5 });
-            AddIfNotNull(InteractionDefOf.RomanceAttempt, new InteractionInfo { IsNegative = false, Cost = 20, KarmaCost = 0 });
-            AddIfNotNull(InteractionDefOf.MarriageProposal, new InteractionInfo { IsNegative = false, Cost = 50, KarmaCost = 10 });
-            AddIfNotNull(InteractionDefOf.BuildRapport, new InteractionInfo { IsNegative = false, Cost = 25, KarmaCost = 0 });
-            AddIfNotNull(InteractionDefOf.ConvertIdeoAttempt, new InteractionInfo { IsNegative = false, Cost = 30, KarmaCost = 15 });
-            AddIfNotNull(InteractionDefOf.Reassure, new InteractionInfo { IsNegative = false, Cost = 12, KarmaCost = 0 });
-            AddIfNotNull(InteractionDefOf.Nuzzle, new InteractionInfo { IsNegative = false, Cost = 8, KarmaCost = 0 });
-            AddIfNotNull(InteractionDefOf.AnimalChat, new InteractionInfo { IsNegative = false, Cost = 10, KarmaCost = 0 });
+            // KarmaCost below is a base for mood-scaled social hits (see ComputeSocialKarmaHit).
+            AddIfNotNull(InteractionDefOf.Chitchat, new InteractionInfo { IsNegative = false, Cost = 10, KarmaBaseHit = 0 });
+            AddIfNotNull(InteractionDefOf.DeepTalk, new InteractionInfo { IsNegative = false, Cost = 15, KarmaBaseHit = 0 });
+            AddIfNotNull(InteractionDefOf.Insult, new InteractionInfo { IsNegative = true, Cost = 5, KarmaBaseHit = 10, AlwaysSocialKarma = true });
+            AddIfNotNull(InteractionDefOf.RomanceAttempt, new InteractionInfo { IsNegative = false, Cost = 20, KarmaBaseHit = 8, RomanceRisk = true });
+            AddIfNotNull(InteractionDefOf.MarriageProposal, new InteractionInfo { IsNegative = false, Cost = 50, KarmaBaseHit = 12, RomanceRisk = true });
+            AddIfNotNull(InteractionDefOf.BuildRapport, new InteractionInfo { IsNegative = false, Cost = 25, KarmaBaseHit = 0 });
+            AddIfNotNull(InteractionDefOf.ConvertIdeoAttempt, new InteractionInfo { IsNegative = false, Cost = 30, KarmaBaseHit = 12, AlwaysSocialKarma = true });
+            AddIfNotNull(InteractionDefOf.Reassure, new InteractionInfo { IsNegative = false, Cost = 12, KarmaBaseHit = 0 });
+            AddIfNotNull(InteractionDefOf.Nuzzle, new InteractionInfo { IsNegative = false, Cost = 8, KarmaBaseHit = 0 });
+            AddIfNotNull(InteractionDefOf.AnimalChat, new InteractionInfo { IsNegative = false, Cost = 10, KarmaBaseHit = 0 });
         }
 
         private static void AddIfNotNull(InteractionDef def, InteractionInfo info)
@@ -106,10 +109,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return $"You need {interactionInfo.Cost}{currencySymbol} to use this interaction. You have {viewer.GetCoins()}{currencySymbol}.";
                 }
 
-                // Check karma for negative interactions
-                if (interactionInfo.IsNegative && viewer.Karma < interactionInfo.KarmaCost)
-                    return $"You need at least {interactionInfo.KarmaCost} karma to use negative interactions. You have {viewer.Karma} karma.";
-
                 // Get pawns
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
                 if (assignmentManager == null)
@@ -124,31 +123,48 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!CanPawnsInteract(initiatorPawn, targetPawn))
                     return $"{initiatorPawn.Name} cannot interact with {targetPawn.Name} right now.";
 
-                // Special handling for romance/flirt and marriage proposal interactions
-                if (interaction == InteractionDefOf.RomanceAttempt ||
-                    interaction == InteractionDefOf.MarriageProposal ||
-                    (interaction.defName?.ToLower().Contains("flirt") == true))
+                bool isRomance = interaction == InteractionDefOf.RomanceAttempt ||
+                                 interaction == InteractionDefOf.MarriageProposal ||
+                                 (interaction.defName?.ToLower().Contains("flirt") == true);
+
+                // Romance pre-checks (mood / opinion / monogamy vs multi-spouse ideo)
+                if (isRomance)
                 {
                     bool canProceed;
                     string refusalMessage;
 
                     if (interaction == InteractionDefOf.MarriageProposal)
-                    {
                         canProceed = CanProposeMarriage(initiatorPawn, targetPawn, out refusalMessage);
-                    }
                     else
-                    {
                         canProceed = CanFlirt(initiatorPawn, targetPawn, out refusalMessage);
-                    }
 
                     if (!canProceed)
                     {
-                        // Refund cost since interaction won't happen
-                        viewer.GiveCoins(interactionInfo.Cost);
-                        Viewers.SaveViewers();
+                        // Harassment / bad-timing attempt: karma hit even when job does not run
+                        float refuseHit = ComputeSocialKarmaHit(
+                            interactionInfo.KarmaBaseHit > 0 ? interactionInfo.KarmaBaseHit : 8f,
+                            targetPawn, initiatorPawn, riskBoost: 1.25f);
+
+                        if (refuseHit > 0.5f)
+                        {
+                            if (!TryApplySocialKarmaHit(viewer, refuseHit, out string denyMsg))
+                                return denyMsg; // would go below 0 — block entirely
+
+                            Viewers.SaveViewers();
+                            return $"{refusalMessage} (−{refuseHit:F0} karma)";
+                        }
 
                         return refusalMessage;
                     }
+                }
+
+                // Social karma for insult / convert / unwelcome romance attempts that still proceed
+                float socialHit = 0f;
+                if (ShouldChargeSocialKarma(interactionInfo, initiatorPawn, targetPawn, isRomance, out float computedHit))
+                {
+                    socialHit = computedHit;
+                    if (!CanAffordSocialKarmaHit(viewer, socialHit, out string cannotAfford))
+                        return cannotAfford;
                 }
 
                 // Create and assign the social visit job
@@ -157,26 +173,127 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "The social visit job definition is missing.";
 
                 Job socialJob = JobMaker.MakeJob(socialVisitDef, targetPawn);
-                socialJob.interaction = interaction; // Store which interaction to use
+                socialJob.interaction = interaction;
 
                 initiatorPawn.jobs.StartJob(socialJob, JobCondition.InterruptForced);
 
-                // Deduct cost immediately
+                // Deduct cost only after job is queued
                 viewer.TakeCoins(interactionInfo.Cost);
 
-                // Apply karma penalty for negative interactions
-                if (interactionInfo.IsNegative)
-                    viewer.SetKarma(Math.Max(viewer.Karma - interactionInfo.KarmaCost, 0));
+                string karmaNote = "";
+                if (socialHit > 0.5f)
+                {
+                    ApplySocialKarmaHit(viewer, socialHit);
+                    karmaNote = $" (−{socialHit:F0} karma)";
+                }
 
                 Viewers.SaveViewers();
 
-                return $"{initiatorPawn.Name} is going to visit {targetPawn.Name} for a {interaction.label}...";
+                return $"{initiatorPawn.Name} is going to visit {targetPawn.Name} for a {interaction.label}...{karmaNote}";
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in enhanced interaction command: {ex}");
                 return "An error occurred while processing the interaction.";
             }
+        }
+
+        // === Social karma (mood-scaled; never below MinKarma) ===
+
+        private static bool ShouldChargeSocialKarma(
+            InteractionInfo info, Pawn initiator, Pawn target, bool isRomance, out float hit)
+        {
+            hit = 0f;
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings != null && !settings.SocialKarmaEnabled)
+                return false;
+
+            if (info.AlwaysSocialKarma)
+            {
+                hit = ComputeSocialKarmaHit(info.KarmaBaseHit, target, initiator, riskBoost: 1f);
+                return hit > 0.5f;
+            }
+
+            if (isRomance && info.RomanceRisk)
+            {
+                // Partial hit when attempt is unwelcome but still allowed (low opinion / stressed)
+                float mood = target?.needs?.mood?.CurLevelPercentage ?? 0.5f;
+                int opinion = target?.relations != null && initiator != null
+                    ? target.relations.OpinionOf(initiator) : 0;
+
+                bool unwelcome = mood < 0.45f || opinion < 15;
+                if (!unwelcome)
+                    return false;
+
+                float boost = mood < 0.40f ? 1.15f : 0.85f;
+                if (opinion < 0) boost += 0.35f;
+                hit = ComputeSocialKarmaHit(info.KarmaBaseHit, target, initiator, riskBoost: boost);
+                return hit > 0.5f;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Lower target mood → higher hit. Dislike of initiator also scales up.
+        /// </summary>
+        private static float ComputeSocialKarmaHit(float baseHit, Pawn target, Pawn initiator, float riskBoost)
+        {
+            if (baseHit <= 0f) return 0f;
+
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            float scale = settings?.SocialKarmaMoodScale ?? 1f;
+            if (scale <= 0f) return 0f;
+
+            float moodPct = target?.needs?.mood?.CurLevelPercentage ?? 0.5f;
+            moodPct = Mathf.Clamp01(moodPct);
+            // mood 0 → factor 2.0, mood 1 → factor 0.5
+            float moodFactor = Mathf.Lerp(2.0f, 0.5f, moodPct);
+
+            int opinion = 0;
+            if (target?.relations != null && initiator != null)
+                opinion = target.relations.OpinionOf(initiator);
+
+            float opinionFactor = 1f;
+            if (opinion < 0)
+            {
+                float t = Mathf.Clamp01((-opinion) / 50f);
+                opinionFactor = Mathf.Lerp(1f, 1.5f, t);
+            }
+
+            float hit = baseHit * moodFactor * opinionFactor * riskBoost * scale;
+            return Mathf.Clamp(hit, 3f, 40f);
+        }
+
+        private static bool CanAffordSocialKarmaHit(Viewer viewer, float hit, out string message)
+        {
+            message = null;
+            if (viewer == null || hit <= 0f) return true;
+
+            float minK = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.MinKarma ?? 0f;
+            if (viewer.Karma - hit < minK - 0.01f)
+            {
+                message =
+                    $"That social action would cost {hit:F0} karma (target mood makes it worse). " +
+                    $"You have {viewer.Karma:F0}; it would go below {minK:F0}. Earn karma first (0 karma earns no coins).";
+                return false;
+            }
+            return true;
+        }
+
+        private static bool TryApplySocialKarmaHit(Viewer viewer, float hit, out string denyMessage)
+        {
+            denyMessage = null;
+            if (!CanAffordSocialKarmaHit(viewer, hit, out denyMessage))
+                return false;
+            ApplySocialKarmaHit(viewer, hit);
+            return true;
+        }
+
+        private static void ApplySocialKarmaHit(Viewer viewer, float hit)
+        {
+            if (viewer == null || hit <= 0f) return;
+            viewer.TakeKarma(hit);
         }
 
         private static Pawn FindInteractionTarget(Pawn initiator, InteractionDef interaction, string[] args)
@@ -455,21 +572,33 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return false;
             }
 
-            // Step 4: Check for existing relationships
-            // WHY: We only want to block "homewrecking" attempts on someone who is happily committed to ANOTHER person.
-            // If the initiator IS the target's current love partner (spouse/lover/fiancé), we must allow the interaction.
-            // Previously this block would incorrectly refuse ~60% of the time with "committed to {initiator.Name}",
-            // which is why !flirt on lover/spouse was failing even though FindInteractionTarget correctly preferred them.
+            // Step 4: Existing relationships — monogamy friction only.
+            // Multi-spouse ideos (SpouseCount MaxTwo+) may welcome additional partners; do not hard-block.
             if (LovePartnerRelationUtility.HasAnyLovePartner(target))
             {
                 Pawn existingPartner = LovePartnerRelationUtility.ExistingMostLikedLovePartner(target, false);
-                if (existingPartner != null && existingPartner != initiator) // <-- KEY FIX: skip if we are the partner
+                if (existingPartner != null && existingPartner != initiator)
                 {
-                    int partnerOpinion = target.relations.OpinionOf(existingPartner);
-                    if (partnerOpinion >= 15 && Rand.Value < 0.6f) // 60% chance to refuse if happy with someone else
+                    bool multiOk = IdeoSpouseUtility.CultureAllowsAdditionalPartners(initiator, target);
+                    if (!multiOk)
                     {
-                        refusalMessage = $"{target.Name} is committed to {existingPartner.Name}.";
-                        return false;
+                        int partnerOpinion = target.relations.OpinionOf(existingPartner);
+                        // Monogamy: 60% refuse if happy with someone else
+                        if (partnerOpinion >= 15 && Rand.Value < 0.6f)
+                        {
+                            refusalMessage = $"{target.Name} is committed to {existingPartner.Name}.";
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        // Multi-spouse culture: rare soft "busy" only (still allow most advances)
+                        int partnerOpinion = target.relations.OpinionOf(existingPartner);
+                        if (partnerOpinion >= 40 && Rand.Value < 0.12f)
+                        {
+                            refusalMessage = $"{target.Name} is busy with {existingPartner.Name} right now.";
+                            return false;
+                        }
                     }
                 }
             }
@@ -566,24 +695,28 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return false;
             }
 
-            // Step 4: Check for existing relationships (stricter than flirt)
-            // Block homewrecking attempts on happy couples. Allow if targeting your own current partner (lover/fiancé/spouse).
+            // Step 4: Existing relationships
             if (LovePartnerRelationUtility.HasAnyLovePartner(target))
             {
                 Pawn existingPartner = LovePartnerRelationUtility.ExistingMostLikedLovePartner(target, false);
                 if (existingPartner != null && existingPartner != initiator)
                 {
-                    int partnerOpinion = target.relations?.OpinionOf(existingPartner) ?? 0;
-                    if (partnerOpinion >= 10 && Rand.Value < 0.75f) // High chance to refuse if reasonably happy with someone else
+                    bool multiOk = IdeoSpouseUtility.CultureAllowsAdditionalPartners(initiator, target);
+                    if (!multiOk)
                     {
-                        refusalMessage = $"{target.Name} is already committed to {existingPartner.Name}.";
-                        return false;
+                        int partnerOpinion = target.relations?.OpinionOf(existingPartner) ?? 0;
+                        // Monogamy: high chance to refuse if reasonably happy with someone else
+                        if (partnerOpinion >= 10 && Rand.Value < 0.75f)
+                        {
+                            refusalMessage = $"{target.Name} is already committed to {existingPartner.Name}.";
+                            return false;
+                        }
                     }
-                    // If low opinion with current partner, we still allow the attempt (risky "homewrecker" play) — vanilla outcome will decide
+                    // Multi-spouse: allow proposal attempts; vanilla/ideo still decides outcome
                 }
                 else if (existingPartner == initiator)
                 {
-                    // Already in a romantic relationship with initiator — check if already married to each other
+                    // Already in a romantic relationship with initiator — check if already married
                     bool alreadyMarried = false;
                     if (initiator.relations != null)
                     {
@@ -635,7 +768,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             public bool IsNegative { get; set; } = false;
             public int Cost { get; set; } = 10;
-            public int KarmaCost { get; set; } = 0;
+            /// <summary>Base karma for mood-scaled social hits (0 = none).</summary>
+            public float KarmaBaseHit { get; set; } = 0f;
+            /// <summary>Always charge social karma when used (insult, convert).</summary>
+            public bool AlwaysSocialKarma { get; set; } = false;
+            /// <summary>Romance: charge when attempt is unwelcome (low mood/opinion) or on refuse.</summary>
+            public bool RomanceRisk { get; set; } = false;
         }
     }
 }

@@ -165,7 +165,15 @@ namespace CAP_ChatInteractive
         /// Set to 0 to disable price-based karma entirely.
         /// This is capped at 0f and 5f in the UI to prevent extreme values, but can be set higher via config for fun or testing (e.g. 1f = +1 karma per 100 coins, 100f = +100 karma per 100 coins, etc.).
         /// </summary>
-        public float KarmaEventPriceMultiplier = 5f; 
+        public float KarmaEventPriceMultiplier = 5f;
+
+        // === Social interactions (flirt / insult / convert karma + multi-spouse) ===
+        /// <summary>Mood-scaled karma hits for harmful social commands (insult, bad flirts, convert).</summary>
+        public bool SocialKarmaEnabled = true;
+        /// <summary>Global multiplier on social karma hits (1 = default formula).</summary>
+        public float SocialKarmaMoodScale = 1f;
+        /// <summary>When true, SpouseCount MaxTwo+ ideos skip monogamy-style homewrecker blocks on !flirt/!marry.</summary>
+        public bool RomanceRespectsSpouseCountIdeo = true;
 
         public int MinutesForActive = 30;
         public int MaxTraits = 4;
@@ -366,6 +374,10 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref KarmaGainPerNeutralEvent, "karmaGainPerNeutralEvent", 1f);
             Scribe_Values.Look(ref KarmaLossPerDoomEvent, "karmaLossPerDoomEvent", 25f);
             Scribe_Values.Look(ref KarmaEventPriceMultiplier, "karmaEventPriceMultiplier", 5f);
+
+            Scribe_Values.Look(ref SocialKarmaEnabled, "socialKarmaEnabled", true);
+            Scribe_Values.Look(ref SocialKarmaMoodScale, "socialKarmaMoodScale", 1f);
+            Scribe_Values.Look(ref RomanceRespectsSpouseCountIdeo, "romanceRespectsSpouseCountIdeo", true);
 
             Scribe_Values.Look(ref MinutesForActive, "minutesForActive", 30);
             Scribe_Values.Look(ref MaxTraits, "maxTraits", 4);

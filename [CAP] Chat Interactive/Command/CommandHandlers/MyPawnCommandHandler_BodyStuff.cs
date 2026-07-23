@@ -236,18 +236,32 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (healthConditions.Count == 0)
             {
-                return targetPart != null
-                    ? "RICS.MPCH.NoIssuesOnPart".Translate(targetPart.LabelCap)
-                    : "RICS.MPCH.NoHealthIssues".Translate();
-                //if (targetPart != null)
-                //{
-                //    report.AppendLine($"No visible issues on {targetPart.LabelCap}. ✅");
-                //}
-                //else
-                //{
-                //    report.AppendLine("No visible health issues. ✅");
-                //}
-                //return report.ToString();
+                // Always return a full report (body type + comfort already on report).
+                // Do not early-return a one-liner — that discarded the rest of the status.
+                if (targetPart != null)
+                {
+                    float partHealth = pawn.health.hediffSet.GetPartHealth(targetPart);
+                    float partMax = targetPart.def.GetMaxHealth(pawn);
+                    report.AppendLine(
+                        "RICS.MPCH.BodyPartHealth".Translate(
+                            targetPart.LabelCap,
+                            partHealth.ToString("F0"),
+                            partMax.ToString("F0")));
+                    report.AppendLine("RICS.MPCH.NoIssuesOnPart".Translate(targetPart.LabelCap));
+                }
+                else
+                {
+                    report.AppendLine("RICS.MPCH.NoHealthIssues".Translate());
+                    float pain = pawn.health?.hediffSet?.PainTotal ?? 0f;
+                    string hp = pawn.health?.summaryHealth?.SummaryHealthPercent.ToStringPercent() ?? "100%";
+                    report.AppendLine("RICS.MPCH.BodyHealthySummary".Translate(
+                        GetPainStatus(pain),
+                        pain.ToStringPercent(),
+                        hp));
+                    report.AppendLine("RICS.MPCH.BodyHealthyTip".Translate());
+                }
+
+                return report.ToString();
             }
 
             // Group conditions by body part for display
