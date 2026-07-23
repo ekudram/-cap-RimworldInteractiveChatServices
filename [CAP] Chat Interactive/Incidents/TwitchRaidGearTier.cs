@@ -113,6 +113,16 @@ namespace CAP_ChatInteractive.Incidents
         /// </summary>
         public static Faction GetOrCreateFaction(TwitchRaidGearTierLevel tier)
         {
+            // Never touch FactionManager on menu / during load (can break next save load)
+            if (Current.ProgramState != ProgramState.Playing ||
+                Current.Game == null ||
+                Find.World == null ||
+                Find.FactionManager == null)
+            {
+                Logger.Error("[TWITCH RAID] GetOrCreateFaction called while not in a playing colony game — refusing.");
+                return null;
+            }
+
             FactionDef def = GetFactionDef(tier);
             if (def == null)
             {

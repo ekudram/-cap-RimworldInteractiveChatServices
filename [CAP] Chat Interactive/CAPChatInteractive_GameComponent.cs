@@ -79,6 +79,9 @@ namespace CAP_ChatInteractive
         public override void LoadedGame()
         {
             base.LoadedGame();
+            // Drop any Twitch raid join window that was armed on the main menu / previous session
+            // so load never immediately spawns a raid or creates factions mid-init.
+            CAPChatInteractiveMod.Instance?.TwitchService?.CancelRaidJoinCollection("LoadedGame — clear stale join window");
             InitializeAll();
 
             // If AI ChatBot is active, make sure it has fresh colony data as soon as the save finishes loading.
@@ -92,6 +95,7 @@ namespace CAP_ChatInteractive
         public override void StartedNewGame()
         {
             base.StartedNewGame();
+            CAPChatInteractiveMod.Instance?.TwitchService?.CancelRaidJoinCollection("StartedNewGame — clear stale join window");
             InitializeAll();
 
             // Same immediate cache population for new games

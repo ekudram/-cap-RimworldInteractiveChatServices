@@ -509,12 +509,117 @@ namespace CAP_ChatInteractive
             // Queue to main thread: WindowStack.Add and SendMessage must be main-thread only
             LongEventHandler.QueueLongEvent(() =>
             {
+                // Guard on main thread — ProgramState can change between IRC event and queue
+                if (!IsColonyReadyForTwitchRaid(out string notReadyReason))
+                {
+                    Logger.Twitch(
+                        $"[RAID JOIN] Ignored @{raiderChannel} raid — not in an active colony game ({notReadyReason}). " +
+                        "No join window / no faction / no raid will run (prevents menu/load corruption).");
+                    try
+                    {
+                        SendMessage(
+                            $"[RICS] Twitch raid from @{raiderChannel} detected, but RimWorld is not in an active colony game " +
+                            $"(menu/loading). Raid ignored — load your save first.");
+                    }
+                    catch { /* SendMessage may fail off-play */ }
+                    return;
+                }
+
                 StartRaidJoinCollection(raiderChannel, viewerCount);
             }, null, false, null, showExtraUIInfo: false);
         }
 
+        /// <summary>
+        /// True only when it is safe to open join UI, create factions, and spawn a raid.
+        /// False on main menu, during load, entry screens, or with no world/map.
+        /// </summary>
+        public static bool IsColonyReadyForTwitchRaid(out string reason)
+        {
+            try
+            {
+                if (Current.ProgramState != ProgramState.Playing)
+                {
+                    reason = $"ProgramState={Current.ProgramState}";
+                    return false;
+                }
+
+                if (Current.Game == null)
+                {
+                    reason = "Current.Game is null";
+                    return false;
+                }
+
+                // World + faction manager must exist (menu / mid-load do not)
+                if (Find.World == null || Find.FactionManager == null)
+                {
+                    reason = "World or FactionManager not ready";
+                    return false;
+                }
+
+                // Prefer current map if it is a player home; else any player home map
+                Map map = Find.CurrentMap;
+                if (map != null && map.IsPlayerHome)
+                {
+                    reason = null;
+                    return true;
+                }
+
+                map = Find.AnyPlayerHomeMap;
+                if (map == null)
+                {
+                    reason = "no player home map";
+                    return false;
+                }
+
+                reason = null;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                reason = "exception: " + ex.Message;
+                return false;
+            }
+        }
+
+        /// <summary>Map to spawn the raid on (current home if possible, else any player home).</summary>
+        public static Map GetTwitchRaidTargetMap()
+        {
+            if (Find.CurrentMap != null && Find.CurrentMap.IsPlayerHome)
+                return Find.CurrentMap;
+            return Find.AnyPlayerHomeMap;
+        }
+
+        /// <summary>Abort join window without spawning a raid (menu/quit mid-collection).</summary>
+        public void CancelRaidJoinCollection(string reason)
+        {
+            if (!_raidJoinWindowActive && _raidJoinList.Count == 0)
+                return;
+
+            Logger.Twitch($"[RAID JOIN] Cancelled — {reason}");
+            _raidJoinWindowActive = false;
+            _raidJoinList.Clear();
+            _primaryRaiderName = null;
+            _raidJoinCountFromIrc = 0;
+            _raidJoinCountFromChat = 0;
+            _raidJoinCountFromCommand = 0;
+            IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
+        }
+
         public void StartRaidJoinCollection(string raiderName, int viewerCount)
         {
+            // Safety: never open dialogs or arm the timer outside an active colony session
+            if (!IsColonyReadyForTwitchRaid(out string notReadyReason))
+            {
+                Logger.Twitch($"[RAID JOIN] StartRaidJoinCollection blocked — {notReadyReason}");
+                try
+                {
+                    SendMessage(
+                        $"[RICS] Twitch raid from @{raiderName} ignored — not in an active colony game ({notReadyReason}).");
+                }
+                catch { /* ignore */ }
+                return;
+            }
+
             if (_raidJoinWindowActive)
             {
                 // === MULTI-RAID SPECIAL CASE: merge instead of clobbering previous raiders ===
@@ -595,6 +700,18 @@ namespace CAP_ChatInteractive
         /// <param name="totalRaiders">The total number of raiders participating in the raid.</param>
         public void TriggerRaidNow(string raiderName, int totalRaiders)
         {
+            if (!IsColonyReadyForTwitchRaid(out string notReadyReason))
+            {
+                Logger.Twitch($"[RAID JOIN] TriggerRaidNow blocked — {notReadyReason}");
+                CancelRaidJoinCollection("TriggerRaidNow while not in colony game");
+                try
+                {
+                    SendMessage($"[RICS] Cannot start Twitch raid — not in an active colony game ({notReadyReason}).");
+                }
+                catch { /* ignore */ }
+                return;
+            }
+
             if (!_raidJoinWindowActive && _raidJoinList.Count == 0)
             {
                 if (!string.IsNullOrWhiteSpace(raiderName))
@@ -636,17 +753,27 @@ namespace CAP_ChatInteractive
                 return;
             }
 
-            if (Current.ProgramState != ProgramState.Playing)
+            // Hard gate: never create factions / run incidents on menu or during load
+            if (!IsColonyReadyForTwitchRaid(out string notReadyReason))
             {
-                Logger.Debug($"Raid from {raiderName} queued - no game loaded yet.");
+                Logger.Twitch(
+                    $"[CUSTOM FACTION RAID] Aborted for @{raiderName} — not ready ({notReadyReason}). " +
+                    "Clearing raid lists so a later load is not poisoned.");
+                IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
+                CancelRaidJoinCollection("TryTrigger while not ready");
                 return;
             }
 
-            Map map = Find.CurrentMap;
-            if (map == null || !map.IsPlayerHome)
+            Map map = GetTwitchRaidTargetMap();
+            if (map == null)
             {
-                Logger.Debug($"Raid from {raiderName} skipped - player not on home map.");
-                SendMessage($"[RICS] Twitch raid from @{raiderName} detected, but colony is traveling - raid postponed!");
+                Logger.Twitch($"[CUSTOM FACTION RAID] Aborted for @{raiderName} — no player home map.");
+                IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
+                try
+                {
+                    SendMessage($"[RICS] Twitch raid from @{raiderName} skipped — no colony map (traveling?).");
+                }
+                catch { /* ignore */ }
                 return;
             }
 
@@ -655,6 +782,7 @@ namespace CAP_ChatInteractive
             if (viewerCount < globalSettings.TwitchRaidMinRaiders)
             {
                 Logger.Debug($"Raid from {raiderName} ignored - only {viewerCount} viewers (min required: {globalSettings.TwitchRaidMinRaiders})");
+                IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
                 return;
             }
 
@@ -670,8 +798,15 @@ namespace CAP_ChatInteractive
             int raiderCount = Math.Max(0, viewerCount); // the 'viewerCount' param here is actually the collected named raider count at trigger time
 
             // Static tier faction (research + start tech). Threat/points scale strength within tier.
+            // Only reached when IsColonyReadyForTwitchRaid — safe for FactionManager.
             var gearTier = TwitchRaidGearTier.Resolve(map, out string tierNotes);
             Faction raidFaction = TwitchRaidGearTier.GetOrCreateFaction(gearTier);
+            if (raidFaction == null)
+            {
+                Logger.Twitch($"[CUSTOM FACTION RAID] Aborted for @{raiderName} — no raid faction available.");
+                IncidentWorker_TwitchRaid.CurrentRaidUsernames.Clear();
+                return;
+            }
 
             Logger.Twitch(
                 $"[CUSTOM FACTION RAID] @{raiderName} | raiders={raiderCount} | onlyRaiders={globalSettings.TwitchRaidsOnlyRaiders} | {tierNotes} | faction={raidFaction?.def?.defName ?? "null"}");
@@ -679,6 +814,7 @@ namespace CAP_ChatInteractive
             IncidentParms parms = StorytellerUtility.DefaultParmsNow(IncidentCategoryDefOf.ThreatBig, map);
             parms.forced = true;
             parms.faction = raidFaction;
+            parms.target = map;
 
             float basePoints = parms.points;
             float raidBonus = Mathf.Clamp(raiderCount * 80f, 200f, 4000f);
@@ -750,6 +886,13 @@ namespace CAP_ChatInteractive
         public void UpdateRaidJoinTimer()
         {
             if (!_raidJoinWindowActive) return;
+
+            // Player quit to menu / loading mid-window — never fire a raid or touch factions
+            if (!IsColonyReadyForTwitchRaid(out string notReadyReason))
+            {
+                CancelRaidJoinCollection($"left active colony during join window ({notReadyReason})");
+                return;
+            }
 
             int windowSec = GetRaidJoinWindowSeconds();
             // Logger.Twitch($"[RAID JOIN] Timer tick - seconds left: {windowSec - (DateTime.Now - _raidJoinStartTime).TotalSeconds:F1} | Current list count: {_raidJoinList.Count}");
