@@ -1184,11 +1184,13 @@ Updates to !mypawn Command to show more information about the viewer's pawn.
 - Twitch Raiders might have a better chance of joining from chat.
   -This is a Twitch limitation and not a RICS issue, but we have improved the detection logic to help with this.
 - Updated command handler and VPE patch to display suggestions in error messages.
+- !flirt and other social commands will hit Karma harder if the viewer's pawn is already in a relationship and they target another pawn they are not in a relationship with.
 
 <b>FIXED</b>
 ────────────
 - !mypawn relations command now properly shows the relationships of the viewer's pawn, including lovers, spouses, and family members.
 - !mypawn stats command now properly shows the stats of the viewer's pawn, including health, skills, and beauty.
+- !flirt and other social commands adjusted to properly handle pawns with multiple love partners or complex relationship networks.
 
 <b>ADDED</b>
 ────────────
@@ -1224,6 +1226,7 @@ TabDrawer_Twitch.xml
 • Does not add your bot account.]]>
   </RICS.Twitch.RaidsChatAutoAddTooltip>
 
+And more additions to translations for the new !mypawn family, friends, and rivals commands.
 "
 
 
