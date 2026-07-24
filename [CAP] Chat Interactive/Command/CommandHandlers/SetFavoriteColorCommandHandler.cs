@@ -122,7 +122,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 // legitimately return a=0; we correct it here at the point of storage.
                 Color safeColor = new Color(color.r, color.g, color.b, 1f);
 
-                ColorDef colorDef = GetColorDef(safeColor);
+                ColorDef colorDef = GetOrCreateColorDef(safeColor);
                 pawn.story.favoriteColor = colorDef;
                 return true;
             }
@@ -147,39 +147,43 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             }
         }
 
-        private static ColorDef GetColorDef(Color color)
+        private static ColorDef GetOrCreateColorDef(Color color)
         {
-            string colorHex = ColorUtility.ToHtmlStringRGBA(color);
+            // Always force opaque – same defensive fix you already have in dye
+            Color safeColor = new Color(color.r, color.g, color.b, 1f);
+            string key = ColorUtility.ToHtmlStringRGB(safeColor);   // ignore alpha for the key
 
-            // Check cache first
-            if (GeneratedColors.TryGetValue(colorHex, out ColorDef colorDef))
-                return colorDef;
+            // Already created this exact color before?
+            if (GeneratedColors.TryGetValue(key, out ColorDef existing))
+                return existing;
 
-            // Search through ALL ColorDefs, not just Misc and Hair
-            colorDef = DefDatabase<ColorDef>.AllDefs
-                .OrderBy(def => ColorDistance(def.color, color))
+            // Does an official ColorDef already match closely enough?
+            ColorDef closest = DefDatabase<ColorDef>.AllDefs
+                .OrderBy(d => ColorDistance(d.color, safeColor))
                 .FirstOrDefault();
 
-            if (colorDef != null)
+            if (closest != null && ColorDistance(closest.color, safeColor) < 0.02f) // very close
             {
-                GeneratedColors[colorHex] = colorDef;
-                return colorDef;
+                GeneratedColors[key] = closest;
+                return closest;
             }
 
-            // Better fallback - find the closest color from all available ColorDefs
-            // This should never happen since DefDatabase should always have colors, but just in case
-            Log.Warning($"No ColorDef found for color {colorHex}, using closest available color");
-
-            // Try to find any color def that exists
-            var fallback = DefDatabase<ColorDef>.AllDefs.FirstOrDefault();
-            if (fallback != null)
+            // Create a brand-new runtime ColorDef for the exact color
+            ColorDef custom = new ColorDef
             {
-                GeneratedColors[colorHex] = fallback;
-                return fallback;
-            }
+                defName = "RICS_Custom_" + key,
+                label = "#" + key,
+                description = "Custom color set by RICS viewer",
+                color = safeColor,
+                colorType = ColorType.Misc,          // safe default
+                displayOrder = 9999
+            };
 
-            // Absolute last resort
-            return DefDatabase<ColorDef>.GetNamedSilentFail("White") ?? new ColorDef() { color = Color.white };
+            // Register it so the game knows about it
+            DefDatabase<ColorDef>.Add(custom);
+            GeneratedColors[key] = custom;
+
+            return custom;
         }
 
         private static float ColorDistance(Color a, Color b)
@@ -190,8 +194,6 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             float bDiff = a.b - b.b;
             return Mathf.Sqrt(rDiff * rDiff + gDiff * gDiff + bDiff * bDiff);
         }
-
-
 
         private static string GetColorName(Color color)
         {

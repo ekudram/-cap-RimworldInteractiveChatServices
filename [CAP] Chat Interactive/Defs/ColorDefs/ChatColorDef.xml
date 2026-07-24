@@ -556,6 +556,13 @@
     <displayOrder>1990</displayOrder>
   </ColorDef>
 
+  <ColorDef ParentName="ChatColorBase">
+    <defName>Chat_PaleCornflowerBlue</defName>
+    <label>pale cornflower blue</label>
+    <color>(171, 205, 239)</color>
+    <displayOrder>1995</displayOrder>
+  </ColorDef>
+
   <!-- ====== PURPLES, VIOLETS, & LAVENDERS ====== -->
   <!-- Includes: Purples, Violets, Magentas, Lavenders -->
 
