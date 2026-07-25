@@ -1168,7 +1168,7 @@ You will need to sync your fork to the main branch or copy the new files from th
 },
             {"1.45",
                 @"===========================================================
-                         RICS version 1.45- Changelog
+                         RICS version 1.45 - Changelog
                          Released: July 25, 2026
 ===========================================================
 
@@ -1176,13 +1176,13 @@ You will need to sync your fork to the main branch or copy the new files from th
 ─────────────────
 
 Updates to how the Twitch Raids system works.
-Updates to !mypawn Command to show more information about the viewer's pawn.
+Updates to the !mypawn command to show more information about the viewer's pawn.
 
 <b>UPDATED</b>
 ──────────────
 - Twitch Raids system now properly respects the colony's current state and adjusts raid difficulty accordingly.
 - Twitch Raiders might have a better chance of joining from chat.
-  -This is a Twitch limitation and not a RICS issue, but we have improved the detection logic to help with this.
+  - This is a Twitch limitation and not a RICS issue, but we have improved the detection logic to help with this.
 - Updated command handler and VPE patch to display suggestions in error messages.
 - !flirt and other social commands will hit Karma harder if the viewer's pawn is already in a relationship and they target another pawn they are not in a relationship with.
 
@@ -1191,7 +1191,7 @@ Updates to !mypawn Command to show more information about the viewer's pawn.
 - !mypawn relations command now properly shows the relationships of the viewer's pawn, including lovers, spouses, and family members.
 - !mypawn stats command now properly shows the stats of the viewer's pawn, including health, skills, and beauty.
 - !flirt and other social commands adjusted to properly handle pawns with multiple love partners or complex relationship networks.
--  ` !setfavoritecolor should now properly exact favorite color.
+- !setfavoritecolor should now properly set the exact favorite color.
 
 <b>ADDED</b>
 ────────────
@@ -1200,21 +1200,17 @@ Updates to !mypawn Command to show more information about the viewer's pawn.
 - !mypawn family command added to show the family members of the viewer's pawn, including parents, siblings, and children.
 - !mypawn friends command added to show the friends of the viewer's pawn, including best friends and acquaintances.
 - !mypawn rivals command added to show the rivals of the viewer's pawn, including enemies and competitors.
-- Viewer Dialog with Mass Action you can now select the amount of coins to give to all viewers at once.
+- Viewer Dialog with Mass Action: you can now select the amount of coins to give to all viewers at once.
 
 <b>TRANSLATIONS</b>
 ───────────────────
-The following translation files have been updated with new keys.  ALso for the !mypawn family, friends, and rivals commands:
-TabDrawer_Twitch.xml
+The following translation files have been updated with new keys. Also for the !mypawn family, friends, and rivals commands:
 
 TabDrawer_Twitch.xml
 
 Dialog_ViewerManager.xml
 
-MyPawnCommandHandler.xml
-
-
-"
+MyPawnCommandHandler.xml"
 
 
 
