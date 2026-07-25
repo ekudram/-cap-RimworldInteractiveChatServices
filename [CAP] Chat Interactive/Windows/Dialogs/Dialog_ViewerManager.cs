@@ -47,12 +47,15 @@ namespace CAP_ChatInteractive
         // Mass action confirmations
         private bool showResetCoinsConfirmation = false;
         private bool showResetKarmaConfirmation = false;
-        private bool showAwardCoinsConfirmation = false;
 
         private int coinsEditAmount = 0;
         private string coinsEditBuffer = "0";
         private int karmaEditAmount = 0;
         private string karmaEditBuffer = "0";
+
+        // Mass award amount (default to base coin reward if available)
+        private int massAwardAmount = 100;
+        private string massAwardBuffer = "100";
 
         public override Vector2 InitialSize => new Vector2(1000f, 700f);
 
@@ -268,10 +271,30 @@ namespace CAP_ChatInteractive
 
         private void ShowMassActionsMenu()
         {
+            try
+            {
+                int baseReward = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.BaseCoinReward ?? 100;
+                if (massAwardAmount <= 0)
+                {
+                    massAwardAmount = Math.Max(1, baseReward);
+                    massAwardBuffer = massAwardAmount.ToString();
+                }
+            }
+            catch { /* ignore */ }
+
             var options = new List<FloatMenuOption>
             {
+                // Amount dialog — was confirmation with no amount field
                 new FloatMenuOption("RICS.ViewerManager.AwardCoins".Translate(), () => {
-                    showAwardCoinsConfirmation = true;
+                    Find.WindowStack.Add(new Dialog_AwardActiveCoins(massAwardAmount, (amount) =>
+                    {
+                        massAwardAmount = amount;
+                        massAwardBuffer = amount.ToString();
+                        int count = Viewers.AwardActiveViewersCoins(amount);
+                        Messages.Message(
+                            "RICS.ViewerManager.AwardedAmount".Translate(amount, count),
+                            MessageTypeDefOf.PositiveEvent);
+                    }));
                 }, MenuOptionPriority.Low, null, null, 0, null, null, true, 0),
                 new FloatMenuOption("RICS.ViewerManager.ResetCoins".Translate(), () => {
                     showResetCoinsConfirmation = true;
@@ -279,7 +302,7 @@ namespace CAP_ChatInteractive
                 new FloatMenuOption("RICS.ViewerManager.ResetKarma".Translate(), () => {
                     showResetKarmaConfirmation = true;
                 }, MenuOptionPriority.Low, null, null, 0, null, null, true, 2),
-                new FloatMenuOption("---", null, MenuOptionPriority.Default, null, null, 0, null, null, true, 3), // Separator with higher order
+                new FloatMenuOption("---", null, MenuOptionPriority.Default, null, null, 0, null, null, true, 3),
                 new FloatMenuOption("RICS.ViewerManager.ViewStatistics".Translate(), ShowStatistics, MenuOptionPriority.High, null, null, 0, null, null, true, 4)
             };
 
@@ -436,7 +459,7 @@ namespace CAP_ChatInteractive
                 string platformLabel = "RICS.ViewerManager.PlatformIDs".Translate();
                 if (selectedViewer.PlatformUserIds.Count == 0)
                 {
-                    platformLabel += " ⚠ NO PLATFORM IDs (User may be invalid) remove this viewer";
+                    platformLabel += " " + "RICS.ViewerManager.NoPlatformIdsWarning".Translate();
                     GUI.color = Color.yellow;
                 }
                 Widgets.Label(platformLabelRect, platformLabel);
@@ -458,7 +481,7 @@ namespace CAP_ChatInteractive
                             string testIdentifier = $"{platformId.Key}:{platformId.Value}";
                             if (assignmentManager.viewerPawnAssignments.ContainsKey(testIdentifier))
                             {
-                                platformText += " ✓ Has pawn assigned";
+                                platformText += " " + "RICS.ViewerManager.HasPawnAssigned".Translate();
                             }
                         }
 
@@ -480,7 +503,7 @@ namespace CAP_ChatInteractive
                 y += sectionHeight;
 
                 // Coins row
-                DrawEconomyRow(ref y, viewRect.width, "Coins", selectedViewer.Coins,
+                DrawEconomyRow(ref y, viewRect.width, "RICS.ViewerManager.Coins".Translate(), selectedViewer.Coins,
                     ref coinsEditAmount, ref coinsEditBuffer,
                     (amount) => { selectedViewer.SetCoins(amount); Viewers.SaveViewers(); },
                     0, int.MaxValue, leftPadding);
@@ -495,7 +518,7 @@ namespace CAP_ChatInteractive
                 int minKarma = Mathf.RoundToInt(settings.MinKarma);
                 int maxKarma = Mathf.RoundToInt(settings.MaxKarma);
 
-                DrawEconomyRow(ref y, viewRect.width, "Karma", Mathf.RoundToInt(selectedViewer.Karma),
+                DrawEconomyRow(ref y, viewRect.width, "RICS.ViewerManager.Karma".Translate(), Mathf.RoundToInt(selectedViewer.Karma),
                     ref karmaEditAmount, ref karmaEditBuffer,
                     (amount) => {
                         // Enforce karma limits from settings (cast version)
@@ -513,15 +536,15 @@ namespace CAP_ChatInteractive
                 y += sectionHeight;
 
                 Rect messagesRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
-                Widgets.Label(messagesRect, $"Messages: {selectedViewer.MessageCount}");
+                Widgets.Label(messagesRect, "RICS.ViewerManager.MessagesCount".Translate(selectedViewer.MessageCount));
                 y += sectionHeight;
 
                 Rect lastSeenRect = new Rect(leftPadding + 10f, y, viewRect.width - leftPadding, sectionHeight);
-                string lastSeenText = $"Last Seen: {selectedViewer.LastSeen:g}";
-                if (selectedViewer.IsActive())
-                    lastSeenText += " (Active Now)";
-                else
-                    lastSeenText += $" ({selectedViewer.GetTimeSinceLastActivity().TotalMinutes:F0} minutes ago)";
+                string lastSeenText = selectedViewer.IsActive()
+                    ? "RICS.ViewerManager.LastSeenActive".Translate(selectedViewer.LastSeen.ToString("g"))
+                    : "RICS.ViewerManager.LastSeenAgo".Translate(
+                        selectedViewer.LastSeen.ToString("g"),
+                        selectedViewer.GetTimeSinceLastActivity().TotalMinutes.ToString("F0"));
                 Widgets.Label(lastSeenRect, lastSeenText);
                 y += sectionHeight + 20f;
 
@@ -619,10 +642,12 @@ namespace CAP_ChatInteractive
                 if (Widgets.ButtonText(unassignRect, "RICS.ViewerManager.UnassignPawn".Translate()))
                 {
                     Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                        $"Unassign {pawnName} from {selectedViewer.Username}?\nThis will allow them to buy a new pawn.",
+                        "RICS.ViewerManager.UnassignConfirm".Translate(pawnName, selectedViewer.Username),
                         () => {
                             UnassignPawn(selectedViewer);
-                            Messages.Message($"Unassigned {pawnName} from {selectedViewer.Username}", MessageTypeDefOf.NeutralEvent);
+                            Messages.Message(
+                                "RICS.ViewerManager.Unassigned".Translate(pawnName, selectedViewer.Username),
+                                MessageTypeDefOf.NeutralEvent);
                         },
                         true
                     ));
@@ -651,7 +676,9 @@ namespace CAP_ChatInteractive
                     if (Widgets.ButtonText(cleanupRect, "RICS.ViewerManager.ClearAssignment".Translate()))
                     {
                         UnassignPawn(selectedViewer);
-                        Messages.Message($"Cleared deceased pawn assignment for {selectedViewer.Username}", MessageTypeDefOf.NeutralEvent);
+                        Messages.Message(
+                            "RICS.ViewerManager.Cleared".Translate(selectedViewer.Username),
+                            MessageTypeDefOf.NeutralEvent);
                     }
                     y += sectionHeight;
                 }
@@ -808,7 +835,9 @@ namespace CAP_ChatInteractive
                 {
                     selectedViewer.IsBanned = false;
                     Viewers.SaveViewers();
-                    Messages.Message($"{selectedViewer.Username} has been unbanned", MessageTypeDefOf.PositiveEvent);
+                    Messages.Message(
+                        "RICS.ViewerManager.Unbanned".Translate(selectedViewer.Username),
+                        MessageTypeDefOf.PositiveEvent);
                 }
 
                 if (Widgets.ButtonText(removeButtonRect, "RICS.ViewerManager.RemoveUser".Translate()))
@@ -849,11 +878,13 @@ namespace CAP_ChatInteractive
                     () => {
                         selectedViewer.IsBanned = true;
 
-                        // ADD THIS LINE: Remove pawn assignments when banning
+                        // Remove pawn assignments when banning
                         UnassignPawn(selectedViewer);
 
                         Viewers.SaveViewers();
-                        Messages.Message($"{selectedViewer.Username} has been banned and pawn assignments removed", MessageTypeDefOf.NegativeEvent);
+                        Messages.Message(
+                            "RICS.ViewerManager.BannedAndRemoved".Translate(selectedViewer.Username),
+                            MessageTypeDefOf.NegativeEvent);
                         showBanConfirmation = false;
                     },
                     true
@@ -862,26 +893,13 @@ namespace CAP_ChatInteractive
             }
 
             // Mass action confirmations
-            if (showAwardCoinsConfirmation)
-            {
-                Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    "RICS.ViewerManager.AwardConfirm".Translate(),
-                    () => {
-                        Viewers.AwardActiveViewersCoins();
-                        Messages.Message("Coins awarded to active viewers", MessageTypeDefOf.PositiveEvent);
-                        showAwardCoinsConfirmation = false;
-                    }
-                ));
-                showAwardCoinsConfirmation = false;
-            }
-
             if (showResetCoinsConfirmation)
             {
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
                     "RICS.ViewerManager.ResetCoinsConfirm".Translate(),
                     () => {
                         Viewers.ResetAllCoins();
-                        Messages.Message("All viewer coins reset", MessageTypeDefOf.NeutralEvent);
+                        Messages.Message("RICS.ViewerManager.CoinsReset".Translate(), MessageTypeDefOf.NeutralEvent);
                         showResetCoinsConfirmation = false;
                     }
                 ));
@@ -894,7 +912,7 @@ namespace CAP_ChatInteractive
                     "RICS.ViewerManager.ResetKarmaConfirm".Translate(),
                     () => {
                         Viewers.ResetAllKarma();
-                        Messages.Message("All viewer karma reset", MessageTypeDefOf.NeutralEvent);
+                        Messages.Message("RICS.ViewerManager.KarmaReset".Translate(), MessageTypeDefOf.NeutralEvent);
                         showResetKarmaConfirmation = false;
                     }
                 ));
@@ -908,9 +926,7 @@ namespace CAP_ChatInteractive
                 string usernameToRemove = selectedViewer.Username;
 
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    "RICS.ViewerManager.RemoveConfirm".Translate(usernameToRemove) +
-                    "• Remove any pawn assignments\n" +
-                    "• Cannot be undone!",
+                    "RICS.ViewerManager.RemoveConfirm".Translate(usernameToRemove),
                     () => {
                         // Remove pawn assignments first
                         UnassignPawn(selectedViewer);
@@ -923,12 +939,13 @@ namespace CAP_ChatInteractive
                         selectedViewer = null;
                         FilterViewers();
 
-                        // Use the captured username here instead of selectedViewer.Username
-                        Messages.Message($"{usernameToRemove} has been permanently removed from the viewer list", MessageTypeDefOf.NeutralEvent);
+                        Messages.Message(
+                            "RICS.ViewerManager.Removed".Translate(usernameToRemove),
+                            MessageTypeDefOf.NeutralEvent);
                         showRemoveConfirmation = false;
                     },
                     true,
-                    "REMOVE USER"
+                    "RICS.ViewerManager.RemoveUser".Translate()
                 ));
                 showRemoveConfirmation = false;
             }
@@ -940,15 +957,17 @@ namespace CAP_ChatInteractive
             int totalCoins = Viewers.All.Sum(v => v.Coins);
             float totalKarma = Viewers.All.Sum(v => v.Karma);
             int bannedCount = Viewers.All.Count(v => v.IsBanned);
+            int n = Mathf.Max(1, Viewers.All.Count);
 
-            string stats = $"Total Viewers: {Viewers.All.Count}\n" +
-                          $"Active Viewers: {activeViewers.Count}\n" +
-                          $"Banned Viewers: {bannedCount}\n" +
-                          $"Total Coins in Circulation: {totalCoins}\n" +
-                          $"Average Coins per Viewer: {totalCoins / Mathf.Max(1, Viewers.All.Count)}\n" +
-                          $"Average Karma: {totalKarma / Mathf.Max(1, Viewers.All.Count)}";
+            string stats = "RICS.ViewerManager.StatsBody".Translate(
+                Viewers.All.Count,
+                activeViewers.Count,
+                bannedCount,
+                totalCoins,
+                (totalCoins / n).ToString("F0"),
+                (totalKarma / n).ToString("F1"));
 
-            Find.WindowStack.Add(new Dialog_MessageBox(stats, "Viewer Statistics"));
+            Find.WindowStack.Add(new Dialog_MessageBox(stats, "RICS.ViewerManager.StatsTitle".Translate()));
         }
 
         private void FilterViewers()
@@ -1089,6 +1108,67 @@ namespace CAP_ChatInteractive
             {
                 onConfirm?.Invoke(currentValue);
                 this.Close();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Mass Actions → Award Coins to Active: amount field + confirm.
+    /// </summary>
+    public class Dialog_AwardActiveCoins : Window
+    {
+        private int amount;
+        private string buffer;
+        private readonly Action<int> onConfirm;
+
+        public override Vector2 InitialSize => new Vector2(340f, 220f);
+
+        public Dialog_AwardActiveCoins(int initialAmount, Action<int> onConfirm)
+        {
+            this.amount = Math.Max(1, initialAmount);
+            this.buffer = this.amount.ToString();
+            this.onConfirm = onConfirm;
+            doCloseButton = false;
+            forcePause = true;
+            absorbInputAroundWindow = true;
+            closeOnClickedOutside = true;
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            float pad = 12f;
+            float y = pad;
+
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(pad, y, inRect.width - pad * 2, 28f), "RICS.ViewerManager.AwardDialogTitle".Translate());
+            Text.Font = GameFont.Small;
+            y += 36f;
+
+            Widgets.Label(new Rect(pad, y, inRect.width - pad * 2, 40f), "RICS.ViewerManager.AwardDialogHint".Translate());
+            y += 48f;
+
+            Widgets.Label(new Rect(pad, y, 100f, 28f), "RICS.ViewerManager.AwardAmountLabel".Translate());
+            Rect fieldRect = new Rect(pad + 110f, y, 120f, 28f);
+            UIUtilities.TextFieldNumericFlexible(fieldRect, ref amount, ref buffer, 1, 1000000);
+            y += 44f;
+
+            float btnW = 120f;
+            float gap = 12f;
+            float totalW = btnW * 2 + gap;
+            float startX = (inRect.width - totalW) / 2f;
+
+            if (Widgets.ButtonText(new Rect(startX, y, btnW, 32f), "RICS.Dialog.Confirm".Translate()))
+            {
+                if (amount > 0)
+                {
+                    onConfirm?.Invoke(amount);
+                    Close();
+                }
+            }
+
+            if (Widgets.ButtonText(new Rect(startX + btnW + gap, y, btnW, 32f), "RICS.Editor.Close".Translate()))
+            {
+                Close();
             }
         }
     }

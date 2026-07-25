@@ -240,13 +240,19 @@ namespace CAP_ChatInteractive
             }
         }
 
-        // Viewers.cs - The existing method should work, but let's add some debugging
-        public static void AwardActiveViewersCoins()
+        /// <summary>
+        /// Award coins to active (non-banned) viewers.
+        /// When <paramref name="fixedAmountPerViewer"/> is null, uses BaseCoinReward + roles × karma/100 (periodic reward formula).
+        /// When set, each active viewer receives that flat amount (admin mass-give).
+        /// Returns how many viewers received coins.
+        /// </summary>
+        public static int AwardActiveViewersCoins(int? fixedAmountPerViewer = null)
         {
             try
             {
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var activeViewers = GetActiveViewers(settings.MinutesForActive);
+                int awardedCount = 0;
 
                 lock (_lock)
                 {
@@ -254,32 +260,39 @@ namespace CAP_ChatInteractive
                     {
                         if (viewer.IsBanned) continue;
 
-                        int baseCoins = settings.BaseCoinReward;
-                        float karmaMultiplier = viewer.Karma / 100f;
+                        int coinsToAward;
+                        if (fixedAmountPerViewer.HasValue)
+                        {
+                            coinsToAward = Math.Max(0, fixedAmountPerViewer.Value);
+                        }
+                        else
+                        {
+                            int baseCoins = settings.BaseCoinReward;
+                            float karmaMultiplier = viewer.Karma / 100f;
 
-                        // Apply role multipliers - THIS IS WORKING CORRECTLY
-                        if (viewer.IsSubscriber)
-                            baseCoins += settings.SubscriberExtraCoins;
-                        if (viewer.IsVip)
-                            baseCoins += settings.VipExtraCoins;
-                        if (viewer.IsModerator)
-                            baseCoins += settings.ModExtraCoins;
+                            if (viewer.IsSubscriber)
+                                baseCoins += settings.SubscriberExtraCoins;
+                            if (viewer.IsVip)
+                                baseCoins += settings.VipExtraCoins;
+                            if (viewer.IsModerator)
+                                baseCoins += settings.ModExtraCoins;
 
-                        int coinsToAward = (int)(baseCoins * karmaMultiplier);
+                            coinsToAward = (int)(baseCoins * karmaMultiplier);
+                        }
+
+                        if (coinsToAward <= 0) continue;
                         viewer.GiveCoins(coinsToAward);
-
-                        // Add debug logging if needed:
-                        //Logger.Debug($"Awarded {coinsToAward} coins to {viewer.Username} " +
-                        //              $"(base: {settings.BaseCoinReward}, karma: {viewer.Karma}, " +
-                        //              $"sub: {viewer.IsSubscriber}, vip: {viewer.IsVip}, mod: {viewer.IsModerator})");
+                        awardedCount++;
                     }
                 }
 
                 SaveViewers();
+                return awardedCount;
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error awarding coins to active viewers: {ex.Message}");
+                return 0;
             }
         }
 
