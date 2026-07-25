@@ -1204,47 +1204,16 @@ Updates to !mypawn Command to show more information about the viewer's pawn.
 
 <b>TRANSLATIONS</b>
 ───────────────────
+The following translation files have been updated with new keys.  ALso for the !mypawn family, friends, and rivals commands:
 TabDrawer_Twitch.xml
--   <RICS.TwitchRaidJoin.Note> Note: Twitch JOIN events can lag 2+ minutes (or never fire). Chat and !joinraid still count.</RICS.TwitchRaidJoin.Note>
 
 TabDrawer_Twitch.xml
-  <!-- Join window + chat fallback (Twitch IRC JOIN often late/missing) -->
-  <RICS.Twitch.RaidsJoinWindowLabel>Join collection window (seconds):</RICS.Twitch.RaidsJoinWindowLabel>
-  <RICS.Twitch.RaidsJoinWindowTooltip>
-    <![CDATA[How long to collect raider names after a Twitch raid is detected.
- 
-• Twitch often delays IRC JOIN events by ~2 minutes (or never sends them).
-• Default 240 seconds (4 minutes) gives JOINs and chat time to arrive.
-• Range: 60–360 seconds.]]>
-  </RICS.Twitch.RaidsJoinWindowTooltip>
-  <RICS.Twitch.RaidsJoinWindowHelper>Collect joiners for {0} seconds after raid detection</RICS.Twitch.RaidsJoinWindowHelper>
- 
-  <RICS.Twitch.RaidsChatAutoAddLabel>Auto-add chatters during join window</RICS.Twitch.RaidsChatAutoAddLabel>
-  <RICS.Twitch.RaidsChatAutoAddTooltip>
-    <![CDATA[When enabled, anyone who sends a chat message during the join window is added to the raid roster.
- 
-• Strongly recommended: Twitch IRC OnUserJoined is unreliable for raids.
-• Still supports !joinraid and IRC JOIN when they work.
-• Does not add your bot account.]]>
-  </RICS.Twitch.RaidsChatAutoAddTooltip>
 
 Dialog_ViewerManager.xml
-  <RICS.ViewerManager.NoPlatformIdsWarning>⚠ NO PLATFORM IDs (User may be invalid) — remove this viewer</RICS.ViewerManager.NoPlatformIdsWarning>
-  <RICS.ViewerManager.HasPawnAssigned>✓ Has pawn assigned</RICS.ViewerManager.HasPawnAssigned>
-  <RICS.ViewerManager.MessagesCount>Messages: {0}</RICS.ViewerManager.MessagesCount>
-  <RICS.ViewerManager.LastSeenActive>Last Seen: {0} (Active Now)</RICS.ViewerManager.LastSeenActive>
-  <RICS.ViewerManager.LastSeenAgo>Last Seen: {0} ({1} minutes ago)</RICS.ViewerManager.LastSeenAgo>
-  <RICS.ViewerManager.AwardedAmount>Awarded {0} coins to {1} active viewer(s)</RICS.ViewerManager.AwardedAmount>
-  <RICS.ViewerManager.AwardDialogTitle>Award Coins to Active</RICS.ViewerManager.AwardDialogTitle>
-  <RICS.ViewerManager.AwardDialogHint>Enter how many coins each active (non-banned) viewer should receive.</RICS.ViewerManager.AwardDialogHint>
-  <RICS.ViewerManager.AwardAmountLabel>Amount:</RICS.ViewerManager.AwardAmountLabel>
-  <RICS.ViewerManager.RemoveConfirm>Permanently remove {0} from the viewer list?\n\nThis will:\n• Remove all their data (coins, karma, history)\n• Remove any pawn assignments\n• Cannot be undone!</RICS.ViewerManager.RemoveConfirm>
-  <RICS.ViewerManager.Removed>{0} has been permanently removed from the viewer list</RICS.ViewerManager.Removed>
-  <!-- Statistics -->
-  <RICS.ViewerManager.StatsTitle>Viewer Statistics</RICS.ViewerManager.StatsTitle>
-  <RICS.ViewerManager.StatsBody>Total Viewers: {0}\nActive Viewers: {1}\nBanned Viewers: {2}\nTotal Coins in Circulation: {3}\nAverage Coins per Viewer: {4}\nAverage Karma: {5}</RICS.ViewerManager.StatsBody>
 
-And more additions to translations for the new !mypawn family, friends, and rivals commands.
+MyPawnCommandHandler.xml
+
+
 "
 
 
