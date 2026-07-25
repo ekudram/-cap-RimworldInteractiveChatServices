@@ -15,6 +15,8 @@
   <RICS.HPCH.Return.CantAffordMultiple>Need {0} to heal {2}! You have {1}</RICS.HPCH.Return.CantAffordMultiple>
   <RICS.HPCH.Return.CantAffordMultipleTarget>Need {0} to heal {2}'s pawn {3}! You have {1}</RICS.HPCH.Return.CantAffordMultipleTarget>
   <RICS.HPCH.Return.HealSuccessTarget>💚 HEALING! Healed {2} injuries on {3}'s pawn for {0}! Remaining: {1}</RICS.HPCH.Return.HealSuccessTarget>
+  <RICS.HPCH.Return.HealMassSuccessTarget>💚 COMPLETE HEALING! Healed all fixable conditions on {3} ({2} serum doses) for {0}! Remaining: {1}</RICS.HPCH.Return.HealMassSuccessTarget>
+  <RICS.HPCH.Return.HealPartialSuccessTarget>💚 PARTIAL HEALING on {3}! Applied {2} serum doses for {0}; more remain (low funds). Balance: {1}</RICS.HPCH.Return.HealPartialSuccessTarget>
   <RICS.HPCH.Return.CantAffordMassHeal>Need {0} to heal {2} injuries across {3} pawns! You have {1}</RICS.HPCH.Return.CantAffordMassHeal>
   <RICS.HPCH.Return.HealMassSuccess>💚 COMPLETE HEALING! Healed all {2} injuries across {3} pawns for {0}! Remaining: {1}</RICS.HPCH.Return.HealMassSuccess>
   <!-- New 1.40 -->
