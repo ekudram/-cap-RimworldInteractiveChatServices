@@ -1191,6 +1191,7 @@ Updates to !mypawn Command to show more information about the viewer's pawn.
 - !mypawn relations command now properly shows the relationships of the viewer's pawn, including lovers, spouses, and family members.
 - !mypawn stats command now properly shows the stats of the viewer's pawn, including health, skills, and beauty.
 - !flirt and other social commands adjusted to properly handle pawns with multiple love partners or complex relationship networks.
+-  ` !setfavoritecolor should now properly exact favorite color.
 
 <b>ADDED</b>
 ────────────
@@ -1199,6 +1200,7 @@ Updates to !mypawn Command to show more information about the viewer's pawn.
 - !mypawn family command added to show the family members of the viewer's pawn, including parents, siblings, and children.
 - !mypawn friends command added to show the friends of the viewer's pawn, including best friends and acquaintances.
 - !mypawn rivals command added to show the rivals of the viewer's pawn, including enemies and competitors.
+- Viewer Dialog with Mass Action you can now select the amount of coins to give to all viewers at once.
 
 <b>TRANSLATIONS</b>
 ───────────────────
@@ -1225,6 +1227,22 @@ TabDrawer_Twitch.xml
 • Still supports !joinraid and IRC JOIN when they work.
 • Does not add your bot account.]]>
   </RICS.Twitch.RaidsChatAutoAddTooltip>
+
+Dialog_ViewerManager.xml
+  <RICS.ViewerManager.NoPlatformIdsWarning>⚠ NO PLATFORM IDs (User may be invalid) — remove this viewer</RICS.ViewerManager.NoPlatformIdsWarning>
+  <RICS.ViewerManager.HasPawnAssigned>✓ Has pawn assigned</RICS.ViewerManager.HasPawnAssigned>
+  <RICS.ViewerManager.MessagesCount>Messages: {0}</RICS.ViewerManager.MessagesCount>
+  <RICS.ViewerManager.LastSeenActive>Last Seen: {0} (Active Now)</RICS.ViewerManager.LastSeenActive>
+  <RICS.ViewerManager.LastSeenAgo>Last Seen: {0} ({1} minutes ago)</RICS.ViewerManager.LastSeenAgo>
+  <RICS.ViewerManager.AwardedAmount>Awarded {0} coins to {1} active viewer(s)</RICS.ViewerManager.AwardedAmount>
+  <RICS.ViewerManager.AwardDialogTitle>Award Coins to Active</RICS.ViewerManager.AwardDialogTitle>
+  <RICS.ViewerManager.AwardDialogHint>Enter how many coins each active (non-banned) viewer should receive.</RICS.ViewerManager.AwardDialogHint>
+  <RICS.ViewerManager.AwardAmountLabel>Amount:</RICS.ViewerManager.AwardAmountLabel>
+  <RICS.ViewerManager.RemoveConfirm>Permanently remove {0} from the viewer list?\n\nThis will:\n• Remove all their data (coins, karma, history)\n• Remove any pawn assignments\n• Cannot be undone!</RICS.ViewerManager.RemoveConfirm>
+  <RICS.ViewerManager.Removed>{0} has been permanently removed from the viewer list</RICS.ViewerManager.Removed>
+  <!-- Statistics -->
+  <RICS.ViewerManager.StatsTitle>Viewer Statistics</RICS.ViewerManager.StatsTitle>
+  <RICS.ViewerManager.StatsBody>Total Viewers: {0}\nActive Viewers: {1}\nBanned Viewers: {2}\nTotal Coins in Circulation: {3}\nAverage Coins per Viewer: {4}\nAverage Karma: {5}</RICS.ViewerManager.StatsBody>
 
 And more additions to translations for the new !mypawn family, friends, and rivals commands.
 "
