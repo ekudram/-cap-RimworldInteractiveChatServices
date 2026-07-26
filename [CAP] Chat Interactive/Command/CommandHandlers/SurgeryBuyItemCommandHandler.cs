@@ -543,12 +543,31 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Price (uses the possibly overridden recipe.defName)
             int finalPrice = GetBiotechSurgeryCost(recipe.defName);
 
-            // Research check – correct way in RimWorld
-            if (recipe.researchPrerequisites != null &&
-                !recipe.researchPrerequisites.All(rp => rp.IsFinished))
+            // Research: honor global RequireResearch (Quality & Research settings).
+            // When on, fertility surgeries need e.g. Fertility Procedures — and we name what is missing.
+            // When off, skip research gates (same policy as store HasRequiredResearch).
+            var globalSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (globalSettings == null || globalSettings.RequireResearch)
             {
-                // return $"{displayName} requires research that hasn't been completed yet.";
-                return "RICS.SBCH.NoResearch".Translate(displayName) ;
+                if (recipe.researchPrerequisites != null && recipe.researchPrerequisites.Count > 0)
+                {
+                    var missing = recipe.researchPrerequisites
+                        .Where(rp => rp != null && !rp.IsFinished)
+                        .Select(rp => rp.LabelCap.ToString())
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .Distinct()
+                        .ToList();
+                    if (missing.Count > 0)
+                    {
+                        string missingList = string.Join(", ", missing);
+                        Logger.Debug($"Biotech surgery '{recipe.defName}' blocked — missing research: {missingList}");
+                        return "RICS.SBCH.NoResearchNamed".Translate(displayName, missingList);
+                    }
+                }
+            }
+            else
+            {
+                Logger.Debug($"Biotech surgery '{recipe.defName}': RequireResearch=false — skipping research prereqs");
             }
 
             // Validation

@@ -67,6 +67,7 @@
   <RICS.SBCH.NoBloodLoss>No blood loss and is not hemogenic—no benefit from transfusion.</RICS.SBCH.NoBloodLoss>
   <RICS.SBCH.NotSuitableAge>Pawn is not suitable for this procedure (age/body type).</RICS.SBCH.NotSuitableAge>
   <RICS.SBCH.NoResearch>{0} requires research that hasn't been completed yet.</RICS.SBCH.NoResearch>
+  <RICS.SBCH.NoResearchNamed>{0} requires research that hasn't been completed yet: {1}.</RICS.SBCH.NoResearchNamed>
 
   <!-- Rare / error cases -->
   <RICS.SBCH.NullPawn>Error: Null Pawn.</RICS.SBCH.NullPawn>
