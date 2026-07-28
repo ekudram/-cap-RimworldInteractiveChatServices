@@ -910,6 +910,19 @@
   <!-- Pawn Management Commands -->
 
   <CAP_ChatInteractive.ChatCommandDef>
+    <defName>PawnCheck</defName>
+    <commandText>pawncheck</commandText>
+    <label>pawn check</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.PawnCheck</commandClass>
+    <requiresMod>false</requiresMod>
+    <commandDescription>Check another viewer's pawn for injuries only. Usage: !pawncheck &lt;viewer&gt;</commandDescription>
+    <permissionLevel>everyone</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandData>true</useCommandData>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
     <defName>MyPawn</defName>
     <commandText>mypawn</commandText>
     <label>my pawn</label>

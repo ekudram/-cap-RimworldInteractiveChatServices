@@ -386,6 +386,106 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return report.ToString();
         }
 
+        /// <summary>
+        /// Injury/condition-only report for !pawncheck (and similar). No body type, comfort, or implants fluff.
+        /// Uses the same visible-condition filtering as !mypawn body (skips healthy implants).
+        /// </summary>
+        public static string BuildInjuryOnlyReport(Pawn pawn, string patientLabel)
+        {
+            if (pawn == null)
+                return "RICS.PCH.NoPawn".Translate(patientLabel ?? "Unknown");
+
+            if (pawn.Dead || pawn.Destroyed)
+                return "RICS.PCH.PawnDead".Translate(patientLabel ?? pawn.LabelShortCap);
+
+            var report = new StringBuilder();
+            report.AppendLine("RICS.PCH.Header".Translate(patientLabel ?? pawn.LabelShortCap));
+
+            var healthConditions = GetVisibleHealthConditions(pawn)
+                ?? new List<IGrouping<BodyPartRecord, Hediff>>();
+
+            if (healthConditions.Count == 0)
+            {
+                report.AppendLine("RICS.PCH.NoInjuries".Translate(patientLabel ?? pawn.LabelShortCap));
+                return report.ToString();
+            }
+
+            var sortedPartGroups = healthConditions
+                .OrderBy(g => g.Key != null)
+                .ThenByDescending(g => g.Key?.height ?? 0f)
+                .ThenByDescending(g => g.Key?.coverageAbsWithChildren ?? 0f)
+                .ToList();
+
+            const int maxPartsToShow = 12;
+            const int maxHediffsToShow = 20;
+            int partsShown = 0;
+            int hediffsShown = 0;
+            int totalHediffs = 0;
+
+            foreach (var partGroup in sortedPartGroups)
+            {
+                if (partsShown >= maxPartsToShow)
+                    break;
+
+                BodyPartRecord part = partGroup.Key;
+                string partName = part?.LabelCap ?? "Whole Body";
+                string partEmoji = GetBodyPartEmoji(part);
+                string healthStats = "";
+                if (part != null && pawn.health?.hediffSet != null)
+                {
+                    float partHealth = pawn.health.hediffSet.GetPartHealth(part);
+                    float partMaxHealth = part.def.GetMaxHealth(pawn);
+                    healthStats = $" ({partHealth:F0}/{partMaxHealth:F0})";
+                }
+
+                var conditionsByType = partGroup
+                    .GroupBy(h => GetConditionKey(h))
+                    .OrderByDescending(g => IsCriticalCondition(g.First()))
+                    .ThenByDescending(g => g.Sum(h => h.Severity))
+                    .ToList();
+
+                var conditionLines = new List<string>();
+                foreach (var group in conditionsByType)
+                {
+                    if (hediffsShown >= maxHediffsToShow)
+                        break;
+                    string conditionName = GetConditionDisplayName(group.First());
+                    if (string.IsNullOrEmpty(conditionName)) continue;
+
+                    int count = group.Count();
+                    totalHediffs += count;
+                    string severityIndicator = GetSeverityIndicator(group.First());
+                    conditionLines.Add(count > 1
+                        ? $"{severityIndicator}{conditionName} (x{count})"
+                        : $"{severityIndicator}{conditionName}");
+                    hediffsShown++;
+                }
+
+                if (conditionLines.Count == 0)
+                    continue;
+
+                report.AppendLine($"{partEmoji} {partName}{healthStats}:");
+                foreach (var line in conditionLines)
+                    report.AppendLine($"  • {line}");
+                partsShown++;
+            }
+
+            int hiddenParts = Math.Max(0, healthConditions.Count - partsShown);
+            if (hiddenParts > 0)
+                report.AppendLine("RICS.PCH.HiddenParts".Translate(hiddenParts));
+
+            // Bleed warning if relevant
+            float bleedRate = pawn.health?.hediffSet?.BleedRateTotal ?? 0f;
+            if (bleedRate > 0f)
+            {
+                int bleedoutTime = HealthUtility.TicksUntilDeathDueToBloodLoss(pawn);
+                if (bleedoutTime < GenDate.TicksPerDay)
+                    report.AppendLine("RICS.MPCH.BleedoutIn".Translate(bleedoutTime.ToStringTicksToPeriod()));
+            }
+
+            return report.ToString();
+        }
+
         private static bool IsChildOf(BodyPartRecord part, BodyPartRecord potentialParent)
         {
             if (part == null || potentialParent == null) return false;

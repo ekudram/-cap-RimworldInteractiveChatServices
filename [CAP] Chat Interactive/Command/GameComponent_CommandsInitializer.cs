@@ -132,11 +132,12 @@ namespace CAP_ChatInteractive
                         changed = true;
                     }
 
-                    // Always refresh label/description from XML (not user-editable)
+                    // Always refresh label/description/pricelist flag from XML (not user-editable)
                     string prevLabel = s.Label;
                     string prevDesc = s.CommandDescription;
+                    bool prevExclude = s.ExcludeFromPricelist;
                     s.ApplyDefMetadata(def);
-                    if (prevLabel != s.Label || prevDesc != s.CommandDescription)
+                    if (prevLabel != s.Label || prevDesc != s.CommandDescription || prevExclude != s.ExcludeFromPricelist)
                         changed = true;
 
                     if (def.CustomData != null && def.CustomData.Count > 0)
@@ -198,11 +199,12 @@ namespace CAP_ChatInteractive
                         // Ensure custom settings defaults (from XML <CustomData>) are present
                         var settings = currentSettings[commandName];
 
-                        // Always refresh label/description from Commands.xml for pricelist export
+                        // Always refresh label/description/pricelist flag from Commands.xml for pricelist export
                         string prevLabel = settings.Label;
                         string prevDesc = settings.CommandDescription;
+                        bool prevExclude = settings.ExcludeFromPricelist;
                         settings.ApplyDefMetadata(def);
-                        if (prevLabel != settings.Label || prevDesc != settings.CommandDescription)
+                        if (prevLabel != settings.Label || prevDesc != settings.CommandDescription || prevExclude != settings.ExcludeFromPricelist)
                             settingsChanged = true;
 
                         if (def.CustomData != null && def.CustomData.Count > 0)

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- !pawncheck — injury-only report for another viewer's pawn -->
+  <RICS.PCH.Usage>Usage: !pawncheck &lt;viewer&gt; — list injuries on another viewer's pawn.</RICS.PCH.Usage>
+  <RICS.PCH.NoAssignmentSystem>Pawn assignment system is not available (load a game first).</RICS.PCH.NoAssignmentSystem>
+  <RICS.PCH.NoPawn>{0} doesn't have a pawn assigned.</RICS.PCH.NoPawn>
+  <RICS.PCH.PawnDead>{0}'s pawn is dead.</RICS.PCH.PawnDead>
+  <RICS.PCH.Header>🩺 Pawn check — {0}:</RICS.PCH.Header>
+  <RICS.PCH.NoInjuries>{0} has no visible injuries. ✅</RICS.PCH.NoInjuries>
+  <RICS.PCH.HiddenParts>... and {0} more body parts with conditions</RICS.PCH.HiddenParts>
+  <RICS.PCH.Error>Error checking pawn. Please try again.</RICS.PCH.Error>
+</LanguageData>

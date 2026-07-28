@@ -55,6 +55,12 @@ public class CommandSettings
     /// </summary>
     public string CommandDescription = "";
 
+    /// <summary>
+    /// When true, RICS-Pricelist and similar public docs should hide this command.
+    /// Driven by ChatCommandDef.excludeFromPricelist (bot-only / internal commands).
+    /// </summary>
+    public bool ExcludeFromPricelist = false;
+
     // Raid command specific fields (lists)
     // Note: Wager values have been moved to per-command CustomData via <CustomData> in Commands.xml
     // to avoid polluting settings JSON for commands that don't use them.
@@ -197,7 +203,7 @@ public class CommandSettings
     }
 
     /// <summary>
-    /// Copy non-editable metadata (label + description) from the command's Def / XML.
+    /// Copy non-editable metadata (label, description, pricelist visibility) from the command's Def / XML.
     /// Safe to call on every load — these fields are not user settings.
     /// </summary>
     public void ApplyDefMetadata(CAP_ChatInteractive.ChatCommandDef def)
@@ -205,5 +211,6 @@ public class CommandSettings
         if (def == null) return;
         Label = !string.IsNullOrEmpty(def.label) ? def.label : (def.DisplayLabel ?? "");
         CommandDescription = def.commandDescription ?? "";
+        ExcludeFromPricelist = def.excludeFromPricelist;
     }
 }

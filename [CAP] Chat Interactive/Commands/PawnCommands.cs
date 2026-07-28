@@ -365,6 +365,25 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         }
     }
 
+    /// <summary>!pawncheck &lt;viewer&gt; — injury-only report for another viewer's pawn.</summary>
+    public class PawnCheck : ChatCommand
+    {
+        public override string Name => "pawncheck";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            try
+            {
+                return PawnCheckCommandHandler.HandlePawnCheck(messageWrapper, args);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in pawncheck command: {ex}");
+                return "RICS.PCH.Error".Translate();
+            }
+        }
+    }
+
     public class Dye : ChatCommand
     {
         public override string Name => "dye";

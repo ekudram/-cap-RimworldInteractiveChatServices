@@ -82,6 +82,12 @@ namespace CAP_ChatInteractive
         /// <summary>Permission level required (everyone, subscriber, vip, moderator, broadcaster)</summary>
         public string permissionLevel = "everyone";
 
+        /// <summary>
+        /// When true, this command is omitted from public pricelist / docs exports (e.g. bot-only commands).
+        /// Refreshed into CommandSettings.ExcludeFromPricelist from Def XML on load/save.
+        /// </summary>
+        public bool excludeFromPricelist = false;
+
         /// <summary>Cooldown in seconds between uses</summary>
         public int cooldownSeconds = 1;
 
