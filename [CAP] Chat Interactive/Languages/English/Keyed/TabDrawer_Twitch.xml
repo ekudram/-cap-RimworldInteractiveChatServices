@@ -39,6 +39,8 @@
   <RICS.Twitch.ChannelNameFieldTooltip>Enter your Twitch channel name here</RICS.Twitch.ChannelNameFieldTooltip>
 
   <RICS.Twitch.BotAccountHeader>Bot Account (Optional)</RICS.Twitch.BotAccountHeader>
+  <RICS.Twitch.BotAccountHelp>Not using a bot account? Put your Twitch channel name in the Bot Username box below (same as Channel Name). It is required for login even when you stream without a separate bot.</RICS.Twitch.BotAccountHelp>
+  <RICS.Twitch.BotAccountHelpTooltip>RICS connects as the Bot Username with your OAuth token.\n\n• Separate bot: enter the bot's Twitch login name.\n• Main account only: enter your channel name again (auto-filled if the bot box is empty).\n\nLeaving Bot Username blank can prevent connection.</RICS.Twitch.BotAccountHelpTooltip>
   <RICS.Twitch.BotUsernameLabel>Bot Username:</RICS.Twitch.BotUsernameLabel>
 
   <RICS.Twitch.BotAccountStatus.Separate>✓ Using dedicated bot account</RICS.Twitch.BotAccountStatus.Separate>

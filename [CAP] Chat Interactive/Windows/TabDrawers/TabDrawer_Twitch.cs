@@ -121,6 +121,14 @@ namespace _CAP__Chat_Interactive
             );
             listing.Gap(12f);
 
+            // If bot login is blank but channel is set, copy channel → bot (main-account setup).
+            // Streamers often skip the bot box; IRC still needs a bot username matching the token.
+            if (string.IsNullOrWhiteSpace(settings.BotUsername) &&
+                !string.IsNullOrWhiteSpace(settings.ChannelName))
+            {
+                settings.BotUsername = settings.ChannelName.Trim();
+            }
+
             // Bot Account Section
             Text.Font = GameFont.Medium;
             // OLD: listing.Label("Bot Account (Optional)");
@@ -129,6 +137,14 @@ namespace _CAP__Chat_Interactive
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
             listing.GapLine(6f);
+            listing.Gap(4f);
+
+            // Visible help: not using a bot account → put streamer channel name here too
+            Rect botHelpRect = listing.GetRect(36f);
+            GUI.color = ColorLibrary.MutedText;
+            Widgets.Label(botHelpRect, "RICS.Twitch.BotAccountHelp".Translate());
+            GUI.color = Color.white;
+            TooltipHandler.TipRegion(botHelpRect, "RICS.Twitch.BotAccountHelpTooltip".Translate());
             listing.Gap(4f);
 
             // Bot username with proper tooltip
@@ -645,8 +661,8 @@ namespace _CAP__Chat_Interactive
             // Channel Information: Header 30 + gap 6 + gap 4 + labels 24 + field 30 + gap 12 = 106
             height += 106f;
 
-            // Bot Account: Header 30 + gap 6 + gap 4 + label 24 + field 30 + status 20 + gap 16 = 130
-            height += 130f;
+            // Bot Account: header + help (36) + label + field + status + gaps ≈ 180
+            height += 180f;
 
             // Authentication: Header 30 + gap 6 + gap 4 + label 24 + field 30 + buttons 35 + gap 8 + status 20 + type 18 + gap 20 = 195
             height += 195f;

@@ -1218,6 +1218,7 @@ MyPawnCommandHandler.xml"
 <b>FIXED</b>
 ────────────
 - !surgery command no respects Research requirements for surgeries.  If the surgery is not researched, it will not be allowed.
+- Enforce single Mechlink implant per pawn bug fix.  Now only one Mechlink implant can be installed per pawn.
 
 <b>ADDED</b>
 ────────────
