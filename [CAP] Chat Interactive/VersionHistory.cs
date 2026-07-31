@@ -15,24 +15,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 
+// File contains version history notes for RICS (RimWorld Interactive Chat Services) mod, including version numbers, release dates, and detailed changelogs of features, fixes, and updates. Each entry is structured to provide clear information about the changes made in each version.
 
-
-using CAP_ChatInteractive.Commands.ViewerCommands;
-using NAudio.SoundFont;
-using RimWorld;
-using Steamworks;
 using System;
 using System.Collections.Generic;
-using TwitchLib.Client.Models;
-using Unity.Burst.Intrinsics;
-using UnityEngine;
-using UnityEngine.PlayerLoop;
-using UnityEngine.Rendering.VirtualTexturing;
-using UnityEngine.SceneManagement;
 using Verse;
-using Verse.Noise;
-using static RimWorld.MechClusterSketch;
-using static Verse.PawnRenderNodeProperties;
 
 namespace CAP_ChatInteractive
 {
@@ -1214,10 +1201,35 @@ MyPawnCommandHandler.xml"
 
 
 
-                }
+                },
+            {"1.46",
+                @"===========================================================
+                         RICS version 1.46 - Changelog
+                         Released: August 1, 2026
+===========================================================
 
+<b>MEMORANDUM</b>
+─────────────────
+- But fixes.
 
-/*  Copy this template for future versions and fill in the details
+<b>UPDATED</b>
+──────────────
+
+<b>FIXED</b>
+────────────
+- !surgery command no respects Research requirements for surgeries.  If the surgery is not researched, it will not be allowed.
+
+<b>ADDED</b>
+────────────
+- !pawncheck command added to check a viewers pawn for health issues.
+
+<b>TRANSLATIONS</b>
+───────────────────
+- none
+"
+            }
+/*
+            // Add more versions here as they're released
 ===========================================================
                          RICS version - Changelog
                          Released: Month Day, Year
