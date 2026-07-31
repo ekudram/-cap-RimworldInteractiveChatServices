@@ -58,5 +58,7 @@
 
   <!-- New trait check message -->
   <RICS.UICH.Mechanitor.PsychicallyDeaf>Your pawn is psychically deaf and cannot use mechanitor implants.</RICS.UICH.Mechanitor.PsychicallyDeaf>
+  <RICS.UICH.Mechanitor.AlreadyHasMechlink>Your pawn already has a mechlink. You cannot install another.</RICS.UICH.Mechanitor.AlreadyHasMechlink>
+  <RICS.UICH.Mechanitor.MechlinkOneOnly>You can only use 1 mechlink at a time (one implant per pawn).</RICS.UICH.Mechanitor.MechlinkOneOnly>
 
 </LanguageData>

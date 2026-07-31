@@ -748,6 +748,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return null;
 
             // Check if this is a Mechanitor implant
+            bool isMechlink = string.Equals(storeItem.DefName, "Mechlink", StringComparison.OrdinalIgnoreCase);
             bool isControlSublink = storeItem.DefName == "ControlSublink";
             bool isControlSublinkHigh = storeItem.DefName == "ControlSublinkHigh";
             bool isMechFormfeeder = storeItem.DefName == "MechFormfeeder";
@@ -755,7 +756,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             bool isRemoteShielder = storeItem.DefName == "RemoteShielder";
             bool isRepairProbe = storeItem.DefName == "RepairProbe";
 
-            if (!isControlSublink && !isControlSublinkHigh && !isMechFormfeeder &&
+            if (!isMechlink && !isControlSublink && !isControlSublinkHigh && !isMechFormfeeder &&
                 !isRemoteRepairer && !isRemoteShielder && !isRepairProbe)
                 return null;
 
@@ -770,6 +771,37 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var hediffs = pawn.health?.hediffSet?.hediffs;
             if (hediffs == null)
                 return null;
+
+            // Mechlink: only one implant ever (hediffDef MechlinkImplant / Hediff_Mechlink)
+            if (isMechlink)
+            {
+                bool alreadyHas = hediffs.Any(h =>
+                    h?.def != null &&
+                    (h.def.defName == "MechlinkImplant" ||
+                     string.Equals(h.def.defName, "Mechlink", StringComparison.OrdinalIgnoreCase) ||
+                     h is Hediff_Mechlink));
+
+                // Also treat existing mechanitor as already linked
+                if (!alreadyHas)
+                {
+                    try
+                    {
+                        alreadyHas = MechanitorUtility.IsMechanitor(pawn);
+                    }
+                    catch
+                    {
+                        // MechanitorUtility may be unavailable without Biotech at runtime edge cases
+                    }
+                }
+
+                if (alreadyHas)
+                    return "RICS.UICH.Mechanitor.AlreadyHasMechlink".Translate();
+
+                if (quantity > 1)
+                    return "RICS.UICH.Mechanitor.MechlinkOneOnly".Translate();
+
+                return null; // first Mechlink OK
+            }
 
             // For ControlSublink implants - they use a single Hediff_Level with severity as count
             if (isControlSublink || isControlSublinkHigh)
