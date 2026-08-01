@@ -1210,24 +1210,25 @@ MyPawnCommandHandler.xml"
 
 <b>MEMORANDUM</b>
 ─────────────────
-- Bug fixes.
-- New !pawncheck command added to check a viewer's pawn for health issues.
+- Bug fixes + one new useful command.
+- !pawncheck added so you (or chat) can quickly check another viewer’s pawn for injuries/health issues.
+- Twitch bot account setup is clearer and less error-prone.
 
 <b>UPDATED</b>
 ──────────────
-- Removed some Messages.messages that crashed crashed when DefOf's are not yet initialized.  Will show a message in the log still.
-- If you do not fill in the bot account RICS will auto-fill it with the streamer account.
+- Removed some early Messages.Message calls that could crash when DefOfs weren’t ready yet. Errors still go to the log.
+- If you leave the Bot Username blank, RICS will automatically fill it with your streamer/channel name so connection is more reliable.
 
 <b>FIXED</b>
 ────────────
-- !surgery command no respects Research requirements for surgeries.  If the surgery is not researched, it will not be allowed.
-- Enforce single Mechlink implant per pawn bug fix.  Now only one Mechlink implant can be installed per pawn.
-- Fixed mod related errors with events that did not have valid incident workers. 
+- !surgery now properly respects research requirements (when the global “Require Research” setting is on). Unresearched surgeries are blocked and it tells you what’s missing.
+- Only one Mechlink can be installed per pawn (no more stacking them for a free mechaniod).
+- Fixed mod-related errors with events/incidents that didn’t have valid incident workers (prevents crashes when building the store).
 
 <b>ADDED</b>
 ────────────
-- !pawncheck command added to check a viewers pawn for health issues.
-- Improved Twitch Bot Account UI and auto-fill behavior.
+- !pawncheck <viewer> – Quick injury/health check on another viewer’s assigned pawn (cleaner than full !mypawn body report).
+- Improved Twitch Bot Account UI with clearer help text and auto-fill behavior.
 
 <b>TRANSLATIONS</b>
 ───────────────────
