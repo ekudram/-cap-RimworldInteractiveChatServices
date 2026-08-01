@@ -40,7 +40,7 @@
   <RICS.AI.UpdateIntervalDisabled>disabled</RICS.AI.UpdateIntervalDisabled>
   <RICS.AI.Timeout>Response Timeout (ms)</RICS.AI.Timeout>
   <RICS.AI.PushEndpoint>Game State Push Endpoint (POST target for bot):</RICS.AI.PushEndpoint>
-  <RICS.AI.LanPushHint>LAN / Mini PC: set this to http://MINI_IP:5000/gamestate_update (not 127.0.0.1). Commands use the AI_Commands share; colony reports use this HTTP push. Allow firewall TCP 5000 on the mini. Default push interval is hours — lower it for testing.</RICS.AI.LanPushHint>
+  <RICS.AI.LanPushHint>Colony reports are written to AI_Commands/gamestate/latest.json (same share as commands — no port 5000 required). HTTP push URL is optional dual-write. For a mini bot, keep AI_Commands shared; set interval lower for testing. Masie must poll gamestate/ in /mode rimworld.</RICS.AI.LanPushHint>
   <RICS.AI.CanExecuteCommands>Allow bot to execute in-game commands via file interface (powerful but risky)</RICS.AI.CanExecuteCommands>
   <RICS.AI.WarningExecute>⚠️ Enabling command execution lets the bot run !buy, !raid etc. Only enable with trusted bots.</RICS.AI.WarningExecute>
   <RICS.AI.TestButton>Test AI Listener</RICS.AI.TestButton>
@@ -48,7 +48,7 @@
   <RICS.AI.TestPushOk>Gamestate push OK.</RICS.AI.TestPushOk>
   <RICS.AI.TestPushFail>Gamestate push FAILED.</RICS.AI.TestPushFail>
   <RICS.AI.ResetButton>Reset to Local Python Defaults</RICS.AI.ResetButton>
-  <RICS.AI.SetupHelp>Local all-in-one: 127.0.0.1:17888 + 127.0.0.1:5000. Split LAN (game PC + Masie mini): Bot Response URL and Gamestate push must use the mini's IP (e.g. 192.168.0.10:5000). Commands use AI_Commands SMB; reports need HTTP + firewall TCP 5000 + /mode rimworld.</RICS.AI.SetupHelp>
+  <RICS.AI.SetupHelp>Commands: AI_Commands SMB (incoming/outgoing). Colony reports: AI_Commands/gamestate/latest.json (file). HTTP push optional. Mini Masie polls gamestate/ with /mode rimworld. See HANDOFF_GAMESTATE_FILE.md on the mini project.</RICS.AI.SetupHelp>
   <RICS.AI.ClearLeftoverLabel>Clear any stale .json files left by crashed external bot (safe).</RICS.AI.ClearLeftoverLabel>
   <RICS.AI.ClearLeftoverButton>Clear Leftover AI Files</RICS.AI.ClearLeftoverButton>
 </LanguageData>

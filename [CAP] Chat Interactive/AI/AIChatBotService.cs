@@ -81,6 +81,7 @@ namespace CAP_ChatInteractive.AI
             try
             {
                 string basePath = Path.Combine(GenFilePaths.ConfigFolderPath, "CAP_ChatInteractive", "AI_Commands");
+                // Do not wipe gamestate/latest.json on cleanup — bot relies on it between pushes
                 string[] subDirs = { "incoming", "outgoing", "events" };
 
                 foreach (string sub in subDirs)
@@ -106,6 +107,13 @@ namespace CAP_ChatInteractive.AI
                         }
                     }
                 }
+
+                // Ensure gamestate folder exists for file-based colony reports
+                try
+                {
+                    Directory.CreateDirectory(Path.Combine(basePath, "gamestate"));
+                }
+                catch { /* ignore */ }
 
                 if (deleted > 0)
                 {
@@ -702,15 +710,12 @@ namespace CAP_ChatInteractive.AI
         }
 
         /// <summary>
-        /// Pushes the current cached game state JSON to the external AI bot (Masie V9+) via POST to /gamestate_update.
-        /// Called periodically from GameComponentTick (on the configured AIChatBotGameStateUpdateIntervalMinutes).
-        /// Uses Task.Run so the HTTP I/O never blocks the main thread / tick.
-        /// Only pushes useful states (skips "no_game" / "no_map" / error). Graceful degradation on any network error.
-        /// WHY: V9 bot removed its internal timer — RICS now owns when colony reports are generated/spoken.
+        /// Pushes colony game state for Masie reports.
+        /// Primary: AI_Commands/gamestate/latest.json (SMB — no firewall).
+        /// Optional: HTTP POST to AIChatBotGameStatePushEndpoint if non-empty.
         /// </summary>
         public void PushCurrentGameStateToBot()
         {
-            // Fire-and-forget for tick path
             Task.Run(() =>
             {
                 TryPushGameStateToBot(out string _);
@@ -718,7 +723,8 @@ namespace CAP_ChatInteractive.AI
         }
 
         /// <summary>
-        /// Synchronous gamestate POST for UI test / diagnostics. Returns false if URL unreachable (firewall, wrong IP, bot down).
+        /// Writes gamestate to AI_Commands/gamestate/latest.json and optionally HTTP-pushes.
+        /// Success = file write OK (LAN-friendly). HTTP failure alone does not fail the call if file succeeded.
         /// </summary>
         public bool TryPushGameStateToBot(out string resultMessage, bool forceMinimalPayload = false)
         {
@@ -736,47 +742,92 @@ namespace CAP_ChatInteractive.AI
                 return false;
             }
 
-            string pushUrl = settings.AIChatBotGameStatePushEndpoint;
-            if (string.IsNullOrWhiteSpace(pushUrl))
-            {
-                resultMessage = "Gamestate push URL is empty.";
-                return false;
-            }
-
-            string json = GetCachedGameStateJson();
+            string rawState = GetCachedGameStateJson();
             if (forceMinimalPayload ||
-                string.IsNullOrWhiteSpace(json) ||
-                json == "{\"status\":\"no_game\"}" ||
-                json == "{\"status\":\"no_map\"}" ||
-                json.Contains("\"status\":\"error\""))
+                string.IsNullOrWhiteSpace(rawState) ||
+                rawState == "{\"status\":\"no_game\"}" ||
+                rawState == "{\"status\":\"no_map\"}" ||
+                rawState.Contains("\"status\":\"error\""))
             {
-                // Allow UI test even when not in a colony (or cache empty)
-                if (forceMinimalPayload || string.IsNullOrWhiteSpace(json) ||
-                    json == "{\"status\":\"no_game\"}" || json == "{\"status\":\"no_map\"}" ||
-                    json.Contains("\"status\":\"error\""))
+                if (forceMinimalPayload ||
+                    string.IsNullOrWhiteSpace(rawState) ||
+                    rawState == "{\"status\":\"no_game\"}" ||
+                    rawState == "{\"status\":\"no_map\"}" ||
+                    rawState.Contains("\"status\":\"error\""))
                 {
-                    json = "{\"status\":\"rics_test_push\",\"map\":{\"name\":\"RICS connectivity test\"},\"source\":\"RICS\"}";
+                    rawState = "{\"status\":\"rics_test_push\",\"map\":{\"name\":\"RICS connectivity test\"},\"source\":\"RICS\"}";
                 }
             }
 
+            // Envelope for file + HTTP consumers
+            object gameStateObj;
             try
             {
-                using (var client = new WebClient())
+                gameStateObj = JsonConvert.DeserializeObject(rawState) ?? new { status = "ok" };
+            }
+            catch
+            {
+                gameStateObj = new { status = "raw", payload = rawState };
+            }
+
+            string envelope = JsonConvert.SerializeObject(new
+            {
+                type = "gamestate_update",
+                timestamp = DateTime.UtcNow.ToString("o"),
+                source = "RICS",
+                gameState = gameStateObj
+            }, Formatting.Indented);
+
+            bool fileOk = false;
+            string fileMsg = "";
+            try
+            {
+                string gamestateDir = Path.Combine(
+                    GenFilePaths.ConfigFolderPath, "CAP_ChatInteractive", "AI_Commands", "gamestate");
+                Directory.CreateDirectory(gamestateDir);
+                string latestPath = Path.Combine(gamestateDir, "latest.json");
+                // Write via temp + replace to reduce partial reads on the mini SMB side
+                string tempPath = latestPath + ".tmp";
+                File.WriteAllText(tempPath, envelope);
+                if (File.Exists(latestPath))
+                    File.Delete(latestPath);
+                File.Move(tempPath, latestPath);
+                fileOk = true;
+                fileMsg = $"file OK → {latestPath} ({envelope.Length} bytes)";
+                Logger.Message($"[RICS AI] ✅ Gamestate written: {fileMsg}");
+            }
+            catch (Exception exFile)
+            {
+                fileMsg = "file FAILED: " + exFile.Message;
+                Logger.Warning($"[RICS AI] Gamestate file write failed: {exFile.Message}");
+            }
+
+            // Optional HTTP (all-in-one localhost or if firewall is open)
+            string httpMsg = "HTTP skipped (no URL)";
+            string pushUrl = settings.AIChatBotGameStatePushEndpoint;
+            if (!string.IsNullOrWhiteSpace(pushUrl))
+            {
+                try
                 {
-                    client.Headers[HttpRequestHeader.ContentType] = "application/json";
-                    // Short timeout so a dead port fails fast in the UI
-                    client.UploadString(pushUrl, "POST", json);
-                    resultMessage = $"OK — pushed {json.Length} bytes to {pushUrl}";
-                    Logger.Message($"[RICS AI] ✅ {resultMessage}");
-                    return true;
+                    using (var client = new WebClient())
+                    {
+                        client.Headers[HttpRequestHeader.ContentType] = "application/json";
+                        // Prefer same envelope; bots that expect raw still get gameState nested
+                        client.UploadString(pushUrl.Trim(), "POST", envelope);
+                        httpMsg = $"HTTP OK → {pushUrl}";
+                        Logger.Debug($"[RICS AI] ✅ {httpMsg}");
+                    }
+                }
+                catch (Exception exHttp)
+                {
+                    httpMsg = $"HTTP FAILED → {pushUrl}: {exHttp.Message}";
+                    Logger.Warning($"[RICS AI] Gamestate HTTP push failed (file may still work): {exHttp.Message}");
                 }
             }
-            catch (Exception ex)
-            {
-                resultMessage = $"FAILED → {pushUrl}\n{ex.Message}\n\nCheck: mini IP, MASIE_HOST=0.0.0.0, firewall TCP 5000, /mode rimworld.";
-                Logger.Warning($"[RICS AI] Push to bot failed: {ex.Message}");
-                return false;
-            }
+
+            resultMessage = fileMsg + " | " + httpMsg;
+            // Primary path is file (LAN split). HTTP optional.
+            return fileOk;
         }
 
         /// <summary>
