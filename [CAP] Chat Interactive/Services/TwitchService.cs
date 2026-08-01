@@ -1,4 +1,4 @@
-﻿// TwitchService.cs
+// TwitchService.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -132,7 +132,7 @@ namespace CAP_ChatInteractive
                 if (_settings == null || !_settings.CanConnect)
                 {
                     Logger.Error("Cannot connect to Twitch: Missing credentials or settings null");
-                    Messages.Message("Cannot connect to Twitch: Missing credentials", MessageTypeDefOf.NegativeEvent);
+                    // Messages.Message removed — can fire before MessageTypeDefOf is initialized (mod constructor / AutoConnect)
                     return;
                 }
 
@@ -158,7 +158,7 @@ namespace CAP_ChatInteractive
                     {
                         Logger.Error("Twitch connection timeout after 15s");
                         Disconnect();
-                        Messages.Message("Twitch connection timeout - check credentials / internet", MessageTypeDefOf.NegativeEvent);
+                        // Messages.Message removed — can fire before MessageTypeDefOf is initialized
                     }
                 });
 
@@ -182,7 +182,7 @@ namespace CAP_ChatInteractive
                 _settings.IsConnected = false;
                 _isConnecting = false;
                 _connectionTimeoutToken?.Cancel();
-                Messages.Message($"Failed to connect to Twitch: {ex.Message}", MessageTypeDefOf.NegativeEvent);
+                // Messages.Message removed — can fire before MessageTypeDefOf is initialized (mod constructor / AutoConnect)
             }
         }
 
@@ -1020,7 +1020,7 @@ namespace CAP_ChatInteractive
             _settings.IsConnected = false;
             _isConnecting = false;
             _connectionTimeoutToken?.Cancel();
-            Messages.Message($"Twitch connection error: {e.Error}", MessageTypeDefOf.NegativeEvent);
+            // Messages.Message removed — can fire before MessageTypeDefOf is initialized
         }
 
         private void OnClientDisconnected(object sender, OnDisconnectedEventArgs e)
@@ -1046,14 +1046,8 @@ namespace CAP_ChatInteractive
             _isConnecting = false;
             _connectionTimeoutToken?.Cancel();
 
-            // More detailed error message
-            string errorMsg = "Twitch login failed. Possible issues:\n" +
-                             "• OAuth token expired or invalid\n" +
-                             "• Bot username doesn't match token account\n" +
-                             "• Token not a 'Bot Chat Token'\n" +
-                             "• Try regenerating token at twitchtokengenerator.com";
-
-            Messages.Message(errorMsg, MessageTypeDefOf.NegativeEvent);
+            // Detailed guidance stays in the log only (Messages.Message removed — can fire before MessageTypeDefOf is initialized)
+            Logger.Error("Twitch login failed. Possible issues: OAuth token expired/invalid, Bot username doesn't match token account, Token not a 'Bot Chat Token', or regenerate at twitchtokengenerator.com");
         }
 
         public static void OnUserJoined(object sender, OnUserJoinedArgs e)
