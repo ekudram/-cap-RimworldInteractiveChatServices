@@ -1,4 +1,4 @@
-﻿// BuyableIncident.cs
+// BuyableIncident.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -79,7 +79,21 @@ namespace CAP_ChatInteractive.Incidents
             DefName = incidentDef.defName;
             Label = Label = CleanIncidentName(incidentDef.label);
             Description = incidentDef.description;
-            WorkerClassName = incidentDef.Worker?.GetType()?.Name;
+
+            // Safe Worker access — null workerClass makes IncidentDef.Worker throw ArgumentNullException
+            WorkerClassName = null;
+            if (incidentDef.workerClass != null)
+            {
+                try
+                {
+                    WorkerClassName = incidentDef.Worker?.GetType()?.Name;
+                }
+                catch
+                {
+                    WorkerClassName = null;
+                }
+            }
+
             CategoryName = incidentDef.category?.defName;
             ModSource = incidentDef.modContentPack?.Name ?? "RimWorld";
             BaseChance = incidentDef.baseChance;
@@ -119,9 +133,19 @@ namespace CAP_ChatInteractive.Incidents
         // Determine if the incident is suitable for inclusion in the store
         public static bool DetermineStoreSuitability(IncidentDef incidentDef)
         {
-            // Skip incidents without workers
-            if (incidentDef.Worker == null)
+            // Skip incidents without a resolvable worker — NEVER call .Worker when workerClass is null
+            if (incidentDef == null || incidentDef.workerClass == null)
                 return false;
+
+            try
+            {
+                if (incidentDef.Worker == null)
+                    return false;
+            }
+            catch
+            {
+                return false;
+            }
 
             // Skip hidden incidents
             if (incidentDef.hidden)
@@ -210,9 +234,14 @@ namespace CAP_ChatInteractive.Incidents
 
         private void AnalyzeIncidentType(IncidentDef incidentDef)
         {
-            if (incidentDef.Worker == null) return;
+            // Safe — only touch Worker when workerClass is present
+            if (incidentDef.workerClass == null) return;
 
-            string workerName = incidentDef.Worker.GetType().Name.ToLower();
+            IncidentWorker worker = null;
+            try { worker = incidentDef.Worker; } catch { return; }
+            if (worker == null) return;
+
+            string workerName = worker.GetType().Name.ToLower();
             string defName = incidentDef.defName.ToLower();
             string categoryName = incidentDef.category?.defName?.ToLower() ?? "";
 
