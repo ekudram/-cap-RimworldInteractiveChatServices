@@ -919,7 +919,7 @@
     <commandDescription>Check another viewer's pawn for injuries only. Usage: !pawncheck &lt;viewer&gt;</commandDescription>
     <permissionLevel>everyone</permissionLevel>
     <cooldownSeconds>0</cooldownSeconds>
-    <useCommandData>true</useCommandData>
+    <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>

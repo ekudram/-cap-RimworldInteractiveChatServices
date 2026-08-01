@@ -134,9 +134,15 @@ namespace _CAP__Chat_Interactive
 
                 listing.Gap(6f);
 
-                // Push endpoint
+                // Push endpoint (colony report) — after Mini split, use mini LAN IP not 127.0.0.1
                 listing.Label("RICS.AI.PushEndpoint".Translate());
                 settings.AIChatBotGameStatePushEndpoint = listing.TextEntry(settings.AIChatBotGameStatePushEndpoint ?? "http://127.0.0.1:5000/gamestate_update").Trim();
+
+                Text.Font = GameFont.Tiny;
+                GUI.color = Color.gray;
+                listing.Label("RICS.AI.LanPushHint".Translate());
+                GUI.color = Color.white;
+                Text.Font = GameFont.Small;
 
                 listing.Gap(10f);
 
@@ -155,6 +161,14 @@ namespace _CAP__Chat_Interactive
                 if (listing.ButtonText("RICS.AI.TestButton".Translate()))
                 {
                     TestAIConnection();
+                }
+
+                listing.Gap(4f);
+
+                // Colony report path (POST /gamestate_update) — fails if firewall blocks TCP 5000 or wrong IP
+                if (listing.ButtonText("RICS.AI.TestPushButton".Translate()))
+                {
+                    TestGamestatePush();
                 }
 
                 listing.Gap(4f);
@@ -185,6 +199,37 @@ namespace _CAP__Chat_Interactive
 
             listing.End();
             Widgets.EndScrollView();
+        }
+
+        private static void TestGamestatePush()
+        {
+            try
+            {
+                CAP_ChatInteractive.AI.AIChatBotService service = null;
+                if (Current.Game != null)
+                {
+                    var gc = Current.Game.GetComponent<CAPChatInteractive_GameComponent>();
+                    service = gc?._aiChatBotService;
+                }
+
+                // Settings menu (no game): temp service still POSTs to the configured URL
+                if (service == null)
+                    service = new CAP_ChatInteractive.AI.AIChatBotService();
+
+                if (Current.ProgramState == ProgramState.Playing)
+                    service.UpdateGameStateCache();
+
+                bool ok = service.TryPushGameStateToBot(
+                    out string msg,
+                    forceMinimalPayload: Current.ProgramState != ProgramState.Playing);
+                Messages.Message(
+                    ok ? ("RICS.AI.TestPushOk".Translate() + " " + msg) : ("RICS.AI.TestPushFail".Translate() + " " + msg),
+                    ok ? MessageTypeDefOf.PositiveEvent : MessageTypeDefOf.RejectInput);
+            }
+            catch (Exception ex)
+            {
+                Messages.Message("RICS.AI.TestPushFail".Translate() + " " + ex.Message, MessageTypeDefOf.RejectInput);
+            }
         }
 
         private static void TestAIConnection()

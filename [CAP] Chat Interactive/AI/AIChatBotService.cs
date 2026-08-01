@@ -710,39 +710,73 @@ namespace CAP_ChatInteractive.AI
         /// </summary>
         public void PushCurrentGameStateToBot()
         {
+            // Fire-and-forget for tick path
+            Task.Run(() =>
+            {
+                TryPushGameStateToBot(out string _);
+            });
+        }
+
+        /// <summary>
+        /// Synchronous gamestate POST for UI test / diagnostics. Returns false if URL unreachable (firewall, wrong IP, bot down).
+        /// </summary>
+        public bool TryPushGameStateToBot(out string resultMessage, bool forceMinimalPayload = false)
+        {
+            resultMessage = null;
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
-            if (settings == null || !settings.AIChatBotActive)
-                return;
+            if (settings == null)
+            {
+                resultMessage = "Settings not loaded.";
+                return false;
+            }
+
+            if (!settings.AIChatBotActive && !forceMinimalPayload)
+            {
+                resultMessage = "AI Chat Bot is disabled in settings.";
+                return false;
+            }
 
             string pushUrl = settings.AIChatBotGameStatePushEndpoint;
             if (string.IsNullOrWhiteSpace(pushUrl))
-                return;
+            {
+                resultMessage = "Gamestate push URL is empty.";
+                return false;
+            }
 
             string json = GetCachedGameStateJson();
-            if (string.IsNullOrWhiteSpace(json) ||
+            if (forceMinimalPayload ||
+                string.IsNullOrWhiteSpace(json) ||
                 json == "{\"status\":\"no_game\"}" ||
                 json == "{\"status\":\"no_map\"}" ||
                 json.Contains("\"status\":\"error\""))
-                return; // nothing useful to report yet
-
-            // Fire-and-forget on background thread — safe because we only read the already-cached string + settings
-            Task.Run(() =>
             {
-                try
+                // Allow UI test even when not in a colony (or cache empty)
+                if (forceMinimalPayload || string.IsNullOrWhiteSpace(json) ||
+                    json == "{\"status\":\"no_game\"}" || json == "{\"status\":\"no_map\"}" ||
+                    json.Contains("\"status\":\"error\""))
                 {
-                    using (var client = new WebClient())
-                    {
-                        client.Headers[HttpRequestHeader.ContentType] = "application/json";
-                        client.UploadString(pushUrl, "POST", json);
-                        Logger.Debug($"[RICS AI] ✅ Pushed fresh game state to bot ({json.Length} bytes) → {pushUrl}");
-                    }
+                    json = "{\"status\":\"rics_test_push\",\"map\":{\"name\":\"RICS connectivity test\"},\"source\":\"RICS\"}";
                 }
-                catch (Exception ex)
+            }
+
+            try
+            {
+                using (var client = new WebClient())
                 {
-                    // Never let a failed push crash or stutter the game
-                    Logger.Warning($"[RICS AI] Push to bot failed (non-fatal, will retry next interval): {ex.Message}");
+                    client.Headers[HttpRequestHeader.ContentType] = "application/json";
+                    // Short timeout so a dead port fails fast in the UI
+                    client.UploadString(pushUrl, "POST", json);
+                    resultMessage = $"OK — pushed {json.Length} bytes to {pushUrl}";
+                    Logger.Message($"[RICS AI] ✅ {resultMessage}");
+                    return true;
                 }
-            });
+            }
+            catch (Exception ex)
+            {
+                resultMessage = $"FAILED → {pushUrl}\n{ex.Message}\n\nCheck: mini IP, MASIE_HOST=0.0.0.0, firewall TCP 5000, /mode rimworld.";
+                Logger.Warning($"[RICS AI] Push to bot failed: {ex.Message}");
+                return false;
+            }
         }
 
         /// <summary>
