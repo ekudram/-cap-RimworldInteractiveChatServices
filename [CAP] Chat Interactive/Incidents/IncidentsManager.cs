@@ -311,12 +311,30 @@ namespace CAP_ChatInteractive.Incidents
             incident.MaxThreatPoints = incidentDef.maxThreatPoints;
         }
 
+        /// <summary>
+        /// Safe suitability check. NEVER call IncidentDef.Worker when workerClass is null —
+        /// the property getter does Activator.CreateInstance and throws ArgumentNullException
+        /// (Parameter name: type). Broken mod IncidentDefs (e.g. Waratomics) must be skipped.
+        /// </summary>
         private static bool IsIncidentSuitableForStore(IncidentDef incidentDef)
         {
-            // Delegate all logic to BuyableIncident constructor
-            // Just do basic null checks here
             if (incidentDef == null) return false;
-            if (incidentDef.Worker == null) return false;
+
+            // Critical: workerClass null → .Worker throws; treat as unsuitable
+            if (incidentDef.workerClass == null)
+                return false;
+
+            // Safe to touch Worker only after workerClass is known non-null
+            try
+            {
+                if (incidentDef.Worker == null)
+                    return false;
+            }
+            catch (Exception)
+            {
+                // Defensive: any failure resolving worker = unsuitable
+                return false;
+            }
 
             return true; // Let BuyableIncident handle the real filtering
         }
@@ -609,23 +627,42 @@ namespace CAP_ChatInteractive.Incidents
 
         private static void LogIncidentCategories()
         {
-            var categories = DefDatabase<IncidentCategoryDef>.AllDefs;
-            Logger.Debug($"Found {categories.Count()} incident categories:");
-            foreach (var category in categories)
+            try
             {
-                Logger.Debug($"  - {category.defName}: {category.LabelCap}");
+                var categories = DefDatabase<IncidentCategoryDef>.AllDefs;
+                Logger.Debug($"Found {categories.Count()} incident categories:");
+                foreach (var category in categories)
+                {
+                    Logger.Debug($"  - {category.defName}: {category.LabelCap}");
+                }
+
+                var allIncidents = DefDatabase<IncidentDef>.AllDefs.ToList();
+                Logger.Debug($"Total incidents found: {allIncidents.Count}");
+
+                // Safe enumeration — never use LINQ Where(IsIncidentSuitableForStore) alone if a
+                // broken def could still throw; IsIncidentSuitableForStore is now null-safe.
+                int suitableCount = 0;
+                int sampleLogged = 0;
+                foreach (var incident in allIncidents)
+                {
+                    if (!IsIncidentSuitableForStore(incident))
+                        continue;
+
+                    suitableCount++;
+                    if (sampleLogged < 10)
+                    {
+                        string workerName = "?";
+                        try { workerName = incident.Worker?.GetType().Name ?? "null"; } catch { workerName = "(error)"; }
+                        Logger.Debug($"Sample: {incident.defName} - {incident.label} - Worker: {workerName}");
+                        sampleLogged++;
+                    }
+                }
+                Logger.Debug($"Suitable incidents for store: {suitableCount}");
             }
-
-            var allIncidents = DefDatabase<IncidentDef>.AllDefs.ToList();
-            Logger.Debug($"Total incidents found: {allIncidents.Count}");
-
-            var suitableIncidents = allIncidents.Where(IsIncidentSuitableForStore).ToList();
-            Logger.Debug($"Suitable incidents for store: {suitableIncidents.Count}");
-
-            // Log first 10 incidents as sample
-            foreach (var incident in suitableIncidents.Take(10))
+            catch (Exception ex)
             {
-                Logger.Debug($"Sample: {incident.defName} - {incident.label} - Worker: {incident.Worker?.GetType().Name}");
+                // Never let logging abort CreateDefaultIncidents
+                Logger.Error($"LogIncidentCategories failed (non-fatal): {ex.Message}");
             }
         }
 
@@ -705,9 +742,21 @@ namespace CAP_ChatInteractive.Incidents
             {
                 var reasons = new List<string>();
 
-                // Check each filtering criterion
-                if (incidentDef.Worker == null)
-                    reasons.Add("No worker");
+                // Safe worker check — never touch .Worker when workerClass is null
+                if (incidentDef.workerClass == null)
+                    reasons.Add("No workerClass (broken def)");
+                else
+                {
+                    try
+                    {
+                        if (incidentDef.Worker == null)
+                            reasons.Add("No worker");
+                    }
+                    catch
+                    {
+                        reasons.Add("Worker resolution failed");
+                    }
+                }
 
                 if (incidentDef.hidden)
                     reasons.Add("Hidden incident");
