@@ -310,6 +310,16 @@ namespace CAP_ChatInteractive
         public string AIChatBotGameStatePushEndpoint = "http://127.0.0.1:5000/gamestate_update"; // New in 1.39+ — where the external AI bot listens for pushed game state JSON (POST). Change if your bot runs on a different host/port.
         public bool AIChatBotCanExecuteCommands = true; // Whether the AI chatbot is allowed to execute in-game commands (e.g. via special syntax in its response that RICS recognizes). This is a powerful feature that can enable deep integration and emergent storytelling, but it also carries risks if the bot generates unexpected commands. Use with caution and consider starting with this disabled until you are confident in the bot's behavior.
 
+        /// <summary>
+        /// When true, interesting in-game Messages.Message toasts (health, threats, outcomes) are written to AI_Commands/events as colony_message.
+        /// Technical UI (RejectInput/SilentInput/etc.), RICS admin, and PawnDeath (handled elsewhere) are never forwarded.
+        /// </summary>
+        public bool AIChatBotForwardGameMessages = true;
+        /// <summary>
+        /// When true, also forward TaskCompletion toasts (job finished). Very chatty; default off.
+        /// </summary>
+        public bool AIChatBotForwardTaskCompletion = false;
+
         // === Twitch Raids feature (Phase 1) ===
         public bool TwitchRaidsEnabled = false;           // global kill-switch
         public bool TwitchRaidsOnlyRaiders = true;     // only twitch raiders and !joinraid in the raid 
@@ -495,6 +505,8 @@ namespace CAP_ChatInteractive
             }
             Scribe_Values.Look(ref AIChatBotGameStatePushEndpoint, "aiChatBotGameStatePushEndpoint", "http://127.0.0.1:5000/gamestate_update");
             Scribe_Values.Look(ref AIChatBotCanExecuteCommands, "aiChatBotCanExecuteCommands", true);
+            Scribe_Values.Look(ref AIChatBotForwardGameMessages, "aiChatBotForwardGameMessages", true);
+            Scribe_Values.Look(ref AIChatBotForwardTaskCompletion, "aiChatBotForwardTaskCompletion", false);
 
             // Channel Points Reward Settings
             if (Scribe.mode == LoadSaveMode.LoadingVars)

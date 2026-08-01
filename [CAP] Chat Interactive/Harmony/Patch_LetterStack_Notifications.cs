@@ -422,4 +422,177 @@ namespace CAP_ChatInteractive.AI
             }
         }
     }
+
+    /// <summary>
+    /// Postfix on Messages.Message so the AI bot receives interesting toast notices
+    /// (health, threats, outcomes). Technical UI types and RICS admin spam are filtered out.
+    /// PawnDeath toasts are skipped (death pipeline already notifies). TaskCompletion off by default.
+    /// </summary>
+    [HarmonyPatch(typeof(Messages))]
+    [HarmonyPatch(nameof(Messages.Message), new[] { typeof(Message), typeof(bool) })]
+    public static class Patch_Messages_Message_AINotify
+    {
+        private static readonly object RateLock = new object();
+        private static string _lastNormalizedText;
+        private static DateTime _lastWriteUtc = DateTime.MinValue;
+        private static readonly Queue<DateTime> _writeTimes = new Queue<DateTime>();
+
+        private const int DedupeWindowSeconds = 4;
+        private const int MaxPerMinute = 10;
+        private const int MaxTextLength = 500;
+
+        [HarmonyPostfix]
+        public static void Postfix(Message msg, bool historical)
+        {
+            try
+            {
+                var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (settings == null || !settings.AIChatBotActive)
+                    return;
+
+                if (!settings.AIChatBotForwardGameMessages)
+                    return;
+
+                if (msg == null || string.IsNullOrWhiteSpace(msg.text))
+                    return;
+
+                MessageTypeDef typeDef = msg.def;
+                if (typeDef == null)
+                    return;
+
+                // Always technical / UI feedback
+                if (typeDef == MessageTypeDefOf.RejectInput ||
+                    typeDef == MessageTypeDefOf.CautionInput ||
+                    typeDef == MessageTypeDefOf.SilentInput)
+                    return;
+
+                // Death pipeline already covers this (Pawn.Kill + letters)
+                if (typeDef == MessageTypeDefOf.PawnDeath)
+                    return;
+
+                // Job-done spam (construction/haul) — optional
+                if (typeDef == MessageTypeDefOf.TaskCompletion && !settings.AIChatBotForwardTaskCompletion)
+                    return;
+
+                // Only forward known interest buckets
+                if (typeDef != MessageTypeDefOf.ThreatBig &&
+                    typeDef != MessageTypeDefOf.ThreatSmall &&
+                    typeDef != MessageTypeDefOf.NegativeHealthEvent &&
+                    typeDef != MessageTypeDefOf.NegativeEvent &&
+                    typeDef != MessageTypeDefOf.PositiveEvent &&
+                    typeDef != MessageTypeDefOf.SituationResolved &&
+                    typeDef != MessageTypeDefOf.NeutralEvent &&
+                    typeDef != MessageTypeDefOf.TaskCompletion)
+                    return;
+
+                string cleaned = ChatCommandProcessor.RemoveMarkupTags(msg.text);
+                if (string.IsNullOrWhiteSpace(cleaned))
+                    return;
+
+                cleaned = cleaned.Trim();
+                if (IsTechnicalOrAdminText(cleaned))
+                    return;
+
+                if (cleaned.Length > MaxTextLength)
+                    cleaned = cleaned.Substring(0, MaxTextLength) + "...";
+
+                string normalized = cleaned.ToLowerInvariant();
+                DateTime now = DateTime.UtcNow;
+
+                lock (RateLock)
+                {
+                    if (_lastNormalizedText == normalized &&
+                        (now - _lastWriteUtc).TotalSeconds < DedupeWindowSeconds)
+                        return;
+
+                    while (_writeTimes.Count > 0 && (now - _writeTimes.Peek()).TotalSeconds > 60)
+                        _writeTimes.Dequeue();
+
+                    if (_writeTimes.Count >= MaxPerMinute)
+                        return;
+
+                    _lastNormalizedText = normalized;
+                    _lastWriteUtc = now;
+                    _writeTimes.Enqueue(now);
+                }
+
+                string botName = settings.AIChatBotName ?? "Masie";
+                Map map = ResolveMessageMap(msg);
+                string mapDesc = AIChatBotService.GetRichMapDescription(map);
+                string addressed = $"{botName}, notice on {mapDesc}: {cleaned}";
+
+                var gameComp = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>();
+                gameComp?._aiChatBotService?.NotifyColonyMessage(addressed, cleaned, typeDef.defName);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[RICS AI] Message notification postfix failed (non-fatal): {ex.Message}");
+            }
+        }
+
+        private static bool IsTechnicalOrAdminText(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return true;
+
+            // Prefix denylist (RICS UI, debug)
+            if (text.StartsWith("[RICS]", StringComparison.OrdinalIgnoreCase) ||
+                text.StartsWith("RICS:", StringComparison.OrdinalIgnoreCase) ||
+                text.StartsWith("Debug", StringComparison.OrdinalIgnoreCase) ||
+                text.StartsWith("[CAP]", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Common RICS admin toasts (often NeutralEvent / PositiveEvent without prefix)
+            string lower = text.ToLowerInvariant();
+            if (lower.Contains("coins awarded") ||
+                lower.Contains("viewer coins reset") ||
+                lower.Contains("viewer karma reset") ||
+                lower.Contains("reconnection initiated") ||
+                lower.Contains("store prices reset") ||
+                lower.Contains("store items enabled") ||
+                lower.Contains("twitch raider name list") ||
+                lower.Contains("fake twitch raid") ||
+                lower.Contains("must be in a playing game") ||
+                lower.Contains("json error saving") ||
+                lower.Contains("incidents not saved") ||
+                lower.StartsWith("rics: save") ||
+                lower.StartsWith("rics: disk") ||
+                lower.StartsWith("rics: json"))
+                return true;
+
+            // Camera+ / Follow Me Smoothly camera-follow toasts (e.g. "Following Mia.", "No longer following Mia.")
+            // These are pure UI and spam the AI if the player tracks colonists.
+            if (lower.Contains("following") ||
+                lower.Contains("can not follow") ||
+                lower.Contains("cannot follow") ||
+                lower.Contains("no longer following"))
+                return true;
+
+            return false;
+        }
+
+        private static Map ResolveMessageMap(Message msg)
+        {
+            try
+            {
+                if (msg?.lookTargets != null && !msg.lookTargets.targets.NullOrEmpty())
+                {
+                    var primary = msg.lookTargets.TryGetPrimaryTarget();
+                    if (primary.IsValid && primary.HasThing && primary.Thing?.Map != null)
+                        return primary.Thing.Map;
+
+                    foreach (var t in msg.lookTargets.targets)
+                    {
+                        if (t.IsValid && t.HasThing && t.Thing?.Map != null)
+                            return t.Thing.Map;
+                        if (t.IsValid && t.Cell.IsValid && t.Map != null)
+                            return t.Map;
+                    }
+                }
+            }
+            catch { /* best effort */ }
+
+            return Find.CurrentMap ?? Find.AnyPlayerHomeMap;
+        }
+    }
 }

@@ -872,6 +872,48 @@ namespace CAP_ChatInteractive.AI
             }
         }
 
+        /// <summary>
+        /// In-game toast (Messages.Message) of interest — health, threats, outcomes.
+        /// Writes events/*.json with type colony_message so the bot can treat them quieter than letters.
+        /// Technical UI toasts are filtered before this is called.
+        /// </summary>
+        public void NotifyColonyMessage(string addressedMessage, string rawText, string messageTypeDefName)
+        {
+            if (string.IsNullOrWhiteSpace(addressedMessage))
+                return;
+
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings == null || !settings.AIChatBotActive)
+                return;
+
+            try
+            {
+                string eventsPath = Path.Combine(GenFilePaths.ConfigFolderPath, "CAP_ChatInteractive", "AI_Commands", "events");
+                Directory.CreateDirectory(eventsPath);
+
+                string requestId = $"msg_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+                string filePath = Path.Combine(eventsPath, requestId + ".json");
+
+                var payload = new
+                {
+                    type = "colony_message",
+                    timestamp = DateTime.UtcNow.ToString("o"),
+                    messageType = messageTypeDefName ?? "Unknown",
+                    text = rawText ?? "",
+                    message = addressedMessage
+                };
+
+                string json = JsonConvert.SerializeObject(payload, Formatting.Indented);
+                File.WriteAllText(filePath, json);
+
+                Logger.Debug($"[RICS AI] Colony message notification written: {requestId} ({messageTypeDefName})");
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[RICS AI] Failed to write colony message notification: {ex.Message}");
+            }
+        }
+
         public void Stop()
         {
             _isRunning = false;

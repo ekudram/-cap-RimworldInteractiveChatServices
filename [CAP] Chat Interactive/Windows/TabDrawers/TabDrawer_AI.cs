@@ -146,6 +146,20 @@ namespace _CAP__Chat_Interactive
 
                 listing.Gap(10f);
 
+                // In-game toast notices → AI_Commands/events (colony_message)
+                listing.CheckboxLabeled("RICS.AI.ForwardGameMessages".Translate(), ref settings.AIChatBotForwardGameMessages);
+                if (settings.AIChatBotForwardGameMessages)
+                {
+                    listing.CheckboxLabeled("RICS.AI.ForwardTaskCompletion".Translate(), ref settings.AIChatBotForwardTaskCompletion);
+                    Text.Font = GameFont.Tiny;
+                    GUI.color = Color.gray;
+                    listing.Label("RICS.AI.ForwardGameMessagesHint".Translate());
+                    GUI.color = Color.white;
+                    Text.Font = GameFont.Small;
+                }
+
+                listing.Gap(6f);
+
                 // Command execution (sensitive)
                 listing.CheckboxLabeled("RICS.AI.CanExecuteCommands".Translate(), ref settings.AIChatBotCanExecuteCommands);
 

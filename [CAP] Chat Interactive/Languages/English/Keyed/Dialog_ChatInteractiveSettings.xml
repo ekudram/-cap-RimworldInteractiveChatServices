@@ -41,6 +41,9 @@
   <RICS.AI.Timeout>Response Timeout (ms)</RICS.AI.Timeout>
   <RICS.AI.PushEndpoint>Game State Push Endpoint (POST target for bot):</RICS.AI.PushEndpoint>
   <RICS.AI.LanPushHint>Colony reports are written to AI_Commands/gamestate/latest.json (same share as commands — no port 5000 required). HTTP push URL is optional dual-write. For a mini bot, keep AI_Commands shared; set interval lower for testing. Masie must poll gamestate/ in /mode rimworld.</RICS.AI.LanPushHint>
+  <RICS.AI.ForwardGameMessages>Forward interesting game messages (toasts) to AI bot</RICS.AI.ForwardGameMessages>
+  <RICS.AI.ForwardTaskCompletion>Also forward job-completion toasts (chatty)</RICS.AI.ForwardTaskCompletion>
+  <RICS.AI.ForwardGameMessagesHint>Writes AI_Commands/events as type colony_message. Ignores UI rejects, silent input, RICS admin, and death toasts (deaths use the existing death pipeline). Masie should react briefly, not monologue.</RICS.AI.ForwardGameMessagesHint>
   <RICS.AI.CanExecuteCommands>Allow bot to execute in-game commands via file interface (powerful but risky)</RICS.AI.CanExecuteCommands>
   <RICS.AI.WarningExecute>⚠️ Enabling command execution lets the bot run !buy, !raid etc. Only enable with trusted bots.</RICS.AI.WarningExecute>
   <RICS.AI.TestButton>Test AI Listener</RICS.AI.TestButton>
