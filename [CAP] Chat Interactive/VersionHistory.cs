@@ -1210,19 +1210,24 @@ MyPawnCommandHandler.xml"
 
 <b>MEMORANDUM</b>
 ─────────────────
-- But fixes.
+- Bug fixes.
+- New !pawncheck command added to check a viewer's pawn for health issues.
 
 <b>UPDATED</b>
 ──────────────
+- Removed some Messages.messages that crashed crashed when DefOf's are not yet initialized.  Will show a message in the log still.
+- If you do not fill in the bot account RICS will auto-fill it with the streamer account.
 
 <b>FIXED</b>
 ────────────
 - !surgery command no respects Research requirements for surgeries.  If the surgery is not researched, it will not be allowed.
 - Enforce single Mechlink implant per pawn bug fix.  Now only one Mechlink implant can be installed per pawn.
+- Fixed mod related errors with events that did not have valid incident workers. 
 
 <b>ADDED</b>
 ────────────
 - !pawncheck command added to check a viewers pawn for health issues.
+- Improved Twitch Bot Account UI and auto-fill behavior.
 
 <b>TRANSLATIONS</b>
 ───────────────────
