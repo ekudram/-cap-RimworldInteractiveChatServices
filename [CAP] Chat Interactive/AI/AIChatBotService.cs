@@ -18,6 +18,7 @@
 
 using Newtonsoft.Json;
 using RimWorld;
+using RimWorld.Planet;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -834,8 +835,9 @@ namespace CAP_ChatInteractive.AI
         /// Called when a letter is received by the LetterStack (storyteller incidents, viewer events, Anomaly, quests, etc.).
         /// Writes a timestamped event file that the external Python bot can poll.
         /// Message always starts with the configured AIChatBotName so the bot treats it as addressed to it.
+        /// Optional <paramref name="location"/> adds structured map cell coords when known.
         /// </summary>
-        public void NotifyColonyEvent(string message)
+        public void NotifyColonyEvent(string message, AiMapLocation location = null)
         {
             if (string.IsNullOrWhiteSpace(message))
                 return;
@@ -853,12 +855,26 @@ namespace CAP_ChatInteractive.AI
                 string requestId = $"event_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
                 string filePath = Path.Combine(eventsPath, requestId + ".json");
 
-                var payload = new
+                object payload;
+                if (location != null)
                 {
-                    type = "colony_event",
-                    timestamp = DateTime.UtcNow.ToString("o"),
-                    message = message
-                };
+                    payload = new
+                    {
+                        type = "colony_event",
+                        timestamp = DateTime.UtcNow.ToString("o"),
+                        message = message,
+                        location = location.ToPayload()
+                    };
+                }
+                else
+                {
+                    payload = new
+                    {
+                        type = "colony_event",
+                        timestamp = DateTime.UtcNow.ToString("o"),
+                        message = message
+                    };
+                }
 
                 string json = JsonConvert.SerializeObject(payload, Formatting.Indented);
                 File.WriteAllText(filePath, json);
@@ -877,7 +893,7 @@ namespace CAP_ChatInteractive.AI
         /// Writes events/*.json with type colony_message so the bot can treat them quieter than letters.
         /// Technical UI toasts are filtered before this is called.
         /// </summary>
-        public void NotifyColonyMessage(string addressedMessage, string rawText, string messageTypeDefName)
+        public void NotifyColonyMessage(string addressedMessage, string rawText, string messageTypeDefName, AiMapLocation location = null)
         {
             if (string.IsNullOrWhiteSpace(addressedMessage))
                 return;
@@ -894,14 +910,30 @@ namespace CAP_ChatInteractive.AI
                 string requestId = $"msg_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
                 string filePath = Path.Combine(eventsPath, requestId + ".json");
 
-                var payload = new
+                object payload;
+                if (location != null)
                 {
-                    type = "colony_message",
-                    timestamp = DateTime.UtcNow.ToString("o"),
-                    messageType = messageTypeDefName ?? "Unknown",
-                    text = rawText ?? "",
-                    message = addressedMessage
-                };
+                    payload = new
+                    {
+                        type = "colony_message",
+                        timestamp = DateTime.UtcNow.ToString("o"),
+                        messageType = messageTypeDefName ?? "Unknown",
+                        text = rawText ?? "",
+                        message = addressedMessage,
+                        location = location.ToPayload()
+                    };
+                }
+                else
+                {
+                    payload = new
+                    {
+                        type = "colony_message",
+                        timestamp = DateTime.UtcNow.ToString("o"),
+                        messageType = messageTypeDefName ?? "Unknown",
+                        text = rawText ?? "",
+                        message = addressedMessage
+                    };
+                }
 
                 string json = JsonConvert.SerializeObject(payload, Formatting.Indented);
                 File.WriteAllText(filePath, json);
@@ -937,6 +969,120 @@ namespace CAP_ChatInteractive.AI
         }
 
         public void ExposeData() { }
+
+        /// <summary>
+        /// Build map cell location for AI payloads. Returns null if cell/map is unknown — never invents coords.
+        /// </summary>
+        public static AiMapLocation TryCreateMapLocation(Map map, IntVec3 cell)
+        {
+            if (map == null || !cell.IsValid)
+                return null;
+
+            try
+            {
+                // Prefer in-bounds when Size is available; still allow edge cases during despawn if valid cell
+                if (map.Size.x > 0 && map.Size.z > 0 && !cell.InBounds(map))
+                {
+                    // Dead pawns can leave PositionHeld slightly off; still report if near-map valid IntVec3
+                    if (cell.x < -5 || cell.z < -5 || cell.x > map.Size.x + 5 || cell.z > map.Size.z + 5)
+                        return null;
+                }
+
+                return new AiMapLocation
+                {
+                    x = cell.x,
+                    y = cell.y,
+                    z = cell.z,
+                    mapId = map.uniqueID,
+                    mapLabel = GetRichMapDescription(map),
+                    isPlayerHome = map.IsPlayerHome
+                };
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static AiMapLocation TryCreateMapLocationFromGlobalTarget(GlobalTargetInfo t)
+        {
+            try
+            {
+                if (!t.IsValid || !t.IsMapTarget)
+                    return null;
+
+                Map map = t.Map;
+                IntVec3 cell = IntVec3.Invalid;
+
+                if (t.HasThing && t.Thing != null)
+                {
+                    Thing thing = t.Thing;
+                    map = thing.MapHeld ?? thing.Map ?? map;
+                    cell = thing.PositionHeld.IsValid ? thing.PositionHeld : thing.Position;
+                    if (!cell.IsValid && t.Cell.IsValid)
+                        cell = t.Cell;
+                }
+                else if (t.Cell.IsValid)
+                {
+                    cell = t.Cell;
+                }
+
+                return TryCreateMapLocation(map, cell);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static AiMapLocation TryCreateMapLocationFromLookTargets(LookTargets lookTargets)
+        {
+            try
+            {
+                if (lookTargets == null || lookTargets.targets.NullOrEmpty())
+                    return null;
+
+                GlobalTargetInfo primary = lookTargets.TryGetPrimaryTarget();
+                var fromPrimary = TryCreateMapLocationFromGlobalTarget(primary);
+                if (fromPrimary != null)
+                    return fromPrimary;
+
+                foreach (GlobalTargetInfo t in lookTargets.targets)
+                {
+                    var loc = TryCreateMapLocationFromGlobalTarget(t);
+                    if (loc != null)
+                        return loc;
+                }
+            }
+            catch { /* best effort */ }
+
+            return null;
+        }
+
+        public static AiMapLocation TryCreateMapLocationFromThing(Thing thing)
+        {
+            if (thing == null)
+                return null;
+
+            try
+            {
+                Map map = thing.MapHeld ?? thing.Map;
+                IntVec3 cell = thing.PositionHeld.IsValid ? thing.PositionHeld : thing.Position;
+                return TryCreateMapLocation(map, cell);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>Prose fragment: " at (x, z)" or empty.</summary>
+        public static string FormatCoordsProse(AiMapLocation loc)
+        {
+            if (loc == null)
+                return "";
+            return $" at ({loc.x}, {loc.z})";
+        }
 
         /// <summary>
         /// Returns a rich, bot-friendly description of the map's location/context.
@@ -983,6 +1129,34 @@ namespace CAP_ChatInteractive.AI
             }
 
             return "an unknown location";
+        }
+    }
+
+    /// <summary>
+    /// Map cell for AI bot event/message payloads. Only created when a real cell is known.
+    /// Prose uses (x, z); JSON includes full x,y,z.
+    /// </summary>
+    public sealed class AiMapLocation
+    {
+        public int x;
+        public int y;
+        public int z;
+        public int mapId;
+        public string mapLabel;
+        public bool isPlayerHome;
+
+        public object ToPayload()
+        {
+            return new
+            {
+                x,
+                y,
+                z,
+                cell = $"({x}, {y}, {z})",
+                mapId,
+                mapLabel = mapLabel ?? "an unknown location",
+                isPlayerHome
+            };
         }
     }
 }

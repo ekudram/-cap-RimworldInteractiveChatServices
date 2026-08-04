@@ -22,9 +22,20 @@ Envelope:
   "timestamp": "ISO-8601 UTC",
   "messageType": "NegativeHealthEvent",
   "text": "Mia has gotten a bad cut…",
-  "message": "Masie, notice on the home colony: Mia has gotten a bad cut…"
+  "message": "Masie, notice on the home colony at (142, 87): Mia has gotten a bad cut…",
+  "location": {
+    "x": 142,
+    "y": 0,
+    "z": 87,
+    "cell": "(142, 0, 87)",
+    "mapId": 0,
+    "mapLabel": "the home colony map",
+    "isPlayerHome": true
+  }
 }
 ```
+
+`location` is present only when RICS resolved a real map cell (lookTargets / pawn position). Prose uses **(x, z)**; full cell is in JSON. Same `location` object is used on `colony_event` (letters). Death batch lines embed `at (x, z)` in text only.
 
 ### Already filtered on RICS (bot can trust)
 

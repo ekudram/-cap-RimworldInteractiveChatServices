@@ -44,14 +44,25 @@ namespace CAP_ChatInteractive.AI
                         body = body.Substring(0, 2000) + "...";
                 }
 
+                AiMapLocation location = null;
                 Map relevantMap = null;
                 try
                 {
-                    if (let is ChoiceLetter cl && cl.lookTargets != null && !cl.lookTargets.targets.NullOrEmpty())
+                    LookTargets lt = null;
+                    if (let is ChoiceLetter cl)
+                        lt = cl.lookTargets;
+
+                    location = AIChatBotService.TryCreateMapLocationFromLookTargets(lt);
+
+                    if (lt != null && !lt.targets.NullOrEmpty())
                     {
-                        var primary = cl.lookTargets.TryGetPrimaryTarget();
-                        if (primary.IsValid && primary.HasThing && primary.Thing != null && primary.Thing.Map != null)
-                            relevantMap = primary.Thing.Map;
+                        var primary = lt.TryGetPrimaryTarget();
+                        if (primary.IsValid && primary.IsMapTarget)
+                        {
+                            relevantMap = primary.Map;
+                            if (relevantMap == null && primary.HasThing && primary.Thing != null)
+                                relevantMap = primary.Thing.MapHeld ?? primary.Thing.Map;
+                        }
                     }
                 }
                 catch { /* best effort */ }
@@ -59,17 +70,17 @@ namespace CAP_ChatInteractive.AI
                 if (relevantMap == null)
                     relevantMap = Find.CurrentMap ?? Find.AnyPlayerHomeMap;
 
-                string mapDesc = AIChatBotService.GetRichMapDescription(relevantMap);
+                string mapDesc = location?.mapLabel ?? AIChatBotService.GetRichMapDescription(relevantMap);
                 string factionNote = BuildInvolvedFactionNote(let);
 
-                string notification = $"{botName} this has occurred in the colony on {mapDesc}: {title}.";
+                string notification = $"{botName} this has occurred in the colony on {mapDesc}{AIChatBotService.FormatCoordsProse(location)}: {title}.";
                 if (!string.IsNullOrWhiteSpace(factionNote))
                     notification += $" {factionNote}";
                 if (!string.IsNullOrWhiteSpace(body))
                     notification += $" {body}";
 
                 var gameComp = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>();
-                gameComp?._aiChatBotService?.NotifyColonyEvent(notification);
+                gameComp?._aiChatBotService?.NotifyColonyEvent(notification, location);
             }
             catch (Exception ex)
             {
@@ -260,7 +271,8 @@ namespace CAP_ChatInteractive.AI
                     }
                 }
 
-                string message = $"{entityDesc}{killerDetail} on {mapLabel}{mapContext}";
+                var deathLoc = AIChatBotService.TryCreateMapLocationFromThing(pawn);
+                string message = $"{entityDesc}{killerDetail} on {mapLabel}{mapContext}{AIChatBotService.FormatCoordsProse(deathLoc)}";
 
                 var gameComp = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>();
                 gameComp?.RecordDeath(message);
@@ -517,12 +529,13 @@ namespace CAP_ChatInteractive.AI
                 }
 
                 string botName = settings.AIChatBotName ?? "Masie";
-                Map map = ResolveMessageMap(msg);
-                string mapDesc = AIChatBotService.GetRichMapDescription(map);
-                string addressed = $"{botName}, notice on {mapDesc}: {cleaned}";
+                AiMapLocation location = AIChatBotService.TryCreateMapLocationFromLookTargets(msg.lookTargets);
+                Map map = location != null ? null : ResolveMessageMap(msg);
+                string mapDesc = location?.mapLabel ?? AIChatBotService.GetRichMapDescription(map);
+                string addressed = $"{botName}, notice on {mapDesc}{AIChatBotService.FormatCoordsProse(location)}: {cleaned}";
 
                 var gameComp = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>();
-                gameComp?._aiChatBotService?.NotifyColonyMessage(addressed, cleaned, typeDef.defName);
+                gameComp?._aiChatBotService?.NotifyColonyMessage(addressed, cleaned, typeDef.defName, location);
             }
             catch (Exception ex)
             {
@@ -578,15 +591,26 @@ namespace CAP_ChatInteractive.AI
                 if (msg?.lookTargets != null && !msg.lookTargets.targets.NullOrEmpty())
                 {
                     var primary = msg.lookTargets.TryGetPrimaryTarget();
-                    if (primary.IsValid && primary.HasThing && primary.Thing?.Map != null)
-                        return primary.Thing.Map;
+                    if (primary.IsValid && primary.IsMapTarget)
+                    {
+                        if (primary.Map != null)
+                            return primary.Map;
+                        if (primary.HasThing && primary.Thing != null)
+                            return primary.Thing.MapHeld ?? primary.Thing.Map;
+                    }
 
                     foreach (var t in msg.lookTargets.targets)
                     {
-                        if (t.IsValid && t.HasThing && t.Thing?.Map != null)
-                            return t.Thing.Map;
-                        if (t.IsValid && t.Cell.IsValid && t.Map != null)
+                        if (!t.IsValid || !t.IsMapTarget)
+                            continue;
+                        if (t.Map != null)
                             return t.Map;
+                        if (t.HasThing && t.Thing != null)
+                        {
+                            var m = t.Thing.MapHeld ?? t.Thing.Map;
+                            if (m != null)
+                                return m;
+                        }
                     }
                 }
             }
