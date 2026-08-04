@@ -836,8 +836,9 @@ namespace CAP_ChatInteractive.AI
         /// Writes a timestamped event file that the external Python bot can poll.
         /// Message always starts with the configured AIChatBotName so the bot treats it as addressed to it.
         /// Optional <paramref name="location"/> adds structured map cell coords when known.
+        /// Optional <paramref name="mapSlice"/> adds compact terrain/pawns/cover around that cell (MAPGRID design).
         /// </summary>
-        public void NotifyColonyEvent(string message, AiMapLocation location = null)
+        public void NotifyColonyEvent(string message, AiMapLocation location = null, AiMapSlicePayload mapSlice = null)
         {
             if (string.IsNullOrWhiteSpace(message))
                 return;
@@ -855,15 +856,40 @@ namespace CAP_ChatInteractive.AI
                 string requestId = $"event_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
                 string filePath = Path.Combine(eventsPath, requestId + ".json");
 
+                // Strongly typed anonymous graph only (no dynamic)
+                object locPayload = location?.ToPayload();
+                object slicePayload = mapSlice; // POCOs serialize cleanly
+
                 object payload;
-                if (location != null)
+                if (locPayload != null && slicePayload != null)
                 {
                     payload = new
                     {
                         type = "colony_event",
                         timestamp = DateTime.UtcNow.ToString("o"),
                         message = message,
-                        location = location.ToPayload()
+                        location = locPayload,
+                        mapSlice = slicePayload
+                    };
+                }
+                else if (locPayload != null)
+                {
+                    payload = new
+                    {
+                        type = "colony_event",
+                        timestamp = DateTime.UtcNow.ToString("o"),
+                        message = message,
+                        location = locPayload
+                    };
+                }
+                else if (slicePayload != null)
+                {
+                    payload = new
+                    {
+                        type = "colony_event",
+                        timestamp = DateTime.UtcNow.ToString("o"),
+                        message = message,
+                        mapSlice = slicePayload
                     };
                 }
                 else
@@ -879,7 +905,8 @@ namespace CAP_ChatInteractive.AI
                 string json = JsonConvert.SerializeObject(payload, Formatting.Indented);
                 File.WriteAllText(filePath, json);
 
-                Logger.Debug($"[RICS AI] Colony event notification written: {requestId}");
+                Logger.Debug($"[RICS AI] Colony event notification written: {requestId}" +
+                             (mapSlice != null ? " (with mapSlice)" : ""));
             }
             catch (Exception ex)
             {
@@ -892,8 +919,9 @@ namespace CAP_ChatInteractive.AI
         /// In-game toast (Messages.Message) of interest — health, threats, outcomes.
         /// Writes events/*.json with type colony_message so the bot can treat them quieter than letters.
         /// Technical UI toasts are filtered before this is called.
+        /// Optional <paramref name="mapSlice"/> = compact local map context when coords known.
         /// </summary>
-        public void NotifyColonyMessage(string addressedMessage, string rawText, string messageTypeDefName, AiMapLocation location = null)
+        public void NotifyColonyMessage(string addressedMessage, string rawText, string messageTypeDefName, AiMapLocation location = null, AiMapSlicePayload mapSlice = null)
         {
             if (string.IsNullOrWhiteSpace(addressedMessage))
                 return;
@@ -910,8 +938,11 @@ namespace CAP_ChatInteractive.AI
                 string requestId = $"msg_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
                 string filePath = Path.Combine(eventsPath, requestId + ".json");
 
+                object locPayload = location?.ToPayload();
+                object slicePayload = mapSlice;
+
                 object payload;
-                if (location != null)
+                if (locPayload != null && slicePayload != null)
                 {
                     payload = new
                     {
@@ -920,7 +951,20 @@ namespace CAP_ChatInteractive.AI
                         messageType = messageTypeDefName ?? "Unknown",
                         text = rawText ?? "",
                         message = addressedMessage,
-                        location = location.ToPayload()
+                        location = locPayload,
+                        mapSlice = slicePayload
+                    };
+                }
+                else if (locPayload != null)
+                {
+                    payload = new
+                    {
+                        type = "colony_message",
+                        timestamp = DateTime.UtcNow.ToString("o"),
+                        messageType = messageTypeDefName ?? "Unknown",
+                        text = rawText ?? "",
+                        message = addressedMessage,
+                        location = locPayload
                     };
                 }
                 else
@@ -938,7 +982,8 @@ namespace CAP_ChatInteractive.AI
                 string json = JsonConvert.SerializeObject(payload, Formatting.Indented);
                 File.WriteAllText(filePath, json);
 
-                Logger.Debug($"[RICS AI] Colony message notification written: {requestId} ({messageTypeDefName})");
+                Logger.Debug($"[RICS AI] Colony message notification written: {requestId} ({messageTypeDefName})" +
+                             (mapSlice != null ? " (with mapSlice)" : ""));
             }
             catch (Exception ex)
             {

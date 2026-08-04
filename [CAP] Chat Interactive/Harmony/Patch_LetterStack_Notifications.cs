@@ -46,6 +46,7 @@ namespace CAP_ChatInteractive.AI
 
                 AiMapLocation location = null;
                 Map relevantMap = null;
+                IntVec3 sliceCenter = IntVec3.Invalid;
                 try
                 {
                     LookTargets lt = null;
@@ -62,6 +63,13 @@ namespace CAP_ChatInteractive.AI
                             relevantMap = primary.Map;
                             if (relevantMap == null && primary.HasThing && primary.Thing != null)
                                 relevantMap = primary.Thing.MapHeld ?? primary.Thing.Map;
+                            if (primary.HasThing && primary.Thing != null)
+                            {
+                                var pos = primary.Thing.PositionHeld.IsValid ? primary.Thing.PositionHeld : primary.Thing.Position;
+                                if (pos.IsValid) sliceCenter = pos;
+                            }
+                            else if (primary.Cell.IsValid)
+                                sliceCenter = primary.Cell;
                         }
                     }
                 }
@@ -69,6 +77,15 @@ namespace CAP_ChatInteractive.AI
 
                 if (relevantMap == null)
                     relevantMap = Find.CurrentMap ?? Find.AnyPlayerHomeMap;
+
+                if (location != null && !sliceCenter.IsValid)
+                    sliceCenter = new IntVec3(location.x, location.y, location.z);
+
+                AiMapSlicePayload mapSlice = null;
+                if (relevantMap != null && sliceCenter.IsValid)
+                    mapSlice = AiMapSliceBuilder.TryBuild(relevantMap, sliceCenter, AiMapSliceBuilder.SliceSizeLetter);
+                else if (location != null)
+                    mapSlice = AiMapSliceBuilder.TryBuildFromLocation(location, AiMapSliceBuilder.SliceSizeLetter);
 
                 string mapDesc = location?.mapLabel ?? AIChatBotService.GetRichMapDescription(relevantMap);
                 string factionNote = BuildInvolvedFactionNote(let);
@@ -78,9 +95,11 @@ namespace CAP_ChatInteractive.AI
                     notification += $" {factionNote}";
                 if (!string.IsNullOrWhiteSpace(body))
                     notification += $" {body}";
+                if (!string.IsNullOrWhiteSpace(mapSlice?.summary))
+                    notification += $" [Area: {mapSlice.summary}]";
 
                 var gameComp = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>();
-                gameComp?._aiChatBotService?.NotifyColonyEvent(notification, location);
+                gameComp?._aiChatBotService?.NotifyColonyEvent(notification, location, mapSlice);
             }
             catch (Exception ex)
             {
@@ -272,10 +291,26 @@ namespace CAP_ChatInteractive.AI
                 }
 
                 var deathLoc = AIChatBotService.TryCreateMapLocationFromThing(pawn);
+                AiMapSlicePayload deathSlice = null;
+                try
+                {
+                    if (pawnMap != null)
+                    {
+                        IntVec3 deathCell = pawn.PositionHeld.IsValid ? pawn.PositionHeld : pawn.Position;
+                        if (deathCell.IsValid)
+                            deathSlice = AiMapSliceBuilder.TryBuild(pawnMap, deathCell, AiMapSliceBuilder.SliceSizeDeath);
+                    }
+                    if (deathSlice == null && deathLoc != null)
+                        deathSlice = AiMapSliceBuilder.TryBuildFromLocation(deathLoc, AiMapSliceBuilder.SliceSizeDeath);
+                }
+                catch { /* best effort */ }
+
                 string message = $"{entityDesc}{killerDetail} on {mapLabel}{mapContext}{AIChatBotService.FormatCoordsProse(deathLoc)}";
+                if (!string.IsNullOrWhiteSpace(deathSlice?.summary))
+                    message += $" [Area: {deathSlice.summary}]";
 
                 var gameComp = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>();
-                gameComp?.RecordDeath(message);
+                gameComp?.RecordDeath(message, deathLoc, deathSlice);
             }
             catch (Exception ex)
             {
@@ -530,12 +565,27 @@ namespace CAP_ChatInteractive.AI
 
                 string botName = settings.AIChatBotName ?? "Masie";
                 AiMapLocation location = AIChatBotService.TryCreateMapLocationFromLookTargets(msg.lookTargets);
-                Map map = location != null ? null : ResolveMessageMap(msg);
+                Map map = ResolveMessageMap(msg);
+                if (map == null && location != null)
+                    map = Find.Maps?.FirstOrDefault(m => m != null && m.uniqueID == location.mapId);
+
+                AiMapSlicePayload mapSlice = null;
+                if (location != null)
+                {
+                    var cell = new IntVec3(location.x, location.y, location.z);
+                    if (map != null && cell.IsValid)
+                        mapSlice = AiMapSliceBuilder.TryBuild(map, cell, AiMapSliceBuilder.SliceSizeToast);
+                    if (mapSlice == null)
+                        mapSlice = AiMapSliceBuilder.TryBuildFromLocation(location, AiMapSliceBuilder.SliceSizeToast);
+                }
+
                 string mapDesc = location?.mapLabel ?? AIChatBotService.GetRichMapDescription(map);
                 string addressed = $"{botName}, notice on {mapDesc}{AIChatBotService.FormatCoordsProse(location)}: {cleaned}";
+                if (!string.IsNullOrWhiteSpace(mapSlice?.summary))
+                    addressed += $" [Area: {mapSlice.summary}]";
 
                 var gameComp = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>();
-                gameComp?._aiChatBotService?.NotifyColonyMessage(addressed, cleaned, typeDef.defName, location);
+                gameComp?._aiChatBotService?.NotifyColonyMessage(addressed, cleaned, typeDef.defName, location, mapSlice);
             }
             catch (Exception ex)
             {

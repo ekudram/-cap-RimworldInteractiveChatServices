@@ -59,6 +59,9 @@ namespace CAP_ChatInteractive
         private readonly List<string> recentDeaths = new List<string>();
         private int lastDeathFlushTick = 0;
         private const int DEATH_FLUSH_INTERVAL = 300; // ~5 real seconds, reasonable throttle
+        // Last death location/slice (best-effort for batch flush payload)
+        private AiMapLocation _lastDeathLocation;
+        private AiMapSlicePayload _lastDeathMapSlice;
 
         // Static reference to the active AI service so we can properly stop the HttpListener
         // when loading a new game (prevents "another listener for port 17888" error).
@@ -215,7 +218,12 @@ namespace CAP_ChatInteractive
                     }
 
                     string botName = aiSettings.AIChatBotName ?? "Masie";
-                    _aiChatBotService.NotifyColonyEvent($"{botName}, deaths reported: {summary}");
+                    // Attach last death's map slice/location when available (batch summary still text)
+                    var deathLoc = _lastDeathLocation;
+                    var deathSlice = _lastDeathMapSlice;
+                    _lastDeathLocation = null;
+                    _lastDeathMapSlice = null;
+                    _aiChatBotService.NotifyColonyEvent($"{botName}, deaths reported: {summary}", deathLoc, deathSlice);
                 }
             }
         }
@@ -313,10 +321,15 @@ namespace CAP_ChatInteractive
             Logger.Debug("AI ChatBot service initialized + initial game state cached");
         }
 
-        public void RecordDeath(string deathMessage)
+        public void RecordDeath(string deathMessage, AiMapLocation location = null, AiMapSlicePayload mapSlice = null)
         {
             if (string.IsNullOrWhiteSpace(deathMessage)) return;
             recentDeaths.Add(deathMessage);
+            // Keep most recent structured context for the batch flush file
+            if (location != null)
+                _lastDeathLocation = location;
+            if (mapSlice != null)
+                _lastDeathMapSlice = mapSlice;
             // Cap the list to prevent memory bloat during massive raids
             if (recentDeaths.Count > 50)
                 recentDeaths.RemoveAt(0);
