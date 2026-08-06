@@ -1017,8 +1017,9 @@ namespace CAP_ChatInteractive.AI
 
         /// <summary>
         /// Build map cell location for AI payloads. Returns null if cell/map is unknown — never invents coords.
+        /// Optionally pass a pawn at that cell to attach sleep/bed context.
         /// </summary>
-        public static AiMapLocation TryCreateMapLocation(Map map, IntVec3 cell)
+        public static AiMapLocation TryCreateMapLocation(Map map, IntVec3 cell, Pawn pawnAtCell = null)
         {
             if (map == null || !cell.IsValid)
                 return null;
@@ -1033,7 +1034,7 @@ namespace CAP_ChatInteractive.AI
                         return null;
                 }
 
-                return new AiMapLocation
+                var loc = new AiMapLocation
                 {
                     x = cell.x,
                     y = cell.y,
@@ -1042,11 +1043,92 @@ namespace CAP_ChatInteractive.AI
                     mapLabel = GetRichMapDescription(map),
                     isPlayerHome = map.IsPlayerHome
                 };
+
+                EnrichLocationWithFurniture(loc, map, cell, pawnAtCell);
+                return loc;
             }
             catch
             {
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Attach furniture / bed / sleep info at the cell (and optional pawn rest state).
+        /// </summary>
+        public static void EnrichLocationWithFurniture(AiMapLocation loc, Map map, IntVec3 cell, Pawn pawn = null)
+        {
+            if (loc == null || map == null || !cell.IsValid)
+                return;
+
+            try
+            {
+                if (AiMapSliceBuilder.TryFindRestFurnitureAt(map, cell, out Thing restThing, out string kind, out string label))
+                {
+                    loc.furnitureKind = kind;
+                    loc.furnitureLabel = label;
+                    loc.isRestFurniture = AiMapSliceBuilder.IsRestFurnitureKind(kind);
+                    try
+                    {
+                        if (restThing is Building_Bed bed)
+                        {
+                            int n = 0;
+                            for (int i = 0; i < bed.SleepingSlotsCount; i++)
+                            {
+                                if (bed.GetCurOccupant(i) != null)
+                                    n++;
+                            }
+                            loc.furnitureOccupants = n;
+                        }
+                    }
+                    catch { /* ignore */ }
+                }
+                else
+                {
+                    // Non-rest furniture on cell (table, chair) for general context
+                    try
+                    {
+                        var things = cell.GetThingList(map);
+                        if (things != null)
+                        {
+                            foreach (Thing t in things)
+                            {
+                                if (t == null || t is Pawn || t.Destroyed)
+                                    continue;
+                                string fk = AiMapSliceBuilder.ClassifyFurnitureKind(t);
+                                if (fk == null)
+                                    continue;
+                                loc.furnitureKind = fk;
+                                loc.furnitureLabel = t.LabelCap ?? t.def?.label;
+                                loc.isRestFurniture = AiMapSliceBuilder.IsRestFurnitureKind(fk);
+                                break;
+                            }
+                        }
+                    }
+                    catch { /* ignore */ }
+                }
+
+                if (pawn != null && !pawn.Dead)
+                {
+                    AiMapSliceBuilder.DescribePawnRestFurniture(
+                        pawn, map, cell,
+                        out bool inBed, out bool sleeping, out string pLabel, out string pKind);
+                    loc.pawnInBed = inBed;
+                    loc.pawnSleepingOrResting = sleeping;
+                    if (!string.IsNullOrEmpty(pLabel))
+                    {
+                        loc.furnitureLabel = pLabel;
+                        loc.furnitureKind = pKind ?? loc.furnitureKind;
+                        loc.isRestFurniture = true;
+                    }
+                    try
+                    {
+                        loc.pawnName = pawn.LabelShortCap ?? pawn.Name?.ToStringShort;
+                    }
+                    catch { /* ignore */ }
+                }
+            }
+            catch { /* best effort */ }
         }
 
         public static AiMapLocation TryCreateMapLocationFromGlobalTarget(GlobalTargetInfo t)
@@ -1058,6 +1140,7 @@ namespace CAP_ChatInteractive.AI
 
                 Map map = t.Map;
                 IntVec3 cell = IntVec3.Invalid;
+                Pawn pawn = null;
 
                 if (t.HasThing && t.Thing != null)
                 {
@@ -1066,13 +1149,14 @@ namespace CAP_ChatInteractive.AI
                     cell = thing.PositionHeld.IsValid ? thing.PositionHeld : thing.Position;
                     if (!cell.IsValid && t.Cell.IsValid)
                         cell = t.Cell;
+                    pawn = thing as Pawn;
                 }
                 else if (t.Cell.IsValid)
                 {
                     cell = t.Cell;
                 }
 
-                return TryCreateMapLocation(map, cell);
+                return TryCreateMapLocation(map, cell, pawn);
             }
             catch
             {
@@ -1113,7 +1197,7 @@ namespace CAP_ChatInteractive.AI
             {
                 Map map = thing.MapHeld ?? thing.Map;
                 IntVec3 cell = thing.PositionHeld.IsValid ? thing.PositionHeld : thing.Position;
-                return TryCreateMapLocation(map, cell);
+                return TryCreateMapLocation(map, cell, thing as Pawn);
             }
             catch
             {
@@ -1121,12 +1205,29 @@ namespace CAP_ChatInteractive.AI
             }
         }
 
-        /// <summary>Prose fragment: " at (x, z)" or empty.</summary>
+        /// <summary>Prose fragment: " at (x, z)" plus optional bed/furniture note.</summary>
         public static string FormatCoordsProse(AiMapLocation loc)
         {
             if (loc == null)
                 return "";
-            return $" at ({loc.x}, {loc.z})";
+
+            string s = $" at ({loc.x}, {loc.z})";
+            if (loc.pawnInBed || loc.pawnSleepingOrResting || !string.IsNullOrEmpty(loc.furnitureLabel))
+            {
+                var bits = new List<string>();
+                if (loc.pawnInBed)
+                    bits.Add("in bed");
+                else if (loc.pawnSleepingOrResting)
+                    bits.Add("sleeping/resting");
+                if (!string.IsNullOrEmpty(loc.furnitureLabel))
+                {
+                    string kindNote = !string.IsNullOrEmpty(loc.furnitureKind) ? loc.furnitureKind.ToLowerInvariant() : "furniture";
+                    bits.Add($"on {loc.furnitureLabel} ({kindNote})");
+                }
+                if (bits.Count > 0)
+                    s += " [" + string.Join(", ", bits) + "]";
+            }
+            return s;
         }
 
         /// <summary>
@@ -1179,7 +1280,7 @@ namespace CAP_ChatInteractive.AI
 
     /// <summary>
     /// Map cell for AI bot event/message payloads. Only created when a real cell is known.
-    /// Prose uses (x, z); JSON includes full x,y,z.
+    /// Prose uses (x, z); JSON includes full x,y,z plus optional furniture / sleep context.
     /// </summary>
     public sealed class AiMapLocation
     {
@@ -1190,8 +1291,47 @@ namespace CAP_ChatInteractive.AI
         public string mapLabel;
         public bool isPlayerHome;
 
+        // Furniture / rest at this cell (bed, crib, bedroll, table, …)
+        public string furnitureKind;
+        public string furnitureLabel;
+        public bool isRestFurniture;
+        public int? furnitureOccupants;
+        public string pawnName;
+        public bool pawnInBed;
+        public bool pawnSleepingOrResting;
+
         public object ToPayload()
         {
+            bool hasFurniture = !string.IsNullOrEmpty(furnitureLabel) || !string.IsNullOrEmpty(furnitureKind);
+            bool hasPawnRest = pawnInBed || pawnSleepingOrResting || !string.IsNullOrEmpty(pawnName);
+
+            if (hasFurniture || hasPawnRest)
+            {
+                return new
+                {
+                    x,
+                    y,
+                    z,
+                    cell = $"({x}, {y}, {z})",
+                    mapId,
+                    mapLabel = mapLabel ?? "an unknown location",
+                    isPlayerHome,
+                    furniture = hasFurniture ? new
+                    {
+                        kind = furnitureKind,
+                        label = furnitureLabel,
+                        isRestFurniture,
+                        occupants = furnitureOccupants
+                    } : null,
+                    pawnRest = hasPawnRest ? new
+                    {
+                        name = pawnName,
+                        inBed = pawnInBed,
+                        sleepingOrResting = pawnSleepingOrResting
+                    } : null
+                };
+            }
+
             return new
             {
                 x,

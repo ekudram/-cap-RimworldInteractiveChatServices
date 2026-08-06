@@ -25,6 +25,7 @@ namespace CAP_ChatInteractive.AI
         public List<AiMapCoverEntry> cover;
         public List<AiMapPawnEntry> pawns;
         public List<AiMapNotableEntry> notableThings;
+        public List<AiMapFurnitureEntry> furniture;
         public string summary;
     }
 
@@ -61,6 +62,14 @@ namespace CAP_ChatInteractive.AI
         public int relX;
         public int relZ;
         public string job;
+        /// <summary>True if RestUtility says pawn is in a bed (Building_Bed occupant).</summary>
+        public bool inBed;
+        /// <summary>True if laying/sleep job or in bed rest posture.</summary>
+        public bool sleepingOrResting;
+        /// <summary>Bed / crib / bedroll label if on or in rest furniture.</summary>
+        public string furniture;
+        /// <summary>Bed | Bedroll | Crib | SleepingSpot | HospitalBed | RestFurniture | null</summary>
+        public string furnitureKind;
     }
 
     public sealed class AiMapNotableEntry
@@ -69,6 +78,18 @@ namespace CAP_ChatInteractive.AI
         public string label;
         public int relX;
         public int relZ;
+    }
+
+    /// <summary>Furniture / rest object in the map slice (beds, cribs, tables, etc.).</summary>
+    public sealed class AiMapFurnitureEntry
+    {
+        public string kind;
+        public string label;
+        public int relX;
+        public int relZ;
+        public string size;
+        public bool isRestFurniture;
+        public int? occupants;
     }
 
     /// <summary>
@@ -85,7 +106,8 @@ namespace CAP_ChatInteractive.AI
         private const int MaxCover = 25;
         private const int MaxPawns = 20;
         private const int MaxNotable = 15;
-        private const int MaxSummaryLen = 240;
+        private const int MaxFurniture = 20;
+        private const int MaxSummaryLen = 280;
 
         private static readonly Dictionary<string, string> TerrainLegend = new Dictionary<string, string>
         {
@@ -137,8 +159,9 @@ namespace CAP_ChatInteractive.AI
                 var cover = CollectCover(map, center, minX, maxX, minZ, maxZ);
                 var pawns = CollectPawns(map, center, minX, maxX, minZ, maxZ);
                 var notable = CollectNotable(map, center, minX, maxX, minZ, maxZ);
+                var furniture = CollectFurniture(map, center, minX, maxX, minZ, maxZ);
                 BuildRelativeToColony(map, center, out string relative, out int? dirFromNorth);
-                string summary = BuildSummary(pawns, cover, notable);
+                string summary = BuildSummary(pawns, cover, notable, furniture);
 
                 return new AiMapSlicePayload
                 {
@@ -156,6 +179,7 @@ namespace CAP_ChatInteractive.AI
                     cover = cover,
                     pawns = pawns,
                     notableThings = notable,
+                    furniture = furniture,
                     summary = summary
                 };
             }
@@ -380,6 +404,31 @@ namespace CAP_ChatInteractive.AI
                     else if (p.Downed)
                         status = "Downed";
 
+                    bool inBed = false;
+                    bool sleepingOrResting = false;
+                    string furnitureLabel = null;
+                    string furnitureKind = null;
+                    try
+                    {
+                        if (!p.Dead)
+                            DescribePawnRestFurniture(p, map, pos, out inBed, out sleepingOrResting, out furnitureLabel, out furnitureKind);
+
+                        if (status == "Standing" || status == "Downed")
+                        {
+                            if (inBed && sleepingOrResting)
+                                status = "SleepingInBed";
+                            else if (inBed)
+                                status = "InBed";
+                            else if (sleepingOrResting && furnitureKind != null)
+                                status = "RestingOnFurniture";
+                            else if (sleepingOrResting)
+                                status = "Resting";
+                            else if (furnitureKind != null && IsRestFurnitureKind(furnitureKind))
+                                status = "OnBedFurniture"; // standing/downed on bed cell
+                        }
+                    }
+                    catch { /* ignore rest detect */ }
+
                     string factionTag = "Neutral";
                     try
                     {
@@ -442,7 +491,433 @@ namespace CAP_ChatInteractive.AI
                         weapon = weapon,
                         relX = pos.x - center.x,
                         relZ = pos.z - center.z,
-                        job = job
+                        job = job,
+                        inBed = inBed,
+                        sleepingOrResting = sleepingOrResting,
+                        furniture = furnitureLabel,
+                        furnitureKind = furnitureKind
+                    });
+                }
+            }
+            catch { /* partial ok */ }
+
+            return list;
+        }
+
+        /// <summary>
+        /// Rest/sleep + furniture under a pawn. Used by map slice and location enrichment.
+        /// </summary>
+        public static void DescribePawnRestFurniture(
+            Pawn p,
+            Map map,
+            IntVec3 pos,
+            out bool inBed,
+            out bool sleepingOrResting,
+            out string furnitureLabel,
+            out string furnitureKind)
+        {
+            inBed = false;
+            sleepingOrResting = false;
+            furnitureLabel = null;
+            furnitureKind = null;
+
+            if (p == null)
+                return;
+
+            try
+            {
+                Building_Bed currentBed = null;
+                try
+                {
+                    if (p.Spawned)
+                        currentBed = p.CurrentBed();
+                }
+                catch { /* API variance */ }
+
+                if (currentBed != null)
+                {
+                    inBed = true;
+                    furnitureLabel = currentBed.LabelCap ?? currentBed.def?.label;
+                    furnitureKind = ClassifyRestFurniture(currentBed);
+                }
+
+                // Laying / sleep job even without CurrentBed (floor rest, interrupted, etc.)
+                try
+                {
+                    var posture = p.GetPosture();
+                    if (posture.Laying() || posture.InBed())
+                        sleepingOrResting = true;
+                }
+                catch { /* ignore */ }
+
+                try
+                {
+                    if (p.jobs?.curJob?.def == JobDefOf.LayDown)
+                        sleepingOrResting = true;
+                }
+                catch { /* ignore */ }
+
+                if (inBed)
+                    sleepingOrResting = true;
+
+                // Co-located with bed/bedroll/crib even if not currently InBed()
+                if (furnitureKind == null && map != null && pos.IsValid)
+                {
+                    if (TryFindRestFurnitureAt(map, pos, out Thing restThing, out string kind, out string label))
+                    {
+                        furnitureKind = kind;
+                        furnitureLabel = label;
+                        // Same cell as rest furniture is useful even when standing on it
+                    }
+                }
+            }
+            catch { /* best effort */ }
+        }
+
+        public static bool IsRestFurnitureKind(string kind)
+        {
+            if (string.IsNullOrEmpty(kind))
+                return false;
+            return kind == "Bed" || kind == "Bedroll" || kind == "Crib" ||
+                   kind == "SleepingSpot" || kind == "HospitalBed" || kind == "RestFurniture";
+        }
+
+        /// <summary>
+        /// Find bed / bedroll / crib / similar at cell (or multi-cell bed covering this cell).
+        /// </summary>
+        public static bool TryFindRestFurnitureAt(Map map, IntVec3 cell, out Thing restThing, out string kind, out string label)
+        {
+            restThing = null;
+            kind = null;
+            label = null;
+            if (map == null || !cell.IsValid)
+                return false;
+
+            try
+            {
+                // Fast path: first Building_Bed on cell
+                try
+                {
+                    var bed = cell.GetFirstThing<Building_Bed>(map);
+                    if (bed != null && !bed.Destroyed)
+                    {
+                        restThing = bed;
+                        kind = ClassifyRestFurniture(bed);
+                        label = bed.LabelCap ?? bed.def?.label;
+                        return true;
+                    }
+                }
+                catch { /* ignore */ }
+
+                List<Thing> things = null;
+                try { things = cell.GetThingList(map); } catch { /* ignore */ }
+                if (things != null)
+                {
+                    foreach (Thing t in things)
+                    {
+                        if (t == null || t.Destroyed || t is Pawn)
+                            continue;
+                        if (!IsRestFurnitureThing(t))
+                            continue;
+                        restThing = t;
+                        kind = ClassifyRestFurniture(t);
+                        label = t.LabelCap ?? t.def?.label;
+                        return true;
+                    }
+                }
+
+                // Multi-cell beds: scan nearby buildings for OccupiedRect containing cell
+                try
+                {
+                    var buildings = map.listerBuildings?.allBuildingsColonist;
+                    // Also check all buildings via listerThings for non-colony beds
+                    var allBeds = map.listerThings?.ThingsInGroup(ThingRequestGroup.Bed);
+                    if (allBeds != null)
+                    {
+                        foreach (Thing t in allBeds)
+                        {
+                            if (t == null || t.Destroyed || !t.Spawned)
+                                continue;
+                            try
+                            {
+                                if (t.OccupiedRect().Contains(cell))
+                                {
+                                    restThing = t;
+                                    kind = ClassifyRestFurniture(t);
+                                    label = t.LabelCap ?? t.def?.label;
+                                    return true;
+                                }
+                            }
+                            catch { /* continue */ }
+                        }
+                    }
+                    else if (buildings != null)
+                    {
+                        foreach (Building b in buildings)
+                        {
+                            if (b == null || !(b is Building_Bed) && !IsRestFurnitureThing(b))
+                                continue;
+                            try
+                            {
+                                if (b.OccupiedRect().Contains(cell))
+                                {
+                                    restThing = b;
+                                    kind = ClassifyRestFurniture(b);
+                                    label = b.LabelCap ?? b.def?.label;
+                                    return true;
+                                }
+                            }
+                            catch { /* continue */ }
+                        }
+                    }
+                }
+                catch { /* ignore */ }
+            }
+            catch { /* ignore */ }
+
+            return false;
+        }
+
+        public static bool IsRestFurnitureThing(Thing t)
+        {
+            if (t?.def == null)
+                return false;
+            if (t is Building_Bed)
+                return true;
+            try
+            {
+                if (t.def.IsBed)
+                    return true;
+            }
+            catch { /* ignore */ }
+
+            string dn = t.def.defName ?? "";
+            string label = t.def.label ?? "";
+            // Bedrolls, cribs, sleeping spots, animal beds, deathrest, etc.
+            if (dn.IndexOf("Bed", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                dn.IndexOf("Crib", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                dn.IndexOf("Bedroll", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                dn.IndexOf("Sleeping", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                dn.IndexOf("Deathrest", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                label.IndexOf("bedroll", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                label.IndexOf("crib", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                label.IndexOf("sleeping spot", StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
+            return false;
+        }
+
+        public static string ClassifyRestFurniture(Thing t)
+        {
+            if (t?.def == null)
+                return "RestFurniture";
+
+            string dn = t.def.defName ?? "";
+            string label = t.def.label ?? "";
+
+            if (dn.IndexOf("Crib", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                label.IndexOf("crib", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Crib";
+
+            if (dn.IndexOf("Bedroll", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                label.IndexOf("bedroll", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                dn.IndexOf("SleepingSpot", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                label.IndexOf("sleeping spot", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                if (dn.IndexOf("SleepingSpot", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    label.IndexOf("sleeping spot", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return "SleepingSpot";
+                return "Bedroll";
+            }
+
+            if (t is Building_Bed bed)
+            {
+                try
+                {
+                    if (bed.Medical)
+                        return "HospitalBed";
+                }
+                catch { /* ignore */ }
+                return "Bed";
+            }
+
+            if (dn.IndexOf("Bed", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                label.IndexOf("bed", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Bed";
+
+            return "RestFurniture";
+        }
+
+        /// <summary>General furniture (tables, chairs, beds, etc.) for map slice context.</summary>
+        public static string ClassifyFurnitureKind(Thing t)
+        {
+            if (t?.def == null)
+                return null;
+
+            if (IsRestFurnitureThing(t))
+                return ClassifyRestFurniture(t);
+
+            // Only buildings that look like furniture / work stations of interest
+            if (t.def.category != ThingCategory.Building)
+                return null;
+
+            string dn = t.def.defName ?? "";
+            string label = t.def.label ?? "";
+
+            // Skip pure structure
+            if (t.def.passability == Traversability.Impassable && t.def.Fillage == FillCategory.Full)
+                return null;
+            if (dn.IndexOf("Wall", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                dn.IndexOf("Door", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                dn.IndexOf("PowerConduit", StringComparison.OrdinalIgnoreCase) >= 0)
+                return null;
+
+            if (dn.IndexOf("Table", StringComparison.OrdinalIgnoreCase) >= 0 || label.IndexOf("table", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Table";
+            if (dn.IndexOf("Chair", StringComparison.OrdinalIgnoreCase) >= 0 || dn.IndexOf("Stool", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                label.IndexOf("chair", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Chair";
+            if (dn.IndexOf("Dresser", StringComparison.OrdinalIgnoreCase) >= 0 || dn.IndexOf("EndTable", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "BedroomFurniture";
+            if (dn.IndexOf("Torch", StringComparison.OrdinalIgnoreCase) >= 0 || dn.IndexOf("Lamp", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                dn.IndexOf("Light", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Light";
+            if (t.def.building != null && t.def.building.isSittable)
+                return "Seat";
+
+            // Surfaces / recreation that help context
+            if (dn.IndexOf("Television", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                dn.IndexOf("Chess", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                dn.IndexOf("Poker", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                dn.IndexOf("Billiards", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                dn.IndexOf("Instrument", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Recreation";
+
+            // Workbenches are furniture-like for context but skip to reduce noise unless near
+            if (t.def.hasInteractionCell || (t.def.building?.isEdifice == true && t.def.Fillage == FillCategory.Partial))
+            {
+                // Prefer labeled furniture categories
+                try
+                {
+                    if (t.def.designationCategory != null)
+                    {
+                        string cat = t.def.designationCategory.defName ?? "";
+                        if (cat.IndexOf("Furniture", StringComparison.OrdinalIgnoreCase) >= 0)
+                            return "Furniture";
+                    }
+                }
+                catch { /* ignore */ }
+            }
+
+            try
+            {
+                if (t.def.designationCategory != null)
+                {
+                    string cat = t.def.designationCategory.defName ?? "";
+                    if (cat.IndexOf("Furniture", StringComparison.OrdinalIgnoreCase) >= 0)
+                        return "Furniture";
+                }
+            }
+            catch { /* ignore */ }
+
+            return null;
+        }
+
+        private static List<AiMapFurnitureEntry> CollectFurniture(Map map, IntVec3 center, int minX, int maxX, int minZ, int maxZ)
+        {
+            var list = new List<AiMapFurnitureEntry>();
+            var seen = new HashSet<int>();
+            try
+            {
+                // Prefer beds group + full thing scan for furniture designation
+                var candidates = new List<Thing>();
+                try
+                {
+                    var beds = map.listerThings?.ThingsInGroup(ThingRequestGroup.Bed);
+                    if (beds != null)
+                        candidates.AddRange(beds);
+                }
+                catch { /* ignore */ }
+
+                try
+                {
+                    var all = map.listerThings?.AllThings;
+                    if (all != null)
+                    {
+                        foreach (Thing t in all)
+                        {
+                            if (t == null || t is Pawn || t.Destroyed || !t.Spawned)
+                                continue;
+                            if (ClassifyFurnitureKind(t) != null)
+                                candidates.Add(t);
+                        }
+                    }
+                }
+                catch { /* ignore */ }
+
+                foreach (Thing t in candidates)
+                {
+                    if (list.Count >= MaxFurniture)
+                        break;
+                    if (t == null || t.Destroyed || !t.Spawned)
+                        continue;
+                    if (!seen.Add(t.thingIDNumber))
+                        continue;
+
+                    IntVec3 p = t.Position;
+                    // Include if any part of multi-cell furniture intersects slice
+                    bool inSlice = p.x >= minX && p.x <= maxX && p.z >= minZ && p.z <= maxZ;
+                    if (!inSlice)
+                    {
+                        try
+                        {
+                            var rect = t.OccupiedRect();
+                            inSlice = rect.minX <= maxX && rect.maxX >= minX && rect.minZ <= maxZ && rect.maxZ >= minZ;
+                            if (inSlice)
+                                p = rect.CenterCell;
+                        }
+                        catch { /* keep point check */ }
+                    }
+                    if (!inSlice)
+                        continue;
+
+                    string kind = ClassifyFurnitureKind(t);
+                    if (kind == null)
+                        continue;
+
+                    string sizeStr = "1x1";
+                    try
+                    {
+                        if (t.def?.size != null)
+                            sizeStr = $"{t.def.size.x}x{t.def.size.z}";
+                    }
+                    catch { /* ignore */ }
+
+                    int? occupants = null;
+                    try
+                    {
+                        if (t is Building_Bed bed)
+                        {
+                            int n = 0;
+                            for (int i = 0; i < bed.SleepingSlotsCount; i++)
+                            {
+                                if (bed.GetCurOccupant(i) != null)
+                                    n++;
+                            }
+                            occupants = n;
+                        }
+                    }
+                    catch { /* ignore */ }
+
+                    list.Add(new AiMapFurnitureEntry
+                    {
+                        kind = kind,
+                        label = t.LabelCap ?? t.def?.label ?? kind,
+                        relX = p.x - center.x,
+                        relZ = p.z - center.z,
+                        size = sizeStr,
+                        isRestFurniture = IsRestFurnitureKind(kind),
+                        occupants = occupants
                     });
                 }
             }
@@ -576,7 +1051,7 @@ namespace CAP_ChatInteractive.AI
             return dirs[idx];
         }
 
-        private static string BuildSummary(List<AiMapPawnEntry> pawns, List<AiMapCoverEntry> cover, List<AiMapNotableEntry> notable)
+        private static string BuildSummary(List<AiMapPawnEntry> pawns, List<AiMapCoverEntry> cover, List<AiMapNotableEntry> notable, List<AiMapFurnitureEntry> furniture)
         {
             try
             {
@@ -586,6 +1061,8 @@ namespace CAP_ChatInteractive.AI
                 int downed = pawns?.Count(p => p.status == "Downed") ?? 0;
                 int dead = pawns?.Count(p => p.status == "Dead") ?? 0;
                 int drafted = pawns?.Count(p => p.drafted) ?? 0;
+                int inBed = pawns?.Count(p => p.inBed || p.status == "InBed" || p.status == "SleepingInBed") ?? 0;
+                int resting = pawns?.Count(p => p.sleepingOrResting) ?? 0;
 
                 var parts = new List<string>();
                 if (enemy > 0) parts.Add($"{enemy} enemy pawn(s)");
@@ -593,6 +1070,8 @@ namespace CAP_ChatInteractive.AI
                 if (neutral > 0) parts.Add($"{neutral} neutral");
                 if (downed > 0) parts.Add($"{downed} downed");
                 if (dead > 0) parts.Add($"{dead} dead nearby");
+                if (inBed > 0) parts.Add($"{inBed} in bed/crib");
+                else if (resting > 0) parts.Add($"{resting} resting/sleeping");
 
                 bool hasBags = cover?.Any(c => c.type == "Sandbags") == true;
                 bool hasWall = cover?.Any(c => c.type == "Wall" || c.type == "RockWall") == true;
@@ -603,6 +1082,11 @@ namespace CAP_ChatInteractive.AI
 
                 int corpses = notable?.Count(n => n.type == "Corpse") ?? 0;
                 if (corpses > 0) parts.Add($"{corpses} corpse(s)");
+
+                int restFurn = furniture?.Count(f => f.isRestFurniture) ?? 0;
+                int otherFurn = furniture?.Count(f => !f.isRestFurniture) ?? 0;
+                if (restFurn > 0) parts.Add($"{restFurn} bed/crib/bedroll nearby");
+                if (otherFurn > 0) parts.Add($"{otherFurn} furniture nearby");
 
                 if (parts.Count == 0)
                     return "Quiet area around the event cell.";
