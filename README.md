@@ -50,7 +50,7 @@ Please report issues with HugLib Log or at least the stack trace of the error.
 
 ## Project History and Attribution
 
-CAP Chat Interactive is a community-driven mod conceptually inspired by hodlhodl1132's original **TwitchToolkit** project. We extend our thanks for the foundational ideas and ensure proper attribution to the original work.
+RICS is a community-driven mod conceptually inspired by hodlhodl1132's original **TwitchToolkit** project. We extend our thanks for the foundational ideas and ensure proper attribution to the original work.
 
 This implementation is a complete ground-up rewrite in **.NET 4.7.2**, featuring significant architectural improvements for better security, scalability, and multi-platform support:
 
