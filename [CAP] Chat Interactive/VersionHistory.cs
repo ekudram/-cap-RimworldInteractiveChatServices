@@ -1234,7 +1234,37 @@ MyPawnCommandHandler.xml"
 ───────────────────
 - none
 "
-            }
+            },
+            {"1.47",
+                @"===========================================================
+                         RICS version 1.47 - Changelog
+                         Released: August 5, 2026 }
+/*
+            // Add more versions here as they're released
+===========================================================
+                         RICS version - Changelog
+                         Released: Month Day, Year
+===========================================================
+
+<b>MEMORANDUM</b>
+─────────────────
+
+<b>UPDATED</b>
+──────────────
+
+<b>FIXED</b>
+────────────
+
+<b>ADDED</b>
+────────────
+
+<b>TRANSLATIONS</b>
+───────────────────" }
+
+/*
+@"===========================================================
+                         RICS version 1.47 - Changelog
+                         Released: August 5, 2026 }
 /*
             // Add more versions here as they're released
 ===========================================================
@@ -1256,7 +1286,6 @@ MyPawnCommandHandler.xml"
 
 <b>TRANSLATIONS</b>
 ───────────────────
-
 */
             // Add more versions here as they're released+
         };
