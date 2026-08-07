@@ -1,4 +1,4 @@
-# CAP Chat Interactive: RimWorld Chat Integration Mod
+# Rimworld Interactive Chat Service: RimWorld Chat Integration Mod
 
 **Connect your chat. Control the colony.**
 
