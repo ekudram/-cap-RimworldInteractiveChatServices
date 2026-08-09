@@ -16,7 +16,6 @@
 //
 // Command handler for buying items from Rimazon store
 using _CAP__Chat_Interactive.Command.CommandHelpers;
-using CAP_ChatInteractive.Commands.Cooldowns;
 using CAP_ChatInteractive.Store;
 using CAP_ChatInteractive.Utilities;
 using RimWorld;
@@ -25,21 +24,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Verse;
-using static _CAP__Chat_Interactive.Command.CommandHelpers.StoreCommandHelper;
-using Pawn = CAP_ChatInteractive.Commands.ViewerCommands.Pawn;
 
 namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class BuyItemCommandHandler
     {
-        // ===== MAIN COMMAND HANDLERS =====
+        private const string ReturnDivider = " | ";
+
         public static string HandleBuyItem(ChatMessageWrapper messageWrapper, string[] args, bool requireEquippable = false, bool requireWearable = false, bool addToInventory = false)
         {
             try
             {
-                Logger.Debug($"HandleBuyItem called for user: {messageWrapper.Username}, command {messageWrapper.Message}, args: {string.Join(", ", args)}, requireEquippable: {requireEquippable}, requireWearable: {requireWearable}, addToInventory: {addToInventory}");
-
-                // REPLACE all the parsing code (about 80 lines) with just:
                 var parsed = CommandParserUtility.ParseCommandArguments(args, allowQuality: true, allowMaterial: true, allowSide: false, allowQuantity: true);
                 if (parsed.HasError)
                     return parsed.Error;
@@ -47,92 +42,48 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 string itemName = parsed.ItemName;
                 string qualityStr = parsed.Quality;
                 string materialStr = parsed.Material;
-                string quantityStr = parsed.Quantity.ToString();
+                int quantity = Math.Max(1, parsed.Quantity);
 
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
                 var viewer = Viewers.GetViewer(messageWrapper);
+                bool needsPawn = requireEquippable || requireWearable || addToInventory;
 
-                // Get store item
                 var storeItem = StoreCommandHelper.GetStoreItemByName(itemName);
-                Logger.Debug($"Store item lookup for '{itemName}': {(storeItem != null ? $"Found: {storeItem.DefName}, Enabled: {storeItem.Enabled}" : "Not Found")}");
-
                 if (storeItem == null)
-                {
-                    Logger.Debug($"Item not found: {itemName}");
-                    // return $"Item '{itemName}' not found in Rimazon.";
                     return "RICS.BICH.Return.ItemNotFound".Translate(itemName);
-                }
 
                 if (!storeItem.Enabled && !requireEquippable && !requireWearable)
-                {
-                    Logger.Debug($"Item disabled: {itemName}");
-                    // return $"Item '{itemName}' is not available for purchase.";
                     return "RICS.BICH.Return.ItemDisabled".Translate(itemName);
-                }
 
                 if (requireEquippable && !storeItem.IsEquippable)
-                {
-                    Logger.Debug($"Item not equippable: {itemName}");
-                    // return $"{itemName} is not availible to be equiped.";
                     return "RICS.BICH.Return.ItemNotEquippable".Translate(itemName);
-                }
 
                 if (requireWearable && !storeItem.IsWearable)
-                {
-                    Logger.Debug($"Item not wearable: {itemName}");
-                    // return $"{itemName} iis not availible to be worn.";
                     return "RICS.BICH.Return.ItemNotWearable".Translate(itemName);
-                }
 
-                // Check item type requirements
                 if (!StoreCommandHelper.IsItemTypeValid(storeItem, requireEquippable, requireWearable, false))
                 {
                     string itemType = StoreCommandHelper.GetItemTypeDescription(storeItem);
                     string expectedType = requireEquippable ? "equippable" : requireWearable ? "wearable" : "purchasable";
-                    // return $"{itemName} is a {itemType}, not an {expectedType} item. Use !buy instead.";
                     return "RICS.BICH.Return.WrongItemType".Translate(itemName, itemType, expectedType);
                 }
 
-                // Check research requirements
-                Logger.Debug($"Checking research requirements for {itemName}");
                 var researchResult = StoreCommandHelper.HasRequiredResearch(storeItem);
                 if (!researchResult.Allowed)
                 {
-                    Logger.Debug($"Research requirement failed for {itemName}");
-                    string researchInfo = string.IsNullOrEmpty(researchResult.BlockingResearchLabel)
-                        ? ""
-                        : $" (research needed: {researchResult.BlockingResearchLabel})";
-                    // return $"{itemName} requires research that hasn't been completed yet.";
-                    return "RICS.BICH.Return.ResearchRequired".Translate(itemName) + researchInfo;
+                    string msg = "RICS.BICH.Return.ResearchRequired".Translate(itemName);
+                    if (!string.IsNullOrEmpty(researchResult.BlockingResearchLabel))
+                        msg += ReturnDivider + researchResult.BlockingResearchLabel;
+                    return msg;
                 }
-                Logger.Debug($"Research requirements met for {itemName}");
 
-                // Parse quality
                 var quality = ItemConfigHelper.ParseQuality(qualityStr);
-                Logger.Debug($"Parsed quality: {qualityStr} -> {quality}");
-
-
-
                 if (!ItemConfigHelper.IsQualityAllowed(quality))
-                {
-                    Logger.Debug($"Quality {qualityStr} is not allowed for purchases");
-                    // return $"Quality '{qualityStr}' is not allowed for purchases.";
                     return "RICS.BICH.Return.QualityNotAllowed".Translate(qualityStr);
-                }
-                Logger.Debug($"Quality {qualityStr} is allowed");
 
-                // === CONTENT ITEM QUALITY FIX (TextBook, Novel, Schematic, Tome) ===
-                // These specific items (TextBook + reading/content items from mods + Anomaly DLC)
-                // use the quality value to seed their internal data (pages, text, schematics,
-                // ritual knowledge, etc.). When the buyer omits a quality argument,
-                // ParseQuality returns null and the item spawns blank/empty.
-                // We force Normal ONLY for these exact DefNames and ONLY when no quality
-                // was supplied by the user. Explicit quality from the buyer is always respected.
-                // Map-type items (AncientMap, etc.) are deliberately excluded because they
-                // do not use quality at all. This runs before price calc and SpawnItemForPawn
-                // so both cost and final item are correct. Normal is forced even if the
-                // player has disabled it in settings — blank content is worse UX.
+                // Content items (TextBook/Novel/Schematic/Tome) seed internal data from quality.
+                // Force Normal only when buyer omits quality — blank spawn is worse UX than settings deny.
                 if (!quality.HasValue &&
                     (storeItem.DefName.Equals("TextBook", StringComparison.OrdinalIgnoreCase) ||
                      storeItem.DefName.Equals("Novel", StringComparison.OrdinalIgnoreCase) ||
@@ -140,73 +91,47 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                      storeItem.DefName.Equals("Tome", StringComparison.OrdinalIgnoreCase)))
                 {
                     quality = QualityCategory.Normal;
-                    Logger.Debug($"Forced Normal quality for {storeItem.DefName} (user did not specify quality) — prevents blank/empty content spawn");
+                    Logger.Debug($"[BuyItem] Forced Normal quality for {storeItem.DefName} (no quality arg) to avoid blank content");
                 }
 
-                // Get thing def
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
                 if (thingDef == null)
                 {
-                    Logger.Error($"ThingDef not found: {storeItem.DefName}");
-                    // return $"Error: Item definition not found.";
+                    Logger.Error($"[BuyItem] ThingDef not found: {storeItem.DefName}");
                     return "RICS.BICH.Return.DefNotFound".Translate();
                 }
 
-                // Check for banned races  -- Needed?
                 if (StoreCommandHelper.IsRaceBanned(thingDef))
-                {
-                    // return $"Item '{itemName}' is a banned race and cannot be purchased.";
                     return "RICS.BICH.Return.RaceBanned".Translate(itemName);
-                }
 
-                // Parse material
                 ThingDef material = null;
                 if (thingDef.MadeFromStuff)
                 {
                     material = ItemConfigHelper.ParseMaterial(materialStr, thingDef);
                     if (materialStr != "random" && material == null)
-                    {
-                        // return $"Material '{materialStr}' is not valid for {itemName}.";
                         return "RICS.BICH.Return.InvalidMaterial".Translate(materialStr, itemName);
-                    }
                 }
 
-                // Parse quantity
-                if (!int.TryParse(quantityStr, out int quantity) || quantity < 1)
-                {
-                    quantity = 1;
-                }
-
-                Logger.Debug($"Parsed quantity: {quantity}");
-
-                // Check quantity limits and clamp to maximum allowed
                 if (storeItem.HasQuantityLimit && quantity > storeItem.QuantityLimit)
-                {
-                    Logger.Debug($"Quantity {quantity} exceeds limit of {storeItem.QuantityLimit} for {itemName}, clamping to maximum");
                     quantity = storeItem.QuantityLimit;
-                }
-
-                Logger.Debug($"Final quantity after limits: {quantity}");
 
                 // === PRICE + ITEM CREATION ===
-                Thing finalItem = null;   // Will hold the real spawned unique weapon if applicable
+                Thing finalItem = null;
                 int finalPrice;
-
                 bool isUniqueWeapon = StoreItem.IsUniqueWeapon(thingDef);
 
                 if (isUniqueWeapon)
                 {
-                    // Create the REAL item once (traits get assigned here)
+                    // Create once so traits randomize for accurate pricing + same instance can deliver
                     finalItem = CreateTemporaryValuationItem(thingDef, quality, material);
-
                     if (finalItem != null)
                     {
                         finalPrice = (int)(finalItem.MarketValue * quantity);
-                        Logger.Message($"[Unique Weapon] {messageWrapper.Username} buying '{itemName}' → true value {finalPrice} (traits randomized once)");
+                        Logger.Debug($"[BuyItem] Unique weapon '{itemName}' market value total {finalPrice}");
                     }
                     else
                     {
-                        finalPrice = 5000 * quantity;
+                        finalPrice = ItemConfigHelper.CalculateFinalPrice(storeItem, quantity, quality, material);
                     }
                 }
                 else
@@ -214,48 +139,36 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     finalPrice = ItemConfigHelper.CalculateFinalPrice(storeItem, quantity, quality, material);
                 }
 
-                // Check affordability
                 if (!StoreCommandHelper.CanUserAfford(messageWrapper, finalPrice))
                 {
-                    if (finalItem != null) finalItem.Destroy(); // cleanup
-                    return $"You need {StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol)} to purchase {quantity} {itemName}! You have {StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)}.";
+                    if (finalItem != null) finalItem.Destroy();
+                    return "RICS.BICH.Return.CannotAfford".Translate(
+                        StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
+                        quantity,
+                        itemName,
+                        StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
                 }
 
-                // Get viewer's pawn for equip/wear/backpack commands
                 Verse.Pawn viewerPawn = null;
-
-                if (requireEquippable || requireWearable || addToInventory)
+                if (needsPawn)
                 {
                     viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
                     if (viewerPawn == null)
-                    {
-                        // return "You need to have a pawn in the colony. Use !buy pawn first.";
                         return "RICS.Pawn.NoPawn".Translate();
-                    }
 
                     if (viewerPawn.Dead)
                     {
                         var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
-
-                        string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
-
-                        return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+                        return "RICS.Pawn.Dead".Translate()
+                               + ReturnDivider
+                               + "RICS.Return.PawnDeadReason".Translate(deathInfo.ToString());
                     }
 
-                    // === BODY PART CHECK FOR APPAREL (critical safety net) ===`
-                    if (requireWearable)
-                    {
-                        if (!ApparelUtility.HasPartsToWear(viewerPawn, thingDef))
-                        {
-                            Logger.Debug($"Purchase blocked for {itemName}: pawn {viewerPawn.Name} is missing required body part(s) for apparel {thingDef.defName} (bodyPartGroups: {string.Join(", ", thingDef.apparel?.bodyPartGroups?.Select(g => g.defName) ?? new[] { "none" })})");
-                            // Return early BEFORE any coin deduction or karma award
-                            return "RICS.BICH.Return.MissingBodyPartForWear".Translate(itemName);
-                        }
-                    }
+                    // Body part check for apparel — before coins/spawn
+                    if (requireWearable && !ApparelUtility.HasPartsToWear(viewerPawn, thingDef))
+                        return "RICS.BICH.Return.MissingBodyPartForWear".Translate(itemName);
 
-                    // === HAR RACE RESTRICTION CHECK (critical safety net) ===
-                    // Runs BEFORE TakeCoins() and SpawnItemForPawn — prevents "coins taken, item vanishes".
-                    // Uses our new provider (delegates to HAR's verified CanWear/CanEquip).
+                    // HAR race restriction — before coins/spawn
                     if (requireEquippable || requireWearable)
                     {
                         var provider = CAPChatInteractiveMod.Instance?.AlienProvider;
@@ -267,113 +180,77 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                             if (!canUseItem)
                             {
-                                Logger.Debug($"HAR restriction blocked: {viewerPawn.def.defName} cannot {(requireWearable ? "wear" : "equip")} {itemName}");
-                                return "RICS.BICH.Return.HARRaceRestricted".Translate(itemName, requireWearable ? "worn" : "equipped");
+                                return "RICS.BICH.Return.HARRaceRestricted".Translate(
+                                    itemName, requireWearable ? "worn" : "equipped");
                             }
                         }
                     }
                 }
                 else
                 {
-                    // For regular buy commands, try to get the pawn but don't require it
+                    // Optional pawn for delivery positioning; null → colony-wide delivery
                     viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
-                    // Log if no pawn found for debugging
-                    if (viewerPawn == null)
-                    {
-                        Logger.Debug($"No pawn assigned to {messageWrapper.Username}, using colony-wide delivery");
-                    }
-                    else
-                    {
-                        Logger.Debug($"Using pawn {viewerPawn.Name} for delivery positioning");
-                    }
-                    // If no pawn, items will be delivered to a random colony location
                 }
 
-
-
                 // Deliver FIRST, then charge only for what landed (no overcharge when no space).
-                // - equip / wear / backpack → on-pawn first (locker only if that fails)
-                // - loose !buy items → LOCKER first, then map overflow (HandleRegularDelivery*)
-                // - animals / mechs → drop pod first (never locker)
+                // equip/wear/backpack → on-pawn first; loose !buy → locker first; animals/mechs → drop pod.
                 DeliveryResult deliveryResult;
-
-                if (requireEquippable || requireWearable || addToInventory)
+                if (needsPawn)
                 {
                     deliveryResult = ItemDeliveryHelper.SpawnItemForPawn(thingDef, quantity, quality, material,
                         viewerPawn, addToInventory, requireEquippable, requireWearable, preCreatedItem: finalItem);
                 }
                 else
                 {
-                    // Colony delivery: Rimazon locker before any drop pod / GenPlace
                     deliveryResult = ItemDeliveryHelper.SpawnItemForPawn(thingDef, quantity, quality, material,
                         viewerPawn, addToInventory: false, equipItem: false, wearItem: false, preCreatedItem: finalItem);
                 }
 
-                List<Thing> allSpawnedItems = new List<Thing>();
+                var allSpawnedItems = new List<Thing>();
                 allSpawnedItems.AddRange(deliveryResult.LockerDeliveredItems);
                 allSpawnedItems.AddRange(deliveryResult.DropPodDeliveredItems);
                 allSpawnedItems.AddRange(deliveryResult.DirectlyDeliveredItems);
 
                 int deliveredUnits = deliveryResult.TotalUnitsDelivered;
                 if (deliveredUnits <= 0 && allSpawnedItems.Count > 0)
-                {
-                    // Animals/mechs: one Thing each, stackCount usually 1
                     deliveredUnits = allSpawnedItems.Sum(t => t?.stackCount > 0 ? t.stackCount : 1);
-                }
 
-                // Safety net: animal/mech path used to leave counts at 0 while still spawning
+                // Safety net only when things actually exist in the spawn lists
                 if (deliveredUnits <= 0 &&
+                    allSpawnedItems.Count > 0 &&
                     deliveryResult.PrimaryMethod == DeliveryMethod.PawnDelivery &&
                     deliveryResult.DeliveryPosition.IsValid)
                 {
-                    deliveredUnits = quantity;
+                    deliveredUnits = Math.Max(1, allSpawnedItems.Sum(t => t?.stackCount > 0 ? t.stackCount : 1));
                     Logger.Warning(
-                        $"[BuyItem] PawnDelivery position OK but counts were 0 — " +
-                        $"charging full qty {quantity} for {itemName}");
+                        $"[BuyItem] PawnDelivery counts were 0 but {allSpawnedItems.Count} thing(s) spawned — " +
+                        $"using stack total {deliveredUnits} for {itemName}");
                 }
 
                 int undeliveredUnits = deliveryResult.UndeliveredCount;
                 if (undeliveredUnits <= 0 && deliveredUnits < quantity)
                     undeliveredUnits = quantity - deliveredUnits;
 
-                // Map for letters / look targets — works for nomadic pocket (no IsPlayerHome)
                 Map deliveryLookMap = ItemDeliveryHelper.ResolveDeliveryMap(
                     viewerPawn, allowUndergroundRedirect: false)
                     ?? viewerPawn?.Map
                     ?? Find.CurrentMap
                     ?? Find.Maps?.FirstOrDefault(m => m != null);
 
-                Logger.Debug(
-                    $"[BuyItem] spawn result method={deliveryResult.PrimaryMethod} " +
-                    $"pos={deliveryResult.DeliveryPosition} " +
-                    $"locker={deliveryResult.LockerDeliveredCount} " +
-                    $"podStacks={deliveryResult.DropPodDeliveredItems.Count} " +
-                    $"direct={deliveryResult.DirectlyDeliveredItems.Count} " +
-                    $"delivered={deliveredUnits}/{quantity} undelivered={undeliveredUnits} " +
-                    $"lookMap={ItemDeliveryHelper.DescribeMap(deliveryLookMap)} " +
-                    $"totalThings={allSpawnedItems.Count}");
-
-                // Nothing landed — do not charge
                 if (deliveredUnits <= 0)
                 {
                     Logger.Warning(
-                        $"[BuyItem] No space — cancelled {itemName} x{quantity} for {messageWrapper.Username} " +
-                        $"(no charge). locker full + map full.");
+                        $"[BuyItem] No space — cancelled {itemName} x{quantity} for {messageWrapper.Username} (no charge).");
                     ItemDeliveryHelper.LogMapSnapshot("[BuyItem no-space maps]");
                     return "RICS.BICH.Return.NoSpace".Translate(itemName, quantity);
                 }
 
-                // Charge only for units that actually delivered (partial cull support)
                 int chargeQty = deliveredUnits;
                 int chargePrice;
                 if (chargeQty >= quantity)
-                {
                     chargePrice = finalPrice;
-                }
                 else if (isUniqueWeapon && finalItem != null)
-                {
                     chargePrice = Math.Max(1, (int)(finalItem.MarketValue * chargeQty));
-                }
                 else
                 {
                     chargePrice = ItemConfigHelper.CalculateFinalPrice(storeItem, chargeQty, quality, material);
@@ -381,89 +258,47 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         chargePrice = Math.Max(1, (int)((long)finalPrice * chargeQty / quantity));
                 }
 
-                // Affordability already checked for full qty; partial charge is always ≤ that.
                 viewer.TakeCoins(chargePrice);
-                finalPrice = chargePrice; // invoices / letters use actual charge
-                quantity = chargeQty;     // messages report delivered amount
+                finalPrice = chargePrice;
+                quantity = chargeQty;
 
                 float karmaEarned = chargePrice * (settings.KarmaPerStoreItem / 100f);
                 if (karmaEarned > 0f)
-                {
                     viewer.GiveKarma(karmaEarned);
-                    Logger.Debug(
-                        $"Awarded {karmaEarned:F2} karma ({chargePrice} × KarmaPerStoreItem) " +
-                        $"for store purchase (delivered {chargeQty})");
-                }
 
-                // Set ownership for each spawned item if this is a direct pawn delivery
-                Logger.Debug(
-                    $"Setting ownership — equip={requireEquippable} wear={requireWearable} inv={addToInventory}");
-                if (requireEquippable || requireWearable || addToInventory)
+                if (needsPawn)
                 {
                     foreach (Thing spawnedItem in allSpawnedItems)
-                    {
-                        Logger.Debug($"Setting ownership for {spawnedItem.def.defName} to {viewerPawn?.Name}");
                         TrySetItemOwnership(spawnedItem, viewerPawn);
-                    }
                 }
 
-                // Create look targets - use the delivery position we know items will be at
                 LookTargets lookTargets = null;
-
                 if (thingDef.thingClass == typeof(Verse.Pawn))
                 {
                     if (deliveryResult.DeliveryPosition.IsValid && deliveryLookMap != null)
-                    {
                         lookTargets = new LookTargets(deliveryResult.DeliveryPosition, deliveryLookMap);
-                        Logger.Debug($"LookTargets animal spawn @ {deliveryResult.DeliveryPosition}");
-                    }
                 }
-                else if (requireEquippable || requireWearable || addToInventory)
+                else if (needsPawn)
                 {
                     lookTargets = viewerPawn != null ? new LookTargets(viewerPawn) : null;
-                    Logger.Debug($"LookTargets pawn: {viewerPawn?.Name}");
-                }
-                else if (deliveryResult.PrimaryMethod == DeliveryMethod.Locker)
-                {
-                    if (deliveryResult.DeliveryPosition.IsValid && deliveryLookMap != null)
-                    {
-                        lookTargets = new LookTargets(deliveryResult.DeliveryPosition, deliveryLookMap);
-                        Logger.Debug($"LookTargets locker @ {deliveryResult.DeliveryPosition}");
-                    }
                 }
                 else if (deliveryResult.DeliveryPosition.IsValid && deliveryLookMap != null)
                 {
                     lookTargets = new LookTargets(deliveryResult.DeliveryPosition, deliveryLookMap);
-                    Logger.Debug(
-                        $"LookTargets drop @ {deliveryResult.DeliveryPosition} on " +
-                        $"{ItemDeliveryHelper.DescribeMap(deliveryLookMap)}");
                 }
 
-                Logger.Debug($"Final LookTargets: {lookTargets?.ToString() ?? "null"}");
-
-                // Log success (quantity / finalPrice already adjusted to delivered charge)
-                Logger.Debug(
-                    $"[BuyItem] OK {messageWrapper.Username} bought {quantity} {itemName} " +
-                    $"for {finalPrice} {currencySymbol} → {deliveryResult.PrimaryMethod}" +
-                    (undeliveredUnits > 0 ? $" (culled {undeliveredUnits} no-space)" : ""));
-
-                // Send appropriate letter notification
                 string itemLabel = thingDef?.LabelCap ?? itemName;
-                string invoiceLabel = "";
-                string invoiceMessage = "";
+                string invoiceLabel;
+                string invoiceMessage;
                 string tClass = thingDef.thingClass.ToString();
 
-                // SPECIAL CASE: Animal deliveries - CHECK THIS FIRST
-                Logger.Debug($"Checking for special invoice case for item: {thingDef.thingClass} tClass: {tClass}");
                 if (thingDef.thingClass == typeof(Verse.Pawn) || tClass == "Verse.Pawn")
                 {
                     invoiceLabel = "RICS.BICH.Letter.Label.Pet".Translate(messageWrapper.Username);
                     invoiceMessage = CreateRimazonPetInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol);
                 }
-                // Then check for backpack/equip/wear
-                else if (addToInventory || requireEquippable || requireWearable)
+                else if (needsPawn)
                 {
-                    // Backpack, Equip, and Wear all involve direct delivery to pawn
                     string serviceType = requireEquippable ? "Equip" : requireWearable ? "Wear" : "Backpack";
                     string emoji = requireEquippable ? "RICS.BICH.Letter.Emoji.Equip".Translate() :
                                    requireWearable ? "RICS.BICH.Letter.Emoji.Wear".Translate() :
@@ -474,38 +309,24 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 else
                 {
-                    // Regular delivery with tracking
                     invoiceLabel = "RICS.BICH.Letter.Label.Standard".Translate(messageWrapper.Username);
-
-                    // Check if we have mixed delivery
                     if (deliveryResult.LockerDeliveredItems.Count > 0 && deliveryResult.DropPodDeliveredItems.Count > 0)
                     {
-                        // Use split invoice for mixed delivery
                         invoiceMessage = CreateSplitInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice,
                             currencySymbol, quality, material, deliveryResult);
                     }
                     else
                     {
-                        // Single delivery method
                         invoiceMessage = CreateRimazonInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice,
                             currencySymbol, quality, material, deliveryResult);
                     }
                 }
 
-                // Send the letter
                 if (UseItemCommandHandler.IsMajorPurchase(finalPrice, quality))
-                {
                     MessageHandler.SendGoldLetter(invoiceLabel, invoiceMessage, lookTargets);
-                }
                 else
-                {
                     MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage, lookTargets);
-                }
 
-                // Return success message
-                // string action = addToInventory ? "added to your pawn's inventory" :
-                //              requireEquippable ? "equipped to your pawn" :
-                //              requireWearable ? "worn by your pawn" : "delivered via Rimazon";
                 string action = requireEquippable ? "RICS.BICH.Return.Action.Equipped".Translate() :
                                 requireWearable ? "RICS.BICH.Return.Action.Worn".Translate() :
                                 addToInventory ? "RICS.BICH.Return.Action.AddedToInventory".Translate() :
@@ -519,16 +340,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
 
                 if (undeliveredUnits > 0)
-                {
-                    success += " " + "RICS.BICH.Return.PartialNoSpace".Translate(undeliveredUnits, itemName);
-                }
+                    success += ReturnDivider + "RICS.BICH.Return.PartialNoSpace".Translate(undeliveredUnits, itemName);
 
                 return success;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in HandleBuyItem: {ex}");
-                // return "Error processing purchase. Please try again.";
+                Logger.Error($"[BuyItem] Error in HandleBuyItem: {ex}");
                 return "RICS.BICH.Return.GenericError".Translate();
             }
         }
@@ -634,42 +452,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return body;
         }
 
-        private static string BuildDeliveryDetails(int lockerCount, int dropPodCount, QualityCategory? quality, ThingDef material)
-        {
-            string deliveryInfo = "";
-
-            // Add delivery method
-            if (lockerCount > 0 && dropPodCount > 0)
-            {
-                deliveryInfo += "RICS.BICH.Letter.Delivery.Mixed".Translate(lockerCount.ToString(), dropPodCount.ToString());
-            }
-            else if (lockerCount > 0)
-            {
-                deliveryInfo += "RICS.BICH.Letter.Delivery.Locker".Translate(lockerCount.ToString());
-            }
-            else
-            {
-                deliveryInfo += "RICS.BICH.Letter.Delivery.DropPod".Translate();
-            }
-
-            // Add quality if specified
-            if (quality.HasValue)
-            {
-                deliveryInfo += "RICS.BICH.Letter.Quality".Translate(quality.Value.ToString());
-            }
-
-            // Add material if specified
-            if (material != null)
-            {
-                deliveryInfo += "RICS.BICH.Letter.Material".Translate(material.LabelCap);
-            }
-
-            return deliveryInfo;
-        }
-
-        // Alternative: Split invoice method
         private static string CreateSplitInvoice(string username, string itemName, int quantity, int price,
-    string currencySymbol, QualityCategory? quality, ThingDef material, DeliveryResult deliveryResult)
+            string currencySymbol, QualityCategory? quality, ThingDef material, DeliveryResult deliveryResult)
         {
             int lockerCount = deliveryResult.LockerDeliveredCount;
             int dropPodCount = deliveryResult.DropPodDeliveredCount;
@@ -768,105 +552,69 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             return invoice;
         }
-        // ===== PossessionsPlus  METHODS =====
-
+        /// <summary>Best-effort PossessionsPlus ownership (no-op if mod missing).</summary>
         private static void TrySetItemOwnership(Thing item, Verse.Pawn ownerPawn)
         {
             try
             {
                 if (item == null || ownerPawn == null)
-                {
-                    Logger.Debug($"Cannot set ownership - item or pawn is null");
                     return;
-                }
 
-                Logger.Debug($"Attempting to set ownership for {item.def.defName} to pawn {ownerPawn.Name}");
-
-                // Use reflection to get the PossessionsPlus ownership component
                 Type ownershipCompType = Type.GetType("PossessionsPlus.CompOwnedByPawn_Item, PossessionsPlus");
-
                 if (ownershipCompType == null)
-                {
-                    Logger.Debug("PossessionsPlus mod not found - ownership not set");
                     return;
-                }
 
                 if (!(item is ThingWithComps thingWithComps))
-                {
-                    Logger.Debug($"Item {item.def.defName} is not a ThingWithComps - ownership not set");
                     return;
-                }
 
-                // Get the ownership component from the item
                 var getCompMethod = typeof(ThingWithComps).GetMethod("GetComp")?.MakeGenericMethod(ownershipCompType);
                 if (getCompMethod == null)
-                {
-                    Logger.Debug("Could not find GetComp method - ownership not set");
                     return;
-                }
 
                 var ownershipComp = getCompMethod.Invoke(thingWithComps, null);
-
                 if (ownershipComp == null)
-                {
-                    Logger.Debug($"Item {item.def.defName} does not have CompOwnedByPawn_Item component - ownership not set");
                     return;
-                }
 
-                Logger.Debug($"Found ownership component for {item.def.defName}");
+                var flags = System.Reflection.BindingFlags.Instance
+                            | System.Reflection.BindingFlags.NonPublic
+                            | System.Reflection.BindingFlags.Public;
 
-                // Direct field assignment - bypasses all checks
-                var ownerField = ownershipCompType.GetField("owner", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
-                if (ownerField != null)
-                {
-                    ownerField.SetValue(ownershipComp, ownerPawn);
-                    Logger.Debug($"Owner field set to {ownerPawn.Name}");
-                }
-                else
-                {
-                    Logger.Debug("Could not find owner field - ownership not set");
+                var ownerField = ownershipCompType.GetField("owner", flags);
+                if (ownerField == null)
                     return;
-                }
 
-                // Set ownership start day
-                var startDayField = ownershipCompType.GetField("OwnershipStartDay", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+                ownerField.SetValue(ownershipComp, ownerPawn);
+
+                var startDayField = ownershipCompType.GetField("OwnershipStartDay", flags);
                 if (startDayField != null)
                 {
                     int currentDay = GenLocalDate.DayOfYear(ownerPawn.MapHeld ?? Find.CurrentMap) + 1;
                     startDayField.SetValue(ownershipComp, currentDay);
-                    Logger.Debug($"OwnershipStartDay set to {currentDay}");
                 }
 
-                // Optional: Add to inheritance history
                 try
                 {
                     var inheritanceHistoryType = Type.GetType("PossessionsPlus.InheritanceHistoryComp, PossessionsPlus");
-                    if (inheritanceHistoryType != null)
+                    var addHistoryMethod = inheritanceHistoryType?.GetMethod(
+                        "AddHistoryEntry",
+                        System.Reflection.BindingFlags.Static
+                        | System.Reflection.BindingFlags.Public
+                        | System.Reflection.BindingFlags.NonPublic);
+
+                    addHistoryMethod?.Invoke(null, new object[]
                     {
-                        var addHistoryMethod = inheritanceHistoryType.GetMethod("AddHistoryEntry",
-                            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-
-                        if (addHistoryMethod != null)
-                        {
-                            // addHistoryMethod.Invoke(null, new object[] { item, ownerPawn, "Purchased via Rimazon" });
-                            addHistoryMethod.Invoke(null, new object[] { item, ownerPawn, "RICS.BICH.Ownership.HistoryEntry".Translate() });
-                            Logger.Debug("Added inheritance history entry");
-                        }
-                    }
+                        item, ownerPawn, "RICS.BICH.Ownership.HistoryEntry".Translate()
+                    });
                 }
-                catch (Exception ex)
+                catch
                 {
-                    Logger.Debug($"Could not add inheritance history (this is optional): {ex.Message}");
+                    // Optional history — ignore
                 }
-
-                Logger.Debug($"Successfully set ownership of {item.def.defName} to {ownerPawn.Name}");
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error setting item ownership: {ex}");
+                Logger.Error($"[BuyItem] Error setting item ownership: {ex}");
             }
         }
-
-        // ===== DEBUG METHODS =====
     }
 }
