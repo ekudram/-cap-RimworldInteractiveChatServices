@@ -1,4 +1,4 @@
-// BuyPawnCommadnHandler.cs
+// BuyPawnCommandHandler.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -19,7 +19,6 @@
 using _CAP__Chat_Interactive.Command.CommandHelpers;
 using _CAP__Chat_Interactive.Utilities;
 using RimWorld;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,42 +27,25 @@ using Verse;
 namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     /// <summary>
-    /// Handles the !pawn command from chat, parsing arguments and generating a pawn for the viewer.
+    /// Handles !pawn purchase and related pawn lookup for chat viewers.
     /// </summary>
     public static class BuyPawnCommandHandler
     {
-        /// <summary>
-        /// Handles the !pawn command from chat, parsing arguments and generating a pawn for the viewer.
-        /// </summary>
-        /// <param name="messageWrapper"></param>
-        /// <param name="args"></param>
-        /// <returns>
-        /// Message to chat indicating success or failure, including details about the pawn or error.
-        /// </returns>
+        private const string ReturnDivider = " | ";
+
         public static string HandleBuyPawnCommand(ChatMessageWrapper messageWrapper, string[] args)
         {
             try
             {
-                // Parse arguments
                 ParsePawnParameters(args, out string raceName, out string xenotypeName, out string genderName, out string ageString);
 
-                Logger.Debug($"Parsed - Race: {raceName}, Xenotype: {xenotypeName}, Gender: {genderName}, Age: {ageString}");
-
-                // Validate that we have at least a race name
                 if (string.IsNullOrEmpty(raceName))
-                {
-                    // return "You must specify a race. Usage: !pawn [race] [xenotype] [gender] [age]";
                     return "RICS.BPCH.Usage".Translate();
-                }
 
-                // Check if the race exists - try to find it
                 var raceDef = RaceUtils.FindRaceByName(raceName);
-
                 if (raceDef == null)
                 {
-                    // Try to find similar races for better error messages
-                    var allRaces = RaceUtils.GetAllHumanlikeRaces();
-                    var similarRaces = allRaces
+                    var similarRaces = RaceUtils.GetAllHumanlikeRaces()
                         .Where(r => r.defName.IndexOf(raceName, StringComparison.OrdinalIgnoreCase) >= 0 ||
                                    r.label.IndexOf(raceName, StringComparison.OrdinalIgnoreCase) >= 0)
                         .Select(r => r.label)
@@ -71,25 +53,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         .ToList();
 
                     string errorMessage = "RICS.BPCH.RaceNotFound".Translate(raceName);
-
                     if (similarRaces.Any())
-                    {
-                        errorMessage += " " + "RICS.BPCH.RaceNotFound.Suggestion".Translate(string.Join(", ", similarRaces));
-                    }
+                        errorMessage += ReturnDivider + "RICS.BPCH.RaceNotFound.Suggestion".Translate(string.Join(", ", similarRaces));
                     else
-                    {
-                        errorMessage += " " + "RICS.BPCH.RaceNotFound.UseList".Translate();
-                    }
-
+                        errorMessage += ReturnDivider + "RICS.BPCH.RaceNotFound.UseList".Translate();
                     return errorMessage;
                 }
 
-                // Call the existing handler with parsed parameters
                 return HandleBuyPawnCommandInternal(messageWrapper, raceName, xenotypeName, genderName, ageString);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error parsing pawn command: {ex}");
+                Logger.Error($"[BuyPawn] Error parsing pawn command: {ex}");
                 return "RICS.BPCH.ParseError".Translate();
             }
         }
@@ -189,373 +164,221 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        /// <summary>
-        /// Handles the internal logic of buying a pawn after parameters have been parsed and validated.
-        /// </summary>
-        /// <param name="messageWrapper"></param>
-        /// <param name="raceName"></param>
-        /// <param name="xenotypeName"></param>
-        /// <param name="genderName"></param>
-        /// <param name="ageString"></param>
-        /// <returns></returns>
         private static string HandleBuyPawnCommandInternal(ChatMessageWrapper messageWrapper, string raceName, string xenotypeName = "Baseliner", string genderName = "Random", string ageString = "Random")
         {
             try
             {
                 if (!IsGameReadyForPawnPurchase())
-                {
                     return "RICS.BPCH.GameNotReady".Translate();
-                }
 
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
-
                 var viewer = Viewers.GetViewer(messageWrapper);
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
 
-                // Check if viewer already has a pawn assigned using the assignment manager
-                Pawn existingPawn = assignmentManager.GetAssignedPawn(messageWrapper);
-                if (existingPawn != null)
-                {
-                    // return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn health to check on them.";
+                // Already has living player-faction pawn?
+                Pawn existingPawn = assignmentManager?.GetAssignedPawn(messageWrapper);
+                if (IsBlockingExistingPawn(existingPawn))
                     return "RICS.BPCH.AlreadyHasPawn".Translate(existingPawn.Name.ToStringFull);
-                }
 
-                // Redundant check using platform ID for safety (in case assignment manager is null or misbehaving)
+                // Platform-id + legacy username fallbacks (older saves)
                 if (assignmentManager != null)
                 {
-                    // Get the platform identifier directly from the message
                     string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
-
-                    // Check if this platform ID exists in the assignments dictionary
                     if (assignmentManager.viewerPawnAssignments.TryGetValue(platformId, out string thingId))
                     {
                         existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
-                        if (existingPawn != null && !existingPawn.Dead && existingPawn.Faction == Faction.OfPlayer)
-                        {
-                            // return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
+                        if (IsBlockingExistingPawn(existingPawn))
                             return "RICS.BPCH.AlreadyHasPawn".Translate(existingPawn.Name.ToStringFull);
-                        }
                     }
 
-                    // Also check for legacy username assignments as fallback (for older saves)
                     string usernameLower = messageWrapper.Username.ToLowerInvariant();
                     if (assignmentManager.viewerPawnAssignments.TryGetValue(usernameLower, out thingId))
                     {
                         existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
-                        if (existingPawn != null && !existingPawn.Dead && existingPawn.Spawned)
-                        {
-                            // return $"You already have a pawn in the colony: {existingPawn.Name}! Use !mypawn to check on them.";
+                        if (IsBlockingExistingPawn(existingPawn))
                             return "RICS.BPCH.AlreadyHasPawn".Translate(existingPawn.Name.ToStringFull);
-                        }
                     }
                 }
 
-                // Validate the pawn request FIRST to get raceSettings
                 if (!IsValidPawnRequest(raceName, xenotypeName, out RaceSettings raceSettings))
                 {
-                    // Provide specific error messages
                     if (raceSettings == null)
-                        // return $"Race '{raceName}' not found or not humanlike.";
                         return "RICS.BPCH.RaceNotFound".Translate(raceName);
-
                     if (!raceSettings.Enabled)
-                        // return $"Race '{raceName}' is disabled for purchase.";
                         return "RICS.BPCH.RaceDisabled".Translate(raceName);
-
-                    // return $"Invalid pawn request for {raceName}.";
                     return "RICS.BPCH.InvalidRaceRequest".Translate(raceName);
                 }
 
-                // NOW parse age with the validated raceSettings
-                int age = ParseAge(ageString, raceSettings);
-
-                // Validate age against race settings
-                if (age < raceSettings.MinAge || age > raceSettings.MaxAge)
+                // Explicit ages must be in range (no silent clamp); random stays within range
+                if (!TryResolveAge(ageString, raceSettings, out int age))
                 {
-                    // return $"Age must be between {raceSettings.MinAge} and {raceSettings.MaxAge} for {raceName}.";
-                    return "RICS.BPCH.AgeOutOfRange".Translate(raceName, raceSettings.MinAge, raceSettings.MaxAge);
+                    return "RICS.BPCH.AgeOutOfRange".Translate(
+                        raceSettings.MinAge, raceSettings.MaxAge, raceName);
                 }
 
-                // === XENOTYPE RESOLUTION & VALIDATION ===
-                // WHY: Xenotypes are a Biotech DLC feature only.
-                // When Biotech is disabled:
-                //   - raceSettings.EnabledXenotypes is empty (see RaceSettingsManager.CreateDefaultSettings)
-                //   - All pawns are Baseliner by definition
-                //   - Any user-supplied xenotype name must be ignored gracefully
-                // This guard keeps behavior correct, avoids unnecessary work / confusing debug logs,
-                // and matches the defensive pattern already used in IsValidPawnRequest and GenerateAndSpawnPawn.
-
+                // Xenotype: Biotech only; resolve once here (GenerateAndSpawnPawn uses final name as-is)
                 string finalXenotypeName = "Baseliner";
-
                 if (ModsConfig.BiotechActive)
                 {
-                    finalXenotypeName = xenotypeName;  // start with cleaned user input
-
-                    // Auto-pick logic if no xenotype given or Baseliner is disabled for this race
-                    // HAR support: now prefers race-specific xenotype (e.g. Nyaron race → Nyaron xenotype)
                     if (string.IsNullOrEmpty(xenotypeName) ||
                         xenotypeName.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
                     {
                         if (!raceSettings.EnabledXenotypes.TryGetValue("Baseliner", out bool baselinerEnabled) || !baselinerEnabled)
-                        {
                             finalXenotypeName = PickRandomEnabledXenotype(raceSettings, raceName);
-                            Logger.Debug($"Baseliner disabled for {raceName} → auto-picked '{finalXenotypeName}' from RaceSettings (HAR-aware)");
-                        }
                         else
-                        {
                             finalXenotypeName = "Baseliner";
-                        }
                     }
                     else
                     {
                         finalXenotypeName = GetXenotypeDefName(xenotypeName, raceSettings);
                     }
 
-                    // Now validate the final resolved xenotype
                     bool isEnabled = raceSettings.EnabledXenotypes.TryGetValue(finalXenotypeName, out bool enabled)
                         ? enabled
                         : raceSettings.AllowCustomXenotypes;
 
                     if (!isEnabled)
-                    {
-                        return "RICS.BPCH.XenotypeDisabled".Translate(xenotypeName, raceName);  // show original user input in error
-                    }
+                        return "RICS.BPCH.XenotypeDisabled".Translate(xenotypeName, raceName);
 
                     if (!raceSettings.AllowCustomXenotypes && finalXenotypeName != "Baseliner")
-                    {
                         return "RICS.BPCH.CustomXenotypesDisabled".Translate(raceName);
-                    }
                 }
-                else
-                {
-                    // No Biotech DLC → force Baseliner. Ignore any xenotype the user typed.
-                    // This is the only correct behavior. Debug log so developers see it during testing.
-                    if (!string.IsNullOrEmpty(xenotypeName) && !xenotypeName.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Logger.Debug($"Ignoring xenotype argument '{xenotypeName}' for race '{raceName}' because Biotech DLC is not active. Forcing Baseliner.");
-                    }
-                    finalXenotypeName = "Baseliner";
-                }
+                // else: no Biotech → Baseliner only (ignore user xenotype arg)
 
-                // Price from RaceSettings (no manual adding)
                 int finalPrice = raceSettings.BasePrice;
-                // if Xenotype get that price instead from Race Settings.
                 if (raceSettings.XenotypePrices.TryGetValue(finalXenotypeName, out float price))
                     finalPrice = (int)price;
 
-                // Check if viewer can afford
                 if (viewer.Coins < finalPrice)
                 {
-                    // return $"You need {finalPrice}{currencySymbol}
-                    // to purchase a {raceName} pawn! You have {viewer.Coins}{currencySymbol}.";
                     return "RICS.BPCH.InsufficientFunds"
-                        .Translate(finalPrice, currencySymbol, raceName, viewer.Coins, currencySymbol);
+                        .Translate(finalPrice, currencySymbol, raceName, viewer.Coins);
                 }
 
-                // Generate and spawn the pawn
                 var result = GenerateAndSpawnPawn(messageWrapper.Username, raceName, finalXenotypeName, genderName, age, raceSettings);
 
-                if (result.Success)
+                if (!result.Success)
+                    return result.Message ?? "RICS.BPCH.Error.Purchase".Translate();
+
+                viewer.TakeCoins(finalPrice);
+                float karmaEarned = finalPrice * settings.KarmaPerStoreItem / 100f;
+                if (karmaEarned > 0f)
+                    viewer.GiveKarma(karmaEarned);
+
+                if (result.Pawn != null && assignmentManager != null)
+                    assignmentManager.AssignPawnToViewer(messageWrapper, result.Pawn);
+
+                string locationInfo = "RICS.BPCH.Letter.Delivery.Unknown".Translate();
+                if (result.DeliveryPosition.IsValid)
                 {
-                    // Deduct coins and update karma
-                    viewer.TakeCoins(finalPrice);
-                    // Use the new store karma setting (pawns are expensive, so they naturally give more karma)
-                    float karmaEarned = finalPrice * settings.KarmaPerStoreItem / 100f;
-                    if (karmaEarned > 0f)
-                    {
-                        viewer.GiveKarma(karmaEarned);
-                        Logger.Debug($"Awarded {karmaEarned:F2} karma for pawn purchase (price × KarmaPerStoreItem / 100)");
-                    }
-
-                    // Save pawn assignment to viewer
-                    if (result.Pawn != null && assignmentManager != null)
-                    {
-                        assignmentManager.AssignPawnToViewer(messageWrapper, result.Pawn);
-                    }
-
-                    // Use the exact drop position we already know (bypasses timing issues)
-                    string locationInfo = "RICS.BPCH.Letter.Delivery.Unknown".Translate();
-
-                    if (result.DeliveryPosition.IsValid)
-                    {
-                        string mapName = result.Pawn?.Map?.Parent?.LabelCap ?? "Home Map";
-                        locationInfo = "RICS.BPCH.Letter.Delivery".Translate(
-                            result.DeliveryPosition.x,
-                            result.DeliveryPosition.z,
-                            mapName);
-                        Logger.Debug($"Letter using known drop position: {result.DeliveryPosition}");
-                    }
-                    else if (result.Pawn != null && result.Pawn.Map != null)
-                    {
-                        IntVec3 pos = result.Pawn.PositionHeld;
-                        string mapName = result.Pawn.Map.Parent?.LabelCap ?? "Home Map";
-                        locationInfo = "RICS.BPCH.Letter.Delivery".Translate(pos.x, pos.z, mapName);
-                    }
-
-                    // Send notification
-                    string xenotypeInfo = finalXenotypeName != "Baseliner" ? $" ({finalXenotypeName})" : "";
-                    string ageInfo = ageString != "Random" ? $", Age: {age}" : "";
-
-                    // Send gold letter for pawn purchases (always considered major)
-                    string goldLetterTitle = "RICS.BPCH.Letter.Title".Translate(raceName);
-                    string goldLetterText = "RICS.BPCH.Letter.Text".Translate(
-                        messageWrapper.Username,
-                        raceName,
-                        xenotypeInfo,
-                        age.ToString(),
-                        finalPrice.ToString("N0"),
-                        currencySymbol,
-                        result.Pawn?.Name.ToStringFull ?? "Unnamed",
-                        locationInfo  // New {7} placeholder
-                    );
-                    Logger.Debug("RICS.BPCH.Letter.Text".Translate(
-                        messageWrapper.Username,
-                        raceName,
-                        xenotypeInfo,
-                        age.ToString(),
-                        finalPrice.ToString("N0"),
-                        currencySymbol,
-                        result.Pawn?.Name.ToStringFull ?? "Unnamed",
-                        locationInfo  // New {7} placeholder
-                    ));
-                    // Pass the pawn as look target so clicking the letter jumps to it
-                    MessageHandler.SendGoldLetter(goldLetterTitle, goldLetterText, new LookTargets(result.Pawn));
-
-                    // Return success message with more details
-                    return "RICS.BPCH.PurchaseSuccess".Translate(
-                        raceName,
-                        xenotypeInfo,
-                        finalPrice,
-                        currencySymbol,
-                        result.Pawn?.Name.ToStringFull ?? "your new pawn"
-                    ) + $" {locationInfo}";  // Optional: add location to chat response too
+                    string mapName = result.Pawn?.Map?.Parent?.LabelCap ?? "Home Map";
+                    locationInfo = "RICS.BPCH.Letter.Delivery".Translate(
+                        result.DeliveryPosition.x, result.DeliveryPosition.z, mapName);
                 }
-                else
+                else if (result.Pawn != null && result.Pawn.Map != null)
                 {
-                    return $"Failed to purchase pawn: {result.Message}";
+                    IntVec3 pos = result.Pawn.PositionHeld;
+                    string mapName = result.Pawn.Map.Parent?.LabelCap ?? "Home Map";
+                    locationInfo = "RICS.BPCH.Letter.Delivery".Translate(pos.x, pos.z, mapName);
                 }
+
+                string xenotypeInfo = finalXenotypeName != "Baseliner" ? $" ({finalXenotypeName})" : "";
+                string goldLetterTitle = "RICS.BPCH.Letter.Title".Translate(raceName);
+                string goldLetterText = "RICS.BPCH.Letter.Text".Translate(
+                    messageWrapper.Username,
+                    raceName,
+                    xenotypeInfo,
+                    age.ToString(),
+                    finalPrice.ToString("N0"),
+                    currencySymbol,
+                    result.Pawn?.Name.ToStringFull ?? "Unnamed",
+                    locationInfo);
+
+                MessageHandler.SendGoldLetter(goldLetterTitle, goldLetterText, new LookTargets(result.Pawn));
+
+                return "RICS.BPCH.PurchaseSuccess".Translate(
+                    raceName,
+                    xenotypeInfo,
+                    finalPrice,
+                    currencySymbol,
+                    result.Pawn?.Name.ToStringFull ?? "your new pawn"
+                ) + ReturnDivider + locationInfo;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling buy pawn command: {ex}");
+                Logger.Error($"[BuyPawn] Error handling buy pawn command: {ex}");
                 return "RICS.BPCH.Error.Purchase".Translate();
             }
         }
 
-        /// <summary>
-        /// Generates a pawn based on the specified parameters and attempts to spawn it in the player's home map.
-        /// </summary>
-        /// <param name="username"></param>
-        /// <param name="raceName"></param>
-        /// <param name="xenotypeName"></param>
-        /// <param name="genderName"></param>
-        /// <param name="age"></param>
-        /// <param name="raceSettings"></param>
-        /// <returns></returns>
+        /// <summary>Living pawn still belonging to the player blocks a new purchase.</summary>
+        private static bool IsBlockingExistingPawn(Pawn pawn)
+        {
+            if (pawn == null || pawn.Dead)
+                return false;
+            try
+            {
+                return pawn.Faction == Faction.OfPlayer || pawn.Faction?.IsPlayer == true;
+            }
+            catch
+            {
+                return pawn.Spawned;
+            }
+        }
+
+        /// <param name="xenotypeName">Already-resolved final xenotype defName (or Baseliner). Do not re-auto-pick here.</param>
         private static BuyPawnResult GenerateAndSpawnPawn(string username, string raceName, string xenotypeName, string genderName, int age, RaceSettings raceSettings)
         {
             try
             {
-                Logger.Debug($"GenerateAndSpawnPawn:   xenotypeName: {xenotypeName}");
-
-                // Prefer where the streamer is (CurrentMap / pocket). Sealed→surface only when
-                // ResolveDeliveryMap decides the sealed map has no colony presence.
                 Map map = ItemDeliveryHelper.ResolveDeliveryMap(anchorPawn: null, allowUndergroundRedirect: true);
                 if (map == null)
-                {
                     return new BuyPawnResult(false, "RICS.BPCH.NoHomeMap".Translate());
-                }
 
-                // Get pawn kind def for the race
                 var pawnKindDef = GetPawnKindDefForRace(raceName);
                 if (pawnKindDef == null)
-                {
-                    // return new BuyPawnResult(false, $"Could not find pawn kind for race: {raceName}");
                     return new BuyPawnResult(false, "RICS.BPCH.PawnKindNotFound".Translate(raceName));
-                }
 
-                // === XENOTYPE RESOLUTION (RaceSettings is truth) ===
+                // Resolve XenotypeDef for generator (name already finalized by caller)
                 XenotypeDef xenotypeDef = null;
-                string resolvedXenotype = xenotypeName;
-
-                // Auto-pick if nothing specified or Baseliner is disabled for this race
-                // HAR support: now prefers race-specific xenotype (Nyaron example)
-                if (string.IsNullOrEmpty(xenotypeName) || xenotypeName.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
+                string resolvedXenotype = string.IsNullOrEmpty(xenotypeName) ? "Baseliner" : xenotypeName;
+                if (ModsConfig.BiotechActive && !resolvedXenotype.Equals("Baseliner", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (!raceSettings.EnabledXenotypes.TryGetValue("Baseliner", out bool baselinerEnabled) || !baselinerEnabled)
-                    {
-                        resolvedXenotype = PickRandomEnabledXenotype(raceSettings, raceName);
-                        Logger.Debug($"Baseliner disabled → auto-picked '{resolvedXenotype}' from RaceSettings (HAR-aware)");
-                    }
-                    else
-                    {
-                        resolvedXenotype = "Baseliner";
-                    }
-                }
-                else
-                {
-                    resolvedXenotype = GetXenotypeDefName(xenotypeName, raceSettings);
-                }
-
-                // Try real XenotypeDef only for forcing (HAR handles the rest)
-                if (ModsConfig.BiotechActive && resolvedXenotype != "Baseliner")
-                {
-                    xenotypeDef = DefDatabase<XenotypeDef>.GetNamedSilentFail(resolvedXenotype);
-                    if (xenotypeDef == null)
-                    {
-                        xenotypeDef = DefDatabase<XenotypeDef>.AllDefs
-                            .FirstOrDefault(x => x.label.Equals(resolvedXenotype, StringComparison.OrdinalIgnoreCase));
-                    }
-
-                    if (xenotypeDef != null)
-                        Logger.Debug($"[BuyPawn] Forcing real XenotypeDef: {xenotypeDef.defName}");
-                    else
-                        Logger.Debug($"[BuyPawn] No real XenotypeDef for '{resolvedXenotype}' → null (HAR will handle)");
+                    xenotypeDef = DefDatabase<XenotypeDef>.GetNamedSilentFail(resolvedXenotype)
+                                  ?? DefDatabase<XenotypeDef>.AllDefs
+                                      .FirstOrDefault(x => x.label.Equals(resolvedXenotype, StringComparison.OrdinalIgnoreCase));
                 }
 
                 var raceDef = RaceUtils.FindRaceByName(raceName);
                 if (raceDef == null)
-                {
-                    // return new BuyPawnResult(false, $"Race '{raceName}' not found.");
                     return new BuyPawnResult(false, "RICS.BPCH.RaceDefNotFound".Translate(raceName));
-                }
 
-                // Validate gender against race restrictions
-                //var raceSettings = RaceSettingsManager.GetRaceSettings(raceDef.defName);
                 if (raceSettings != null)
                 {
                     var requestedGender = ParseGender(genderName);
                     if (requestedGender.HasValue && !IsGenderAllowed(raceSettings.AllowedGenders, requestedGender.Value))
                     {
                         string allowedText = GetAllowedGendersDescription(raceSettings.AllowedGenders);
-                        //return new BuyPawnResult(false,
-                        //    $"The {raceName} race allows {allowedText}. Please choose a different gender or use 'random'.");
-                        return new BuyPawnResult(false,
-                            "RICS.BPCH.GenderNotAllowed".Translate(raceName, allowedText));
+                        return new BuyPawnResult(false, "RICS.BPCH.GenderNotAllowed".Translate(raceName, allowedText));
                     }
                 }
 
-                Logger.Debug($"GenerateAndSpawnPawn: XenotypeDef = {(xenotypeDef != null ? xenotypeDef.defName + " (" + xenotypeDef.LabelCap + ")" : "null → Baseliner fallback")}");
-
-                // Prepare generation request with specific age and xenotype
-                // === EXACT 1.6 PAWNGENERATIONREQUEST (verified from decompile) ===
-                // forceNoGear = false lets vanilla generate normal starting clothes (fixes naked pawns).
-                // Vacsuit is layered on top for space maps only.
+                // forceNoGear=false: normal starting clothes; dontGiveWeapon=true: clean delivery
                 var request = new PawnGenerationRequest(
-                    kind: pawnKindDef,                                      // HAR-aware pawn kind (already resolved by GetPawnKindDefForRace)
-                    faction: Faction.OfPlayer,                              // Pawn joins colony immediately (vanilla new-colonist behavior)
-                    context: PawnGenerationContext.NonPlayer,               // NonPlayer = purchased viewer pawn (matches caravans/traders)
-                    tile: map.Tile,                                         // Required for proper world-tile context
-                    forceGenerateNewPawn: true,                             // Always fresh pawn, never reuse world-pawn template
-                    allowDead: false,                                       // Never spawn dead
-                    allowDowned: false,                                     // Fresh colonists should not be downed
-                    canGeneratePawnRelations: false,                        // No unwanted family links for purchased pawns
-                    mustBeCapableOfViolence: false,                         // Allow peaceful colonists (viewer choice)
-                    colonistRelationChanceFactor: 0f,                       // No extra colonist relations
-                    forceAddFreeWarmLayerIfNeeded: true,                    // Safety for cold maps
+                    kind: pawnKindDef,
+                    faction: Faction.OfPlayer,
+                    context: PawnGenerationContext.NonPlayer,
+                    tile: map.Tile,
+                    forceGenerateNewPawn: true,
+                    allowDead: false,
+                    allowDowned: false,
+                    canGeneratePawnRelations: false,
+                    mustBeCapableOfViolence: false,
+                    colonistRelationChanceFactor: 0f,
+                    forceAddFreeWarmLayerIfNeeded: true,
                     allowGay: true,
-                    allowPregnant: false,                                   // No pregnant purchased pawns
+                    allowPregnant: false,
                     allowFood: true,
                     allowAddictions: true,
                     inhabitant: false,
@@ -564,63 +387,39 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     worldPawnFactionDoesntMatter: false,
                     biocodeWeaponChance: 0f,
                     biocodeApparelChance: 0f,
-                    fixedBiologicalAge: age,                                // Viewer-requested age (or random within race limits)
+                    fixedBiologicalAge: age,
                     fixedChronologicalAge: null,
-                    fixedGender: ParseGender(genderName),                   // Viewer-requested gender or random
-                    fixedLastName: null,                                    // We override name later with username
-                    forceNoIdeo: false,                                     // Let Ideology apply normally
-                    forceNoBackstory: false,                                // Let vanilla backstories generate
+                    fixedGender: ParseGender(genderName),
+                    fixedLastName: null,
+                    forceNoIdeo: false,
+                    forceNoBackstory: false,
                     forbidAnyTitle: false,
                     forceDead: false,
-                    forcedXenotype: xenotypeDef,                            // HAR-aware xenotype (Nyaron example) — null falls back correctly
+                    forcedXenotype: xenotypeDef,
                     forceBaselinerChance: 0f,
-                    developmentalStages: DevelopmentalStage.Adult,          // Adult unless race forces otherwise
-                    forceNoGear: false,                                     // Let vanilla generate starting clothes (fixes naked pawns)
-                    dontGiveWeapon: true,                                   // No random weapon (we want clean delivery)
+                    developmentalStages: DevelopmentalStage.Adult,
+                    forceNoGear: false,
+                    dontGiveWeapon: true,
                     onlyUseForcedBackstories: false,
-                    maximumAgeTraits: -1,                                   // Let vanilla decide trait count
+                    maximumAgeTraits: -1,
                     minimumAgeTraits: 0
                 );
 
-                Logger.Debug($"PawnGenerationRequest built for buyer '{username}': " +
-                             $"Kind={pawnKindDef?.defName ?? "null"}, " +
-                             $"Xenotype={xenotypeDef?.defName ?? "null (HAR default)"}, " +
-                             $"Age={age}, Gender={ParseGender(genderName)?.ToString() ?? "Random"}");
-
-                Logger.Debug($"ForcedXenotype in request: {(request.ForcedXenotype?.defName ?? "null (defaults to Baseliner)")}");
-
-                // Generate pawn using RimWorld's full system (PawnGenerator + PawnGenerationRequest)
-                // Why: This is the exact same path vanilla uses for new colonists, caravans, and trader pawns.
-                // It correctly applies forcedXenotype, age, gender, and HAR race rules.
                 Pawn pawn = PawnGenerator.GeneratePawn(request);
-
-                if (pawn != null)
+                if (pawn == null)
                 {
-                    var actualXeno = pawn.genes?.Xenotype?.defName ?? "no genes component";
-                    Logger.Debug($"Pawn generated successfully - Xenotype: {actualXeno}");
-                }
-                else
-                {
-                    Logger.Error("PawnGenerator returned null pawn!");
+                    Logger.Error("[BuyPawn] PawnGenerator returned null");
                     return new BuyPawnResult(false, "RICS.BPCH.GenerationError".Translate("PawnGenerator returned null"));
                 }
 
-                // Set custom name (viewer username as nickname)
-                // Why: Keeps RimWorld name triple structure while making the pawn clearly belong to the buyer.
                 if (pawn.Name is NameTriple nameTriple)
-                {
                     pawn.Name = new NameTriple(nameTriple.First, username, nameTriple.Last);
-                }
                 else
-                {
                     pawn.Name = new NameSingle(username);
-                }
 
-                // Shared placement: drop pod → near locker → near colonist → center
-                // (map already resolved; underground/pocket may be surface-redirected)
                 if (!ItemDeliveryHelper.TryDeliverGeneratedPawn(pawn, map, out IntVec3 deliveryPos))
                 {
-                    Logger.Error("All spawn strategies failed for purchased pawn");
+                    Logger.Error("[BuyPawn] All spawn strategies failed for purchased pawn");
                     return new BuyPawnResult(false, "RICS.BPCH.SpawnLocationNotFound".Translate());
                 }
 
@@ -628,8 +427,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error generating pawn: {ex}");
-                // return new BuyPawnResult(false, $"Generation error: {ex.Message}");
+                Logger.Error($"[BuyPawn] Error generating pawn: {ex}");
                 return new BuyPawnResult(false, "RICS.BPCH.GenerationError".Translate(ex.Message));
             }
         }
@@ -639,76 +437,44 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         /// </summary>
         /// <param name="raceName"></param>
         /// <returns></returns>
+        /// <summary>Best PawnKindDef for race; null if missing (never force Human Colonist on alien race).</summary>
         public static PawnKindDef GetPawnKindDefForRace(string raceName)
         {
-
-            // Use centralized race lookup
             var raceDef = RaceUtils.FindRaceByName(raceName);
-
             if (raceDef == null)
             {
-                // Logger.Warning($"Race not found: {raceName}");
-                Logger.Warning("RICS.BPCH.Debug.RaceNotFound".Translate(raceName));
-                return PawnKindDefOf.Colonist;
+                Logger.Warning($"[BuyPawn] Race not found for pawn kind lookup: {raceName}");
+                return null;
             }
 
-            Logger.Debug($"Looking for pawn kind def for race: {raceDef.defName}");
-
-            // Strategy 1: Look for player faction pawn kinds for this race
             var playerPawnKinds = DefDatabase<PawnKindDef>.AllDefs
-                .Where(pk => pk.race == raceDef)
-                .Where(pk => IsPlayerFactionPawnKind(pk))
+                .Where(pk => pk.race == raceDef && IsPlayerFactionPawnKind(pk))
                 .ToList();
-
             if (playerPawnKinds.Any())
             {
-                var bestMatch = playerPawnKinds.FirstOrDefault(pk => pk.defName.Contains("Colonist") || pk.defName.Contains("Player"));
-                if (bestMatch != null)
-                {
-                    Logger.Debug($"Found player faction pawn kind: {bestMatch.defName}");
-                    return bestMatch;
-                }
-
-                Logger.Debug($"Using first player faction pawn kind: {playerPawnKinds[0].defName}");
-                return playerPawnKinds[0];
+                return playerPawnKinds.FirstOrDefault(pk =>
+                           pk.defName.Contains("Colonist") || pk.defName.Contains("Player"))
+                       ?? playerPawnKinds[0];
             }
 
-            // Strategy 2: Look for any pawn kind with this race that has isPlayer=true in its faction
             var factionPlayerPawnKinds = DefDatabase<PawnKindDef>.AllDefs
-                .Where(pk => pk.race == raceDef && pk.defaultFactionDef != null)
-                .Where(pk => pk.defaultFactionDef.isPlayer)
+                .Where(pk => pk.race == raceDef && pk.defaultFactionDef != null && pk.defaultFactionDef.isPlayer)
                 .ToList();
-
             if (factionPlayerPawnKinds.Any())
-            {
-                Logger.Debug($"Found pawn kind with player faction: {factionPlayerPawnKinds[0].defName}");
                 return factionPlayerPawnKinds[0];
-            }
 
-            // Strategy 3: Look for pawn kinds with player-like names
             var namedPlayerPawnKinds = DefDatabase<PawnKindDef>.AllDefs
-                .Where(pk => pk.race == raceDef)
-                .Where(pk => IsLikelyPlayerPawnKind(pk))
+                .Where(pk => pk.race == raceDef && IsLikelyPlayerPawnKind(pk))
                 .ToList();
-
             if (namedPlayerPawnKinds.Any())
-            {
-                Logger.Debug($"Found likely player pawn kind: {namedPlayerPawnKinds[0].defName}");
                 return namedPlayerPawnKinds[0];
-            }
 
-            // Strategy 4: Fallback to any pawn kind for this race
             var anyPawnKind = DefDatabase<PawnKindDef>.AllDefs.FirstOrDefault(pk => pk.race == raceDef);
             if (anyPawnKind != null)
-            {
-                Logger.Debug($"Using fallback pawn kind: {anyPawnKind.defName}");
                 return anyPawnKind;
-            }
 
-            // Final fallback
-            // Logger.Warning($"No pawn kind found for race: {raceDef.defName}, using default Colonist");
-            Logger.Warning("RICS.BPCH.Debug.NoPawnKindFound".Translate(raceDef.defName));
-            return PawnKindDefOf.Colonist;
+            Logger.Warning($"[BuyPawn] No pawn kind found for race: {raceDef.defName}");
+            return null;
         }
 
         /// <summary>
@@ -774,80 +540,40 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static bool IsValidPawnRequest(string raceDefName, string xenotypeName, out RaceSettings raceSettings)
         {
             raceSettings = null;
-
-            // Use centralized race lookup
             var raceDef = RaceUtils.FindRaceByName(raceDefName);
             if (raceDef == null)
-            {
-                Logger.Warning($"Race not found: {raceDefName}");
                 return false;
-            }
 
-            // Get race settings - this will never return null now
             raceSettings = RaceSettingsManager.GetRaceSettings(raceDef.defName);
-
-            // Check if race is enabled using centralized logic
             if (!raceSettings.Enabled)
-            {
-                Logger.Debug($"Race disabled: {raceDef.defName}");
                 return false;
-            }
 
-            // Check xenotype if specified and Biotech is active
             if (!string.IsNullOrEmpty(xenotypeName) && xenotypeName != "Baseliner" && ModsConfig.BiotechActive)
             {
-                // Check if xenotype is allowed for this race
                 if (!IsXenotypeAllowed(raceSettings, xenotypeName))
-                {
-                    Logger.Debug($"Xenotype not allowed: {xenotypeName} for race {raceDef.defName}");
                     return false;
-                }
             }
 
             return true;
         }
 
-        /// <summary>
-        /// Checks if the given xenotype input is allowed
-        /// </summary>
-        /// <param name="raceSettings"></param>
-        /// <param name="xenotypeInput"></param>
-        /// <returns></returns>
         private static bool IsXenotypeAllowed(RaceSettings raceSettings, string xenotypeInput)
         {
             string xenoDefName = GetXenotypeDefName(xenotypeInput, raceSettings);
-
-            Logger.Debug($"Checking xenotype input '{xenotypeInput}' → resolved '{xenoDefName}'");
-
-            if (raceSettings.EnabledXenotypes != null)
-            {
-                foreach (var kvp in raceSettings.EnabledXenotypes)
-                    Logger.Debug($"    {kvp.Key} = {kvp.Value}");
-
-                if (raceSettings.EnabledXenotypes.ContainsKey(xenoDefName))
-                {
-                    bool result = raceSettings.EnabledXenotypes[xenoDefName];
-                    Logger.Debug($"  Exact match found: {result}");
-                    return result;
-                }
-            }
-
-            Logger.Debug($"  No match found, using default logic");
 
             if (raceSettings.EnabledXenotypes == null)
                 raceSettings.EnabledXenotypes = new Dictionary<string, bool>();
             if (raceSettings.XenotypePrices == null)
                 raceSettings.XenotypePrices = new Dictionary<string, float>();
 
+            if (raceSettings.EnabledXenotypes.ContainsKey(xenoDefName))
+                return raceSettings.EnabledXenotypes[xenoDefName];
+
             if (raceSettings.EnabledXenotypes.Count > 0)
             {
-                if (!raceSettings.EnabledXenotypes.ContainsKey(xenoDefName))
-                {
-                    if (IsCustomXenotype(xenotypeInput, raceSettings))  // pass original for custom check
-                        return raceSettings.AllowCustomXenotypes;
-                    return false;
-                }
-                return raceSettings.EnabledXenotypes[xenoDefName];
+                if (IsCustomXenotype(xenotypeInput, raceSettings))
+                    return raceSettings.AllowCustomXenotypes;
+                return false;
             }
 
             if (IsCustomXenotype(xenotypeInput, raceSettings) && !raceSettings.AllowCustomXenotypes)
@@ -883,27 +609,25 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         /// <summary>
-        /// Parses an age string into an integer age, handling "random" and clamping to race settings
+        /// Random → in-range random. Explicit number → no clamp (false if out of range).
+        /// Unparseable → random.
         /// </summary>
-        /// <param name="ageString"></param>
-        /// <param name="raceSettings"></param>
-        /// <returns></returns>
-        private static int ParseAge(string ageString, RaceSettings raceSettings)
+        private static bool TryResolveAge(string ageString, RaceSettings raceSettings, out int age)
         {
-            if (ageString.Equals("random", StringComparison.OrdinalIgnoreCase))
+            age = raceSettings.MinAge;
+            if (string.IsNullOrEmpty(ageString) || ageString.Equals("random", StringComparison.OrdinalIgnoreCase))
             {
-                // Generate random age within the race settings range
-                return Rand.Range(raceSettings.MinAge, raceSettings.MaxAge + 1);
+                age = Rand.Range(raceSettings.MinAge, raceSettings.MaxAge + 1);
+                return true;
             }
 
-            if (int.TryParse(ageString, out int age))
+            if (!int.TryParse(ageString, out age))
             {
-                // Clamp the age to the race settings range
-                return Math.Max(raceSettings.MinAge, Math.Min(raceSettings.MaxAge, age));
+                age = Rand.Range(raceSettings.MinAge, raceSettings.MaxAge + 1);
+                return true;
             }
 
-            // Fallback to random age if parsing fails
-            return Rand.Range(raceSettings.MinAge, raceSettings.MaxAge + 1);
+            return age >= raceSettings.MinAge && age <= raceSettings.MaxAge;
         }
 
         /// <summary>
@@ -948,26 +672,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string GetAllowedGendersDescription(AllowedGenders allowedGenders)
         {
             if (!allowedGenders.AllowMale && !allowedGenders.AllowFemale && !allowedGenders.AllowOther)
-                // return "no genders (custom race)";
                 return "RICS.BPCH.Gender.None".Translate();
-
             if (allowedGenders.AllowMale && !allowedGenders.AllowFemale && !allowedGenders.AllowOther)
-                // return "only male";
                 return "RICS.BPCH.Gender.OnlyMale".Translate();
-
             if (!allowedGenders.AllowMale && allowedGenders.AllowFemale && !allowedGenders.AllowOther)
-                // return "only female";
                 return "RICS.BPCH.Gender.OnlyFemale".Translate();
-
             if (allowedGenders.AllowMale && allowedGenders.AllowFemale && !allowedGenders.AllowOther)
-                // return "male or female only (no other)";
                 return "RICS.BPCH.Gender.MaleOrFemale".Translate();
-
-            // return "any gender";
             return "RICS.BPCH.Gender.Any".Translate();
         }
-
-
 
         private static string GetXenotypeDefName(string input, RaceSettings raceSettings)
         {
@@ -975,34 +688,21 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return "Baseliner";
 
             string clean = input.Trim();
-
             if (raceSettings?.EnabledXenotypes == null)
-                return clean; // fallback
+                return clean;
 
-            // 1. Exact match (ignore case)
             var exact = raceSettings.EnabledXenotypes.Keys
                 .FirstOrDefault(k => k.Equals(clean, StringComparison.OrdinalIgnoreCase));
             if (exact != null)
-            {
-                Logger.Debug($"RaceSettings exact match: '{clean}' → '{exact}'");
                 return exact;
-            }
 
-            // 2. Fuzzy/typo match (partial)
             var fuzzy = raceSettings.EnabledXenotypes.Keys
                 .Where(k => k.ToLowerInvariant().Contains(clean.ToLowerInvariant()) ||
                             clean.ToLowerInvariant().Contains(k.ToLowerInvariant()))
                 .OrderBy(k => Math.Abs(k.Length - clean.Length))
                 .FirstOrDefault();
 
-            if (fuzzy != null)
-            {
-                Logger.Debug($"RaceSettings fuzzy match: '{clean}' → '{fuzzy}'");
-                return fuzzy;
-            }
-
-            Logger.Debug($"No match in RaceSettings for '{clean}', passing through");
-            return clean;
+            return fuzzy ?? clean;
         }
 
         /// <summary>
@@ -1057,55 +757,50 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     x.Equals(raceDefName, StringComparison.OrdinalIgnoreCase));
 
                 if (preferred != null)
-                {
-                    Logger.Debug($"[HAR Support] Picked preferred race xenotype '{preferred}' for race '{raceDefName}'");
                     return preferred;
-                }
             }
 
-            // Fallback: random among enabled non-Baseliner xenotypes
-            string picked = enabled.RandomElement();
-            Logger.Debug($"[HAR Support] Picked random enabled xenotype '{picked}' for race '{raceDefName ?? "unknown"}'");
-            return picked;
+            return enabled.RandomElement();
         }
 
-        /// <summary>
-        /// Handles the !mypawn command by looking up the assigned pawn for the user and returning its status.
-        /// </summary>
-        /// <param name="messageWrapper"></param>
-        /// <returns></returns>
         public static string HandleMyPawnCommand(ChatMessageWrapper messageWrapper)
         {
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-
-            // UPDATED: Use platform ID-based lookup
             var pawn = assignmentManager?.GetAssignedPawn(messageWrapper);
 
-            if (pawn != null)  // Found assigned pawn even pawn.Dead 
-            {
-                // string status = pawn.Spawned ? "alive and in colony" : "alive but not in colony";
-                string status = pawn.Spawned ? "RICS.BPCH.MyPawn.Status.AliveAndInColony".Translate() : "RICS.BPCH.MyPawn.Status.AliveNotInColony".Translate();
-                string health = pawn.health.summaryHealth.SummaryHealthPercent.ToStringPercent();
-                int traitCount = pawn.story?.traits?.allTraits?.Count ?? 0;
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-                int maxTraits = settings?.MaxTraits ?? 4;
-
-                // return $"Your pawn {pawn.Name} is {status}. Health: {health}, Age: {pawn.ageTracker.AgeBiologicalYears}, Traits: {traitCount}/{maxTraits}";
-
-                return "RICS.BPCH.MyPawn.HasPawn".Translate(
-                    pawn.Name.ToString(), // Convert Name to string
-                    status,
-                    health,
-                    pawn.ageTracker.AgeBiologicalYears.ToString(), // Convert int to string
-                    traitCount.ToString(), // Convert int to string
-                    maxTraits.ToString() // Convert int to string
-                );
-            }
-            else
-            {
-                // return "You don't have an active pawn in the colony. Use !pawn to purchase one!";
+            if (pawn == null)
                 return "RICS.Pawn.NoPawn".Translate();
+
+            if (pawn.Dead)
+            {
+                string deathDetails;
+                try
+                {
+                    deathDetails = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn).ToString();
+                }
+                catch
+                {
+                    deathDetails = "deceased";
+                }
+                return "RICS.Pawn.Dead".Translate()
+                       + ReturnDivider
+                       + "RICS.Return.PawnDeadReason".Translate(deathDetails);
             }
+
+            string status = pawn.Spawned
+                ? "RICS.BPCH.MyPawn.Status.AliveAndInColony".Translate()
+                : "RICS.BPCH.MyPawn.Status.AliveNotInColony".Translate();
+            string health = pawn.health.summaryHealth.SummaryHealthPercent.ToStringPercent();
+            int traitCount = pawn.story?.traits?.allTraits?.Count ?? 0;
+            int maxTraits = CAPChatInteractiveMod.Instance.Settings.GlobalSettings?.MaxTraits ?? 4;
+
+            return "RICS.BPCH.MyPawn.HasPawn".Translate(
+                pawn.Name.ToString(),
+                status,
+                health,
+                pawn.ageTracker.AgeBiologicalYears.ToString(),
+                traitCount.ToString(),
+                maxTraits.ToString());
         }
 
     }
