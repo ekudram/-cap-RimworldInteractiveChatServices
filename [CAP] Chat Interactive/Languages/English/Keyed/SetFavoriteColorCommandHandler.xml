@@ -3,6 +3,7 @@
 
   <!-- Set Favorite Color Command Handler (RICS.SFCCH.*) -->
 
+  <RICS.SFCCH.IdeologyRequired>Favorite color requires the Ideology DLC.</RICS.SFCCH.IdeologyRequired>
   <RICS.SFCCH.NoPawn>You need to have a pawn in the colony to set a favorite color. Use !buy pawn first.</RICS.SFCCH.NoPawn>
   <RICS.SFCCH.NoStory>Your pawn doesn't have a background story. This shouldn't happen!</RICS.SFCCH.NoStory>
 

@@ -82,6 +82,12 @@ namespace CAP_ChatInteractive
                 game.components.Add(new LootBoxComponent(game));
                 Logger.Debug("LootBoxComponent created by GameComponent");
             }
+
+            // Persist custom favorite ColorDefs for !setfavoritecolor across save/load
+            if (game.GetComponent<GameComponent_CustomColorDefs>() == null)
+            {
+                game.components.Add(new GameComponent_CustomColorDefs(game));
+            }
         }
 
         public override void LoadedGame()
