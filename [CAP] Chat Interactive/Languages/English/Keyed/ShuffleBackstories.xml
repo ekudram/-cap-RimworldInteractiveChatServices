@@ -15,6 +15,7 @@
   <!-- ============================================= -->
   <!-- Adulthood Backstory Shuffle Command (ADCH)   -->
   <!-- ============================================= -->
+  <RICS.ADCH.GenericError>Something went wrong shuffling your adulthood backstory.</RICS.ADCH.GenericError>
   <RICS.ADCH.NoStoryTracker>Pawn has no story component.</RICS.ADCH.NoStoryTracker>
   <RICS.ADCH.NoAdulthood>You have no adulthood backstory to shuffle.</RICS.ADCH.NoAdulthood>
   <RICS.ADCH.InsufficientCoins>You need {0} coins to shuffle your adulthood backstory.</RICS.ADCH.InsufficientCoins>
