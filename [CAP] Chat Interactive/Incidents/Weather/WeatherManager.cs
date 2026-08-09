@@ -162,7 +162,7 @@ namespace CAP_ChatInteractive.Incidents.Weather
                     string key = GetWeatherKey(weatherDef);
                     if (!_completeWeatherData.ContainsKey(key))
                     {
-                        var buyableWeather = new BuyableWeather(weatherDef);
+                        var buyableWeather = CreateNewBuyableWeather(weatherDef);
                         _completeWeatherData[key] = buyableWeather;
                         AllBuyableWeather[key] = buyableWeather;
                         weatherCreated++;
@@ -192,48 +192,59 @@ namespace CAP_ChatInteractive.Incidents.Weather
                 }
             }
 
-            // Now check for NEW weather that aren't in JSON
+            // Now check for NEW weather that aren't in JSON (first discovery)
             foreach (var weatherDef in allWeatherDefs)
             {
                 string key = GetWeatherKey(weatherDef);
                 if (!_completeWeatherData.ContainsKey(key) && IsWeatherSuitableForStore(weatherDef))
                 {
-                    // This is NEW weather - create it
-                    var buyableWeather = new BuyableWeather(weatherDef);
+                    var buyableWeather = CreateNewBuyableWeather(weatherDef);
                     _completeWeatherData[key] = buyableWeather;
-
-                    // Add to runtime if suitable
-                    if (IsWeatherSuitableForStore(weatherDef))
-                    {
-                        AllBuyableWeather[key] = buyableWeather;
-                    }
-
-                    Logger.Debug($"Added NEW weather from constructor: {key} from {weatherDef.modContentPack?.Name ?? "Unknown"}");
+                    AllBuyableWeather[key] = buyableWeather;
                 }
             }
         }
 
+        /// <summary>
+        /// First-discovery factory: constructor sets Enabled (Core/DLC on, third-party mod off).
+        /// </summary>
+        private static BuyableWeather CreateNewBuyableWeather(WeatherDef weatherDef)
+        {
+            var buyableWeather = new BuyableWeather(weatherDef);
+
+            // Belt-and-suspenders: never auto-enable third-party mod weather on first discovery
+            if (BuyableWeather.ShouldAutoDisableModWeather(weatherDef))
+                buyableWeather.Enabled = false;
+
+            Logger.Message(
+                $"[Weather] First discovery: {buyableWeather.DefName} from '{buyableWeather.ModSource}' " +
+                $"(Enabled={buyableWeather.Enabled}, Cost={buyableWeather.BaseCost})");
+
+            return buyableWeather;
+        }
+
         private static bool IsWeatherSuitableForStore(WeatherDef weatherDef)
         {
-            string defName = weatherDef.defName.ToLower();
+            if (weatherDef == null)
+                return false;
 
-            // Explicitly exclude problematic weather types
+            string defName = weatherDef.defName?.ToLowerInvariant() ?? string.Empty;
+
+            // Exclude space / underground / scenario-only weather (e.g. Save Our Ship "orbit")
             if (defName.Contains("orbit") ||
+                defName.Contains("space") ||
                 defName.Contains("underground") ||
                 defName.Contains("undercave") ||
                 defName.Contains("unnatural") ||
                 defName.Contains("stage") ||
                 defName.Contains("metalhell") ||
-                // defName.Contains("bloodrain") ||
                 defName.Contains("deathpall") ||
                 defName.Contains("graypall"))
+            {
                 return false;
+            }
 
-            // Also exclude abstract/base weather definitions
-            //if (weatherDef.abstract)  return false;
-
-    // Include everything else that's not excluded
-    return true;
+            return true;
         }
 
         private static string GetWeatherKey(WeatherDef weatherDef)
@@ -256,8 +267,7 @@ namespace CAP_ChatInteractive.Incidents.Weather
 
                 if (!_completeWeatherData.ContainsKey(key) && IsWeatherSuitableForStore(weatherDef))
                 {
-                    // New weather - create it
-                    var newWeather = new BuyableWeather(weatherDef);
+                    var newWeather = CreateNewBuyableWeather(weatherDef);
                     _completeWeatherData[key] = newWeather;
                     AllBuyableWeather[key] = newWeather;
                     addedWeather++;
