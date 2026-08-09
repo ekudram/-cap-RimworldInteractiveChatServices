@@ -1,4 +1,4 @@
-﻿// PassionCommandhandler.cs
+// PassionCommandhandler.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
-// Passion command handler
+// !passion [list] | !passion <wager> [skill] — gamble for skill passion
 using _CAP__Chat_Interactive.Command.CommandHelpers;
 using RimWorld;
 using System;
@@ -25,8 +25,10 @@ using Verse;
 
 namespace CAP_ChatInteractive.Commands.ViewerCommands
 {
-    internal class PassionCommandhandler
+    internal static class PassionCommandhandler
     {
+        private const string ReturnDivider = " | ";
+
         internal static string HandlePassionCommand(ChatMessageWrapper messageWrapper, string[] args)
         {
             try
@@ -36,39 +38,35 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                     return "RICS.PASSION.ViewerNotFound".Translate();
 
                 Verse.Pawn pawn = PawnItemHelper.GetViewerPawn(messageWrapper);
-
                 if (pawn == null)
                     return "RICS.PASSION.NoAssignedPawn".Translate();
 
-                if (pawn.Dead)
+                if (pawn.Destroyed || pawn.Dead)
                 {
                     var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
-
-                    string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
-
-                    return "RICS.PASSION.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+                    return "RICS.PASSION.PawnDead".Translate()
+                           + ReturnDivider
+                           + "RICS.Return.PawnDeadReason".Translate(deathInfo.ToString());
                 }
 
-                if (args.Length > 0 && args[0].ToLower() == "list")
-                {
+                args = args ?? Array.Empty<string>();
+
+                if (args.Length > 0 && args[0].Equals("list", StringComparison.OrdinalIgnoreCase))
                     return ListPawnPassions(pawn);
-                }
 
                 if (args.Length == 0)
                     return "RICS.PASSION.Usage".Translate();
 
-                // NEW: Flexible parsing for both orders (!passion <wager> <skill> OR !passion <skill> <wager>)
+                // !passion <wager> <skill> OR !passion <skill> <wager> OR !passion <wager>
                 (int? wager, SkillDef targetSkill) = ParseWagerAndSkill(args);
-
                 if (wager == null)
                     return "RICS.PASSION.Usage".Translate();
 
                 int finalWager = wager.Value;
 
-                // Values now come from per-command CustomData (migrated from global settings).
                 var cmdSettings = CommandSettingsManager.GetSettings("passion");
-                int minW = cmdSettings.GetCustom<int>("minPassionWager", 500);
-                int maxW = cmdSettings.GetCustom<int>("maxPassionWager", 1000);
+                int minW = cmdSettings.GetCustom("minPassionWager", 500);
+                int maxW = cmdSettings.GetCustom("maxPassionWager", 1000);
 
                 if (finalWager < minW)
                     return "RICS.PASSION.MinWager".Translate(minW);
@@ -82,17 +80,14 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 var result = PassionSystem.GambleForPassion(pawn, finalWager, viewer, targetSkill);
 
                 if (!result.alreadyCharged)
-                {
                     viewer.TakeCoins(finalWager);
-                }
 
                 Viewers.SaveViewers();
-
                 return result.message;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in passion command: {ex.Message}");
+                Logger.Error($"[Passion] Error in passion command: {ex}");
                 return "RICS.PASSION.GeneralError".Translate();
             }
         }
@@ -101,28 +96,26 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             try
             {
-                var passionSkills = new List<string>();
+                if (pawn?.skills?.skills == null)
+                    return "RICS.PASSION.ListNoPassions".Translate(pawn?.Name?.ToString() ?? "pawn");
 
+                var passionSkills = new List<string>();
                 foreach (var skill in pawn.skills.skills)
                 {
-                    if (skill?.passion != RimWorld.Passion.None && skill?.def != null)
-                    {
-                        string passionLevel = GetPassionEmoji(skill.passion);
-                        passionSkills.Add($"{skill.def.LabelCap}{passionLevel}");
-                    }
+                    if (skill?.passion != RimWorld.Passion.None && skill.def != null)
+                        passionSkills.Add($"{skill.def.LabelCap}{GetPassionEmoji(skill.passion)}");
                 }
 
                 if (!passionSkills.Any())
                     return "RICS.PASSION.ListNoPassions".Translate(pawn.Name.ToString());
 
                 passionSkills.Sort();
-
                 return "RICS.PASSION.ListPassions".Translate(pawn.Name.ToString(), string.Join(", ", passionSkills));
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error listing passions: {ex.Message}");
-                return "RICS.PASSION.ListError".Translate(pawn.Name.ToString());
+                Logger.Error($"[Passion] Error listing passions: {ex}");
+                return "RICS.PASSION.ListError".Translate(pawn?.Name?.ToString() ?? "pawn");
             }
         }
 
@@ -141,13 +134,11 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             skillDef = DefDatabase<SkillDef>.AllDefs.FirstOrDefault(s =>
                 s.defName.Equals(skillName, StringComparison.OrdinalIgnoreCase) ||
                 s.LabelCap.ToString().Equals(skillName, StringComparison.OrdinalIgnoreCase));
-
             return skillDef != null;
         }
 
         /// <summary>
-        /// Parses wager + optional skill from any argument order.
-        /// Supports: !passion 5000 melee, !passion melee 5000, !passion 500 (random)
+        /// Supports: !passion 5000 melee, !passion melee 5000, !passion 500 (random skill).
         /// </summary>
         private static (int? wager, SkillDef targetSkill) ParseWagerAndSkill(string[] args)
         {
@@ -168,12 +159,14 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 }
             }
 
-            // If only one arg and it's a number → random mode
             if (wager != null && skill == null && args.Length == 1)
                 return (wager, null);
 
-            // If we have both → targeted
             if (wager != null && skill != null)
+                return (wager, skill);
+
+            // wager only with extra unrecognized tokens → treat as random (usage if no wager)
+            if (wager != null)
                 return (wager, skill);
 
             return (null, null);
