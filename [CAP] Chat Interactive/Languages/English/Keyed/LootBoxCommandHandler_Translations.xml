@@ -4,9 +4,12 @@
   <!-- LootBoxCommandHandler messages -->
   <RICS.LBCH.NotAvailable>Lootbox system is not available.</RICS.LBCH.NotAvailable>
   <RICS.LBCH.Count>You currently have {0} lootbox{1}.</RICS.LBCH.Count>
+  <RICS.LBCH.CountSingular>You currently have {0} lootbox.</RICS.LBCH.CountSingular>
+  <RICS.LBCH.CountPlural>You currently have {0} lootboxes.</RICS.LBCH.CountPlural>
   <RICS.LBCH.SettingsNotAvailable>Lootbox settings not available.</RICS.LBCH.SettingsNotAvailable>
   <RICS.LBCH.Opened>You open a lootbox and discover: {0} {1}!</RICS.LBCH.Opened>
   <RICS.LBCH.NoLootboxes>You do not have any lootboxes.</RICS.LBCH.NoLootboxes>
   <RICS.LBCH.OpenedAll>You open all your lootboxes and discover: {0} {1}!</RICS.LBCH.OpenedAll>
+  <RICS.LBCH.Error>Error processing lootbox. Please try again.</RICS.LBCH.Error>
   
 </LanguageData>
