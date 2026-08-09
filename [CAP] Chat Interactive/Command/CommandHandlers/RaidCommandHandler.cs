@@ -1,4 +1,4 @@
-﻿// Updated RaidCommandHandler.cs
+﻿// RaidCommandHandler.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -42,7 +42,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static CommandSettings GetRaidCommandSettings()
         {
-            return CommandSettingsManager.GetSettings("raid"); // CORRECT
+            return CommandSettingsManager.GetSettings("raid");
         }
 
         // Check for Royalty DLC (Mech Clusters)
@@ -55,24 +55,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (settings == null)
+                    return "RICS.Raid.GameNotReady".Translate();
+
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
                 var viewer = Viewers.GetViewer(user);
                 if (viewer == null)
-                {
-                    MessageHandler.SendFailureLetter("Raid Failed",
-                        $"Could not find viewer data for {user.Username}");
                     return "RICS.Raid.ErrorViewerData".Translate();
-                }
 
                 var raidSettings = GetRaidCommandSettings();
 
                 // Values from CustomData (defined via <CustomData> in Commands.xml for the Raid command)
-                int minWager = raidSettings.GetCustom<int>("minRaidWager", 100);
-                int maxWager = raidSettings.GetCustom<int>("maxRaidWager", 2500);
+                int minWager = raidSettings.GetCustom("minRaidWager", 100);
+                int maxWager = raidSettings.GetCustom("maxRaidWager", 2500);
 
-                var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
+                var cooldownManager = Current.Game?.GetComponent<GlobalCooldownManager>();
                 if (cooldownManager != null)
                 {
                     if (!cooldownManager.CanUseCommand("raid", raidSettings, settings))
@@ -85,8 +84,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                         if (settings.KarmaTypeLimitsEnabled && !cooldownManager.CanUseEvent("bad", settings))
                         {
-                            var badRecord = cooldownManager.data.EventUsage.GetValueOrDefault("bad");
-                            int badUsed = badRecord?.CurrentPeriodUses ?? 0;
+                            int badUsed = 0;
+                            if (cooldownManager.data.EventUsage.TryGetValue("bad", out var badRecord) && badRecord != null)
+                                badUsed = badRecord.CurrentPeriodUses;
                             return "RICS.Raid.BadLimitReached".Translate(badUsed, settings.MaxBadEvents);
                         }
 
@@ -156,7 +156,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling raid command: {ex}");
+                Logger.Error($"[Raid] Error handling raid command: {ex}");
                 return "RICS.Raid.GenericError".Translate();
             }
         }
@@ -186,11 +186,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static RaidResult TriggerRaid(string username, string raidType, string strategy, int wager)
         {
-            var playerMaps = Current.Game.Maps.Where(map => map.IsPlayerHome).ToList();
+            var playerMaps = Current.Game?.Maps?.Where(map => map.IsPlayerHome).ToList() ?? new List<Map>();
 
             if (!playerMaps.Any())
             {
-                // return new RaidResult(false, "No player home maps found.");
                 return new RaidResult(false, "RICS.Raid.NoValidMaps".Translate()); 
             }
 
@@ -200,6 +199,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 try
                 {
                     var raidConfig = GetRaidConfiguration(raidType, strategy, wager, map);
+                    if (raidConfig?.IncidentWorker == null)
+                        continue;
 
                     if (raidConfig.IncidentWorker.CanFireNow(raidConfig.Params))
                     {
@@ -222,11 +223,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"Error triggering raid on map {map}: {ex}");
+                    Logger.Error($"[Raid] Error triggering raid on map {map}: {ex}");
                 }
             }
-
-            // return new RaidResult(false, "No valid targets or factions available for raid right now.");
             return new RaidResult(false, "RICS.Raid.NoValidTargets".Translate() );
         }
 
@@ -299,7 +298,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             // Handle siege strategy specially - prevent mechs from using it
-            if (strategy.ToLower() == "siege" && raidType.ToLower() == "mech")
+            if (!string.IsNullOrEmpty(strategy) && strategy.Equals("siege", StringComparison.OrdinalIgnoreCase) &&
+                raidType.Equals("mech", StringComparison.OrdinalIgnoreCase))
             {
                   // Mech clusters from Royalty DLC can siege since they drop with built structures
                 if (HasRoyaltyDLC)
@@ -648,35 +648,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             // Only show additional details if they add value
             if (result.Faction != null)
-            {
-                details.AppendLine($"Faction: {result.Faction.Name}");
-            }
+                details.AppendLine("RICS.Raid.DetailFaction".Translate(result.Faction.Name));
 
             if (result.Strategy != null && result.Strategy != RaidStrategyDefOf.ImmediateAttack)
-            {
-                details.AppendLine($"Strategy: {result.Strategy.label}");
-            }
+                details.AppendLine("RICS.Raid.DetailStrategy".Translate(result.Strategy.label));
 
-            details.AppendLine($"Type: {result.RaidType}");
-            details.AppendLine($"Cost: {wager}{currencySymbol}");
+            details.AppendLine("RICS.Raid.DetailType".Translate(result.RaidType));
+            details.AppendLine("RICS.Raid.DetailCost".Translate(wager, currencySymbol));
 
             return details.ToString();
         }
 
-        // Debug method to test DLC detection
         [DebugAction("CAP", "Test DLC Detection", allowedGameStates = AllowedGameStates.Playing)]
         public static void DebugTestDLCDetection()
         {
-            Logger.Message($"Royalty DLC Active: {HasRoyaltyDLC}");
-            Logger.Message($"Biotech DLC Active: {HasBiotechDLC}");
-
-            // Test mech cluster availability
-            var mechCluster = DefDatabase<IncidentDef>.GetNamedSilentFail("MechCluster");
-            Logger.Message($"Mech Cluster Available: {mechCluster != null}");
-
-            // Test water arrival mode
-            var waterMode = DefDatabase<PawnsArrivalModeDef>.GetNamedSilentFail("EmergeFromWater");
-            Logger.Message($"Water Arrival Mode Available: {waterMode != null}");
+            Logger.Message($"[Raid] Royalty={HasRoyaltyDLC} Biotech={HasBiotechDLC}");
+            Logger.Message($"[Raid] MechCluster def={(DefDatabase<IncidentDef>.GetNamedSilentFail("MechCluster") != null)}");
+            Logger.Message($"[Raid] EmergeFromWater def={(DefDatabase<PawnsArrivalModeDef>.GetNamedSilentFail("EmergeFromWater") != null)}");
         }
     }
 
