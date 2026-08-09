@@ -21,6 +21,7 @@
 
 using _CAP__Chat_Interactive.Utilities;
 using CAP_ChatInteractive.AI;
+using CAP_ChatInteractive.Extension;
 using CAP_ChatInteractive.Incidents;
 using CAP_ChatInteractive.Incidents.Weather;
 using CAP_ChatInteractive.Store;
@@ -54,6 +55,10 @@ namespace CAP_ChatInteractive
 
         // AI ChatBot Service
         public AIChatBotService _aiChatBotService;
+
+        // Twitch Extension bridge (LocalHttp / OutboundPoll)
+        public ExtensionService _extensionService;
+        private static ExtensionService _activeExtensionService;
 
         // For batched death reports to AI bot (throttled, not every tick)
         private readonly List<string> recentDeaths = new List<string>();
@@ -185,6 +190,12 @@ namespace CAP_ChatInteractive
                 }
             }
 
+            // === TWITCH EXTENSION BRIDGE (LocalHttp job queue / OutboundPoll stub) ===
+            if (_extensionService != null)
+            {
+                _extensionService.Tick();
+            }
+
             // === THROTTLED DEATH REPORTS TO AI BOT ===
             // Not every tick. Flush every ~5 seconds (300 ticks) if there are deaths.
             // The per-death strings (from patch) now include: animal/pawn, faction, killer (who + how), map, + slaughter note.
@@ -239,6 +250,7 @@ namespace CAP_ChatInteractive
 
             // Initialize AI ChatBot listener if enabled
             InitializeAIChatBot();
+            InitializeTwitchExtension();
 
             Logger.Message("All core systems initialized");
         }
@@ -319,6 +331,26 @@ namespace CAP_ChatInteractive
             _aiChatBotService.PushCurrentGameStateToBot();
 
             Logger.Debug("AI ChatBot service initialized + initial game state cached");
+        }
+
+        private void InitializeTwitchExtension()
+        {
+            // Always stop previous so port rebinds cleanly on load
+            _activeExtensionService?.Stop();
+            _activeExtensionService = null;
+            _extensionService = null;
+
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings?.TwitchExtensionEnabled != true)
+            {
+                Logger.Debug("[RICS Extension] Bridge off");
+                return;
+            }
+
+            _extensionService = new ExtensionService();
+            _activeExtensionService = _extensionService;
+            _extensionService.StartFromSettings();
+            Logger.Message("[RICS Extension] " + _extensionService.StatusLine());
         }
 
         public void RecordDeath(string deathMessage, AiMapLocation location = null, AiMapSlicePayload mapSlice = null)

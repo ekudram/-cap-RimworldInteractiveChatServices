@@ -336,6 +336,18 @@ namespace CAP_ChatInteractive
         /// </summary>
         public bool TwitchRaidsAutoAddChatDuringWindow = true;
 
+        // === Twitch Extension bridge (Viewer Hub) — Option C LocalHttp first, Option A OutboundPoll later ===
+        /// <summary>Master switch for Extension structured API (not chat processor).</summary>
+        public bool TwitchExtensionEnabled = false;
+        /// <summary>0 = LocalHttp (127.0.0.1), 1 = OutboundPoll (EBS stub until R7).</summary>
+        public int TwitchExtensionTransport = 0; // ExtensionTransportMode
+        public int TwitchExtensionLocalPort = 17999;
+        /// <summary>Allow X-RICS-Dev-Viewer header / ?viewer= on loopback LocalHttp only.</summary>
+        public bool TwitchExtensionAllowDevIdentity = true;
+        public string TwitchExtensionEbsPollUrl = "";
+        public string TwitchExtensionAgentToken = "";
+        public int TwitchExtensionPollIntervalMs = 750;
+
         public CAPGlobalChatSettings()
         {
             // List is already initialized by the field initializer above.
@@ -507,6 +519,21 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref AIChatBotCanExecuteCommands, "aiChatBotCanExecuteCommands", true);
             Scribe_Values.Look(ref AIChatBotForwardGameMessages, "aiChatBotForwardGameMessages", true);
             Scribe_Values.Look(ref AIChatBotForwardTaskCompletion, "aiChatBotForwardTaskCompletion", false);
+
+            // Twitch Extension bridge
+            Scribe_Values.Look(ref TwitchExtensionEnabled, "twitchExtensionEnabled", false);
+            Scribe_Values.Look(ref TwitchExtensionTransport, "twitchExtensionTransport", 0);
+            Scribe_Values.Look(ref TwitchExtensionLocalPort, "twitchExtensionLocalPort", 17999);
+            Scribe_Values.Look(ref TwitchExtensionAllowDevIdentity, "twitchExtensionAllowDevIdentity", true);
+            Scribe_Values.Look(ref TwitchExtensionEbsPollUrl, "twitchExtensionEbsPollUrl", "");
+            Scribe_Values.Look(ref TwitchExtensionAgentToken, "twitchExtensionAgentToken", "");
+            Scribe_Values.Look(ref TwitchExtensionPollIntervalMs, "twitchExtensionPollIntervalMs", 750);
+            if (Scribe.mode == LoadSaveMode.LoadingVars || Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                TwitchExtensionLocalPort = UnityEngine.Mathf.Clamp(TwitchExtensionLocalPort, 1024, 65535);
+                TwitchExtensionTransport = UnityEngine.Mathf.Clamp(TwitchExtensionTransport, 0, 1);
+                TwitchExtensionPollIntervalMs = UnityEngine.Mathf.Clamp(TwitchExtensionPollIntervalMs, 250, 10000);
+            }
 
             // Channel Points Reward Settings
             if (Scribe.mode == LoadSaveMode.LoadingVars)
