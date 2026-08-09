@@ -4,6 +4,9 @@
   <!-- Revive Pawn Command Handler (RICS.RPCH.*) -->
 
   <RICS.RPCH.SerumNotAvailable>Resurrector Mech Serum is not available for revival services.</RICS.RPCH.SerumNotAvailable>
+  <RICS.RPCH.SelfDisabled>Self revive is currently disabled.</RICS.RPCH.SelfDisabled>
+  <RICS.RPCH.AllDisabled>Mass revive is currently disabled.</RICS.RPCH.AllDisabled>
+  <RICS.RPCH.TargetDisabled>Target revive is currently disabled.</RICS.RPCH.TargetDisabled>
 
   <RICS.RPCH.NoArgsSelf>You don't have a pawn assigned. Use !buy pawn first.</RICS.RPCH.NoArgsSelf>
   <RICS.RPCH.AlreadyAlive>Your pawn is already alive!</RICS.RPCH.AlreadyAlive>
