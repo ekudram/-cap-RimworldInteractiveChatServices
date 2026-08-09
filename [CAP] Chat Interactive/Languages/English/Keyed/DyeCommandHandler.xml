@@ -3,6 +3,8 @@
 
   <!-- Dye command - general errors / preconditions -->
   <RICS.DyeCommand.NoPawn>You need to have a pawn in the colony to dye their clothing or hair. Use !buy pawn first.</RICS.DyeCommand.NoPawn>
+  <RICS.DyeCommand.HairDisabled>Hair dye is currently disabled.</RICS.DyeCommand.HairDisabled>
+  <RICS.DyeCommand.ApparelDisabled>Apparel dye is currently disabled.</RICS.DyeCommand.ApparelDisabled>
   <RICS.DyeCommand.IdeologyRequired>Please specify a color. The favorite color system requires the Ideology DLC.</RICS.DyeCommand.IdeologyRequired>
   <RICS.DyeCommand.InvalidColor>'{0}' is not a valid color. Try using RimWorld hair color names (like 'PitchBlack', 'DarkReddish', 'SandyBlonde'), common color names (like 'red', 'blue'), or hex codes like #FF0000.</RICS.DyeCommand.InvalidColor>
   <RICS.DyeCommand.NoHair>Your pawn doesn't have hair to dye.</RICS.DyeCommand.NoHair>
