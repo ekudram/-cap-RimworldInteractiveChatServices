@@ -1,6 +1,21 @@
 // PawnCheckCommandHandler.cs
+// Copyright (c) Captolamia
+// This file is part of CAP Chat Interactive.
+// 
+// CAP Chat Interactive is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// 
+// CAP Chat Interactive is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Affero General Public License for more details.
+// 
+// You should have received a copy of the GNU Affero General Public License
+// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+//
 // !pawncheck <viewer> — injury-only report for another viewer's assigned pawn.
-
 using System;
 using System.Linq;
 using Verse;
@@ -9,16 +24,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class PawnCheckCommandHandler
     {
+        private const string ReturnDivider = " | ";
+
         public static string HandlePawnCheck(ChatMessageWrapper messageWrapper, string[] args)
         {
             try
             {
-                if (args == null || args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
+                if (args == null || args.Length == 0)
                     return "RICS.PCH.Usage".Translate();
 
-                string targetName = args[0].Trim();
+                // Allow multi-word names: !pawncheck Cool Viewer
+                string targetName = string.Join(" ", args.Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a.Trim()));
                 if (targetName.StartsWith("@"))
-                    targetName = targetName.Substring(1);
+                    targetName = targetName.Substring(1).Trim();
                 if (string.IsNullOrWhiteSpace(targetName))
                     return "RICS.PCH.Usage".Translate();
 
@@ -30,19 +48,35 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (targetPawn == null)
                     return "RICS.PCH.NoPawn".Translate(targetName);
 
-                if (targetPawn.Dead || targetPawn.Destroyed)
-                    return "RICS.PCH.PawnDead".Translate(FormatPatientLabel(targetName, targetPawn));
-
                 string label = FormatPatientLabel(targetName, targetPawn);
+
+                if (targetPawn.Dead || targetPawn.Destroyed)
+                {
+                    string deathDetails;
+                    try
+                    {
+                        deathDetails = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(targetPawn).ToString();
+                    }
+                    catch
+                    {
+                        deathDetails = "deceased";
+                    }
+
+                    return "RICS.PCH.PawnDead".Translate(label)
+                           + ReturnDivider
+                           + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+                }
+
                 return MyPawnCommandHandler_Body.BuildInjuryOnlyReport(targetPawn, label);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in pawncheck: {ex}");
+                Logger.Error($"[PawnCheck] Error: {ex}");
                 return "RICS.PCH.Error".Translate();
             }
         }
 
+        /// <summary>Prefer pawn nick / short name, then viewer display name, then raw username.</summary>
         private static string FormatPatientLabel(string username, Pawn pawn)
         {
             if (pawn?.Name is NameTriple triple && !string.IsNullOrWhiteSpace(triple.Nick))
@@ -69,7 +103,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         return viewer.Username;
                 }
             }
-            catch { /* ignore */ }
+            catch
+            {
+                // best effort
+            }
 
             return username;
         }
