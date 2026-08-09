@@ -1,4 +1,4 @@
-﻿// ViewerCommands.cs
+// ShuffleChildhoodCommandHandler.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -14,138 +14,106 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-
+//
+// !shufflechildhood — randomize childhood backstory (race/xenotype aware)
+using _CAP__Chat_Interactive.Command.CommandHelpers;
 using CAP_ChatInteractive.Commands.CommandHandlers;
-using HarmonyLib;
 using RimWorld;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using UnityEngine;
 using Verse;
 
 namespace CAP_ChatInteractive.Commands.ViewerCommands
 {
-    internal class ShuffleChildhoodCommandHandler
+    internal static class ShuffleChildhoodCommandHandler
     {
+        private const string ReturnDivider = " | ";
+
         internal static string HandleShuffledChildhood(ChatMessageWrapper messageWrapper, string[] args)
         {
-            // Get the viewer and their pawn (reusing existing manager pattern from other handlers)
-            var viewer = Viewers.GetViewer(messageWrapper);
-            if (viewer == null)
+            try
             {
-                return "RICS.MPCH.NoViewerData".Translate(); // Translation key: RICS.MPCH.NoViewerData
+                var viewer = Viewers.GetViewer(messageWrapper);
+                if (viewer == null)
+                    return "RICS.MPCH.NoViewerData".Translate();
+
+                Verse.Pawn pawn = PawnItemHelper.GetViewerPawn(messageWrapper);
+                if (pawn == null)
+                    return "RICS.Pawn.NoPawn".Translate();
+
+                if (pawn.Destroyed || pawn.Dead)
+                {
+                    var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
+                    return "RICS.Pawn.Dead".Translate()
+                           + ReturnDivider
+                           + "RICS.Return.PawnDeadReason".Translate(deathInfo.ToString());
+                }
+
+                if (pawn.story == null)
+                    return "RICS.CHCH.NoStoryTracker".Translate();
+
+                if (pawn.story.Childhood == null)
+                    return "RICS.CHCH.NoChildhood".Translate();
+
+                var cmdSettings = CommandSettingsManager.GetSettings("shufflechildhood");
+                int cost = cmdSettings.GetCustom("childhoodWager", 1000);
+
+                if (viewer.Coins < cost)
+                    return "RICS.CHCH.InsufficientCoins".Translate(cost);
+
+                BackstoryDef current = pawn.story.Childhood;
+
+                if (current.defName == "Colonist" ||
+                    (current.label?.ToLowerInvariant().Contains("colonist") ?? false) ||
+                    (current.titleShort?.ToLowerInvariant().Contains("colonist") ?? false))
+                {
+                    return "RICS.CHCH.ColonistBackstory".Translate();
+                }
+
+                List<BackstoryDef> valid = GetCompatibleChildhoodBackstories(pawn);
+                valid.RemoveAll(bs => bs == current);
+
+                if (valid.Count == 0)
+                    return "RICS.CHCH.NoValidAlternatives".Translate();
+
+                BackstoryDef newBackstory = valid.RandomElement();
+                pawn.story.Childhood = newBackstory;
+                BackstoryUtility.RestoreBackstoryEffects(pawn, current, newBackstory);
+
+                viewer.TakeCoins(cost);
+
+                string oldLabel = MyPawnCommandHandler.StripTags(
+                    current.TitleCapFor(pawn.gender) ?? current.title ?? current.defName);
+                string newLabel = MyPawnCommandHandler.StripTags(
+                    newBackstory.TitleCapFor(pawn.gender) ?? newBackstory.title ?? newBackstory.defName);
+
+                var globalSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                string currency = globalSettings?.CurrencyName?.Trim() ?? "¢";
+                string coinDisplay = $"{cost} {currency}";
+
+                // ChildBackstoryShuffled lives under ADCH key (shared OldToNew style with adulthood)
+                return "RICS.ADCH.ChildBackstoryShuffled".Translate(coinDisplay)
+                       + ReturnDivider
+                       + "RICS.ADCH.OldToNew".Translate(oldLabel, newLabel);
             }
-
-            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-            Verse.Pawn pawn = assignmentManager.GetAssignedPawn(messageWrapper);
-
-            if (pawn == null)
+            catch (Exception ex)
             {
-                return "RICS.Pawn.NoPawn".Translate();
+                Logger.Error($"[ShuffleChildhood] Error in HandleShuffledChildhood: {ex}");
+                return "RICS.CHCH.GenericError".Translate();
             }
-            // only if destroyed here
-            if (pawn.Destroyed)
-            {
-                // This gives much better player experience than a generic "your pawn is dead" message.
-                var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
-
-                string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
-
-                return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
-            }
-
-            if (pawn == null || pawn.story == null)
-            {
-                return "RICS.CHCH.NoStoryTracker".Translate(); // Translation key: RICS.CHCH.NoStoryTracker – "Pawn has no story component."
-            }
-
-            if (pawn.story.Childhood == null)
-            {
-                return "RICS.CHCH.NoChildhood".Translate(); // Translation key: RICS.CHCH.NoChildhood – "You have no childhood backstory to shuffle."
-            }
-
-            // Per-command setting (migrated to CustomData)
-            var cmdSettings = CommandSettingsManager.GetSettings("shufflechildhood");
-            int cost = cmdSettings.GetCustom<int>("childhoodWager", 1000);
-
-            // Coin check (Viewer.Coins is the standard economy field in RICS)
-            if (viewer.Coins < cost)
-            {
-                return "RICS.CHCH.InsufficientCoins".Translate(cost); // Translation key: RICS.CHCH.InsufficientCoins – "You need {0} coins to shuffle your childhood backstory."
-            }
-
-            BackstoryDef current = pawn.story.Childhood;
-
-            // Special-case Colonist backstory (born in the colony)
-            if (current.defName == "Colonist" ||
-                (current.label?.ToLowerInvariant().Contains("colonist") ?? false) ||
-                (current.titleShort?.ToLowerInvariant().Contains("colonist") ?? false))
-            {
-                return "RICS.CHCH.ColonistBackstory".Translate();
-            }
-
-            // Get compatible childhood backstories (race + xenotype restrictions respected via DefDatabase filter)
-            List<BackstoryDef> valid = GetCompatibleChildhoodBackstories(pawn);
-
-            // Remove current to prevent no-op
-            valid.RemoveAll(bs => bs == current);
-
-            if (valid.Count == 0)
-            {
-                return "RICS.CHCH.NoValidAlternatives".Translate();
-            }
-
-            // Shuffle & apply (RimWorld limitation: stats/skills are not retroactively adjusted)
-            BackstoryDef newBackstory = valid.RandomElement();
-            pawn.story.Childhood = newBackstory;
-
-            // Restore any work types that are no longer blocked (fixes firefighting, etc.)
-            BackstoryUtility.RestoreBackstoryEffects(pawn, current, newBackstory);
-
-            // Deduct cost (viewer data is persisted via GameComponent / Viewers static save)
-            viewer.Coins -= cost;
-
-            // Build viewer-friendly response with safe StripTags
-            var report = new StringBuilder();
-
-            // Use TitleCapFor(pawn.gender) — this is the correct vanilla way (handles gender variants + translation)
-            string oldLabel = current != null
-                            ? MyPawnCommandHandler.StripTags(current.TitleCapFor(pawn.gender) ?? current.title ?? current.defName)
-                            : "Unknown";
-
-            string newLabel = newBackstory != null
-                ? MyPawnCommandHandler.StripTags(newBackstory.TitleCapFor(pawn.gender) ?? newBackstory.title ?? newBackstory.defName)
-                : "Unknown";
-
-            // Add space between cost and currency symbol for readability
-            var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            string coinDisplay = $"{cost} {globalSettings.CurrencyName.Trim()}";
-
-            // report.AppendLine($"🎒 Childhood backstory shuffled for {coinDisplay}!");
-            report.AppendLine("RICS.ADCH.ChildBackstoryShuffled".Translate(coinDisplay));
-            // report.AppendLine($"Old: {oldLabel} → New: {newLabel}");  Re-used adult as is same
-            report.AppendLine("RICS.ADCH.OldToNew".Translate(oldLabel, newLabel));
-
-            Logger.Debug($"[ShuffleChildhood] Success - {oldLabel} → {newLabel} for viewer {viewer?.Username}");
-
-            return report.ToString();
         }
 
-        // Helper – uses vanilla RimWorld DefDatabase + race/xenotype filtering (now fully HAR-aware)
         private static List<BackstoryDef> GetCompatibleChildhoodBackstories(Verse.Pawn pawn)
         {
-            List<BackstoryDef> result = new List<BackstoryDef>();
+            var result = new List<BackstoryDef>();
 
             foreach (BackstoryDef bs in DefDatabase<BackstoryDef>.AllDefsListForReading)
             {
-                if (bs.slot != BackstorySlot.Childhood) continue;
+                if (bs.slot != BackstorySlot.Childhood)
+                    continue;
 
                 if (IsBackstoryCompatibleWithPawn(bs, pawn))
-                {
                     result.Add(bs);
-                }
             }
 
             return result;
@@ -153,14 +121,10 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         private static bool IsBackstoryCompatibleWithPawn(BackstoryDef bs, Verse.Pawn pawn)
         {
-            // Use HAR provider when loaded (respects AlienBackstoryDef.Approved(Pawn) for race/gender/age/xenotype)
             var provider = CAPChatInteractiveMod.Instance?.AlienProvider;
             if (provider != null)
-            {
                 return provider.IsBackstoryAllowed(bs, pawn);
-            }
 
-            // Vanilla RimWorld behavior – all childhood backstories are allowed
             return true;
         }
     }

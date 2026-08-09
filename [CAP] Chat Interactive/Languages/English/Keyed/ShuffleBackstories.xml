@@ -4,6 +4,7 @@
   <!-- ============================================= -->
   <!-- Childhood Backstory Shuffle Command (CHCH)   -->
   <!-- ============================================= -->
+  <RICS.CHCH.GenericError>Something went wrong shuffling your childhood backstory.</RICS.CHCH.GenericError>
   <RICS.CHCH.NoStoryTracker>Pawn has no story component.</RICS.CHCH.NoStoryTracker>
   <RICS.CHCH.NoChildhood>You have no childhood backstory to shuffle.</RICS.CHCH.NoChildhood>
   <RICS.CHCH.InsufficientCoins>You need {0} coins to shuffle your childhood backstory.</RICS.CHCH.InsufficientCoins>
