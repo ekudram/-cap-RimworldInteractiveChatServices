@@ -8,6 +8,7 @@
 
   <RICS.Research.NoMatch>No research project found matching '{0}'. Use !research without arguments to see current project.</RICS.Research.NoMatch>
   <RICS.Research.MultipleMatches>Multiple projects match '{0}': {1}{2}</RICS.Research.MultipleMatches>
+  <RICS.Research.MultipleExactMatches>Multiple exact matches for '{0}': {1}</RICS.Research.MultipleExactMatches>
   <RICS.Research.MultipleEllipsis>...</RICS.Research.MultipleEllipsis>
 
   <RICS.Research.Completed>{0} - COMPLETED</RICS.Research.Completed>
