@@ -6,6 +6,8 @@
   <RICS.LCH.NoResultsAll>No results found matching '{0}'. Try a broader search term.</RICS.LCH.NoResultsAll>
   <RICS.LCH.ResultsFor>{0} results for '{1}'</RICS.LCH.ResultsFor>
   <RICS.LCH.Error>Error searching: {0}</RICS.LCH.Error>
+  <RICS.LCH.ErrorGeneric>Error searching. Please try again.</RICS.LCH.ErrorGeneric>
+  <RICS.LCH.Usage>Usage: !lookup {term} [item|event|weather|trait|race|xenotype]</RICS.LCH.Usage>
 
   <!-- Category types (now translatable) -->
   <RICS.LCH.Item>Item</RICS.LCH.Item>

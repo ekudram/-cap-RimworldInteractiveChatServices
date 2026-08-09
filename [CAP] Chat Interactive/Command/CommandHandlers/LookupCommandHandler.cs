@@ -1,4 +1,4 @@
-﻿// LookupCommandHandler.cs
+// LookupCommandHandler.cs
 // Copyright (c) Captolamia
 // This file is part of: RICS - Rimworld Interactive Chat Services
 // 
@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
-// Handles the !lookup command to search across items, events, and weather
+// !lookup — search store items, events, weather, traits, races, xenotypes
 using _CAP__Chat_Interactive.Command.CommandHelpers;
 using _CAP__Chat_Interactive.Utilities;
 using CAP_ChatInteractive.Incidents;
@@ -26,18 +26,27 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Verse;
 
 namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class LookupCommandHandler
     {
+        private const string ReturnDivider = " | ";
+
         public static string HandleLookupCommand(ChatMessageWrapper messageWrapper, string searchTerm, string searchType)
         {
             try
             {
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-                var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
+                if (string.IsNullOrWhiteSpace(searchTerm))
+                    return "RICS.LCH.Usage".Translate();
+
+                searchType = string.IsNullOrWhiteSpace(searchType) ? "all" : searchType.Trim().ToLowerInvariant();
+                searchTerm = searchTerm.Trim();
+
+                var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                var currencySymbol = settings?.CurrencyName?.Trim() ?? "¢";
 
                 var results = new List<LookupResult>();
 
@@ -63,7 +72,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         break;
                     case "all":
                     default:
-                        // Search all categories with limits (now includes new types)
                         results.AddRange(SearchItems(searchTerm, 3));
                         results.AddRange(SearchEvents(searchTerm, 2));
                         results.AddRange(SearchWeather(searchTerm, 2));
@@ -76,55 +84,45 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!results.Any())
                 {
                     if (searchType == "all")
-                    {
                         return "RICS.LCH.NoResultsAll".Translate(searchTerm);
-                    }
                     return "RICS.LCH.NoResults".Translate(searchType, searchTerm);
                 }
 
-                // var response = $"🔍 {searchType.ToUpper()} results for '{searchTerm}': ";
-                // In HandleLookupCommand – replace the response-building block
                 string displayCategory = searchType == "all"
-                                    ? "RICS.LCH.All".Translate()
-                                    : $"RICS.LCH.{searchType.CapitalizeFirst()}".Translate();
+                    ? "RICS.LCH.All".Translate()
+                    : $"RICS.LCH.{searchType.CapitalizeFirst()}".Translate();
 
-                var response = $"🔍 {"RICS.LCH.ResultsFor".Translate(displayCategory, searchTerm)}: ";
+                string header = "🔍 " + "RICS.LCH.ResultsFor".Translate(displayCategory, searchTerm) + ": ";
 
-                response += string.Join(" | ", results.Select(r =>
+                string body = string.Join(ReturnDivider, results.Select(r =>
                 {
-                    // For xenotypes we already skip the type label (existing behavior)
                     string displayType = r.Type == "RICS.LCH.Xenotype"
                         ? ""
                         : $" ({r.Type.Translate()})";
 
-                    // Prepend research emoji for items only (other categories unchanged)
                     string emojiPrefix = r.ResearchStatusEmoji ?? "";
-
                     return $"{emojiPrefix}{TextUtilities.StripTags(r.Name)}{displayType}: {r.Cost} {currencySymbol}";
                 }));
 
-                return response;
+                return header + body;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in HandleLookupCommand: {ex}");
-                // return "Error searching. Please try again.";
-                string exMessage = ex.Message.Length > 100 ? ex.Message.Substring(0, 100) + "..." : ex.Message;
-                return "RICS.LCH.Error".Translate(exMessage); // for localization
+                Logger.Error($"[Lookup] Error in HandleLookupCommand: {ex}");
+                return "RICS.LCH.ErrorGeneric".Translate();
             }
         }
 
-        // In LookupCommandHandler.cs, inside LookupCommandHandler class
-        // Replace the entire SearchItems() method with this:
         private static IEnumerable<LookupResult> SearchItems(string searchTerm, int maxResults)
         {
-            var normalizedSearchTerm = searchTerm.ToLower();
+            var normalizedSearchTerm = searchTerm.ToLowerInvariant();
 
             return StoreInventory.GetEnabledItems()
-                .Where(item => {
+                .Where(item =>
+                {
                     string customName = TextUtilities.CleanAndNormalize(item.CustomName);
                     string displayName = TextUtilities.CleanAndNormalize(GetItemDisplayName(item));
-                    string defName = item.DefName?.ToLower() ?? "";
+                    string defName = item.DefName?.ToLowerInvariant() ?? "";
 
                     return customName.Contains(normalizedSearchTerm) ||
                            displayName.Contains(normalizedSearchTerm) ||
@@ -133,13 +131,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 .Take(maxResults)
                 .Select(item =>
                 {
-                    // Reuse the exact ResearchGateResult struct we added previously
-                    // (only .Allowed matters for lookup — we ignore the blocking label to keep output short)
                     var researchResult = StoreCommandHelper.HasRequiredResearch(item);
-
-                    string researchEmoji = researchResult.Allowed
-                        ? "🔬✅"   // research-ready (or no research required)
-                        : "🔬🔒";  // research-locked
+                    string researchEmoji = researchResult.Allowed ? "🔬✅" : "🔬🔒";
 
                     return new LookupResult
                     {
@@ -147,24 +140,23 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         Type = "RICS.LCH.Item",
                         Cost = item.BasePrice,
                         DefName = item.DefName,
-                        ResearchStatusEmoji = researchEmoji   // new field
+                        ResearchStatusEmoji = researchEmoji
                     };
                 });
         }
 
         private static IEnumerable<LookupResult> SearchEvents(string searchTerm, int maxResults)
         {
-            var normalizedSearchTerm = searchTerm.ToLower();
+            var normalizedSearchTerm = searchTerm.ToLowerInvariant();
 
             return IncidentsManager.AllBuyableIncidents.Values
                 .Where(incident => incident.Enabled &&
                        (TextUtilities.CleanAndNormalize(incident.Label).Contains(normalizedSearchTerm) ||
-                        (incident.DefName?.ToLower().Contains(normalizedSearchTerm) == true)))
+                        (incident.DefName?.IndexOf(normalizedSearchTerm, StringComparison.OrdinalIgnoreCase) >= 0)))
                 .Take(maxResults)
                 .Select(incident => new LookupResult
                 {
                     Name = incident.Label,
-                    // Type = "Event",
                     Type = "RICS.LCH.Event",
                     Cost = incident.BaseCost,
                     DefName = incident.DefName
@@ -173,17 +165,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static IEnumerable<LookupResult> SearchWeather(string searchTerm, int maxResults)
         {
-            var normalizedSearchTerm = searchTerm.ToLower();
+            var normalizedSearchTerm = searchTerm.ToLowerInvariant();
 
             return BuyableWeatherManager.AllBuyableWeather.Values
                 .Where(w => w.Enabled &&
                        (TextUtilities.CleanAndNormalize(w.Label).Contains(normalizedSearchTerm) ||
-                        w.DefName.ToLower().Contains(normalizedSearchTerm)))
+                        w.DefName.IndexOf(normalizedSearchTerm, StringComparison.OrdinalIgnoreCase) >= 0))
                 .Take(maxResults)
                 .Select(w => new LookupResult
                 {
                     Name = w.Label,
-                    // Type = "Weather",
                     Type = "RICS.LCH.Weather",
                     Cost = w.BaseCost,
                     DefName = w.DefName
@@ -192,23 +183,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static IEnumerable<LookupResult> SearchTraits(string searchTerm, int maxResults)
         {
-            var normalizedSearchTerm = searchTerm.ToLower();
+            var normalizedSearchTerm = searchTerm.ToLowerInvariant();
 
             return TraitsManager.GetEnabledTraits()
-                .Where(trait => {
-                    // Clean the trait name for searching
+                .Where(trait =>
+                {
                     string cleanedName = TextUtilities.CleanAndNormalize(trait.Name);
-                    string cleanedDefName = trait.DefName?.ToLower() ?? "";
-
-                    // Search in both cleaned name and defName
+                    string cleanedDefName = trait.DefName?.ToLowerInvariant() ?? "";
                     return cleanedName.Contains(normalizedSearchTerm) ||
                            cleanedDefName.Contains(normalizedSearchTerm);
                 })
                 .Take(maxResults)
                 .Select(trait => new LookupResult
                 {
-                    Name = trait.Name, // Keep original name with colors for display
-                    // Type = "Trait",
+                    Name = trait.Name,
                     Type = "RICS.LCH.Trait",
                     Cost = trait.AddPrice,
                     DefName = trait.DefName
@@ -219,9 +207,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
-                var normalizedSearchTerm = searchTerm.ToLower();
-
-                // Reuses exactly the same enabled-race source as BuyPawnCommandHandler.ListAvailableRaces
+                var normalizedSearchTerm = searchTerm.ToLowerInvariant();
                 var enabledRaces = RaceUtils.GetEnabledRaces();
 
                 return enabledRaces
@@ -229,18 +215,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     {
                         if (race == null) return false;
                         string label = TextUtilities.CleanAndNormalize(race.LabelCap.RawText);
-                        string defName = race.defName?.ToLower() ?? "";
+                        string defName = race.defName?.ToLowerInvariant() ?? "";
                         return label.Contains(normalizedSearchTerm) ||
-                                defName.Contains(normalizedSearchTerm);
+                               defName.Contains(normalizedSearchTerm);
                     })
                     .Take(maxResults)
                     .Select(race =>
                     {
                         var settings = RaceSettingsManager.GetRaceSettings(race.defName);
-                        if (settings == null) return null; // skip if null (rare)
+                        if (settings == null)
+                            return null;
 
                         string extra = GetXenotypesForRace(race.defName);
-
                         return new LookupResult
                         {
                             Name = race.LabelCap.RawText + extra,
@@ -249,11 +235,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             DefName = race.defName
                         };
                     })
-                    .Where(result => result != null);  // remove any nulls
+                    .Where(result => result != null);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in SearchRaces: {ex}");
+                Logger.Error($"[Lookup] Error in SearchRaces: {ex}");
                 return Enumerable.Empty<LookupResult>();
             }
         }
@@ -262,23 +248,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
-                if (!ModsConfig.BiotechActive)
+                if (!ModsConfig.BiotechActive || string.IsNullOrWhiteSpace(searchTerm))
                     return Enumerable.Empty<LookupResult>();
 
-                if (string.IsNullOrWhiteSpace(searchTerm))
-                    return Enumerable.Empty<LookupResult>();
-
-                var normalizedSearchTerm = searchTerm.ToLower().Trim();
-
-                // === NEW: Race-first mode ===
-                // If the search term matches a race (e.g. "human", "kurin"), show that race's ENABLED xenotypes
-                // This is the source of truth (RaceSettingsManager dictionary) – exactly what you asked for
+                var normalizedSearchTerm = searchTerm.ToLowerInvariant().Trim();
                 var enabledRaces = RaceUtils.GetEnabledRaces();
+
+                // Race-first: matching a race lists its enabled xenotypes
                 var matchingRace = enabledRaces.FirstOrDefault(race =>
                 {
                     if (race == null) return false;
                     string label = TextUtilities.CleanAndNormalize(race.LabelCap.RawText);
-                    string defName = race.defName?.ToLower() ?? "";
+                    string defName = race.defName?.ToLowerInvariant() ?? "";
                     return label.Contains(normalizedSearchTerm) ||
                            defName.Contains(normalizedSearchTerm);
                 });
@@ -289,17 +270,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     if (settings == null || !settings.Enabled || !settings.ModActive)
                         return Enumerable.Empty<LookupResult>();
 
-                    // Reuse exact same allowed pool as GetXenotypesForRace + Dialog GUI (HAR + Biotech)
                     var allowedDefNames = Dialog_PawnRaceSettings.GetAllowedXenotypes(matchingRace);
-
                     var enabledXenotypes = allowedDefNames
                         .Where(defName => settings.EnabledXenotypes.TryGetValue(defName, out bool isEnabled) && isEnabled)
                         .Select(defName => DefDatabase<XenotypeDef>.GetNamedSilentFail(defName))
                         .Where(x => x != null)
-                        .OrderBy(x => x.label)   // readable alphabetical order
+                        .OrderBy(x => x.label)
                         .ToList();
 
-                    // Human fallback: always show at least Baseliner if nothing enabled (consistent UX)
                     if (!enabledXenotypes.Any() && matchingRace == ThingDefOf.Human)
                     {
                         var baseliner = XenotypeDefOf.Baseliner;
@@ -307,18 +285,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             enabledXenotypes.Add(baseliner);
                     }
 
-                    var raceSettings = RaceSettingsManager.GetRaceSettings(matchingRace.defName);
-
                     return enabledXenotypes
                         .Take(maxResults)
                         .Select(x =>
                         {
                             float price = 0f;
-                            if (raceSettings != null &&
-                                raceSettings.XenotypePrices.TryGetValue(x.defName, out float p))
-                            {
+                            if (settings.XenotypePrices.TryGetValue(x.defName, out float p))
                                 price = p;
-                            }
 
                             return new LookupResult
                             {
@@ -330,29 +303,22 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         });
                 }
 
-                // === Original specific xenotype search (unchanged) ===
-                // Falls through only if no race matched (e.g. "hussar", "sanguophage")
+                // Specific xenotype name search
                 var matchingXenos = new List<XenotypeDef>();
 
-                // First: exact label match (highest priority, supports spaces/multi-word)
                 var exactLabelMatch = DefDatabase<XenotypeDef>.AllDefs
-                    .FirstOrDefault(x => x.label.Equals(searchTerm, StringComparison.OrdinalIgnoreCase));
-
+                    .FirstOrDefault(x => x.label != null &&
+                                         x.label.Equals(searchTerm, StringComparison.OrdinalIgnoreCase));
                 if (exactLabelMatch != null)
-                {
                     matchingXenos.Add(exactLabelMatch);
-                }
 
-                // Then: partial matches on label or defName (fallback)
                 var partialMatches = DefDatabase<XenotypeDef>.AllDefs
                     .Where(x => !string.IsNullOrEmpty(x.defName) &&
+                                x != exactLabelMatch &&
                                 (TextUtilities.CleanAndNormalize(x.label).Contains(normalizedSearchTerm) ||
-                                 x.defName.ToLower().Contains(normalizedSearchTerm)) &&
-                                x != exactLabelMatch)
+                                 x.defName.IndexOf(normalizedSearchTerm, StringComparison.OrdinalIgnoreCase) >= 0))
                     .ToList();
-
                 matchingXenos.AddRange(partialMatches);
-
                 matchingXenos = matchingXenos.Distinct().ToList();
 
                 if (!matchingXenos.Any())
@@ -360,18 +326,15 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var results = new List<LookupResult>();
 
-                var enabledRacesForCompat = RaceUtils.GetEnabledRaces();  // reuse for compatible races
-
                 foreach (var xeno in matchingXenos.Take(maxResults))
                 {
-                    var compatibleRaces = enabledRacesForCompat
+                    var compatibleRaces = enabledRaces
                         .Where(race =>
                         {
                             var settings = RaceSettingsManager.GetRaceSettings(race.defName);
                             if (settings == null) return false;
 
                             string xenoKey = xeno.defName;
-
                             if (settings.EnabledXenotypes?.ContainsKey(xenoKey) == true)
                                 return settings.EnabledXenotypes[xenoKey];
 
@@ -379,8 +342,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                 return true;
 
                             if (xeno == XenotypeDefOf.Baseliner)
-                                return !settings.EnabledXenotypes?.ContainsKey("Baseliner") == true ||
-                                       settings.EnabledXenotypes?["Baseliner"] != false;
+                            {
+                                return settings.EnabledXenotypes == null ||
+                                       !settings.EnabledXenotypes.ContainsKey("Baseliner") ||
+                                       settings.EnabledXenotypes["Baseliner"];
+                            }
 
                             return false;
                         })
@@ -391,23 +357,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     string compatInfo = compatibleRaces.Any()
                         ? "RICS.LCH.Compatible".Translate(
                             string.Join(", ", compatibleRaces.Take(5)) +
-                            (compatibleRaces.Count > 5 ? "RICS.LCH.More".Translate(compatibleRaces.Count - 5) : ""))
+                            (compatibleRaces.Count > 5
+                                ? "RICS.LCH.More".Translate(compatibleRaces.Count - 5)
+                                : ""))
                         : "RICS.LCH.NoneCustomOnly".Translate();
 
                     string displayName = $"{xeno.LabelCap.RawText} ({compatInfo})";
 
-                    // Default to 0 if no price found (fallback)
                     float price = 0f;
-
-                    // Try to get price from the first compatible race's settings (most relevant)
-                    // Or fall back to a "global-ish" price if no compatible races
                     if (compatibleRaces.Any())
                     {
-                        // Pick the first compatible race (ordered alphabetically → deterministic)
                         string firstRaceName = compatibleRaces.First();
-                        var firstRaceDef = enabledRacesForCompat
+                        var firstRaceDef = enabledRaces
                             .FirstOrDefault(r => r.LabelCap.RawText == firstRaceName);
-
                         if (firstRaceDef != null)
                         {
                             var raceSettings = RaceSettingsManager.GetRaceSettings(firstRaceDef.defName);
@@ -420,7 +382,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                     else
                     {
-                        // No compatible races → try human as fallback base price (common default)
                         var humanSettings = RaceSettingsManager.GetRaceSettings(ThingDefOf.Human.defName);
                         if (humanSettings != null &&
                             humanSettings.XenotypePrices.TryGetValue(xeno.defName, out float humanPrice))
@@ -433,7 +394,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     {
                         Name = displayName,
                         Type = "RICS.LCH.Xenotype",
-                        Cost = (int)Math.Round(price),  // assuming integer display like other items
+                        Cost = (int)Math.Round(price),
                         DefName = xeno.defName
                     });
                 }
@@ -442,26 +403,27 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in SearchXenotypes: {ex}");
+                Logger.Error($"[Lookup] Error in SearchXenotypes: {ex}");
                 return Enumerable.Empty<LookupResult>();
             }
         }
 
         private static string GetXenotypesForRace(string raceDefName)
         {
-            if (!ModsConfig.BiotechActive) return string.Empty;
+            if (!ModsConfig.BiotechActive)
+                return string.Empty;
 
             try
             {
                 var race = DefDatabase<ThingDef>.GetNamedSilentFail(raceDefName);
-                if (race == null || !race.race?.Humanlike == true) return string.Empty;
+                if (race == null || race.race?.Humanlike != true)
+                    return string.Empty;
 
                 var settings = RaceSettingsManager.GetRaceSettings(raceDefName);
-                if (settings == null) return string.Empty;
+                if (settings == null)
+                    return string.Empty;
 
-                // Use EXACT same allowed pool as the settings GUI (HAR reflection + Biotech logic)
                 var allowedDefNames = Dialog_PawnRaceSettings.GetAllowedXenotypes(race);
-
                 var enabledXenoNames = new List<string>();
 
                 foreach (var defName in allowedDefNames)
@@ -469,59 +431,44 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     if (settings.EnabledXenotypes.TryGetValue(defName, out bool isEnabled) && isEnabled)
                     {
                         var xenoDef = DefDatabase<XenotypeDef>.GetNamedSilentFail(defName);
-                        string display = xenoDef?.LabelCap.RawText ?? defName;
-                        enabledXenoNames.Add(display);
+                        enabledXenoNames.Add(xenoDef?.LabelCap.RawText ?? defName);
                     }
                 }
 
                 string xenoList;
                 if (!enabledXenoNames.Any())
                 {
-                    if (settings.AllowCustomXenotypes)
-                    {
-                        xenoList = "RICS.LCH.CustomOnly".Translate();
-                    }
-                    else
-                    {
+                    if (!settings.AllowCustomXenotypes)
                         return string.Empty;
-                    }
+                    xenoList = "RICS.LCH.CustomOnly".Translate();
                 }
                 else
                 {
                     enabledXenoNames.Sort();
-
                     if (enabledXenoNames.Count <= 3)
-                    {
                         xenoList = string.Join(", ", enabledXenoNames);
-                    }
                     else
-                    {
                         xenoList = string.Join(", ", enabledXenoNames.Take(3)) +
                                    "RICS.LCH.More".Translate(enabledXenoNames.Count - 3);
-                    }
 
                     if (settings.AllowCustomXenotypes)
-                    {
                         xenoList += "RICS.LCH.PlusCustom".Translate();
-                    }
                 }
 
                 return " (" + "RICS.LCH.XenotypesForRace".Translate(xenoList) + ")";
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error getting xenotypes for race {raceDefName}: {ex}");
-                return string.Empty; // silent – never break lookup
+                Logger.Error($"[Lookup] Error getting xenotypes for race {raceDefName}: {ex}");
+                return string.Empty;
             }
         }
 
         private static string GetItemDisplayName(StoreItem storeItem)
         {
-            // Get the display name from the ThingDef
             var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
             return thingDef?.label ?? storeItem.DefName;
         }
-
     }
 
     public class LookupResult
@@ -531,12 +478,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         public int Cost { get; set; }
         public string DefName { get; set; }
 
-        // NEW: Research status emoji for items (🔬🔒 = locked, 🔬✅ = ready)
-        // Empty string for non-item results (events, weather, traits, races, xenotypes)
+        /// <summary>🔬🔒 locked / 🔬✅ ready for items; empty for other categories.</summary>
         public string ResearchStatusEmoji { get; set; } = "";
     }
 
-    // Add this static class for text utilities
     public static class TextUtilities
     {
         public static string StripTags(string input)
@@ -544,17 +489,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (string.IsNullOrEmpty(input))
                 return input;
 
-            // Simple regex to remove HTML/XML tags
-            return System.Text.RegularExpressions.Regex.Replace(
-                input,
-                @"<[^>]+>",
-                string.Empty
-            ).Trim();
+            return Regex.Replace(input, @"<[^>]+>", string.Empty).Trim();
         }
 
         public static string CleanAndNormalize(string input)
         {
-            return StripTags(input)?.ToLower() ?? "";
+            return StripTags(input)?.ToLowerInvariant() ?? "";
         }
     }
 }
