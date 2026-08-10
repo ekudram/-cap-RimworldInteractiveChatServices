@@ -17,6 +17,7 @@
 //
 // Processes chat messages and commands from viewers.
 using CAP_ChatInteractive.Commands.Cooldowns;
+using CAP_ChatInteractive.Utilities;
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -504,7 +505,7 @@ namespace CAP_ChatInteractive
             {
                 if (string.IsNullOrWhiteSpace(text)) return;
 
-                string cleanText = RemoveMarkupTags(text);
+                string cleanText = XmlTextSanitizer.Sanitize(RemoveMarkupTags(text));
                 if (string.IsNullOrWhiteSpace(cleanText)) return;
 
                 var mod = CAPChatInteractiveMod.Instance;
@@ -583,7 +584,7 @@ namespace CAP_ChatInteractive
             {
                 if (string.IsNullOrWhiteSpace(text)) return;
 
-                string cleanText = RemoveMarkupTags(text);
+                string cleanText = XmlTextSanitizer.Sanitize(RemoveMarkupTags(text));
                 if (string.IsNullOrWhiteSpace(cleanText)) return;
                 var viewer = Viewers.GetViewer(username);
                 if (viewer == null) return;
