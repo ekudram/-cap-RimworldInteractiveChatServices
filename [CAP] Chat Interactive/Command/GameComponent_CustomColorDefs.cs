@@ -1,6 +1,9 @@
-// GameComponent_CustomColorDefs.cs
+// File: GameComponent_CustomColorDefs.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
 // Persists RICS-created favorite ColorDefs across save/load.
 // Runtime DefDatabase.Add alone is lost when the process restarts; save game
