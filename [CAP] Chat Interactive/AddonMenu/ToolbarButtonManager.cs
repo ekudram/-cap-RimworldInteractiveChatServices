@@ -1,4 +1,4 @@
-﻿// ToolbarButtonManager.cs
+// ToolbarButtonManager.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive aka RICS (Rimworld Interactive Chat System).
 // 
@@ -15,7 +15,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
-// Manages quick-access toolbar buttons for frequently used features
+// Top-of-screen quick toolbar for EnhancedChatInteractiveAddonDef with showInToolbar=true.
+// Modders: prefer XML Defs, or ButtonUtils.Add* for runtime toolbar-only buttons.
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -26,46 +28,62 @@ namespace CAP_ChatInteractive
     [StaticConstructorOnStartup]
     public static class ToolbarButtonManager
     {
-        private static List<EnhancedChatInteractiveAddonDef> toolbarButtons;
-        private static Texture2D defaultButtonIcon;
+        private static List<EnhancedChatInteractiveAddonDef> toolbarButtons
+            = new List<EnhancedChatInteractiveAddonDef>();
+
         private const float DividerWidth = 12f;
 
         static ToolbarButtonManager()
         {
-            defaultButtonIcon = ContentFinder<Texture2D>.Get("UI/Widgets/ButtonBG", true);
-            RefreshToolbarButtons();
+            try
+            {
+                RefreshToolbarButtons();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[AddonMenu] ToolbarButtonManager init failed: {ex}");
+                toolbarButtons = new List<EnhancedChatInteractiveAddonDef>();
+            }
         }
 
         public static void RefreshToolbarButtons()
         {
             toolbarButtons = DefDatabase<EnhancedChatInteractiveAddonDef>.AllDefs
-                .Where(def => def.enabled && def.showInToolbar)
+                .Where(def => def != null && def.enabled && def.showInToolbar)
                 .OrderBy(def => def.displayOrder)
                 .ToList();
-
-            Logger.Debug($"Loaded {toolbarButtons.Count} toolbar buttons");
         }
 
-        /// <summary>
-        /// Draw the toolbar at the top of the screen
-        /// </summary>
-        // Update the DrawToolbar method to add separators between different mods:
+        /// <summary>Draw the toolbar just below the top menu bar (play mode only).</summary>
         public static void DrawToolbar()
         {
-            if (toolbarButtons.Count == 0 || Current.ProgramState != ProgramState.Playing)
+            if (toolbarButtons == null || toolbarButtons.Count == 0)
                 return;
 
-            // Group buttons by source mod
+            if (Current.ProgramState != ProgramState.Playing)
+                return;
+
+            try
+            {
+                DrawToolbarInternal();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[AddonMenu] DrawToolbar failed: {ex}");
+            }
+        }
+
+        private static void DrawToolbarInternal()
+        {
             var groupedButtons = toolbarButtons
-                .GroupBy(b => b.sourceMod)
-                .OrderBy(g => g.Key == "RICS" ? 0 : 1) // RICS first
-                .ThenBy(g => g.Key) // Then alphabetically
+                .GroupBy(b => b.sourceMod ?? "Unknown")
+                .OrderBy(g => g.Key == "RICS" ? 0 : 1)
+                .ThenBy(g => g.Key)
                 .ToList();
 
-            // Calculate total width cleanly (spacing ONLY between items + safety padding)
-            float buttonSize = 32f;
-            float spacing = 4f;
-            float separatorWidth = 12f;
+            const float buttonSize = 32f;
+            const float spacing = 4f;
+            const float separatorWidth = 12f;
             float dividerWidth = DividerWidth;
 
             float totalWidth = 0f;
@@ -76,28 +94,21 @@ namespace CAP_ChatInteractive
                 if (!firstItem)
                     totalWidth += spacing;
 
-                totalWidth += (def.buttonType == ButtonType.Divider) ? dividerWidth : buttonSize;
+                totalWidth += def.buttonType == ButtonType.Divider ? dividerWidth : buttonSize;
                 firstItem = false;
             }
 
-            // Add mod-group separators
-            int totalSeparators = groupedButtons.Count - 1;
-            totalWidth += (separatorWidth * totalSeparators);
-
-            // Safety padding so the final button (Version History) is never clipped
+            int totalSeparators = Math.Max(0, groupedButtons.Count - 1);
+            totalWidth += separatorWidth * totalSeparators;
             totalWidth += 8f;
 
-            // Position at top center of screen
             float screenWidth = UI.screenWidth;
             float x = (screenWidth - totalWidth) / 2f;
-            float y = 35f; // Just below the top menu bar
+            float y = 35f;
 
             Rect toolbarRect = new Rect(x, y, totalWidth, buttonSize);
-
-            // Background
             Widgets.DrawMenuSection(toolbarRect);
 
-            // Draw buttons/dividers with separators
             float currentX = toolbarRect.x;
 
             for (int i = 0; i < groupedButtons.Count; i++)
@@ -108,28 +119,22 @@ namespace CAP_ChatInteractive
                 {
                     if (buttonDef.buttonType == ButtonType.Divider)
                     {
-                        // Divider: thin vertical line
                         Rect dividerRect = new Rect(currentX, toolbarRect.y, dividerWidth, buttonSize);
                         float lineX = dividerRect.x + dividerWidth / 2f;
                         Widgets.DrawLineVertical(lineX, dividerRect.y + 6f, dividerRect.height - 12f);
                         currentX += dividerWidth;
-                        Logger.Debug("Divider Drawn");
                     }
                     else
                     {
-                        // Real button: full size
                         Rect buttonRect = new Rect(currentX, toolbarRect.y, buttonSize, buttonSize);
                         DrawToolbarButton(buttonRect, buttonDef);
                         currentX += buttonSize;
-                        Logger.Debug("Button Drawn");
                     }
 
-                    // Spacing after every item (except we already calculated it)
                     if (currentX + spacing < toolbarRect.xMax - 4f)
                         currentX += spacing;
                 }
 
-                // Mod-group separator (between different sourceMods)
                 if (i < groupedButtons.Count - 1)
                 {
                     Rect separatorRect = new Rect(currentX, toolbarRect.y, separatorWidth, buttonSize);
@@ -139,65 +144,47 @@ namespace CAP_ChatInteractive
             }
         }
 
-        // Add this new method to draw separators between mods:
         private static void DrawModSeparator(Rect rect, string leftMod, string rightMod)
         {
-            // Draw a vertical line
             float lineX = rect.x + rect.width / 2f;
             Widgets.DrawLineVertical(lineX, rect.y, rect.height);
-
-            // Add tooltip showing mod transition
-            string tooltipText = $"{leftMod} → {rightMod}";
-            TooltipHandler.TipRegion(rect, tooltipText);
+            TooltipHandler.TipRegion(rect, $"{leftMod} → {rightMod}");
         }
 
         private static void DrawToolbarButton(Rect rect, EnhancedChatInteractiveAddonDef buttonDef)
         {
-            if (buttonDef.buttonType == ButtonType.Divider) return;   // Safety — never called for dividers
+            if (buttonDef == null || buttonDef.buttonType == ButtonType.Divider)
+                return;
 
-            // Button background with hover effect
             if (Mouse.IsOver(rect))
-            {
                 Widgets.DrawHighlight(rect);
-            }
 
-            // Icon or label
+            string label = buttonDef.label ?? string.Empty;
             if (!string.IsNullOrEmpty(buttonDef.iconPath))
             {
-                var icon = ContentFinder<Texture2D>.Get(buttonDef.iconPath, false);
+                Texture2D icon = AddonButtonActions.LoadIcon(buttonDef.iconPath);
                 if (icon != null)
                 {
-                    Rect iconRect = rect.ContractedBy(4f);
-                    GUI.DrawTexture(iconRect, icon);
+                    GUI.DrawTexture(rect.ContractedBy(4f), icon);
                 }
                 else
                 {
-                    // Fallback: show first letter of label
-                    string firstLetter = buttonDef.label.Length > 0 ? buttonDef.label[0].ToString() : "?";
-                    Text.Anchor = TextAnchor.MiddleCenter;
-                    Widgets.Label(rect, firstLetter);
-                    Text.Anchor = TextAnchor.UpperLeft;
+                    DrawFallbackLetter(rect, label);
                 }
             }
             else
             {
-                // Show first letter if no icon
-                string firstLetter = buttonDef.label.Length > 0 ? buttonDef.label[0].ToString() : "?";
-                Text.Anchor = TextAnchor.MiddleCenter;
-                Widgets.Label(rect, firstLetter);
-                Text.Anchor = TextAnchor.UpperLeft;
+                DrawFallbackLetter(rect, label);
             }
 
-            // Tooltip
-            TooltipHandler.TipRegion(rect, buttonDef.tooltip);
+            if (!string.IsNullOrEmpty(buttonDef.tooltip))
+                TooltipHandler.TipRegion(rect, buttonDef.tooltip);
+            else if (!string.IsNullOrEmpty(label))
+                TooltipHandler.TipRegion(rect, label);
 
-            // Click handler
             if (Widgets.ButtonInvisible(rect))
-            {
                 buttonDef.ExecuteDirectly();
-            }
 
-            // Hotkey indicator (small star in corner)
             if (buttonDef.hotkey != null)
             {
                 Rect hotkeyRect = new Rect(rect.x + rect.width - 10f, rect.y, 10f, 10f);
@@ -206,63 +193,70 @@ namespace CAP_ChatInteractive
                 GUI.color = Color.white;
             }
 
-            // Draw border
             Widgets.DrawBox(rect, 1);
         }
 
-        /// <summary>
-        /// Check for hotkey presses
-        /// </summary>
+        private static void DrawFallbackLetter(Rect rect, string label)
+        {
+            string firstLetter = !string.IsNullOrEmpty(label) ? label[0].ToString() : "?";
+            Text.Anchor = TextAnchor.MiddleCenter;
+            Widgets.Label(rect, firstLetter);
+            Text.Anchor = TextAnchor.UpperLeft;
+        }
+
         public static void CheckHotkeys()
         {
-            if (Current.ProgramState != ProgramState.Playing) return;
+            if (Current.ProgramState != ProgramState.Playing || toolbarButtons == null)
+                return;
 
-            foreach (var buttonDef in toolbarButtons)
+            try
             {
-                if (buttonDef.hotkey != null && buttonDef.hotkey.KeyDownEvent)
+                foreach (var buttonDef in toolbarButtons)
                 {
-                    buttonDef.ExecuteDirectly();
+                    if (buttonDef?.hotkey != null && buttonDef.hotkey.KeyDownEvent)
+                        buttonDef.ExecuteDirectly();
                 }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[AddonMenu] CheckHotkeys failed: {ex}");
             }
         }
 
-        /// <summary>
-        /// Get all toolbar buttons (for modders to extend)
-        /// </summary>
+        /// <summary>Snapshot of toolbar buttons (for modders inspecting/extending).</summary>
         public static List<EnhancedChatInteractiveAddonDef> GetAllToolbarButtons()
         {
-            return toolbarButtons ?? new List<EnhancedChatInteractiveAddonDef>();
+            return toolbarButtons != null
+                ? new List<EnhancedChatInteractiveAddonDef>(toolbarButtons)
+                : new List<EnhancedChatInteractiveAddonDef>();
         }
 
         /// <summary>
-        /// Add a button dynamically (for modders)
+        /// Add a button at runtime (toolbar only — not the main tab DefDatabase list).
+        /// Prefer shipping an XML EnhancedChatInteractiveAddonDef for full integration.
         /// </summary>
         public static void AddToolbarButton(EnhancedChatInteractiveAddonDef buttonDef)
         {
+            if (buttonDef == null)
+                return;
+
             if (toolbarButtons == null)
                 toolbarButtons = new List<EnhancedChatInteractiveAddonDef>();
 
-            if (!toolbarButtons.Contains(buttonDef))
-            {
-                toolbarButtons.Add(buttonDef);
-                toolbarButtons = toolbarButtons.OrderBy(b => b.displayOrder).ToList();
-                Logger.Debug($"Added toolbar button: {buttonDef.defName}");
-            }
+            if (toolbarButtons.Any(b => b != null && b.defName == buttonDef.defName))
+                return;
+
+            toolbarButtons.Add(buttonDef);
+            toolbarButtons = toolbarButtons.OrderBy(b => b.displayOrder).ToList();
         }
 
-        /// <summary>
-        /// Remove a toolbar button
-        /// </summary>
+        /// <summary>Remove a toolbar button by defName.</summary>
         public static void RemoveToolbarButton(string defName)
         {
-            if (toolbarButtons != null)
-            {
-                int removed = toolbarButtons.RemoveAll(b => b.defName == defName);
-                if (removed > 0)
-                {
-                    Logger.Debug($"Removed toolbar button: {defName}");
-                }
-            }
+            if (toolbarButtons == null || string.IsNullOrEmpty(defName))
+                return;
+
+            toolbarButtons.RemoveAll(b => b != null && b.defName == defName);
         }
     }
 }
