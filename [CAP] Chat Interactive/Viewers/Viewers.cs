@@ -1,4 +1,4 @@
-﻿// Viewers.cs
+// Viewers.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -14,33 +14,10 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-// Manages viewer data including loading, saving, and updating viewer information.
-
-/*
- * CONCEPTUAL INSPIRATION:
- * Viewer management concept inspired by hodlhodl1132's TwitchToolkit (AGPLv3)
- * However, this implementation includes substantial architectural differences:
- * - Platform-based user identification system
- * - Enhanced serialization with Newtonsoft.Json
- * - Multi-platform viewer tracking
- * - Different data persistence model
- * - Queue management and pending offer systems
- * 
- * Original TwitchToolkit Copyright: 2019 hodlhodl1132
- * Community Preservation Modifications © 2025 Captolamia
- */
-
-/*
- * IMPLEMENTATION NOTES:
- * - Twitch role hierarchy dictated by platform API requirements
- * - Karma systems are standard industry practice (non-protectable)
- * - Virtual currency management follows functional necessities
- * - All platform-specific structures follow external constraints
- */
-
+//
+// Static registry: load/save viewers.json, lookup, awards, dedup, karma decay.
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using UnityEngine;
 using Verse;
@@ -51,115 +28,105 @@ namespace CAP_ChatInteractive
     {
         public static List<Viewer> All = new List<Viewer>();
         public static readonly object _lock = new object();
-        private static string _dataFilePath;
+
+        private static volatile bool _isSaving;
 
         static Viewers()
         {
-            _dataFilePath = JsonFileManager.GetFilePath("viewers.json");
-            LoadViewers();
+            try
+            {
+                LoadViewers();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[Viewers] Static init failed: {ex.Message}");
+                All = new List<Viewer>();
+            }
         }
 
         /// <summary>
-        /// Gets the Viewer object associated with a given chat message.
-        /// This method first attempts to find a viewer by their platform-specific user ID (if available), which is the most reliable method of identification.
-        /// If that fails, it falls back to looking up the viewer by their username.
-        /// This approach helps to ensure that viewers are correctly identified even if they change their display name
-        /// or if there are multiple viewers with the same username across different platforms.
-        /// The method also includes robust null checks and logging to prevent and diagnose potential issues with viewer retrieval.
+        /// Resolve by platform user id when present, else username (creates if missing).
         /// </summary>
-        /// <param name="message"></param>
-        /// <returns></returns>
         public static Viewer GetViewer(ChatMessageWrapper message)
         {
             if (message == null || string.IsNullOrEmpty(message.Username))
+                return null;
+
+            try
             {
-                Logger.Warning("GetViewer: Message or username is null");
+                if (!string.IsNullOrEmpty(message.PlatformUserId) && !string.IsNullOrEmpty(message.Platform))
+                {
+                    var byPlatform = GetViewerByPlatformId(message.Platform, message.PlatformUserId);
+                    if (byPlatform != null)
+                        return byPlatform;
+                }
+
+                return GetViewer(message.Username);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[Viewers] GetViewer(message) failed: {ex.Message}");
                 return null;
             }
-
-            // First try to find by platform ID (most reliable)
-            if (!string.IsNullOrEmpty(message.PlatformUserId))
-            {
-                var viewerByPlatform = GetViewerByPlatformId(message.Platform, message.PlatformUserId);
-                if (viewerByPlatform != null)
-                {
-                    return viewerByPlatform;
-                }
-            }
-
-            // Fall back to username lookup
-            return GetViewer(message.Username);
         }
 
-        /// <summary>
-        /// Gets the Viewer object for a given username. If no viewer exists with that username, a new one is created and added to the list.
-        /// </summary>
-        /// <param name="username">The username of the viewer.</param>
-        /// <returns>The Viewer object associated with the given username.</returns>
+        /// <summary>Get or create viewer by username (stored lowercase).</summary>
         public static Viewer GetViewer(string username)
         {
             if (string.IsNullOrEmpty(username))
-            {
-                Logger.Warning("GetViewer: Username is null or empty");
                 return null;
-            }
 
             var usernameLower = username.ToLowerInvariant();
 
             lock (_lock)
             {
-                var viewer = All.Find(v => v.Username == usernameLower);
+                var viewer = All.Find(v => v != null && v.Username == usernameLower);
+                if (viewer != null)
+                    return viewer;
 
-                if (viewer == null)
-                {
-                    viewer = new Viewer(username);
-                    All.Add(viewer);
-
-                    // Save immediately for new viewers during debugging
-                    SaveViewers();
-                }
-                // DebugSaveAndLog();
+                viewer = new Viewer(username);
+                All.Add(viewer);
+                SaveViewers();
                 return viewer;
             }
         }
 
         public static Viewer GetViewerByPlatformIdentifier(string identifier)
         {
-            if (string.IsNullOrEmpty(identifier)) return null;
+            if (string.IsNullOrEmpty(identifier))
+                return null;
 
-            if (identifier.Contains(':'))
+            try
             {
-                var parts = identifier.Split(new[] { ':' }, 2);
-                if (parts.Length == 2)
-                    return GetViewerByPlatformId(parts[0], parts[1]);
+                if (identifier.Contains(':'))
+                {
+                    var parts = identifier.Split(new[] { ':' }, 2);
+                    if (parts.Length == 2)
+                        return GetViewerByPlatformId(parts[0], parts[1]);
+                }
+
+                if (identifier.All(char.IsDigit))
+                    return GetViewerByPlatformId("twitch", identifier);
+
+                return GetViewer(identifier);
             }
-
-            if (identifier.All(char.IsDigit))
-                return GetViewerByPlatformId("twitch", identifier); // most common case
-
-            return GetViewer(identifier);
+            catch (Exception ex)
+            {
+                Logger.Error($"[Viewers] GetViewerByPlatformIdentifier failed: {ex.Message}");
+                return null;
+            }
         }
 
         public static Viewer GetViewerNoAdd(string username)
         {
             if (string.IsNullOrEmpty(username))
-            {
-                Logger.Warning("GetViewer: Username is null or empty");
                 return null;
-            }
 
             var usernameLower = username.ToLowerInvariant();
 
             lock (_lock)
             {
-                var viewer = All.Find(v => v.Username == usernameLower);
-
-                if (viewer == null)
-                {
-                    return null;
-                }
-                // DebugSaveAndLog();
-                return viewer;
+                return All.Find(v => v != null && v.Username == usernameLower);
             }
         }
 
@@ -170,87 +137,60 @@ namespace CAP_ChatInteractive
 
             lock (_lock)
             {
-                return All.Find(v => v.GetPlatformUserId(platform) == userId);
+                return All.Find(v => v != null && v.GetPlatformUserId(platform) == userId);
             }
         }
 
         /// <summary>
-        /// Updates viewer activity based on a new chat message. This method is called whenever a new message is received and is responsible for:
-        /// - Creating a new viewer if one does not already exist
-        /// - Updating the viewer's message count and platform IDs
-        /// - Saving viewer data periodically
+        /// On each chat message: get/create viewer, update activity/roles, save periodically.
         /// </summary>
-        /// <param name="message"></param>
         public static void UpdateViewerActivity(ChatMessageWrapper message)
         {
-            // === BULLET-PROOF GUARD (fixes the reported NRE) ===
             if (message == null || string.IsNullOrEmpty(message.Username))
-            {
-                Logger.Warning("[RICS Viewers] UpdateViewerActivity received null or empty message");
                 return;
-            }
 
-            if (Current.Game == null)
-            {
-                Logger.Debug("[RICS Viewers] UpdateViewerActivity skipped — Current.Game is null (still loading or on main menu)");
+            if (Current.Game == null || Find.TickManager == null)
                 return;
-            }
-
-            if (Find.TickManager == null)
-            {
-                Logger.Debug("[RICS Viewers] UpdateViewerActivity skipped — TickManager not ready yet");
-                return;
-            }
 
             try
             {
-                // Optional periodic cleanup (safe even if called frequently)
                 if (Find.TickManager.TicksGame % 300 == 0 && All.Count > 0)
-                {
-                    RemoveDuplicateViewers();
-                }
+                    RemoveDuplicateViewers(saveIfChanged: true);
 
                 var viewer = GetViewer(message);
                 if (viewer == null)
-                {
-                    Logger.Warning($"[RICS Viewers] GetViewer returned null for {message.Username}");
                     return;
-                }
 
-                // Check if this will add a platform ID
-                bool hadPlatformIdBefore = viewer.HasPlatform(message.Platform);
+                bool hadPlatformIdBefore = !string.IsNullOrEmpty(message.Platform) &&
+                                           viewer.HasPlatform(message.Platform);
 
                 viewer.UpdateFromMessage(message);
 
-                // Check if a new platform ID was added → immediate save
-                bool hasPlatformIdAfter = viewer.HasPlatform(message.Platform);
+                bool hasPlatformIdAfter = !string.IsNullOrEmpty(message.Platform) &&
+                                          viewer.HasPlatform(message.Platform);
 
-                if (!hadPlatformIdBefore && hasPlatformIdAfter)
-                {
+                // First platform id or every 10 messages — avoid save-on-every-message
+                if ((!hadPlatformIdBefore && hasPlatformIdAfter) || viewer.MessageCount % 10 == 0)
                     SaveViewers();
-                }
-                else if (viewer.MessageCount % 10 == 0)
-                {
-                    SaveViewers();
-                }
             }
             catch (Exception ex)
             {
-                Logger.Error($"[RICS Viewers] Exception in UpdateViewerActivity for viewer '{message.Username}': {ex.Message}\n{ex.StackTrace}");
+                Logger.Error($"[Viewers] UpdateViewerActivity for '{message.Username}': {ex.Message}");
             }
         }
 
         /// <summary>
-        /// Award coins to active (non-banned) viewers.
-        /// When <paramref name="fixedAmountPerViewer"/> is null, uses BaseCoinReward + roles × karma/100 (periodic reward formula).
-        /// When set, each active viewer receives that flat amount (admin mass-give).
-        /// Returns how many viewers received coins.
+        /// Award coins to active non-banned viewers.
+        /// Null amount uses BaseCoinReward + role extras × karma/100.
         /// </summary>
         public static int AwardActiveViewersCoins(int? fixedAmountPerViewer = null)
         {
             try
             {
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (settings == null)
+                    return 0;
+
                 var activeViewers = GetActiveViewers(settings.MinutesForActive);
                 int awardedCount = 0;
 
@@ -258,7 +198,8 @@ namespace CAP_ChatInteractive
                 {
                     foreach (var viewer in activeViewers)
                     {
-                        if (viewer.IsBanned) continue;
+                        if (viewer == null || viewer.IsBanned)
+                            continue;
 
                         int coinsToAward;
                         if (fixedAmountPerViewer.HasValue)
@@ -280,18 +221,22 @@ namespace CAP_ChatInteractive
                             coinsToAward = (int)(baseCoins * karmaMultiplier);
                         }
 
-                        if (coinsToAward <= 0) continue;
+                        if (coinsToAward <= 0)
+                            continue;
+
                         viewer.GiveCoins(coinsToAward);
                         awardedCount++;
                     }
                 }
 
-                SaveViewers();
+                if (awardedCount > 0)
+                    SaveViewers();
+
                 return awardedCount;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error awarding coins to active viewers: {ex.Message}");
+                Logger.Error($"[Viewers] AwardActiveViewersCoins: {ex.Message}");
                 return 0;
             }
         }
@@ -300,7 +245,7 @@ namespace CAP_ChatInteractive
         {
             lock (_lock)
             {
-                return All.Where(v => v.IsActive(maxMinutesInactive)).ToList();
+                return All.Where(v => v != null && v.IsActive(maxMinutesInactive)).ToList();
             }
         }
 
@@ -310,11 +255,10 @@ namespace CAP_ChatInteractive
             {
                 var viewers = specificViewers ?? All;
                 foreach (var viewer in viewers)
-                {
                     viewer?.GiveCoins(amount);
-                }
-                SaveViewers();
             }
+
+            SaveViewers();
         }
 
         public static void GiveAllViewersKarma(float amount)
@@ -322,11 +266,10 @@ namespace CAP_ChatInteractive
             lock (_lock)
             {
                 foreach (var viewer in All)
-                {
                     viewer?.GiveKarma(amount);
-                }
-                SaveViewers();
             }
+
+            SaveViewers();
         }
 
         public static void SetAllViewersCoins(int amount, List<Viewer> specificViewers = null)
@@ -335,40 +278,41 @@ namespace CAP_ChatInteractive
             {
                 var viewers = specificViewers ?? All;
                 foreach (var viewer in viewers)
-                {
                     viewer?.SetCoins(amount);
-                }
-                SaveViewers();
             }
+
+            SaveViewers();
         }
 
         public static void SaveViewers()
         {
+            if (_isSaving)
+                return;
+
             try
             {
+                _isSaving = true;
+
                 lock (_lock)
                 {
-                    RemoveDuplicateViewers();
+                    // Dedup without nested SaveViewers (re-entrancy guarded above)
+                    RemoveDuplicateViewers(saveIfChanged: false);
 
                     var data = new ViewerData(All);
+                    string json = Newtonsoft.Json.JsonConvert.SerializeObject(
+                        data, Newtonsoft.Json.Formatting.Indented);
 
-                    // Use Newtonsoft.Json instead of JsonUtility
-                    string json = Newtonsoft.Json.JsonConvert.SerializeObject(data, Newtonsoft.Json.Formatting.Indented);
-
-                    bool success = JsonFileManager.SaveFile("viewers.json", json);
-                    if (success)
-                    {
-                        Logger.Debug($"Successfully saved {All.Count} viewers to file");
-                    }
-                    else
-                    {
-                        Logger.Error("Failed to save viewers file");
-                    }
+                    if (!JsonFileManager.SaveFile("viewers.json", json))
+                        Logger.Error("[Viewers] Failed to write viewers.json");
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error saving viewers: {ex.Message}. Stack: {ex.StackTrace}");
+                Logger.Error($"[Viewers] SaveViewers: {ex.Message}");
+            }
+            finally
+            {
+                _isSaving = false;
             }
         }
 
@@ -380,36 +324,38 @@ namespace CAP_ChatInteractive
                 if (!string.IsNullOrEmpty(json))
                 {
                     var data = Newtonsoft.Json.JsonConvert.DeserializeObject<ViewerData>(json);
-
                     if (data?.viewers != null)
                     {
                         lock (_lock)
                         {
                             All = data.ToFullViewers();
-                            RemoveDuplicateViewers();
+                            RemoveDuplicateViewers(saveIfChanged: false);
                         }
-                        Logger.Message($"Loaded {All.Count} viewers from save file");
+
+                        Logger.Message($"[Viewers] Loaded {All.Count} viewers");
                     }
                     else
                     {
-                        Logger.Warning("Loaded viewers data but viewers list was null");
+                        Logger.Warning("[Viewers] viewers.json had no viewer list");
                         All = new List<Viewer>();
                     }
                 }
                 else
                 {
-                    Logger.Message("No existing viewers file found, starting fresh");
                     All = new List<Viewer>();
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error loading viewers: {ex.Message}. Stack: {ex.StackTrace}");
+                Logger.Error($"[Viewers] LoadViewers: {ex.Message}");
                 All = new List<Viewer>();
             }
         }
 
-        private static void RemoveDuplicateViewers()
+        /// <summary>
+        /// Merge duplicate / bogus entries by primary platform identifier.
+        /// </summary>
+        private static void RemoveDuplicateViewers(bool saveIfChanged)
         {
             try
             {
@@ -421,23 +367,12 @@ namespace CAP_ChatInteractive
                     int karmaMerged = 0;
                     int bogusMerged = 0;
 
-                    // === Edge cases explicitly handled in this pass (reviewed 2026-05-06) ===
-                    // 1. Null entries in All → skipped immediately
-                    // 2. Null/empty Username → safe via GetPrimary guard + local fallback below
-                    // 3. Bogus viewer (digit-only or ":" in username) with no platform IDs → Resolve tries ID extraction + GetViewerByPlatformId lookup
-                    // 4. ResolveRealViewer returns self → prevented by explicit != check
-                    // 5. Multiple bogus → same real viewer → coins/karma accumulate via Give* (order-independent, object mutation + ref in dict)
-                    // 6. Real processed before or after bogus → both work (merge mutates live object already in uniqueViewers)
-                    // 7. Nested lock (this method → GetViewerByPlatformId) → safe (Monitor is reentrant)
-                    // 8. Viewer with only future platforms (Kick etc.) or no platforms → username: fallback key (acceptable collision risk on username only)
-                    // 9. One bad viewer in list → isolated by per-viewer try-catch (graceful degradation, no whole-cleanup abort)
-                    // 10. No changes at all → still rebuilds All (removes nulls), SaveViewers skipped
-
                     foreach (var viewer in All.ToList())
                     {
-                        if (viewer == null) continue;
+                        if (viewer == null)
+                            continue;
 
-                        try // NEW: per-viewer isolation so one corrupt entry cannot crash the entire cleanup or mod
+                        try
                         {
                             bool isBogus = IsBogusViewer(viewer);
 
@@ -446,39 +381,33 @@ namespace CAP_ChatInteractive
                             {
                                 primaryKey = viewer.GetPrimaryPlatformIdentifier();
                             }
-                            catch (Exception exKey)
+                            catch
                             {
-                                Logger.Warning($"[Viewer Cleanup] Failed to compute primary key for viewer '{viewer.Username}': {exKey.Message} — using safe username fallback");
                                 primaryKey = $"username:{(viewer.Username ?? "unknown").ToLowerInvariant()}";
                             }
 
                             if (isBogus)
                             {
-                                Logger.Warning($"[Viewer Cleanup] Found bogus viewer with platform-style username: '{viewer.Username}'");
-
                                 Viewer realViewer = ResolveRealViewer(viewer);
                                 if (realViewer != null && realViewer != viewer)
                                 {
-                                    // Merge economy + platform IDs from bogus into the real one
                                     coinsMerged += viewer.Coins;
                                     karmaMerged += (int)viewer.Karma;
                                     realViewer.GiveCoins(viewer.Coins);
                                     realViewer.GiveKarma(viewer.Karma);
 
-                                    foreach (var plat in viewer.PlatformUserIds)
+                                    if (viewer.PlatformUserIds != null)
                                     {
-                                        realViewer.AddPlatformUserId(plat.Key, plat.Value);
+                                        foreach (var plat in viewer.PlatformUserIds)
+                                            realViewer.AddPlatformUserId(plat.Key, plat.Value);
                                     }
 
                                     All.Remove(viewer);
                                     bogusMerged++;
-                                    Logger.Message($"[Viewer Cleanup] Merged bogus viewer '{viewer.Username}' → real viewer '{realViewer.Username}'");
-                                    continue; // skip normal dedup path
+                                    continue;
                                 }
-                                // No real viewer found → fall through to normal dedup using primaryKey (usually username: style)
                             }
 
-                            // Normal deduplication by primary platform identifier
                             if (uniqueViewers.TryGetValue(primaryKey, out var existing))
                             {
                                 coinsMerged += viewer.Coins;
@@ -486,13 +415,13 @@ namespace CAP_ChatInteractive
                                 existing.GiveCoins(viewer.Coins);
                                 existing.GiveKarma(viewer.Karma);
 
-                                foreach (var plat in viewer.PlatformUserIds)
+                                if (viewer.PlatformUserIds != null)
                                 {
-                                    existing.AddPlatformUserId(plat.Key, plat.Value);
+                                    foreach (var plat in viewer.PlatformUserIds)
+                                        existing.AddPlatformUserId(plat.Key, plat.Value);
                                 }
 
                                 duplicatesRemoved++;
-                                Logger.Debug($"[Viewer Cleanup] Merged duplicate '{viewer.Username}' into '{existing.Username}'");
                             }
                             else
                             {
@@ -501,8 +430,8 @@ namespace CAP_ChatInteractive
                         }
                         catch (Exception exViewer)
                         {
-                            // Graceful degradation: log and drop only the bad entry
-                            Logger.Error($"[Viewer Cleanup] Error processing viewer '{viewer?.Username}': {exViewer.Message} — skipping this entry (non-fatal)");
+                            Logger.Error(
+                                $"[Viewers] Cleanup skipped corrupt entry '{viewer?.Username}': {exViewer.Message}");
                         }
                     }
 
@@ -510,49 +439,52 @@ namespace CAP_ChatInteractive
 
                     if (bogusMerged > 0 || duplicatesRemoved > 0)
                     {
-                        Logger.Message($"[Viewer Cleanup] Completed: {bogusMerged} bogus viewers merged, {duplicatesRemoved} duplicates removed. " +
-                                       $"+{coinsMerged} coins and +{karmaMerged} karma merged.");
-                        SaveViewers();
+                        Logger.Message(
+                            $"[Viewers] Cleanup: {bogusMerged} bogus merged, {duplicatesRemoved} duplicates removed " +
+                            $"(+{coinsMerged} coins, +{karmaMerged} karma).");
+
+                        if (saveIfChanged && !_isSaving)
+                            SaveViewers();
                     }
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in RemoveDuplicateViewers: {ex.Message}");
+                Logger.Error($"[Viewers] RemoveDuplicateViewers: {ex.Message}");
             }
         }
 
-        // Helper to detect bogus viewers
         private static bool IsBogusViewer(Viewer viewer)
         {
-            if (viewer == null) return false;
+            if (viewer == null)
+                return false;
 
-            string u = viewer.Username ?? "";
+            string u = viewer.Username ?? string.Empty;
             return u.Contains(":") ||
-                   (u.All(char.IsDigit) && u.Length >= 5); // Twitch IDs are usually 8+ digits
+                   (u.Length >= 5 && u.All(char.IsDigit));
         }
 
-        // Helper to resolve the real viewer from a bogus one
         private static Viewer ResolveRealViewer(Viewer bogusViewer)
         {
-            // Try platform IDs first
-            foreach (var plat in bogusViewer.PlatformUserIds)
+            if (bogusViewer?.PlatformUserIds != null)
             {
-                var real = GetViewerByPlatformId(plat.Key, plat.Value);
-                if (real != null) return real;
+                foreach (var plat in bogusViewer.PlatformUserIds)
+                {
+                    var real = GetViewerByPlatformId(plat.Key, plat.Value);
+                    if (real != null && real != bogusViewer)
+                        return real;
+                }
             }
 
-            // Try extracting ID from username if it looks like "twitch:12345" or just "12345"
-            string id = bogusViewer.Username;
+            string id = bogusViewer?.Username ?? string.Empty;
             if (id.Contains(":"))
-            {
                 id = id.Split(new[] { ':' }, 2)[1];
-            }
 
             if (!string.IsNullOrEmpty(id))
             {
                 var real = GetViewerByPlatformId("twitch", id) ?? GetViewerByPlatformId("youtube", id);
-                if (real != null) return real;
+                if (real != null && real != bogusViewer)
+                    return real;
             }
 
             return null;
@@ -560,79 +492,27 @@ namespace CAP_ChatInteractive
 
         public static void ResetAllCoins()
         {
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            SetAllViewersCoins(settings.StartingCoins);
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            int amount = settings?.StartingCoins ?? 100;
+            SetAllViewersCoins(amount);
         }
 
         public static void ResetAllKarma()
         {
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            float amount = settings?.StartingKarma ?? 100f;
+
             lock (_lock)
             {
                 foreach (var viewer in All)
-                {
-                    viewer.SetKarma(settings.StartingKarma);
-                }
-                SaveViewers();
+                    viewer?.SetKarma(amount);
             }
-        }
 
-        public static void DebugSaveAndLog()
-        {
-            lock (_lock)
-            {
-                // Logger.Debug($"Current viewers in memory: {All.Count}");
-                foreach (var viewer in All.Take(5)) // Show first 5
-                {
-                    Logger.Debug($"Viewer: {viewer.Username}, Coins: {viewer.Coins}, Karma: {viewer.Karma}");
-                }
-                SaveViewers();
-            }
-        }
-
-        public static void DebugSerialization()
-        {
-            lock (_lock)
-            {
-                var data = new ViewerData(All);
-
-                // Test JsonUtility
-                string jsonUtilityJson = JsonUtility.ToJson(data, true);
-                Logger.Debug($"JsonUtility result: {jsonUtilityJson}");
-
-                // Test Newtonsoft.Json
-                string newtonsoftJson = Newtonsoft.Json.JsonConvert.SerializeObject(data, Newtonsoft.Json.Formatting.Indented);
-                Logger.Debug($"Newtonsoft result: {newtonsoftJson}");
-
-                Logger.Debug($"First viewer details: Username={All[0].Username}, Coins={All[0].Coins}, Karma={All[0].Karma}");
-            }
-        }
-
-        public static void DebugPlatformIds()
-        {
-            lock (_lock)
-            {
-                Logger.Debug($"=== Platform IDs Debug ===");
-                foreach (var viewer in All.Take(5))
-                {
-                    Logger.Debug($"Viewer: {viewer.Username}");
-                    foreach (var platformId in viewer.PlatformUserIds)
-                    {
-                        Logger.Debug($"  Platform ID: {platformId.Key}: {platformId.Value}");
-                    }
-                    if (viewer.PlatformUserIds.Count == 0)
-                    {
-                        Logger.Debug($"  No platform IDs found!");
-                    }
-                }
-            }
+            SaveViewers();
         }
 
         /// <summary>
-        /// Applies karma decay to all viewers based on the current settings.
-        /// Called periodically by CAPChatInteractive_GameComponent.
-        /// Decay gently pulls high-karma viewers back toward minDecayKarma over time
-        /// (prevents permanent max karma bonus for pure lurkers) but never goes below it.
+        /// Periodic karma decay (GameComponent). Summary log only when anyone is affected.
         /// </summary>
         public static void ApplyKarmaDecayToAll(CAPGlobalChatSettings settings)
         {
@@ -649,24 +529,18 @@ namespace CAP_ChatInteractive
                     if (viewer == null || viewer.IsBanned)
                         continue;
 
-                    // Only decay viewers who are above the configured decay floor
                     if (viewer.Karma <= settings.KarmaMinDecayFloor)
                         continue;
 
-                    // Calculate how much to lose this tick
-                    float decayAmount = viewer.Karma * settings.KarmaDecayRate/100;
-
-                    // Enforce a minimum decay floor so it never becomes meaningless on low-karma viewers
+                    float decayAmount = viewer.Karma * settings.KarmaDecayRate / 100f;
                     if (decayAmount < settings.KarmaMinDecay)
                         decayAmount = settings.KarmaMinDecay;
 
-                    // Apply decay but never go below minDecayKarma
                     float newKarma = viewer.Karma - decayAmount;
                     if (newKarma < settings.KarmaMinDecayFloor)
                         newKarma = settings.KarmaMinDecayFloor;
 
                     float actuallyLost = viewer.Karma - newKarma;
-
                     if (actuallyLost > 0f)
                     {
                         viewer.SetKarma(newKarma);
@@ -677,9 +551,8 @@ namespace CAP_ChatInteractive
 
                 if (viewersAffected > 0)
                 {
-                    Logger.Message($"[Karma Decay] Applied to {viewersAffected} viewers. " +
-                                   $"Total lost: {totalKarmaLost:F1} karma " +
-                                   $"(rate: {settings.KarmaDecayRate}%, min: {settings.KarmaMinDecay})");
+                    Logger.Message(
+                        $"[Viewers] Karma decay: {viewersAffected} viewers, total −{totalKarmaLost:F1}");
                     SaveViewers();
                 }
             }
@@ -700,12 +573,12 @@ namespace CAP_ChatInteractive
         public ViewerData(List<Viewer> viewersList)
         {
             viewers = new List<SimpleViewer>();
-
             if (viewersList != null)
             {
                 foreach (var viewer in viewersList)
                 {
-                    viewers.Add(new SimpleViewer(viewer));
+                    if (viewer != null)
+                        viewers.Add(new SimpleViewer(viewer));
                 }
             }
 
@@ -715,12 +588,24 @@ namespace CAP_ChatInteractive
         public List<Viewer> ToFullViewers()
         {
             var fullViewers = new List<Viewer>();
+            if (viewers == null)
+                return fullViewers;
 
             foreach (var simpleViewer in viewers)
             {
-                var viewer = new Viewer(simpleViewer.username);
-                simpleViewer.UpdateViewer(viewer);
-                fullViewers.Add(viewer);
+                if (simpleViewer == null || string.IsNullOrEmpty(simpleViewer.username))
+                    continue;
+
+                try
+                {
+                    var viewer = new Viewer(simpleViewer.username);
+                    simpleViewer.UpdateViewer(viewer);
+                    fullViewers.Add(viewer);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"[Viewers] Skipping corrupt simple viewer '{simpleViewer.username}': {ex.Message}");
+                }
             }
 
             return fullViewers;
@@ -730,12 +615,11 @@ namespace CAP_ChatInteractive
     [Serializable]
     public class SimpleViewer
     {
-        // Remove the sequential 'id' field and use platform IDs instead
         public string username;
         public float karma;
         public int coins;
         public bool isBanned;
-        public Dictionary<string, string> platformIds; // Platform -> UserId
+        public Dictionary<string, string> platformIds;
 
         public SimpleViewer()
         {
@@ -744,40 +628,47 @@ namespace CAP_ChatInteractive
 
         public SimpleViewer(Viewer viewer)
         {
-            this.username = viewer.Username;
-            this.karma = viewer.Karma;
-            this.coins = viewer.Coins;
-            this.isBanned = viewer.IsBanned;
-            this.platformIds = new Dictionary<string, string>(viewer.PlatformUserIds);
-
-            // DEBUG: Log what's being copied
-            // Logger.Debug($"SimpleViewer created for {username} with {platformIds.Count} platform IDs:");
-            //foreach (var platformId in platformIds)
-            //{
-            //    Logger.Debug($" SimpleViewer {platformId.Key}: {platformId.Value}");
-            //}
+            username = viewer?.Username;
+            karma = viewer?.Karma ?? 0f;
+            coins = viewer?.Coins ?? 0;
+            isBanned = viewer?.IsBanned ?? false;
+            platformIds = viewer?.PlatformUserIds != null
+                ? new Dictionary<string, string>(viewer.PlatformUserIds)
+                : new Dictionary<string, string>();
         }
 
         public void UpdateViewer(Viewer viewer)
         {
-            viewer.SetKarma(this.karma);   // float → float, no precision loss
-            viewer.SetCoins(this.coins);
+            if (viewer == null)
+                return;
 
-            // Update platform IDs
+            viewer.SetKarma(karma);
+            viewer.SetCoins(coins);
+            viewer.IsBanned = isBanned;
+
+            if (platformIds == null)
+                return;
+
             foreach (var platformId in platformIds)
             {
-                viewer.AddPlatformUserId(platformId.Key, platformId.Value);
+                if (!string.IsNullOrEmpty(platformId.Key) && !string.IsNullOrEmpty(platformId.Value))
+                    viewer.AddPlatformUserId(platformId.Key, platformId.Value);
             }
         }
 
-        // Get a unique ID for this viewer across platforms
         public string GetPrimaryPlatformId()
         {
-            // Prefer Twitch if available, then YouTube, then first available
-            if (platformIds.TryGetValue("twitch", out string twitchId)) return $"twitch:{twitchId}";
-            if (platformIds.TryGetValue("youtube", out string youtubeId)) return $"youtube:{youtubeId}";
-            if (platformIds.TryGetValue("kick", out string kickId)) return $"kick:{kickId}";  // Add more platforms as needed
-            return platformIds.Values.FirstOrDefault() ?? username;
+            if (platformIds != null)
+            {
+                if (platformIds.TryGetValue("twitch", out string twitchId))
+                    return $"twitch:{twitchId}";
+                if (platformIds.TryGetValue("youtube", out string youtubeId))
+                    return $"youtube:{youtubeId}";
+                if (platformIds.TryGetValue("kick", out string kickId))
+                    return $"kick:{kickId}";
+            }
+
+            return platformIds?.Values.FirstOrDefault() ?? username;
         }
     }
 }
