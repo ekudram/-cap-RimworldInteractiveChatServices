@@ -20,7 +20,6 @@ using CAP_ChatInteractive.Commands.CommandHandlers;
 using RimWorld;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Verse;
 
 namespace CAP_ChatInteractive.Commands.ViewerCommands
