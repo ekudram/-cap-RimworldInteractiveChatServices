@@ -37,18 +37,32 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
     {
         public override string Name => "bal";
 
+        /// <summary>Emoji band for karma display on !bal only.</summary>
+        private static string GetKarmaEmoji(float karma)
+        {
+            if (karma >= 199) return "🦄";
+            if (karma >= 150) return "😇";
+            if (karma >= 120) return "😊";
+            if (karma >= 90) return "🙂";
+            if (karma >= 80) return "☺️";
+            if (karma >= 70) return "😐";
+            if (karma >= 50) return "😕";
+            if (karma >= 30) return "😠";
+            if (karma >= 10) return "👿";
+            return "💀";
+        }
+
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
             var viewer = Viewers.GetViewer(messageWrapper);
             if (viewer != null)
             {
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (settings == null)
+                    return "RICS.CC.bal.line1".Translate(viewer.Coins.ToString("N0"), "¢");
+
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
-                // Format coins with commas for thousands
-                var formattedCoins = viewer.Coins.ToString("N0");
-
-                // Use the shared karma emoji method
                 string karmaEmoji = GetKarmaEmoji(viewer.Karma);
 
                 // Calculate coins earned per award cycle (every 2 minutes)

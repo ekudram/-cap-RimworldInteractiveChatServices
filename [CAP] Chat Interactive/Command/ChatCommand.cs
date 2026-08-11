@@ -1,21 +1,10 @@
 // ChatCommand.cs
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
-// Base class and utilities for chat commands
+// Base chat command type + command settings load/save helpers.
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -24,233 +13,145 @@ using Verse;
 
 namespace CAP_ChatInteractive
 {
-    // In ChatCommand.cs - Add these methods to the ChatCommand class
-
     public abstract class ChatCommand
     {
         public abstract string Name { get; }
+
         public virtual string Alias
         {
             get
             {
                 var settings = GetCommandSettings();
-                //Logger.Debug($"  -> Alias lookup for {Name}: settings.CommandAlias = '{settings.CommandAlias}'");
-
-                if (!string.IsNullOrEmpty(settings.CommandAlias))
-                {
-                    string alias = settings.CommandAlias.Trim().ToLowerInvariant();
-                    //Logger.Debug($"  -> Returning alias: '{alias}'");
-                    return alias;
-                }
-
-                //Logger.Debug($"  -> No alias found, returning null");
+                if (!string.IsNullOrEmpty(settings?.CommandAlias))
+                    return settings.CommandAlias.Trim().ToLowerInvariant();
                 return null;
             }
         }
+
         public virtual string Description => "No description available";
-        // Make PermissionLevel virtual so it can use settings
+
         public virtual string PermissionLevel
         {
             get
             {
-                // First check if this is a Def-based command
                 if (this is DefBasedChatCommand defCommand)
-                {
                     return defCommand.PermissionLevel;
-                }
 
-                // Fall back to JSON settings for non-Def commands
                 var settings = GetCommandSettings();
                 return settings?.PermissionLevel ?? "everyone";
             }
         }
+
         public virtual int CooldownSeconds => GetCommandSettings()?.CooldownSeconds ?? 0;
 
         public abstract string Execute(ChatMessageWrapper user, string[] args);
 
         public virtual bool CanExecute(ChatMessageWrapper message)
         {
-            // Get the viewer from database for permission checking
+            if (message == null)
+                return false;
+
             var viewer = Viewers.GetViewer(message);
-            if (viewer == null) return false;
+            if (viewer == null)
+                return false;
 
-            // Use the PermissionLevel property which now gets from JSON settings
-            string requiredPermission = PermissionLevel;
-            // Logger.Debug($"Permission check for {Name}: viewer '{message.Username}' needs '{requiredPermission}'");
-
-            return viewer.HasPermission(requiredPermission);
+            return viewer.HasPermission(PermissionLevel);
         }
 
-        // Get command settings from the settings manager
         public virtual CommandSettings GetCommandSettings()
         {
             return CommandSettingsManager.GetSettings(Name);
         }
 
-        // Check if command is enabled in settings
         public bool IsEnabled()
         {
-
-            var settings = GetCommandSettings();
-            Logger.Debug($"=== Command '{Name}' Enabled Check ===");
-            Logger.Debug($"Settings found: {settings != null}");
-            Logger.Debug($"Settings.Enabled: {settings?.Enabled}");
-            Logger.Debug($"Final result: {settings?.Enabled ?? true}");
-
-            return settings?.Enabled ?? true;
+            return GetCommandSettings()?.Enabled ?? true;
         }
 
         /// <summary>
-        /// Invoked by the Command Editor dialog when the user clicks a &lt;type&gt;Button&lt;/type&gt;
-        /// declared inside this command's &lt;CustomData&gt;.
-        ///
-        /// buttonName comes from the &lt;name&gt; element in XML (use it to distinguish multiple buttons).
-        /// The passed CommandSettings already had its CustomData values reset to XML defaults by the dialog
-        /// (for the standard "reset" use case).
-        ///
-        /// Override this in your ChatCommand subclass (the one referenced by &lt;commandClass&gt; in your XML)
-        /// to perform extra work such as:
-        /// - Resetting non-CustomData fields (lists, etc.)
-        /// - Clearing other internal state for the command
-        /// - Implementing completely custom button actions
+        /// Optional hook for Command Editor &lt;type&gt;Button&lt;/type&gt; CustomData actions.
         /// </summary>
         public virtual void OnCustomDataButtonClicked(string buttonName, CommandSettings settings)
         {
-            // Base: do nothing. The dialog performs the standard CustomData value reset.
-        }
-
-        // Public method to get karma emoji - can be used anywhere
-        public static string GetKarmaEmoji(float karma)
-        {
-            if (karma >= 199) return "🦄"; // Legendary good - Unicorn
-            if (karma >= 150) return "😇"; // Very high karma - Angel
-            if (karma >= 120) return "😊"; // High karma - Happy
-            if (karma >= 90) return "🙂";  // Good karma - Smiley
-            if (karma >= 80) return "☺️";  // Neutral to good - Smiling
-            if (karma >= 70) return "😐";  // Slightly low - Neutral
-            if (karma >= 50) return "😕";  // Low - Confused/Unsure
-            if (karma >= 30) return "😠";  // Quite low - Angry
-            if (karma >= 10) return "👿";  // Very low - Angry devil
-            return "💀";                   // Rock bottom - Skull
-        }
-
-        // Get karma description along with emoji
-        public static string GetKarmaDescription(int karma)
-        {
-            if (karma >= 200) return "Legendary Good 🦄";
-            if (karma >= 150) return "Very High Karma 😇";
-            if (karma >= 120) return "High Karma 😊";
-            if (karma >= 90) return "Good Karma 🙂";
-            if (karma >= 80) return "Neutral to Good ☺️";
-            if (karma >= 70) return "Slightly Low 😐";
-            if (karma >= 50) return "Low Karma 😕";
-            if (karma >= 30) return "Quite Low 😠";
-            if (karma >= 10) return "Very Low 👿";
-            return "Rock Bottom 💀";
         }
     }
 
-    // Add this static class to manage command settings
     public static class CommandSettingsManager
     {
         public static CommandSettings GetSettings(string commandName)
         {
             try
             {
-                //Logger.Debug($"=== GET SETTINGS FOR: '{commandName}' ===");
+                if (string.IsNullOrEmpty(commandName))
+                    return new CommandSettings();
 
-                // Try to get from open dialog first
                 var dialog = Find.WindowStack?.WindowOfType<Dialog_CommandManager>();
-                if (dialog != null && dialog.commandSettings.ContainsKey(commandName))
+                if (dialog?.commandSettings != null &&
+                    dialog.commandSettings.TryGetValue(commandName, out var dialogSettings) &&
+                    dialogSettings != null)
                 {
-                    //Logger.Debug($"  -> Found in dialog settings: Enabled={dialog.commandSettings[commandName].Enabled}");
-                    return dialog.commandSettings[commandName];
+                    return dialogSettings;
                 }
 
-                // Fallback: Load directly from JSON
-                //Logger.Debug($"  -> Looking in JSON file");
-                var jsonSettings = LoadSettingsFromJson(commandName);
-                //Logger.Debug($"  -> JSON result: Enabled={jsonSettings.Enabled}");
-                return jsonSettings;
+                return LoadSettingsFromJson(commandName);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error getting settings for {commandName}: {ex}");
+                Logger.Error($"[ChatCommand] Error getting settings for {commandName}: {ex.Message}");
                 return new CommandSettings();
             }
         }
-
-        // In CommandSettingsManager.cs (add this public static method)
 
         public static void SaveSettings()
         {
             try
             {
-                // Load existing JSON to modify (or create new)
                 string json = JsonFileManager.LoadFile("CommandSettings.json");
                 var allSettings = string.IsNullOrEmpty(json)
                     ? new Dictionary<string, CommandSettings>()
-                    : JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(json);
+                    : JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(json)
+                      ?? new Dictionary<string, CommandSettings>();
 
-                // Update togglestore (or add if missing)
-                string key = "togglestore".ToLowerInvariant();
+                string key = "togglestore";
                 if (!allSettings.ContainsKey(key))
                     allSettings[key] = new CommandSettings();
 
-                // No need to copy everything - but since we modified GetSettings() cache/dialog, assume it's in-memory
-                // For simplicity: re-save the whole thing (small file)
-
                 string newJson = JsonConvert.SerializeObject(allSettings, Formatting.Indented);
                 JsonFileManager.SaveFile("CommandSettings.json", newJson);
-
-                Logger.Debug("CommandSettings.json saved (store toggle updated)");
             }
             catch (Exception ex)
             {
-                Logger.Error($"Failed to save CommandSettings: {ex}");
+                Logger.Error($"[ChatCommand] Failed to save CommandSettings: {ex.Message}");
             }
         }
 
         private static CommandSettings LoadSettingsFromJson(string commandName)
         {
-            // Load from JSON file directly
             string json = JsonFileManager.LoadFile("CommandSettings.json");
-            if (!string.IsNullOrEmpty(json))
+            if (string.IsNullOrEmpty(json))
+                return new CommandSettings();
+
+            try
             {
-                try
-                {
-                    var allSettings = JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(json);
+                var allSettings = JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(json);
+                if (allSettings == null)
+                    return new CommandSettings();
 
-                    if (allSettings != null)
-                    {
-                        // Try multiple lookup strategies
-                        string commandNameLower = commandName.ToLowerInvariant();
+                if (allSettings.TryGetValue(commandName, out var exact) && exact != null)
+                    return exact;
 
-                        // 1. Exact match
-                        if (allSettings.ContainsKey(commandName))
-                        {
-                            return allSettings[commandName];
-                        }
+                string commandNameLower = commandName.ToLowerInvariant();
+                var matchingKey = allSettings.Keys.FirstOrDefault(k =>
+                    k != null && k.ToLowerInvariant() == commandNameLower);
 
-                        // 2. Case-insensitive match
-                        var matchingKey = allSettings.Keys.FirstOrDefault(k =>
-                            k.ToLowerInvariant() == commandNameLower);
-
-                        if (matchingKey != null)
-                        {
-                            return allSettings[matchingKey];
-                        }
-
-                        Logger.Debug($"No settings found for '{commandName}' (tried: '{commandName}', case-insensitive)");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error($"Error loading settings from JSON for {commandName}: {ex}");
-                }
+                if (matchingKey != null && allSettings.TryGetValue(matchingKey, out var matched) && matched != null)
+                    return matched;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[ChatCommand] Error loading settings for {commandName}: {ex.Message}");
             }
 
-            // Return default settings (Enabled = true)
             return new CommandSettings();
         }
     }
@@ -259,9 +160,7 @@ namespace CAP_ChatInteractive
     {
         public static bool AreStoreCommandsEnabled()
         {
-            // We use the settings of any well-known command (e.g. "buy") as the global holder
-            // This is simple and reuses your existing JSON infrastructure
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings; // or "raid", "backpack" etc.
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             return settings?.StoreCommandsEnabled ?? true;
         }
 
@@ -273,14 +172,13 @@ namespace CAP_ChatInteractive
         }
     }
 
-    // Example commands
     public class HelpCommand : ChatCommand
     {
         public override string Name => "help";
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
-            return $"Github Wiki: https://github.com/ekudram/-cap-RimworldInteractiveChatServices/wiki";
+            return "Github Wiki: https://github.com/ekudram/-cap-RimworldInteractiveChatServices/wiki";
         }
     }
 }
