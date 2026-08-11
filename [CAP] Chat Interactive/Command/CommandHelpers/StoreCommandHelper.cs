@@ -142,12 +142,14 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         /// - Vanilla only blocks an item if EVERY possible recipe + bench path is gated.
         ///   (Confirmed via wiki: crafting spot produces tribalwear with no gate; other benches do not block it.)
         /// </summary>
-        // In StoreCommandHelper.cs, inside StoreCommandHelper class
-        // Replace the entire HasRequiredResearch() function with this:
+        /// <summary>
+        /// Research gate for store purchases. Unique weapons (CompUniqueWeapon) have no recipe path;
+        /// gate them as their base weapon (DefName *_Unique → base, else label match). No base match → allow.
+        /// </summary>
         public static ResearchGateResult HasRequiredResearch(StoreItem storeItem)
         {
             Logger.Debug($"=== RESEARCH GATE CHECK ===");
-            Logger.Debug($"Checking research requirements for '{storeItem.DefName}'");
+            Logger.Debug($"Checking research requirements for '{storeItem?.DefName}'");
 
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             if (settings == null || !settings.RequireResearch)
@@ -163,6 +165,114 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 return new ResearchGateResult(true);
             }
 
+            ThingDef gateDef = thingDef;
+            if (StoreItem.IsUniqueWeapon(thingDef))
+            {
+                if (TryResolveBaseWeaponForUnique(thingDef, out ThingDef baseWeapon) && baseWeapon != null)
+                {
+                    Logger.Debug($"[Research] Unique '{thingDef.defName}' gated via base '{baseWeapon.defName}'");
+                    gateDef = baseWeapon;
+                }
+                else
+                {
+                    Logger.Debug($"[Research] Unique '{thingDef.defName}' has no base weapon match → allowing purchase");
+                    return new ResearchGateResult(true);
+                }
+            }
+
+            return HasRequiredResearchForThingDef(gateDef, storeItem.DefName);
+        }
+
+        /// <summary>
+        /// Resolve base weapon for a unique (traits) weapon.
+        /// 1) DefName ending in _Unique → strip suffix.
+        /// 2) Label match against non-unique weapons.
+        /// </summary>
+        public static bool TryResolveBaseWeaponForUnique(ThingDef uniqueDef, out ThingDef baseDef)
+        {
+            baseDef = null;
+            if (uniqueDef == null)
+                return false;
+
+            // Primary: Gun_AssaultRifle_Unique → Gun_AssaultRifle
+            string dn = uniqueDef.defName ?? "";
+            if (dn.EndsWith("_Unique", StringComparison.OrdinalIgnoreCase) && dn.Length > "_Unique".Length)
+            {
+                string baseName = dn.Substring(0, dn.Length - "_Unique".Length);
+                var byName = DefDatabase<ThingDef>.GetNamedSilentFail(baseName);
+                if (byName != null && !StoreItem.IsUniqueWeapon(byName))
+                {
+                    baseDef = byName;
+                    return true;
+                }
+            }
+
+            // Secondary: label contains base weapon label
+            string uniqueLabel = NormalizeWeaponLabel(uniqueDef.label ?? uniqueDef.LabelCap.ToString());
+            if (string.IsNullOrEmpty(uniqueLabel))
+                return false;
+
+            ThingDef best = null;
+            int bestScore = 0;
+
+            foreach (var def in DefDatabase<ThingDef>.AllDefsListForReading)
+            {
+                if (def == null || def == uniqueDef)
+                    continue;
+                if (!def.IsWeapon)
+                    continue;
+                if (StoreItem.IsUniqueWeapon(def))
+                    continue;
+
+                string baseLabel = NormalizeWeaponLabel(def.label ?? def.LabelCap.ToString());
+                if (string.IsNullOrEmpty(baseLabel) || baseLabel.Length < 3)
+                    continue;
+
+                int score = 0;
+                if (uniqueLabel == baseLabel)
+                    score = 1000 + baseLabel.Length;
+                else if (uniqueLabel.Contains(baseLabel))
+                    score = 100 + baseLabel.Length; // longer base phrase wins
+                else if (baseLabel.Contains(uniqueLabel) && uniqueLabel.Length >= 5)
+                    score = 10 + uniqueLabel.Length;
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = def;
+                }
+            }
+
+            if (best != null && bestScore >= 100)
+            {
+                baseDef = best;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string NormalizeWeaponLabel(string label)
+        {
+            if (string.IsNullOrWhiteSpace(label))
+                return "";
+            string s = label.Trim().ToLowerInvariant();
+            // collapse whitespace
+            while (s.Contains("  "))
+                s = s.Replace("  ", " ");
+            if (s.StartsWith("unique "))
+                s = s.Substring("unique ".Length).Trim();
+            return s;
+        }
+
+        /// <summary>Core research path check for a concrete ThingDef (base or normal item).</summary>
+        public static ResearchGateResult HasRequiredResearchForThingDef(ThingDef thingDef, string logName = null)
+        {
+            if (thingDef == null)
+                return new ResearchGateResult(true);
+
+            string name = logName ?? thingDef.defName;
+
             // 1. Direct ThingDef prereqs (buildings, turrets, etc.)
             if (thingDef.researchPrerequisites != null && thingDef.researchPrerequisites.Count > 0)
             {
@@ -170,11 +280,11 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 {
                     if (research != null && !research.IsFinished)
                     {
-                        Logger.Debug($"Direct ThingDef prereq '{research.defName}' unfinished for '{storeItem.DefName}'");
+                        Logger.Debug($"Direct ThingDef prereq '{research.defName}' unfinished for '{name}' (gate def '{thingDef.defName}')");
                         return new ResearchGateResult(false, research.LabelCap);
                     }
                 }
-                Logger.Debug($"All ThingDef prereqs met for '{storeItem.DefName}'");
+                Logger.Debug($"All ThingDef prereqs met for '{name}' (gate def '{thingDef.defName}')");
                 return new ResearchGateResult(true);
             }
 
@@ -184,15 +294,15 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 var req = thingDef.recipeMaker.researchPrerequisite;
                 if (!req.IsFinished)
                 {
-                    Logger.Debug($"RecipeMaker prereq '{req.defName}' unfinished for '{storeItem.DefName}'");
+                    Logger.Debug($"RecipeMaker prereq '{req.defName}' unfinished for '{name}' (gate def '{thingDef.defName}')");
                     return new ResearchGateResult(false, req.LabelCap);
                 }
-                Logger.Debug($"RecipeMaker prereq met for '{storeItem.DefName}'");
+                Logger.Debug($"RecipeMaker prereq met for '{name}' (gate def '{thingDef.defName}')");
                 return new ResearchGateResult(true);
             }
 
             // 3. Fallback: scan recipes for at least one valid crafting path
-            Logger.Debug($"No direct gates for '{storeItem.DefName}' → scanning recipes (stop at first valid path)");
+            Logger.Debug($"No direct gates for '{thingDef.defName}' → scanning recipes (stop at first valid path)");
             bool foundAnyProducingRecipe = false;
             string firstBlockingResearch = null;
 
@@ -204,7 +314,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                 foundAnyProducingRecipe = true;
 
-                // Recipe prereqs must be met
                 bool recipePrereqsMet = true;
                 string thisRecipeBlocking = null;
 
@@ -235,7 +344,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     continue;
                 }
 
-                // Bench check: need AT LEAST ONE valid bench (stop at first)
                 bool hasValidBench = false;
                 if (recipe.recipeUsers == null || recipe.recipeUsers.Count == 0)
                 {
@@ -266,15 +374,15 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                         if (benchPrereqsMet)
                         {
                             hasValidBench = true;
-                            Logger.Debug($"Valid bench found: '{userDef.defName}' (CraftingSpot or equivalent) for recipe '{recipe.defName}'");
-                            break; // stop at first allowed bench
+                            Logger.Debug($"Valid bench found: '{userDef.defName}' for recipe '{recipe.defName}'");
+                            break;
                         }
                     }
                 }
 
                 if (hasValidBench)
                 {
-                    Logger.Debug($"Valid crafting path confirmed for '{storeItem.DefName}'");
+                    Logger.Debug($"Valid crafting path confirmed for '{name}' via gate '{thingDef.defName}'");
                     return new ResearchGateResult(true);
                 }
             }
@@ -283,14 +391,14 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             {
                 if (firstBlockingResearch != null)
                 {
-                    Logger.Debug($"All paths gated (e.g. electricity required) → blocking purchase. Blocking research: {firstBlockingResearch}");
+                    Logger.Debug($"All paths gated → blocking '{name}'. Blocking research: {firstBlockingResearch}");
                     return new ResearchGateResult(false, firstBlockingResearch);
                 }
-                Logger.Debug($"All paths gated → blocking purchase (no specific research label found)");
+                Logger.Debug($"All paths gated → blocking '{name}' (no specific research label)");
                 return new ResearchGateResult(false);
             }
 
-            Logger.Debug($"No producing recipes → allowing purchase (raw item etc.)");
+            Logger.Debug($"No producing recipes for gate '{thingDef.defName}' → allowing purchase");
             return new ResearchGateResult(true);
         }
 
