@@ -1,6 +1,10 @@
-// PawnItemHelper.cs
+// File: PawnItemHelper.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive (AGPLv3).
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
 // Equip/wear helpers and viewer pawn lookup for store commands.
 using CAP_ChatInteractive;
 using RimWorld;
