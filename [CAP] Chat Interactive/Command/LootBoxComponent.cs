@@ -1,20 +1,10 @@
-﻿// LootBoxComponent.cs
+// LootBoxComponent.cs
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
+// Daily lootbox grants and per-viewer inventory (save-backed).
 using System;
 using System.Collections.Generic;
 using Verse;
@@ -29,111 +19,140 @@ namespace CAP_ChatInteractive
         public Dictionary<string, long> ViewersLastSeenDate = new Dictionary<string, long>();
         public Dictionary<string, int> ViewersLootboxes = new Dictionary<string, int>();
 
-        public LootBoxComponent(Game game)
-        {
-            if (this.ViewersWhoHaveReceivedLootboxesToday == null)
-                this.ViewersWhoHaveReceivedLootboxesToday = new List<string>();
-        }
+        public LootBoxComponent(Game game) { }
 
         public override void GameComponentTick()
         {
-            // Check every ~6.67 minutes (20000 ticks) if it's a new day
+            // ~6.67 minutes (20000 ticks)
             if (Find.TickManager.TicksGame % 20000 != 0)
                 return;
 
-            DateTime dateTime = DateTime.FromFileTime(this.todayFileTime);
-            if (dateTime.DayOfYear == DateTime.Now.DayOfYear)
-                return;
+            EnsureCollections();
 
-            // New day - reset daily tracking
-            this.ViewersWhoHaveReceivedLootboxesToday = new List<string>();
-            this.today = DateTime.Now;
-            this.todayFileTime = this.today.ToFileTime();
+            if (todayFileTime != 0)
+            {
+                var stored = DateTime.FromFileTime(todayFileTime);
+                if (stored.DayOfYear == DateTime.Now.DayOfYear)
+                    return;
+            }
+
+            ViewersWhoHaveReceivedLootboxesToday = new List<string>();
+            today = DateTime.Now;
+            todayFileTime = today.ToFileTime();
         }
 
         public void ProcessViewerMessage(ChatMessageWrapper message)
         {
+            if (message == null)
+                return;
+
             var viewer = Viewers.GetViewer(message);
-            if (this.IsViewerOwedLootboxesToday(viewer.Username.ToLower()))
-                this.AwardViewerDailyLootboxes(viewer.Username.ToLower());
+            if (viewer == null || string.IsNullOrEmpty(viewer.Username))
+                return;
+
+            string username = viewer.Username.ToLowerInvariant();
+            if (IsViewerOwedLootboxesToday(username))
+                AwardViewerDailyLootboxes(username);
         }
 
         public void WelcomeMessage(string username)
         {
             var messageService = CAPChatInteractiveMod.Instance?.TwitchService;
-            if (messageService != null)
-            {
-                messageService.SendMessage($"@{username} Welcome to the stream! You currently have {this.HowManyLootboxesDoesViewerHave(username)} Lootbox(es) to open. Use !openlootbox");
-            }
+            if (messageService == null || string.IsNullOrEmpty(username))
+                return;
+
+            int count = HowManyLootboxesDoesViewerHave(username);
+            messageService.SendMessage(
+                $"@{username} Welcome to the stream! You currently have {count} Lootbox(es) to open. Use !openlootbox");
         }
 
         public void AwardViewerDailyLootboxes(string username)
         {
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
-            if (settings == null) return;
+            if (settings == null || string.IsNullOrEmpty(username))
+                return;
 
-            this.ViewersWhoHaveReceivedLootboxesToday.Add(username);
-            this.LogViewerLastSeen(username);
-            this.GiveViewerLootbox(username, settings.LootBoxesPerDay);
+            EnsureCollections();
+            ViewersWhoHaveReceivedLootboxesToday.Add(username);
+            LogViewerLastSeen(username);
+            GiveViewerLootbox(username, settings.LootBoxesPerDay);
 
             if (settings.LootBoxShowWelcomeMessage)
-                this.WelcomeMessage(username);
+                WelcomeMessage(username);
         }
 
         public void GiveViewerLootbox(string username, int amount = 1)
         {
-            if (this.ViewersLootboxes.ContainsKey(username))
-                this.ViewersLootboxes[username] += amount;
+            if (string.IsNullOrEmpty(username) || amount == 0)
+                return;
+
+            EnsureCollections();
+            if (ViewersLootboxes.TryGetValue(username, out int current))
+                ViewersLootboxes[username] = current + amount;
             else
-                this.ViewersLootboxes.Add(username, amount);
+                ViewersLootboxes[username] = amount;
         }
 
         private bool IsViewerOwedLootboxesToday(string username)
         {
-            if (this.ViewersWhoHaveReceivedLootboxesToday == null)
-                this.ViewersWhoHaveReceivedLootboxesToday = new List<string>();
-
-            return !this.ViewersWhoHaveReceivedLootboxesToday.Contains(username) &&
-                   this.IsViewerOwedLootboxesLookup(username);
+            EnsureCollections();
+            return !ViewersWhoHaveReceivedLootboxesToday.Contains(username)
+                   && IsViewerOwedLootboxesLookup(username);
         }
 
         private bool IsViewerOwedLootboxesLookup(string username)
         {
-            if (this.ViewersLastSeenDate == null)
-                this.ViewersLastSeenDate = new Dictionary<string, long>();
-            if (this.ViewersLootboxes == null)
-                this.ViewersLootboxes = new Dictionary<string, int>();
-
-            return !this.IsViewerInLastSeenList(username) ||
-                   this.ViewerLastSeenAt(username).DayOfYear != DateTime.Now.DayOfYear;
+            EnsureCollections();
+            return !IsViewerInLastSeenList(username)
+                   || ViewerLastSeenAt(username).DayOfYear != DateTime.Now.DayOfYear;
         }
 
         public void LogViewerLastSeen(string username)
         {
-            if (this.ViewersLastSeenDate.ContainsKey(username))
-                this.ViewersLastSeenDate[username] = DateTime.Now.ToFileTime();
-            else
-                this.ViewersLastSeenDate.Add(username, DateTime.Now.ToFileTime());
+            if (string.IsNullOrEmpty(username))
+                return;
+
+            EnsureCollections();
+            ViewersLastSeenDate[username] = DateTime.Now.ToFileTime();
         }
 
         public bool IsViewerInLastSeenList(string username) =>
-            this.ViewersLastSeenDate.ContainsKey(username);
+            !string.IsNullOrEmpty(username)
+            && ViewersLastSeenDate != null
+            && ViewersLastSeenDate.ContainsKey(username);
 
         private DateTime ViewerLastSeenAt(string username) =>
-            DateTime.FromFileTime(this.ViewersLastSeenDate[username]);
+            DateTime.FromFileTime(ViewersLastSeenDate[username]);
 
         public bool DoesViewerHaveLootboxes(string username) =>
-            this.ViewersLootboxes.ContainsKey(username) && this.ViewersLootboxes[username] > 0;
+            HowManyLootboxesDoesViewerHave(username) > 0;
 
-        public int HowManyLootboxesDoesViewerHave(string username) =>
-            this.ViewersLootboxes.ContainsKey(username) ? this.ViewersLootboxes[username] : 0;
+        public int HowManyLootboxesDoesViewerHave(string username)
+        {
+            if (string.IsNullOrEmpty(username) || ViewersLootboxes == null)
+                return 0;
+            return ViewersLootboxes.TryGetValue(username, out int n) ? n : 0;
+        }
 
         public override void ExposeData()
         {
-            Scribe_Collections.Look(ref this.ViewersWhoHaveReceivedLootboxesToday, "ViewersWhoHaveReceivedLootboxesToday", LookMode.Value);
-            Scribe_Collections.Look(ref this.ViewersLastSeenDate, "ViewersLastSeenDate", LookMode.Value, LookMode.Value);
-            Scribe_Collections.Look(ref this.ViewersLootboxes, "ViewersLootboxes", LookMode.Value, LookMode.Value);
-            Scribe_Values.Look(ref this.todayFileTime, "todayFileTime");
+            Scribe_Collections.Look(ref ViewersWhoHaveReceivedLootboxesToday, "ViewersWhoHaveReceivedLootboxesToday", LookMode.Value);
+            Scribe_Collections.Look(ref ViewersLastSeenDate, "ViewersLastSeenDate", LookMode.Value, LookMode.Value);
+            Scribe_Collections.Look(ref ViewersLootboxes, "ViewersLootboxes", LookMode.Value, LookMode.Value);
+            Scribe_Values.Look(ref todayFileTime, "todayFileTime");
+
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+                EnsureCollections();
+        }
+
+        private void EnsureCollections()
+        {
+            if (ViewersWhoHaveReceivedLootboxesToday == null)
+                ViewersWhoHaveReceivedLootboxesToday = new List<string>();
+            if (ViewersLastSeenDate == null)
+                ViewersLastSeenDate = new Dictionary<string, long>();
+            if (ViewersLootboxes == null)
+                ViewersLootboxes = new Dictionary<string, int>();
         }
     }
 }
