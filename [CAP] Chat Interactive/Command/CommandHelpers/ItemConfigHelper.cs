@@ -1,4 +1,4 @@
-﻿// ItemConfigHelper.cs
+// ItemConfigHelper.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -15,29 +15,26 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
-// Helper methods for store command handling
-
+// Price/quality/material helpers for store purchase commands.
 using CAP_ChatInteractive;
 using CAP_ChatInteractive.Store;
 using RimWorld;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Verse;
+
 namespace _CAP__Chat_Interactive.Command.CommandHelpers
 {
     public static class ItemConfigHelper
     {
-        /// <summary>
-        /// Calculates the final price of an item based on its base price, quantity, quality, and material.
-        /// </summary>
-        /// <param name="storeItem"></param>
-        /// <param name="quantity"></param>
-        /// <param name="quality"></param>
-        /// <param name="material"></param>
-        /// <returns>The final price of the item.</returns>
+        /// <summary>Final price from base, quantity, quality multiplier, and stuff market value.</summary>
         public static int CalculateFinalPrice(StoreItem storeItem, int quantity, QualityCategory? quality, ThingDef material)
         {
+            if (storeItem == null)
+                return 0;
+
+            quantity = Math.Max(1, quantity);
+
             try
             {
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
@@ -71,7 +68,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         {
             if (!quality.HasValue)
             {
-                Logger.Debug($"IsQualityAllowed: No quality specified, allowing");
                 return true;
             }
 
@@ -79,7 +75,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             if (settings == null)
             {
-                Logger.Debug($"IsQualityAllowed: No settings found, allowing quality {quality.Value}");
                 return true;
             }
 
@@ -94,17 +89,17 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 QualityCategory.Legendary => settings.AllowLegendaryQuality,
                 _ => true
             };
-
-            Logger.Debug($"IsQualityAllowed: Quality {quality.Value} - Allowed: {isAllowed}");
             return isAllowed;
         }
 
         public static ThingDef ParseMaterial(string materialStr, ThingDef thingDef)
         {
+            if (thingDef == null)
+                return null;
+
             if (string.IsNullOrEmpty(materialStr) || materialStr.Equals("random", StringComparison.OrdinalIgnoreCase))
                 return null;
 
-            // If the thing doesn't use materials, return null
             if (!thingDef.MadeFromStuff)
                 return null;
 
@@ -127,7 +122,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             return null;
         }
 
-        // === ItemConfigHelper
         public static QualityCategory? ParseQuality(string qualityStr)
         {
             if (string.IsNullOrEmpty(qualityStr) || qualityStr.Equals("random", StringComparison.OrdinalIgnoreCase))
@@ -152,7 +146,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             if (settings == null)
             {
-                // Logger.Debug($"GetQualityMultiplier: No settings found, using default values");
                 // Fallback to default values if settings aren't available
                 return quality switch
                 {

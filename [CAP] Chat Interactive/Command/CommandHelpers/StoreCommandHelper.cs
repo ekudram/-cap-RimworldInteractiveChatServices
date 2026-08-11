@@ -1,4 +1,4 @@
-﻿// StoreCommandHelper.cs
+// StoreCommandHelper.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -39,13 +39,9 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             // Clean the item name
             string cleanItemName = itemName.Trim();
             cleanItemName = cleanItemName.TrimEnd('(', '[', '{').TrimStart(')', ']', '}').Trim();
-
-            Logger.Debug($"Looking up store item for: '{itemName}' (cleaned: '{cleanItemName}')");
-
             // Check if this is a banned race first
             if (IsRaceBannedByName(cleanItemName))
             {
-                Logger.Debug($"Item '{cleanItemName}' is a banned race, skipping store lookup");
                 return null;
             }
             // Try exact matches first
@@ -56,7 +52,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             if (exactMatch != null)
             {
-                Logger.Debug($"Found exact match: {exactMatch.DefName}");
                 return exactMatch;
             }
 
@@ -68,7 +63,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             if (thingDef != null)
             {
-                Logger.Debug($"Found via label exact match: {thingDef.defName}");
                 return StoreInventory.GetStoreItem(thingDef.defName);
             }
 
@@ -84,7 +78,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
             if (thingDef != null)
             {
-                Logger.Debug($"Found via label without spaces: {thingDef.defName}");
                 return StoreInventory.GetStoreItem(thingDef.defName);
             }
 
@@ -96,12 +89,9 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                 if (thingDef != null)
                 {
-                    Logger.Debug($"Found via contains match: {thingDef.defName}");
                     return StoreInventory.GetStoreItem(thingDef.defName);
                 }
             }
-
-            Logger.Debug($"No store item found for: '{cleanItemName}'");
             return null;
         }
 
@@ -119,49 +109,31 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
         public static bool CanUserAfford(ChatMessageWrapper user, int price)
         {
+            if (user == null || price <= 0)
+                return price <= 0;
+
             var viewer = Viewers.GetViewer(user);
-            return viewer.Coins >= price;
+            return viewer != null && viewer.Coins >= price;
         }
+
         /// <summary>
-        /// Checks if the specified StoreItem has any research prerequisites that are not yet completed.
-        /// Returns true if the item can be crafted right now (i.e. at least one valid unlocked path exists).
-        /// 
-        /// NEW LOGIC (fixes tribalwear / electricity gate):
-        /// - Direct ThingDef / recipeMaker checks unchanged (early exit for buildings).
-        /// - For recipes: we now require ONLY ONE valid path.
-        ///   1. Recipe prereqs (single + list) must ALL be finished.
-        ///   2. Among recipeUsers benches, AT LEAST ONE must have ALL prereqs finished (or no prereqs).
-        ///   - Stops at the FIRST valid bench (as requested) and FIRST valid recipe.
-        /// - If any producing recipe exists but NO valid path → block (research still required).
-        /// - No producing recipes at all → allow (raw resources, etc.).
-        /// 
-        /// Verified RimWorld built-in behavior:
-        /// - CraftingSpot (defName "CraftingSpot") has no researchPrerequisites and is available from start.
-        /// - Tribalwear recipe(s) list CraftingSpot as a recipeUser → craftable with 0 research.
-        /// - Electric benches (e.g. ElectricTailorBench) have Electricity in researchPrerequisites.
-        /// - Vanilla only blocks an item if EVERY possible recipe + bench path is gated.
-        ///   (Confirmed via wiki: crafting spot produces tribalwear with no gate; other benches do not block it.)
-        /// </summary>
-        /// <summary>
-        /// Research gate for store purchases. Unique weapons (CompUniqueWeapon) have no recipe path;
-        /// gate them as their base weapon (DefName *_Unique → base, else label match). No base match → allow.
+        /// Research gate for store purchases. Requires at least one unlocked craft/build path
+        /// when RequireResearch is on. Unique weapons gate via base weapon def when possible.
         /// </summary>
         public static ResearchGateResult HasRequiredResearch(StoreItem storeItem)
         {
-            Logger.Debug($"=== RESEARCH GATE CHECK ===");
-            Logger.Debug($"Checking research requirements for '{storeItem?.DefName}'");
+            if (storeItem == null)
+                return new ResearchGateResult(true);
 
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
             if (settings == null || !settings.RequireResearch)
             {
-                Logger.Debug($"HasRequiredResearch: Settings allow purchase without research check");
                 return new ResearchGateResult(true);
             }
 
             var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
             if (thingDef == null)
             {
-                Logger.Debug($"HasRequiredResearch: ThingDef '{storeItem.DefName}' not found → allowing purchase");
                 return new ResearchGateResult(true);
             }
 
@@ -170,12 +142,10 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             {
                 if (TryResolveBaseWeaponForUnique(thingDef, out ThingDef baseWeapon) && baseWeapon != null)
                 {
-                    Logger.Debug($"[Research] Unique '{thingDef.defName}' gated via base '{baseWeapon.defName}'");
                     gateDef = baseWeapon;
                 }
                 else
                 {
-                    Logger.Debug($"[Research] Unique '{thingDef.defName}' has no base weapon match → allowing purchase");
                     return new ResearchGateResult(true);
                 }
             }
@@ -280,11 +250,9 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 {
                     if (research != null && !research.IsFinished)
                     {
-                        Logger.Debug($"Direct ThingDef prereq '{research.defName}' unfinished for '{name}' (gate def '{thingDef.defName}')");
                         return new ResearchGateResult(false, research.LabelCap);
                     }
                 }
-                Logger.Debug($"All ThingDef prereqs met for '{name}' (gate def '{thingDef.defName}')");
                 return new ResearchGateResult(true);
             }
 
@@ -294,15 +262,12 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 var req = thingDef.recipeMaker.researchPrerequisite;
                 if (!req.IsFinished)
                 {
-                    Logger.Debug($"RecipeMaker prereq '{req.defName}' unfinished for '{name}' (gate def '{thingDef.defName}')");
                     return new ResearchGateResult(false, req.LabelCap);
                 }
-                Logger.Debug($"RecipeMaker prereq met for '{name}' (gate def '{thingDef.defName}')");
                 return new ResearchGateResult(true);
             }
 
             // 3. Fallback: scan recipes for at least one valid crafting path
-            Logger.Debug($"No direct gates for '{thingDef.defName}' → scanning recipes (stop at first valid path)");
             bool foundAnyProducingRecipe = false;
             string firstBlockingResearch = null;
 
@@ -340,7 +305,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 {
                     if (firstBlockingResearch == null)
                         firstBlockingResearch = thisRecipeBlocking;
-                    Logger.Debug($"Recipe '{recipe.defName}' prereqs not met → skipping path");
                     continue;
                 }
 
@@ -348,7 +312,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 if (recipe.recipeUsers == null || recipe.recipeUsers.Count == 0)
                 {
                     hasValidBench = true;
-                    Logger.Debug($"Recipe '{recipe.defName}' has no recipeUsers → valid");
                 }
                 else
                 {
@@ -374,7 +337,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                         if (benchPrereqsMet)
                         {
                             hasValidBench = true;
-                            Logger.Debug($"Valid bench found: '{userDef.defName}' for recipe '{recipe.defName}'");
                             break;
                         }
                     }
@@ -382,7 +344,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
                 if (hasValidBench)
                 {
-                    Logger.Debug($"Valid crafting path confirmed for '{name}' via gate '{thingDef.defName}'");
                     return new ResearchGateResult(true);
                 }
             }
@@ -391,22 +352,18 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             {
                 if (firstBlockingResearch != null)
                 {
-                    Logger.Debug($"All paths gated → blocking '{name}'. Blocking research: {firstBlockingResearch}");
                     return new ResearchGateResult(false, firstBlockingResearch);
                 }
-                Logger.Debug($"All paths gated → blocking '{name}' (no specific research label)");
                 return new ResearchGateResult(false);
             }
-
-            Logger.Debug($"No producing recipes for gate '{thingDef.defName}' → allowing purchase");
             return new ResearchGateResult(true);
         }
 
-        // Helper: Check if a ResearchProjectDef is fully unlocked (including study requirements)
-
-
         public static bool IsItemTypeValid(StoreItem storeItem, bool requireEquippable, bool requireWearable, bool requireUsable)
         {
+            if (storeItem == null)
+                return false;
+
             if (requireEquippable && !storeItem.IsEquippable)
                 return false;
 
@@ -421,7 +378,9 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
         public static string GetItemTypeDescription(StoreItem storeItem)
         {
-            // FIX: Use the correct StoreItem properties that users can toggle
+            if (storeItem == null)
+                return "item";
+
             if (storeItem.IsEquippable) return "equippable";
             if (storeItem.IsWearable) return "wearable";
             if (storeItem.IsUsable) return "usable";
@@ -436,7 +395,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             // Ban humanlike races
             if (thingDef.race.Humanlike)
             {
-                Logger.Debug($"Banned race detected: {thingDef.defName} (Humanlike)");
                 return true;
             }
 
@@ -449,7 +407,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (bannedRaces.Any(race => thingDef.defName.Contains(race) ||
                                        (thingDef.label?.Contains(race) == true)))
             {
-                Logger.Debug($"Banned race detected: {thingDef.defName}");
                 return true;
             }
 
@@ -469,7 +426,6 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             var raceDef = RaceUtils.FindRaceByName(cleanItemName);
             if (raceDef != null)
             {
-                Logger.Debug($"Banned race detected by name: '{cleanItemName}' -> {raceDef.defName}");
                 return true;
             }
 
@@ -478,35 +434,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 
         public static string FormatCurrencyMessage(int amount, string currencySymbol)
         {
-            return $"{amount:N0} {currencySymbol}";
+            string symbol = string.IsNullOrEmpty(currencySymbol) ? "¢" : currencySymbol;
+            return $"{amount:N0} {symbol}";
         }
-
-        // Debug
-
-        // Temporary debug method - add to StoreCommandHelper
-        public static void SimpleLockerDebug(Map map)
-        {
-            if (map == null)
-            {
-                Logger.Debug("Map is null");
-                return;
-            }
-
-            // Just list all buildings and see what we find
-            Logger.Debug($"=== Simple Debug: All player buildings on map ===");
-            int count = 0;
-            foreach (var building in map.listerBuildings.allBuildingsColonist)
-            {
-                count++;
-                if (count <= 10) // Only show first 10
-                {
-                    Logger.Debug($"Building: {building.def.defName} at {building.Position}");
-                }
-            }
-            Logger.Debug($"Total buildings: {count}");
-            Logger.Debug($"=== End Debug ===");
-        }
-
-
     }
 }
