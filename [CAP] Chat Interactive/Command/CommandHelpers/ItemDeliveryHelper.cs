@@ -852,51 +852,109 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         }
 
         /// <summary>
-        /// Equips vacsuit + helmet when available (space / vacuum maps).
-        /// Skips if pawn already wears vacuum-rated armor (Recon, Cataphract, vacsuit, etc.).
+        /// Equips vacsuit body + vacsuit helmet when available (space / vacuum maps).
+        /// Body and helmet are independent: wearing a vacsuit must not skip the helmet
+        /// (both are required for vacuum survival on Odyssey / SoS-style maps).
+        /// Skips body piece if pawn already has vacuum-rated armor (Recon, Cataphract, etc.).
         /// </summary>
         public static void EquipVacsuitIfNeeded(Pawn pawn)
         {
             try
             {
-                if (pawn?.apparel == null) return;
-
-                if (HasVacuumProtection(pawn))
-                {
-                    Logger.Debug(
-                        $"Vacuum gear: {pawn.LabelShort} already has vacuum-capable apparel — skip vacsuit");
+                if (pawn?.apparel == null)
                     return;
-                }
 
-                ThingDef suitDef = pawn.ageTracker.CurLifeStageIndex <= 1
+                ThingDef suitDef = pawn.ageTracker?.CurLifeStageIndex <= 1
                     ? DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_VacsuitChildren")
                     : DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_Vacsuit");
-                ThingDef helmetDef = DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_VacsuitHelmet");
+                ThingDef helmetDef =
+                    DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_VacsuitHelmet")
+                    ?? DefDatabase<ThingDef>.GetNamedSilentFail("Apparel_VacsuitHelmetChildren");
 
-                if (suitDef != null)
+                bool equippedAnything = false;
+
+                // Body: skip only if already vacuum-capable (power armor, vacsuit, etc.)
+                if (suitDef != null && !HasVacuumProtection(pawn))
                 {
                     Apparel suit = PawnApparelGenerator.GenerateApparelOfDefFor(pawn, suitDef);
                     if (suit != null && ApparelUtility.HasPartsToWear(pawn, suit.def))
-                        pawn.apparel.Wear(suit); // drops conflicting layer apparel
-                }
-
-                if (helmetDef != null)
-                {
-                    // Only add helmet if still no vacuum-capable piece after suit
-                    if (!HasVacuumProtection(pawn))
                     {
-                        Apparel helmet = PawnApparelGenerator.GenerateApparelOfDefFor(pawn, helmetDef);
-                        if (helmet != null && ApparelUtility.HasPartsToWear(pawn, helmet.def))
-                            pawn.apparel.Wear(helmet);
+                        pawn.apparel.Wear(suit);
+                        equippedAnything = true;
                     }
                 }
 
-                Logger.Debug($"Vacuum gear: equipped vacsuit on {pawn.LabelShort}");
+                // Helmet: always try if head is not already vacuum-protected.
+                // (Previously skipped whenever body vacsuit set HasVacuumProtection → no helmet.)
+                if (helmetDef != null && !HasVacuumHeadProtection(pawn))
+                {
+                    if (ApparelUtility.HasPartsToWear(pawn, helmetDef))
+                    {
+                        Apparel helmet = PawnApparelGenerator.GenerateApparelOfDefFor(pawn, helmetDef);
+                        if (helmet != null)
+                        {
+                            pawn.apparel.Wear(helmet);
+                            equippedAnything = true;
+                        }
+                    }
+                }
+
+                if (equippedAnything)
+                    Logger.Debug($"Vacuum gear: equipped vacsuit/helmet on {pawn.LabelShort}");
             }
             catch (Exception ex)
             {
                 Logger.Warning($"Failed to equip vacsuit on {pawn?.LabelShort}: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// True if worn apparel already covers the head with vacuum-rated / vacsuit helmet gear.
+        /// </summary>
+        public static bool HasVacuumHeadProtection(Pawn pawn)
+        {
+            if (pawn?.apparel?.WornApparel == null)
+                return false;
+
+            foreach (Apparel a in pawn.apparel.WornApparel)
+            {
+                if (a?.def == null)
+                    continue;
+
+                // Must involve head coverage (helmet / full helm layers)
+                bool coversHead = false;
+                if (a.def.apparel?.bodyPartGroups != null)
+                {
+                    foreach (BodyPartGroupDef g in a.def.apparel.bodyPartGroups)
+                    {
+                        if (g == BodyPartGroupDefOf.FullHead || g == BodyPartGroupDefOf.UpperHead)
+                        {
+                            coversHead = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!coversHead)
+                    continue;
+
+                if (ApparelProvidesVacuumProtection(a))
+                    return true;
+
+                string n = a.def.defName ?? "";
+                string label = a.def.label ?? "";
+                if (ContainsIgnoreCase(n, "VacsuitHelmet") ||
+                    ContainsIgnoreCase(n, "VacHelmet") ||
+                    ContainsIgnoreCase(label, "vac suit helmet") ||
+                    ContainsIgnoreCase(label, "vacsuit helmet") ||
+                    (ContainsIgnoreCase(n, "Vacsuit") && ContainsIgnoreCase(n, "Helmet")) ||
+                    (ContainsIgnoreCase(label, "vac") && ContainsIgnoreCase(label, "helmet")))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
