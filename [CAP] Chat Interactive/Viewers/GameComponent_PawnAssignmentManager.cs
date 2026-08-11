@@ -1,4 +1,4 @@
-﻿// GameComponent_PawnAssignmentManager.cs
+// GameComponent_PawnAssignmentManager.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -15,19 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
-// Manages the assignment of pawns to chat viewers, including queueing and pending offers.
-//
-/*
- * ARCHITECTURAL NOTES:
- * - Platform-based identification system (vs username-only)
- * - Secure assignment using platform user IDs  
- * - Multi-platform role derivation (Twitch + YouTube)
- * - Queue management with fairness algorithms
- * - Timeout-based pending offer system
- * - These represent substantial architectural differences from basic pawn assignment
- */
-
-using _CAP__Chat_Interactive.Utilities;
+// Assigns pawns to chat viewers (platform ID keys), queue, pending offers, death info.
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -39,34 +27,22 @@ namespace CAP_ChatInteractive
 {
     public class GameComponent_PawnAssignmentManager : GameComponent
     {
-        // CHANGED: Use platform ID as primary key
-        public Dictionary<string, string> viewerPawnAssignments; // PlatformID -> ThingID
-        private List<string> pawnQueue; // PlatformID in queue order
-        private Dictionary<string, float> queueJoinTimes; // PlatformID -> join time (ticks)
-        private Dictionary<string, PendingPawnOffer> pendingOffers; // PlatformID -> offer data
-        private List<string> expiredOffers; // Offers that timed out
-        private Dictionary<string, string> pawnOriginalNicknames = new Dictionary<string, string>(); // ThingID -> OriginalNickname
+        /// <summary>PlatformID (or legacy username key) → ThingID</summary>
+        public Dictionary<string, string> viewerPawnAssignments;
 
+        private List<string> pawnQueue;
+        private Dictionary<string, float> queueJoinTimes;
+        private Dictionary<string, PendingPawnOffer> pendingOffers;
+        private List<string> expiredOffers;
+        private Dictionary<string, string> pawnOriginalNicknames;
 
         public GameComponent_PawnAssignmentManager(Game game)
         {
-            viewerPawnAssignments = new Dictionary<string, string>();
-            pawnQueue = new List<string>();
-            queueJoinTimes = new Dictionary<string, float>();
-            pendingOffers = new Dictionary<string, PendingPawnOffer>();
-            expiredOffers = new List<string>();
+            EnsureInitialized();
         }
 
-        public override void ExposeData()
+        private void EnsureInitialized()
         {
-            base.ExposeData();
-            Scribe_Collections.Look(ref viewerPawnAssignments, "viewerPawnAssignments", LookMode.Value, LookMode.Value);
-            Scribe_Collections.Look(ref pawnQueue, "pawnQueue", LookMode.Value);
-            Scribe_Collections.Look(ref queueJoinTimes, "queueJoinTimes", LookMode.Value, LookMode.Value);
-            Scribe_Collections.Look(ref pendingOffers, "pendingOffers", LookMode.Value, LookMode.Deep);
-            Scribe_Collections.Look(ref expiredOffers, "expiredOffers", LookMode.Value);
-
-            // Initialize if null after loading
             if (viewerPawnAssignments == null)
                 viewerPawnAssignments = new Dictionary<string, string>();
             if (pawnQueue == null)
@@ -77,343 +53,310 @@ namespace CAP_ChatInteractive
                 pendingOffers = new Dictionary<string, PendingPawnOffer>();
             if (expiredOffers == null)
                 expiredOffers = new List<string>();
+            if (pawnOriginalNicknames == null)
+                pawnOriginalNicknames = new Dictionary<string, string>();
+        }
+
+        public override void ExposeData()
+        {
+            base.ExposeData();
+            Scribe_Collections.Look(ref viewerPawnAssignments, "viewerPawnAssignments", LookMode.Value, LookMode.Value);
+            Scribe_Collections.Look(ref pawnQueue, "pawnQueue", LookMode.Value);
+            Scribe_Collections.Look(ref queueJoinTimes, "queueJoinTimes", LookMode.Value, LookMode.Value);
+            Scribe_Collections.Look(ref pendingOffers, "pendingOffers", LookMode.Value, LookMode.Deep);
+            Scribe_Collections.Look(ref expiredOffers, "expiredOffers", LookMode.Value);
+            Scribe_Collections.Look(ref pawnOriginalNicknames, "pawnOriginalNicknames", LookMode.Value, LookMode.Value);
+            EnsureInitialized();
         }
 
         public override void GameComponentTick()
         {
             base.GameComponentTick();
 
-            // Check for expired offers every 60 ticks (about 1 second)
+            if (Find.TickManager == null)
+                return;
+
             if (Find.TickManager.TicksGame % 60 == 0)
             {
-                CheckExpiredOffers();
+                try
+                {
+                    CheckExpiredOffers();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"[PawnAssign] CheckExpiredOffers: {ex.Message}");
+                }
             }
         }
 
-        // === AssignPawn Methods ===
+        // ── Assign ──────────────────────────────────────────────────────
 
-        // 2 references
-        // BuyPawnCommmandHandler.cs: Line 138
-        // This file: line 645
         public void AssignPawnToViewer(ChatMessageWrapper message, Pawn pawn)
         {
+            if (message == null || pawn == null)
+            {
+                Logger.Warning("[PawnAssign] AssignPawnToViewer: null message or pawn");
+                return;
+            }
+
             string identifier = GetViewerIdentifier(message);
             if (string.IsNullOrEmpty(identifier))
             {
-                Logger.Warning("AssignPawnToViewer: computed null/empty identifier, skipping assignment");
+                Logger.Warning("[PawnAssign] AssignPawnToViewer: empty identifier");
                 return;
             }
-            viewerPawnAssignments[identifier] = pawn.ThingID;
 
-            // Remove from queue if they're in it
-            if (pawnQueue.Contains(identifier))
-            {
-                pawnQueue.Remove(identifier);
-                queueJoinTimes.Remove(identifier);
-                Logger.Debug($"Removed {message.Username} from pawn queue after assignment");
-            }
-
-            // Store original nickname before changing it
-            if (pawn.Name is NameTriple nameTriple && !pawnOriginalNicknames.ContainsKey(pawn.ThingID))
-            {
-                pawnOriginalNicknames[pawn.ThingID] = nameTriple.Nick;
-            }
-
-            // Set pawn nickname to username (keeping first/last names)
-            if (pawn.Name is NameTriple currentName)
-            {
-                pawn.Name = new NameTriple(currentName.First, message.Username, currentName.Last);
-            }
-            else
-            {
-                pawn.Name = new NameSingle(message.Username);
-            }
-
-            Logger.Debug($"Assigned pawn {pawn.ThingID} to viewer {identifier}");
+            AssignCore(identifier, message.Username, pawn);
         }
 
-        // NEW: Direct assignment method for dialog use
         public void AssignPawnToViewerDialog(string username, string platformID, Pawn pawn)
         {
-            if (string.IsNullOrEmpty(platformID))
+            if (string.IsNullOrEmpty(platformID) || pawn == null)
             {
-                Logger.Warning("AssignPawnToViewerDialog: null/empty platformID, skipping assignment");
+                Logger.Warning("[PawnAssign] AssignPawnToViewerDialog: null platformID or pawn");
                 return;
             }
-            viewerPawnAssignments[platformID] = pawn.ThingID;
 
-            // Remove from queue if they're in it
-            if (pawnQueue.Contains(platformID))
-            {
-                pawnQueue.Remove(platformID);
-                queueJoinTimes.Remove(platformID);
-                Logger.Debug($"Removed {username} (platform ID: {platformID}) from pawn queue after direct assignment");
-            }
-
-            // Store original nickname before changing it
-            if (pawn.Name is NameTriple nameOldTriple && !pawnOriginalNicknames.ContainsKey(pawn.ThingID))
-            {
-                pawnOriginalNicknames[pawn.ThingID] = nameOldTriple.Nick;
-            }
-
-            // Set pawn name to username
-            if (pawn.Name is NameTriple nameTriple)
-            {
-                pawn.Name = new NameTriple(nameTriple.First, username, nameTriple.Last);
-            }
-            else
-            {
-                pawn.Name = new NameSingle(username);
-            }
-
-            Logger.Debug($"Directly assigned pawn {pawn.ThingID} to viewer {username} using platform ID: {platformID}");
+            AssignCore(platformID, username, pawn);
         }
 
-        // === GetAssignedPawn Methods ===
-        // 9 references
+        private void AssignCore(string platformId, string username, Pawn pawn)
+        {
+            try
+            {
+                EnsureInitialized();
+
+                viewerPawnAssignments[platformId] = pawn.ThingID;
+
+                if (pawnQueue.Contains(platformId))
+                {
+                    pawnQueue.Remove(platformId);
+                    queueJoinTimes.Remove(platformId);
+                }
+
+                StoreOriginalNickname(pawn);
+                SetPawnNickname(pawn, username ?? platformId);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[PawnAssign] AssignCore failed for '{platformId}': {ex.Message}");
+            }
+        }
+
+        // ── Get assigned ────────────────────────────────────────────────
+
         public Pawn GetAssignedPawn(ChatMessageWrapper message)
         {
-            string identifier = GetViewerIdentifier(message);
+            if (message == null)
+                return null;
 
-            string thingId;
-            if (TryGetPawnAssignment(identifier, out thingId))
-            {
-                Logger.Debug($"Retrieving assigned pawn for {identifier}, ThingID: {thingId}");
-                Pawn pawn = FindPawnByThingId(thingId);
-                if (pawn != null)
-                {
-                    Logger.Debug($"Found pawn: {pawn.Name}, Dead: {pawn.Dead}, Destroyed: {pawn.Destroyed}");
-                }
-                else
-                {
-                    Logger.Debug($"No pawn found with ThingID: {thingId}");
-                }
-                return pawn;
-            }
-            Logger.Debug($"No assignment found for identifier: {identifier}");
-            return null;
+            return GetAssignedPawnIdentifier(GetViewerIdentifier(message));
         }
-        // 6 references
+
         public Pawn GetAssignedPawn(string username)
         {
             if (string.IsNullOrEmpty(username))
                 return null;
+
             string identifier = FindViewerIdentifier(username);
             return GetAssignedPawnIdentifier(identifier);
         }
-        // 0 references - direct identifier method for dialog use
-        public Pawn GetAssingedPawn(string identifier)
-        {
-            return GetAssignedPawnIdentifier(identifier);
-        }
-        // 2 references - gets username from platform ID for display purposes
+
         public string GetUsernameFromPlatformId(string platformId)
         {
-            // Find the viewer that has this platform ID
-            foreach (var viewer in Viewers.All)
+            if (string.IsNullOrEmpty(platformId) || Viewers.All == null)
+                return platformId;
+
+            try
             {
-                foreach (var platformUserId in viewer.PlatformUserIds)
+                foreach (var viewer in Viewers.All)
                 {
-                    string viewerPlatformId = $"{platformUserId.Key}:{platformUserId.Value}";
-                    if (viewerPlatformId == platformId)
+                    if (viewer?.PlatformUserIds == null)
+                        continue;
+
+                    foreach (var platformUserId in viewer.PlatformUserIds)
                     {
-                        return viewer.Username;
+                        string viewerPlatformId = $"{platformUserId.Key}:{platformUserId.Value}";
+                        if (viewerPlatformId == platformId)
+                            return viewer.Username;
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[PawnAssign] GetUsernameFromPlatformId: {ex.Message}");
+            }
 
-            return platformId; // Fallback to platform ID if not found
+            return platformId;
         }
 
-        // PRIVATE: Internal method that takes identifier directly
-        // 4 references - used by public methods that resolve identifier first
         public Pawn GetAssignedPawnIdentifier(string identifier)
         {
-            string thingId;
-            if (!TryGetPawnAssignment(identifier, out thingId))
-            {
-                Logger.Debug($"GetAssignedPawnIdentifier: No identifier provided for pawn lookup or no assignment");
+            if (!TryGetPawnAssignment(identifier, out string thingId))
                 return null;
-            }
 
-            Logger.Debug($"Retrieving assigned pawn for {identifier}, ThingID: {thingId}");
-            Pawn pawn = FindPawnByThingId(thingId);
-            if (pawn != null)
-            {
-                Logger.Debug($"Found pawn: {pawn.Name}, Dead: {pawn.Dead}, Destroyed: {pawn.Destroyed}");
-            }
-            else
-            {
-                Logger.Debug($"No pawn found with ThingID: {thingId}");
-            }
-            return pawn;
+            return FindPawnByThingId(thingId);
         }
 
         private bool TryGetPawnAssignment(string identifier, out string thingId)
         {
             thingId = null;
+            EnsureInitialized();
+
             if (string.IsNullOrEmpty(identifier))
                 return false;
+
             return viewerPawnAssignments.TryGetValue(identifier, out thingId);
         }
 
-        // === HasAssignedPawn Methods ===
-        // 1 reference
+        // ── Has assigned ────────────────────────────────────────────────
+
         public bool HasAssignedPawn(ChatMessageWrapper message)
         {
+            if (message == null)
+                return false;
+
             string identifier = FindViewerIdentifier(message.Username, message);
-            string thingId;
-            if (TryGetPawnAssignment(identifier, out thingId))
-            {
-                Logger.Debug($" Checking assigned pawn for {identifier}, ThingID: {thingId}");
-                Pawn pawn = FindPawnByThingId(thingId);
-                // Return true even if pawn is dead - we still want to allow resurrection
-                return pawn != null;
-            }
-            return false;
+            return HasAssignedPawnIdentifier(identifier);
         }
-        // 3 references
+
         public bool HasAssignedPawn(string username)
         {
             if (string.IsNullOrEmpty(username))
                 return false;
-            string identifier = FindViewerIdentifier(username);
-            return HasAssignedPawnIdentifier(identifier);
+
+            return HasAssignedPawnIdentifier(FindViewerIdentifier(username));
         }
 
-        // PRIVATE: Internal method that takes identifier directly
         private bool HasAssignedPawnIdentifier(string identifier)
         {
-            if (string.IsNullOrEmpty(identifier))
+            if (!TryGetPawnAssignment(identifier, out string thingId))
                 return false;
-            string thingId;
-            if (TryGetPawnAssignment(identifier, out thingId))
-            {
-                Logger.Debug($"Checking assigned pawn for {identifier}, ThingID: {thingId}");
-                Pawn pawn = FindPawnByThingId(thingId);
-                return pawn != null;
-            }
-            return false;
+
+            // True even if dead — resurrection paths still need the link
+            return FindPawnByThingId(thingId) != null;
         }
 
-        // === UnassignPawn Methods ===
-        // 1 reference: Used with !leave command to unassign viewer from their pawn
+        // ── Unassign ────────────────────────────────────────────────────
+
         public void UnassignPawn(ChatMessageWrapper message)
         {
-            string identifier = GetViewerIdentifier(message);
+            if (message == null)
+                return;
 
-            // Reset nickname for platform ID assignment
-            string thingId;
-            if (TryGetPawnAssignment(identifier, out thingId))
+            try
             {
-                Pawn pawn = FindPawnByThingId(thingId);
-                if (pawn != null)
-                {
-                    ResetPawnNickname(pawn, thingId);
-                }
-                viewerPawnAssignments.Remove(identifier);
-                Logger.Debug($"Removed pawn assignment for {identifier} and reset nickname");
+                EnsureInitialized();
+                string identifier = GetViewerIdentifier(message);
+                UnassignCore(identifier);
+
+                // Legacy username: keys still cleared for old saves
+                if (!string.IsNullOrEmpty(message.Username))
+                    UnassignCore(GetLegacyIdentifier(message.Username));
             }
-
-            // Also remove any legacy username assignment and reset nickname
-            // This code is very obsolete and should be removed
-            // in a future major version once we can be sure all legacy assignments are cleaned up,
-            // but we'll keep it for now to ensure no one gets stuck with an unremovable pawn due to the old system
-            string legacyId = GetLegacyIdentifier(message.Username);
-            if (!string.IsNullOrEmpty(legacyId) && viewerPawnAssignments.TryGetValue(legacyId, out thingId))
+            catch (Exception ex)
             {
-                Pawn pawn = FindPawnByThingId(thingId);
-                if (pawn != null)
-                {
-                    ResetPawnNickname(pawn, thingId);
-                }
-                viewerPawnAssignments.Remove(legacyId);
-                Logger.Debug($"Removed legacy pawn assignment for {legacyId} and reset nickname");
+                Logger.Error($"[PawnAssign] UnassignPawn(message): {ex.Message}");
             }
         }
 
-        // NEW: Legacy overload for username-only calls
         public void UnassignPawn(string platformId)
         {
             if (string.IsNullOrEmpty(platformId))
                 return;
-            if (viewerPawnAssignments.TryGetValue(platformId, out string thingId))
-            {
-                // Restore original nickname before removing assignment
-                Pawn pawn = FindPawnByThingId(thingId);
-                if (pawn != null)
-                {
-                    ResetPawnNickname(pawn, thingId);
-                }
 
-                viewerPawnAssignments.Remove(platformId);
-                Logger.Debug($"Removed pawn assignment for platform ID: {platformId} and restored nickname");
-            }
-            else
+            try
             {
-                // Also try legacy username format as fallback
+                EnsureInitialized();
+                if (UnassignCore(platformId))
+                    return;
+
+                // Fallback legacy username form
                 string legacyId = GetLegacyIdentifier(platformId);
-                if (viewerPawnAssignments.TryGetValue(legacyId, out thingId))
-                {
-                    Pawn pawn = FindPawnByThingId(thingId);
-                    if (pawn != null)
-                    {
-                        ResetPawnNickname(pawn, thingId);
-                    }
-
-                    viewerPawnAssignments.Remove(legacyId);
-                    Logger.Debug($"Removed pawn assignment using legacy ID: {legacyId} and restored nickname");
-                }
-                else
-                {
-                    Logger.Debug($"No pawn assignment found for: {platformId}");
-                }
+                UnassignCore(legacyId);
             }
+            catch (Exception ex)
+            {
+                Logger.Error($"[PawnAssign] UnassignPawn(id): {ex.Message}");
+            }
+        }
+
+        private bool UnassignCore(string identifier)
+        {
+            if (string.IsNullOrEmpty(identifier))
+                return false;
+
+            if (!TryGetPawnAssignment(identifier, out string thingId))
+                return false;
+
+            Pawn pawn = FindPawnByThingId(thingId);
+            if (pawn != null)
+                ResetPawnNickname(pawn, thingId);
+
+            viewerPawnAssignments.Remove(identifier);
+            return true;
+        }
+
+        private void StoreOriginalNickname(Pawn pawn)
+        {
+            if (pawn == null)
+                return;
+
+            EnsureInitialized();
+            if (pawn.Name is NameTriple nameTriple && !pawnOriginalNicknames.ContainsKey(pawn.ThingID))
+                pawnOriginalNicknames[pawn.ThingID] = nameTriple.Nick;
+        }
+
+        private void SetPawnNickname(Pawn pawn, string nick)
+        {
+            if (pawn == null)
+                return;
+
+            string safeNick = string.IsNullOrEmpty(nick) ? "Viewer" : nick;
+
+            if (pawn.Name is NameTriple currentName)
+                pawn.Name = new NameTriple(currentName.First, safeNick, currentName.Last);
+            else
+                pawn.Name = new NameSingle(safeNick);
         }
 
         private void ResetPawnNickname(Pawn pawn, string thingId)
         {
-            if (pawn.Name is NameTriple currentName)
-            {
-                string newNickname;
+            if (pawn == null)
+                return;
 
-                if (pawnOriginalNicknames.TryGetValue(thingId, out string originalNickname))
+            EnsureInitialized();
+
+            try
+            {
+                if (pawnOriginalNicknames.TryGetValue(thingId, out string originalNick))
                 {
-                    // Restore original nickname
-                    newNickname = originalNickname;
+                    SetPawnNickname(pawn, originalNick);
                     pawnOriginalNicknames.Remove(thingId);
-                    Logger.Debug($"Restored original nickname: '{newNickname}'");
                 }
                 else
                 {
-                    // Generate new RimWorld-style nickname
-                    newNickname = GenerateRimWorldNickname(pawn);
-                    Logger.Debug($"Generated new nickname: '{newNickname}'");
+                    SetPawnNickname(pawn, GenerateNewNickname(pawn));
                 }
-
-                pawn.Name = new NameTriple(currentName.First, newNickname, currentName.Last);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[PawnAssign] ResetPawnNickname: {ex.Message}");
             }
         }
 
-        // Generate a RimWorld-appropriate nickname
-        private string GenerateRimWorldNickname(Pawn pawn)
+        private static string GenerateNewNickname(Pawn pawn)
         {
-            // Use RimWorld's name generation for nicknames
-            // You could also use specific nickname lists based on pawn traits, background, etc.
-
-            // Simple approach - use first name as nickname (common in RimWorld)
-            if (pawn.Name is NameTriple nameTriple && !string.IsNullOrEmpty(nameTriple.First))
-            {
+            if (pawn?.Name is NameTriple nameTriple && !string.IsNullOrEmpty(nameTriple.First))
                 return nameTriple.First;
-            }
 
-            // Fallback - generate a simple nickname
             string[] simpleNicks = { "Buddy", "Chief", "Mate", "Pal", "Friend", "Traveler" };
             return simpleNicks[Rand.Range(0, simpleNicks.Length)];
         }
 
         public IEnumerable<string> GetAllAssignedUsernames()
         {
+            EnsureInitialized();
             return viewerPawnAssignments.Keys.ToList();
         }
 
@@ -422,38 +365,49 @@ namespace CAP_ChatInteractive
             if (string.IsNullOrEmpty(thingId))
                 return null;
 
-            // Search all maps for the pawn (alive)
-            foreach (var map in Find.Maps)
+            try
             {
-                foreach (var pawn in map.mapPawns.AllPawns)
+                if (Find.Maps != null)
                 {
-                    if (pawn.ThingID == thingId)
-                        return pawn;
-                }
-
-                // NEW: Also search for dead pawns/corpses
-                foreach (var thing in map.listerThings.AllThings)
-                {
-                    if (thing.ThingID == thingId && thing is Corpse corpse)
+                    foreach (var map in Find.Maps)
                     {
-                        return corpse.InnerPawn;
+                        if (map?.mapPawns?.AllPawns == null)
+                            continue;
+
+                        foreach (var pawn in map.mapPawns.AllPawns)
+                        {
+                            if (pawn != null && pawn.ThingID == thingId)
+                                return pawn;
+                        }
+
+                        if (map.listerThings?.AllThings == null)
+                            continue;
+
+                        foreach (var thing in map.listerThings.AllThings)
+                        {
+                            if (thing is Corpse corpse && thing.ThingID == thingId)
+                                return corpse.InnerPawn;
+                        }
                     }
                 }
+
+                if (Find.WorldPawns != null)
+                {
+                    var worldPawn = Find.WorldPawns.AllPawnsAlive?.FirstOrDefault(p => p != null && p.ThingID == thingId);
+                    if (worldPawn != null)
+                        return worldPawn;
+
+                    return Find.WorldPawns.AllPawnsDead?.FirstOrDefault(p => p != null && p.ThingID == thingId);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[PawnAssign] FindPawnByThingId: {ex.Message}");
             }
 
-            // Also check world pawns (alive and dead)
-            var worldPawn = Find.WorldPawns.AllPawnsAlive.FirstOrDefault(p => p.ThingID == thingId);
-            if (worldPawn != null) return worldPawn;
-
-            // NEW: Check dead world pawns
-            var deadWorldPawn = Find.WorldPawns.AllPawnsDead.FirstOrDefault(p => p.ThingID == thingId);
-            return deadWorldPawn;
+            return null;
         }
 
-        /// <summary>
-        /// Carries both the cause of death and the current body status.
-        /// This allows commands to give accurate feedback even when the physical body no longer exists.
-        /// </summary>
         public struct PawnDeathInfo
         {
             public bool IsDead;
@@ -473,11 +427,6 @@ namespace CAP_ChatInteractive
             }
         }
 
-        /// <summary>
-        /// Main method — returns rich death information for a Pawn.
-        /// Even if the body has been destroyed, we still attempt to read the cause from hediff data
-        /// (especially useful for dead world pawns whose corpses were removed).
-        /// </summary>
         public static PawnDeathInfo GetPawnDeathInfo(Pawn pawn)
         {
             if (pawn == null)
@@ -493,8 +442,7 @@ namespace CAP_ChatInteractive
 
             bool isDead = pawn.Dead;
             bool bodyExists = !pawn.Destroyed;
-
-            string cause = "";
+            string cause = string.Empty;
             string bodyStatus;
 
             if (!isDead)
@@ -503,20 +451,10 @@ namespace CAP_ChatInteractive
             }
             else
             {
-                // === Always try to extract cause of death, even if body is gone ===
-                // Dead world pawns can retain their hediff list after the corpse is destroyed.
                 cause = ExtractDeathCauseFromHediffs(pawn);
-
-                if (bodyExists)
-                {
-                    bodyStatus = "Deceased (body remains)";
-                }
-                else
-                {
-                    bodyStatus = string.IsNullOrEmpty(cause)
-                        ? "Deceased (body destroyed or missing)"
-                        : "Deceased (body destroyed or missing)";
-                }
+                bodyStatus = "Deceased (body remains)";
+                if (!bodyExists)
+                    bodyStatus = "Deceased (body destroyed or missing)";
             }
 
             return new PawnDeathInfo
@@ -528,9 +466,6 @@ namespace CAP_ChatInteractive
             };
         }
 
-        /// <summary>
-        /// Convenience overload using ThingID (reuses your existing FindPawnByThingId).
-        /// </summary>
         public static PawnDeathInfo GetPawnDeathInfo(string thingId)
         {
             if (string.IsNullOrEmpty(thingId))
@@ -544,20 +479,15 @@ namespace CAP_ChatInteractive
                 };
             }
 
-            Pawn pawn = FindPawnByThingId(thingId);
-            return GetPawnDeathInfo(pawn);
+            return GetPawnDeathInfo(FindPawnByThingId(thingId));
         }
 
-        /// <summary>
-        /// Internal helper that extracts the most likely cause of death from hediffs.
-        /// Separated for clarity and reuse.
-        /// </summary>
         private static string ExtractDeathCauseFromHediffs(Pawn pawn)
         {
             try
             {
-                var hediffSet = pawn.health?.hediffSet;
-                if (hediffSet == null || hediffSet.hediffs == null || hediffSet.hediffs.Count == 0)
+                var hediffSet = pawn?.health?.hediffSet;
+                if (hediffSet?.hediffs == null || hediffSet.hediffs.Count == 0)
                     return "mysterious or unknown causes";
 
                 Hediff mostSevereBad = null;
@@ -584,14 +514,11 @@ namespace CAP_ChatInteractive
                 if (mostSevereBad != null)
                 {
                     string cause = mostSevereBad.LabelCap ?? mostSevereBad.def.label ?? "fatal condition";
-
                     if (mostSevereBad is Hediff_Injury injury && injury.sourceDef != null)
                         cause += $" caused by {injury.sourceDef.label}";
-
                     return cause;
                 }
 
-                // Fallback using correct 1.6 void API
                 List<Hediff_Injury> injuries = new List<Hediff_Injury>();
                 hediffSet.GetHediffs(ref injuries);
 
@@ -608,146 +535,159 @@ namespace CAP_ChatInteractive
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error extracting death cause for {pawn.ThingID}: {ex.Message}");
+                Logger.Error($"[PawnAssign] ExtractDeathCause: {ex.Message}");
                 return "unknown causes (investigation error)";
             }
         }
 
-        /// <summary>
-        /// Simple string version for quick chat/letter use (combines body status + cause).
-        /// Kept for convenience / backward compatibility with older calls.
-        /// </summary>
-        public static string GetPawnDeathReason(Pawn pawn)
-        {
-            return GetPawnDeathInfo(pawn).ToString();
-        }
+        public static string GetPawnDeathReason(Pawn pawn) => GetPawnDeathInfo(pawn).ToString();
 
-        public static string GetPawnDeathReason(string thingId)
-        {
-            return GetPawnDeathInfo(thingId).ToString();
-        }
-
+        public static string GetPawnDeathReason(string thingId) => GetPawnDeathInfo(thingId).ToString();
 
         public List<Pawn> GetAllViewerPawns()
         {
+            EnsureInitialized();
             var viewerPawns = new List<Pawn>();
+
             foreach (var thingId in viewerPawnAssignments.Values)
             {
                 var pawn = FindPawnByThingId(thingId);
                 if (pawn != null && !pawn.Dead)
-                {
                     viewerPawns.Add(pawn);
-                }
             }
+
             return viewerPawns;
         }
 
         public bool IsViewerPawn(Pawn pawn)
         {
+            if (pawn == null)
+                return false;
+
+            EnsureInitialized();
             return viewerPawnAssignments.Values.Contains(pawn.ThingID);
         }
 
         public string GetUsernameForPawn(Pawn pawn)
         {
+            if (pawn == null)
+                return null;
+
+            EnsureInitialized();
             var entry = viewerPawnAssignments.FirstOrDefault(x => x.Value == pawn.ThingID);
-            return entry.Key ?? null;
+            return entry.Key;
         }
 
-        // Queue management methods
+        // ── Queue ───────────────────────────────────────────────────────
+
         public bool AddToQueue(ChatMessageWrapper messageWrapper)
         {
-            string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
-            string usernameLower = messageWrapper.Username.ToLowerInvariant();
+            if (messageWrapper == null || string.IsNullOrEmpty(messageWrapper.PlatformUserId))
+                return false;
 
-            // Check if already in queue
-            if (pawnQueue.Contains(platformId))
+            try
             {
+                EnsureInitialized();
+                string platformId = BuildPlatformId(messageWrapper);
+                if (string.IsNullOrEmpty(platformId))
+                    return false;
+
+                if (pawnQueue.Contains(platformId))
+                    return false;
+
+                string usernameLower = messageWrapper.Username?.ToLowerInvariant() ?? string.Empty;
+
+                if (HasLivingAssignedPawn(platformId))
+                    return false;
+
+                if (!string.IsNullOrEmpty(usernameLower) && HasLivingAssignedPawn(usernameLower))
+                    return false;
+
+                pawnQueue.Add(platformId);
+                if (Find.TickManager != null)
+                    queueJoinTimes[platformId] = Find.TickManager.TicksGame;
+                else
+                    queueJoinTimes[platformId] = 0f;
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[PawnAssign] AddToQueue: {ex.Message}");
                 return false;
             }
-
-            // DIRECT DICTIONARY CHECK: Check if already has a pawn
-            bool hasPawn = false;
-
-            // Check platform ID
-            string thingId;
-            if (TryGetPawnAssignment(platformId, out thingId))
-            {
-                Pawn existingPawn = FindPawnByThingId(thingId);
-                hasPawn = (existingPawn != null);
-            }
-
-            // Check legacy username if platform ID didn't find anything
-            if (!hasPawn && TryGetPawnAssignment(usernameLower, out thingId))
-            {
-                Pawn existingPawn = FindPawnByThingId(thingId);
-                hasPawn = (existingPawn != null);
-            }
-
-            if (hasPawn)
-            {
-                return false;
-            }
-
-            pawnQueue.Add(platformId);
-            queueJoinTimes[platformId] = Find.TickManager.TicksGame;
-            Logger.Debug($"Added {platformId} to pawn queue");
-            return true;
         }
 
-        // UPDATED: Remove from queue
+        private bool HasLivingAssignedPawn(string key)
+        {
+            if (!TryGetPawnAssignment(key, out string thingId))
+                return false;
+
+            return FindPawnByThingId(thingId) != null;
+        }
+
         public bool RemoveFromQueue(ChatMessageWrapper messageWrapper)
         {
-            string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
-            bool removed = pawnQueue.Remove(platformId);
-            if (removed)
+            if (messageWrapper == null)
+                return false;
+
+            try
             {
-                queueJoinTimes.Remove(platformId);
-                Logger.Debug($"Removed {platformId} from pawn queue");
+                EnsureInitialized();
+                string platformId = BuildPlatformId(messageWrapper);
+                bool removed = pawnQueue.Remove(platformId);
+                if (removed)
+                    queueJoinTimes.Remove(platformId);
+                return removed;
             }
-            return removed;
+            catch (Exception ex)
+            {
+                Logger.Error($"[PawnAssign] RemoveFromQueue: {ex.Message}");
+                return false;
+            }
         }
 
-        // NEW: Legacy overload
         public bool RemoveFromQueue(string username)
         {
-            // Find the viewer and get their platform ID
             var viewer = Viewers.GetViewer(username);
-            if (viewer == null) return false;
+            if (viewer == null)
+                return false;
 
-            string platformId = viewer.GetPrimaryPlatformIdentifier();
-            Logger.Debug($"Attempting to remove {username} : {platformId} from pawn queue");
-            bool removed = pawnQueue.Remove(platformId);
-            Logger.Debug(removed ? $"Successfully removed {platformId} from pawn queue" : $"{platformId} not found in pawn queue");
-            if (removed)
+            try
             {
-                queueJoinTimes.Remove(platformId);
+                EnsureInitialized();
+                string platformId = viewer.GetPrimaryPlatformIdentifier();
+                bool removed = pawnQueue.Remove(platformId);
+                if (removed)
+                    queueJoinTimes.Remove(platformId);
+                return removed;
             }
-            return removed;
+            catch (Exception ex)
+            {
+                Logger.Error($"[PawnAssign] RemoveFromQueue(username): {ex.Message}");
+                return false;
+            }
         }
 
         public bool IsInQueue(string username)
         {
-            // Find the viewer and get their platform ID
             var viewer = Viewers.GetViewer(username);
-            if (viewer == null) return false;
+            if (viewer == null)
+                return false;
 
-            string platformId = viewer.GetPrimaryPlatformIdentifier();
-            return pawnQueue.Contains(platformId);
+            EnsureInitialized();
+            return pawnQueue.Contains(viewer.GetPrimaryPlatformIdentifier());
         }
-
-        // UPDATED: Pending offers to use platform IDs
-
 
         public string GetNextInQueue()
         {
-            if (pawnQueue.Count == 0)
-                return null;
-
-            return pawnQueue[0];
+            EnsureInitialized();
+            return pawnQueue.Count == 0 ? null : pawnQueue[0];
         }
 
         public string PopNextInQueue()
         {
+            EnsureInitialized();
             if (pawnQueue.Count == 0)
                 return null;
 
@@ -759,338 +699,354 @@ namespace CAP_ChatInteractive
 
         public List<string> GetQueueList()
         {
+            EnsureInitialized();
             return new List<string>(pawnQueue);
         }
 
         public int GetQueuePosition(string username)
         {
-            // Find the viewer and get their platform ID
             var viewer = Viewers.GetViewer(username);
-            if (viewer == null) return -1;
+            if (viewer == null)
+                return -1;
 
-            string platformId = viewer.GetPrimaryPlatformIdentifier();
-            int position = pawnQueue.IndexOf(platformId);
+            EnsureInitialized();
+            int position = pawnQueue.IndexOf(viewer.GetPrimaryPlatformIdentifier());
             return position >= 0 ? position + 1 : -1;
         }
 
         public int GetQueueSize()
         {
+            EnsureInitialized();
             return pawnQueue.Count;
         }
 
         public void ClearQueue()
         {
+            EnsureInitialized();
             pawnQueue.Clear();
             queueJoinTimes.Clear();
         }
 
+        // ── Pending offers ──────────────────────────────────────────────
+
         public void AddPendingOffer(string username, string platformID, Pawn pawn, int timeoutSeconds = -1)
         {
-            // Use global setting if not specified, default to 300 seconds (5 minutes)
-            if (timeoutSeconds == -1)
+            if (string.IsNullOrEmpty(platformID))
             {
-                var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
-                timeoutSeconds = settings?.PawnOfferTimeoutSeconds ?? 300;
+                Logger.Warning("[PawnAssign] AddPendingOffer: empty platformID");
+                return;
             }
 
-            // Use platform ID as key for security (prevents username spoofing)
-            pendingOffers[platformID] = new PendingPawnOffer
+            try
             {
-                Username = username,
-                PlatformIdentifier = platformID, // Store the actual platform ID
-                OfferTime = Find.TickManager.TicksGame,
-                TimeoutTicks = timeoutSeconds * 60,
-                PawnThingId = pawn?.ThingID
-            };
+                EnsureInitialized();
 
-            Logger.Debug($"Added pending offer for {username} with platform ID: {platformID}");
+                if (timeoutSeconds == -1)
+                {
+                    var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                    timeoutSeconds = settings?.PawnOfferTimeoutSeconds ?? 300;
+                }
+
+                float offerTime = Find.TickManager?.TicksGame ?? 0;
+
+                pendingOffers[platformID] = new PendingPawnOffer
+                {
+                    Username = username,
+                    PlatformIdentifier = platformID,
+                    OfferTime = offerTime,
+                    TimeoutTicks = timeoutSeconds * 60,
+                    PawnThingId = pawn?.ThingID
+                };
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[PawnAssign] AddPendingOffer: {ex.Message}");
+            }
         }
 
         public bool HasPendingOffer(ChatMessageWrapper messageWrapper)
         {
-            string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
-            return pendingOffers.ContainsKey(platformId);
+            if (messageWrapper == null)
+                return false;
+
+            EnsureInitialized();
+            string platformId = BuildPlatformId(messageWrapper);
+            return !string.IsNullOrEmpty(platformId) && pendingOffers.ContainsKey(platformId);
         }
 
         public Pawn AcceptPendingOffer(ChatMessageWrapper messageWrapper)
         {
-            string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
+            if (messageWrapper == null)
+                return null;
 
-            // Look for offer by platform ID (secure)
-            if (pendingOffers.TryGetValue(platformId, out PendingPawnOffer offer))
+            try
             {
+                EnsureInitialized();
+                string platformId = BuildPlatformId(messageWrapper);
+                if (string.IsNullOrEmpty(platformId))
+                    return null;
+
+                if (!pendingOffers.TryGetValue(platformId, out PendingPawnOffer offer))
+                    return null;
+
                 pendingOffers.Remove(platformId);
 
-                // Find the pawn by its stored ThingID
                 Pawn pawn = FindPawnByThingId(offer.PawnThingId);
-
-                // Only assign if pawn is still valid
-                if (pawn != null && !pawn.Dead)
+                if (pawn == null || pawn.Dead)
                 {
-                    // Set the pawn's nickname to the username
-                    if (pawn.Name is NameTriple nameTriple)
-                    {
-                        pawn.Name = new NameTriple(nameTriple.First, messageWrapper.Username, nameTriple.Last);
-                    }
-                    else
-                    {
-                        pawn.Name = new NameSingle(messageWrapper.Username);
-                    }
-
-                    // Assign the pawn to the viewer using platform ID for security
-                    AssignPawnToViewer(messageWrapper, pawn);
-                    RemoveFromQueue(messageWrapper);
-                    Logger.Debug($"Successfully assigned pawn {pawn.Name} to viewer {messageWrapper.Username}");
-                    return pawn;
-                }
-                else
-                {
-                    Logger.Debug($"Pawn offer for {messageWrapper.Username} failed - pawn null or dead");
+                    Logger.Warning($"[PawnAssign] Pending offer for {messageWrapper.Username} failed — pawn missing or dead");
                     return null;
                 }
-            }
 
-            Logger.Debug($"No pending offer found for platform: {platformId}");
-            return null;
+                AssignPawnToViewer(messageWrapper, pawn);
+                RemoveFromQueue(messageWrapper);
+                return pawn;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[PawnAssign] AcceptPendingOffer: {ex.Message}");
+                return null;
+            }
         }
 
         public void RemovePendingOffer(ChatMessageWrapper messageWrapper)
         {
-            string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
-            pendingOffers.Remove(platformId);
+            if (messageWrapper == null)
+                return;
+
+            EnsureInitialized();
+            string platformId = BuildPlatformId(messageWrapper);
+            if (!string.IsNullOrEmpty(platformId))
+                pendingOffers.Remove(platformId);
         }
 
         private void CheckExpiredOffers()
         {
+            EnsureInitialized();
+            if (Find.TickManager == null || pendingOffers.Count == 0)
+                return;
+
             var currentTicks = Find.TickManager.TicksGame;
             var expired = new List<string>();
 
             foreach (var offer in pendingOffers)
             {
+                if (offer.Value == null)
+                {
+                    expired.Add(offer.Key);
+                    continue;
+                }
+
                 if (currentTicks - offer.Value.OfferTime > offer.Value.TimeoutTicks)
                 {
                     expired.Add(offer.Key);
                     expiredOffers.Add(offer.Key);
 
-                    // Send timeout message to chat using the stored username
-                    string timeoutMessage = $"⏰ Your pawn offer has expired! Join the queue again with !join";
-                    ChatCommandProcessor.SendMessageToUsername(offer.Value.Username, timeoutMessage);
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(offer.Value.Username))
+                        {
+                            ChatCommandProcessor.SendMessageToUsername(
+                                offer.Value.Username,
+                                "Your pawn offer has expired! Join the queue again with !join");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warning($"[PawnAssign] Timeout notify failed: {ex.Message}");
+                    }
                 }
             }
 
-            // Remove expired offers
             foreach (string key in expired)
-            {
                 pendingOffers.Remove(key);
-            }
         }
 
         public List<PendingPawnOffer> GetPendingOffers()
         {
+            EnsureInitialized();
             return pendingOffers.Values.ToList();
         }
 
         public List<string> GetExpiredOffers()
         {
+            EnsureInitialized();
             return new List<string>(expiredOffers);
         }
 
         public void ClearExpiredOffers()
         {
+            EnsureInitialized();
             expiredOffers.Clear();
         }
 
-        // === Helper Methods ===
+        // ── Identifiers ─────────────────────────────────────────────────
+
+        private static string BuildPlatformId(ChatMessageWrapper message)
+        {
+            if (message == null || string.IsNullOrEmpty(message.PlatformUserId))
+                return null;
+
+            string plat = message.Platform?.ToLowerInvariant() ?? "unknown";
+            return $"{plat}:{message.PlatformUserId}";
+        }
 
         private string GetViewerIdentifier(ChatMessageWrapper message)
         {
             if (message == null)
-                return "name:unknown";
+                return null;
 
-            // Priority 1: Platform User ID (most reliable, prevents spoofing)
             if (!string.IsNullOrEmpty(message.PlatformUserId))
             {
                 string plat = message.Platform?.ToLowerInvariant() ?? "unknown";
                 return $"{plat}:{message.PlatformUserId}";
             }
 
-            // Priority 2: Username (fallback for backwards compatibility)
             if (!string.IsNullOrEmpty(message.Username))
-            {
-                return $"{message.Username.ToLowerInvariant()}";
-            }
+                return message.Username.ToLowerInvariant();
 
-            // Priority 3: Display Name (last resort)
-            return $"name:{message.DisplayName?.ToLowerInvariant() ?? "unknown"}";
-        }
+            if (!string.IsNullOrEmpty(message.DisplayName))
+                return $"name:{message.DisplayName.ToLowerInvariant()}";
 
-        private string GetLegacyIdentifier(string username)
-        {
-            return $"{username.ToLowerInvariant()}";
-        }
-
-        /// <summary>
-        /// Finds and returns platform ID by username
-        /// improved and fixed to prevent spoofing and ensure accurate assignments
-        /// version 1.0.15
-        /// </summary>
-        /// <param name="username"></param>
-        /// <param name="message"></param>
-        /// <returns></returns>
-        private string FindViewerIdentifier(string username, ChatMessageWrapper message = null)
-        {
-            if (string.IsNullOrEmpty(username))
-                return null;
-
-            // Strip @ symbol from the beginning if present
-            string usernameClean = username.StartsWith("@") ? username.Substring(1) : username;
-            string usernameLower = usernameClean.ToLowerInvariant();
-
-            // First, check if we have a direct assignment with any known platform IDs
-            var viewer = Viewers.GetViewerNoAdd(usernameClean);
-            if (viewer != null)
-            {
-                // Check each platform ID associated with this viewer
-                foreach (var platformEntry in viewer.PlatformUserIds)
-                {
-                    string platId = $"{platformEntry.Key.ToLowerInvariant()}:{platformEntry.Value}";
-                    if (!string.IsNullOrEmpty(platId) && viewerPawnAssignments.ContainsKey(platId))
-                    {
-                        Logger.Debug($"Found assignment under platform ID: {platId} for username: {usernameClean}");
-                        return platId;
-                    }
-                }
-
-                // Check if primary platform ID has assignment
-                string primaryId = viewer.GetPrimaryPlatformIdentifier();
-                if (!string.IsNullOrEmpty(primaryId) && viewerPawnAssignments.ContainsKey(primaryId))
-                {
-                    Logger.Debug($"Found assignment under primary ID: {primaryId} for username: {usernameClean}");
-                    return primaryId;
-                }
-            }
-
-            // Check if message provided has platform ID that matches an assignment
-            if (message != null)
-            {
-                string platformId = GetViewerIdentifier(message);
-                if (!string.IsNullOrEmpty(platformId) && viewerPawnAssignments.ContainsKey(platformId))
-                {
-                    Logger.Debug($"Found assignment for message platform ID: {platformId}");
-                    return platformId;
-                }
-            }
-
-            // Legacy fallback: check if username was used as key (for backwards compatibility)
-            if (!string.IsNullOrEmpty(usernameLower) && viewerPawnAssignments.ContainsKey(usernameLower))
-            {
-                Logger.Debug($"Found legacy assignment under username: {usernameLower}");
-                return usernameLower;
-            }
-
-            // Also check username with "username:" prefix
-            string prefixedUsername = $"username:{usernameLower}";
-            if (!string.IsNullOrEmpty(prefixedUsername) && viewerPawnAssignments.ContainsKey(prefixedUsername))
-            {
-                Logger.Debug($"Found assignment under prefixed username: {prefixedUsername}");
-                return prefixedUsername;
-            }
-
-            // If we get here, we couldn't find any assignment
-            Logger.Debug($"No assignment found for {usernameClean}");
             return null;
         }
 
-        // Fix Viewer Pawns
-        // Add this method to fix legacy pawn assignments
-        public void FixAllPawnAssignments()
+        private static string GetLegacyIdentifier(string username)
         {
-            int fixedCount = 0;
-            int removedCount = 0;
-            var assignmentsToRemove = new List<string>();
-            var assignmentsToAdd = new Dictionary<string, string>();
+            return username?.ToLowerInvariant() ?? string.Empty;
+        }
 
-            Logger.Debug("Starting pawn assignment fix (platform-ID aware)...");
+        /// <summary>
+        /// Resolve assignment key for a username (platform id preferred, then legacy).
+        /// </summary>
+        private string FindViewerIdentifier(string username, ChatMessageWrapper message = null)
+        {
+            EnsureInitialized();
 
-            foreach (var assignment in viewerPawnAssignments.ToList())
+            if (string.IsNullOrEmpty(username))
+                return null;
+
+            string usernameClean = username.StartsWith("@") ? username.Substring(1) : username;
+            string usernameLower = usernameClean.ToLowerInvariant();
+
+            try
             {
-                string key = assignment.Key;           // should be platform ID
-                string thingId = assignment.Value;
-
-                Pawn pawn = FindPawnByThingId(thingId);
-                if (pawn == null)
+                var viewer = Viewers.GetViewerNoAdd(usernameClean);
+                if (viewer?.PlatformUserIds != null)
                 {
-                    Logger.Debug($"Removing assignment for missing pawn {thingId}");
-                    assignmentsToRemove.Add(key);
-                    removedCount++;
-                    continue;
+                    foreach (var platformEntry in viewer.PlatformUserIds)
+                    {
+                        if (string.IsNullOrEmpty(platformEntry.Key) || string.IsNullOrEmpty(platformEntry.Value))
+                            continue;
+
+                        string platId = $"{platformEntry.Key.ToLowerInvariant()}:{platformEntry.Value}";
+                        if (viewerPawnAssignments.ContainsKey(platId))
+                            return platId;
+                    }
+
+                    string primaryId = viewer.GetPrimaryPlatformIdentifier();
+                    if (!string.IsNullOrEmpty(primaryId) && viewerPawnAssignments.ContainsKey(primaryId))
+                        return primaryId;
                 }
 
-                // Check if this is a legacy username-only key
-                bool isLegacy = !key.Contains(":") && !key.StartsWith("username:");
-
-                Viewer realViewer = null;
-
-                if (isLegacy)
+                if (message != null)
                 {
-                    realViewer = Viewers.GetViewerNoAdd(key); // username lookup
+                    string platformId = GetViewerIdentifier(message);
+                    if (!string.IsNullOrEmpty(platformId) && viewerPawnAssignments.ContainsKey(platformId))
+                        return platformId;
+                }
+
+                if (viewerPawnAssignments.ContainsKey(usernameLower))
+                    return usernameLower;
+
+                string prefixedUsername = $"username:{usernameLower}";
+                if (viewerPawnAssignments.ContainsKey(prefixedUsername))
+                    return prefixedUsername;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[PawnAssign] FindViewerIdentifier: {ex.Message}");
+            }
+
+            return null;
+        }
+
+        /// <summary>Migrate legacy username keys and drop missing-pawn links.</summary>
+        public void FixAllPawnAssignments()
+        {
+            try
+            {
+                EnsureInitialized();
+
+                int fixedCount = 0;
+                int removedCount = 0;
+                var assignmentsToRemove = new List<string>();
+                var assignmentsToAdd = new Dictionary<string, string>();
+
+                foreach (var assignment in viewerPawnAssignments.ToList())
+                {
+                    string key = assignment.Key;
+                    string thingId = assignment.Value;
+
+                    Pawn pawn = FindPawnByThingId(thingId);
+                    if (pawn == null)
+                    {
+                        assignmentsToRemove.Add(key);
+                        removedCount++;
+                        continue;
+                    }
+
+                    bool isLegacy = !key.Contains(":") && !key.StartsWith("username:");
+                    Viewer realViewer = isLegacy
+                        ? Viewers.GetViewerNoAdd(key)
+                        : Viewers.GetViewerByPlatformIdentifier(key);
+
+                    if (realViewer == null)
+                    {
+                        assignmentsToRemove.Add(key);
+                        removedCount++;
+                        continue;
+                    }
+
+                    string correctPlatformID = realViewer.GetPrimaryPlatformIdentifier();
+                    if (correctPlatformID != key)
+                    {
+                        assignmentsToRemove.Add(key);
+                        assignmentsToAdd[correctPlatformID] = thingId;
+                        fixedCount++;
+                    }
+                }
+
+                foreach (string keyToRemove in assignmentsToRemove)
+                    viewerPawnAssignments.Remove(keyToRemove);
+
+                foreach (var newAssignment in assignmentsToAdd)
+                    viewerPawnAssignments[newAssignment.Key] = newAssignment.Value;
+
+                if (fixedCount > 0 || removedCount > 0)
+                {
+                    Logger.Message(
+                        $"[PawnAssign] Cleanup: {fixedCount} fixed, {removedCount} removed.");
+                    Messages.Message(
+                        $"Fixed {fixedCount} pawn assignments and removed {removedCount} invalid ones.",
+                        fixedCount > 0 ? MessageTypeDefOf.PositiveEvent : MessageTypeDefOf.NeutralEvent);
                 }
                 else
                 {
-                    realViewer = Viewers.GetViewerByPlatformIdentifier(key);
-                }
-
-                if (realViewer == null)
-                {
-                    Logger.Debug($"No real viewer found for key '{key}' → removing invalid assignment");
-                    assignmentsToRemove.Add(key);
-                    removedCount++;
-                    continue;
-                }
-
-                string correctPlatformID = realViewer.GetPrimaryPlatformIdentifier();
-
-                if (correctPlatformID != key)
-                {
-                    // Migrate to proper platform ID
-                    assignmentsToRemove.Add(key);
-                    assignmentsToAdd[correctPlatformID] = thingId;
-                    fixedCount++;
-
-                    Logger.Debug($"Fixed legacy/mismatched assignment: {key} → {correctPlatformID} (pawn {thingId})");
+                    Messages.Message("No invalid pawn assignments found.", MessageTypeDefOf.NeutralEvent);
                 }
             }
-
-            // Apply changes
-            foreach (string keyToRemove in assignmentsToRemove)
+            catch (Exception ex)
             {
-                viewerPawnAssignments.Remove(keyToRemove);
-            }
-
-            foreach (var newAssignment in assignmentsToAdd)
-            {
-                viewerPawnAssignments[newAssignment.Key] = newAssignment.Value;
-            }
-
-            if (fixedCount > 0 || removedCount > 0)
-            {
-                Logger.Message($"Pawn assignment cleanup completed: {fixedCount} fixed, {removedCount} removed.");
-                Messages.Message($"Fixed {fixedCount} pawn assignments and removed {removedCount} invalid ones.",
-                                fixedCount > 0 ? MessageTypeDefOf.PositiveEvent : MessageTypeDefOf.NeutralEvent);
-            }
-            else
-            {
-                Messages.Message("No invalid pawn assignments found.", MessageTypeDefOf.NeutralEvent);
+                Logger.Error($"[PawnAssign] FixAllPawnAssignments: {ex.Message}");
             }
         }
-
     }
 
-    // NEW: Pending offer data structure
     public class PendingPawnOffer : IExposable
     {
         public string Username;
-        public string PlatformIdentifier; // NEW: Store the platform-based identifier
+        public string PlatformIdentifier;
         public float OfferTime;
         public int TimeoutTicks;
         public string PawnThingId;
@@ -1098,7 +1054,7 @@ namespace CAP_ChatInteractive
         public void ExposeData()
         {
             Scribe_Values.Look(ref Username, "username");
-            Scribe_Values.Look(ref PlatformIdentifier, "platformIdentifier"); // NEW
+            Scribe_Values.Look(ref PlatformIdentifier, "platformIdentifier");
             Scribe_Values.Look(ref OfferTime, "offerTime");
             Scribe_Values.Look(ref TimeoutTicks, "timeoutTicks");
             Scribe_Values.Look(ref PawnThingId, "pawnThingId");
@@ -1108,17 +1064,14 @@ namespace CAP_ChatInteractive
         {
             get
             {
+                if (Find.TickManager == null)
+                    return 0f;
+
                 float elapsed = Find.TickManager.TicksGame - OfferTime;
-                return Mathf.Max(0, (TimeoutTicks - elapsed) / 60f); // Return seconds remaining
+                return Mathf.Max(0, (TimeoutTicks - elapsed) / 60f);
             }
         }
 
-        public bool IsExpired
-        {
-            get
-            {
-                return TimeRemaining <= 0;
-            }
-        }
+        public bool IsExpired => TimeRemaining <= 0;
     }
 }
