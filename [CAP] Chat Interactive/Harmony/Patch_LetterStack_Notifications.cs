@@ -90,7 +90,15 @@ namespace CAP_ChatInteractive.AI
                 string mapDesc = location?.mapLabel ?? AIChatBotService.GetRichMapDescription(relevantMap);
                 string factionNote = BuildInvolvedFactionNote(let);
 
+                LookTargets letterTargets = null;
+                if (let is ChoiceLetter clForPawns)
+                    letterTargets = clForPawns.lookTargets;
+                // Letters (mental break, etc.) often name people in the body; still add Who: for role/state.
+                string whoNote = AiNotificationHelpers.BuildInvolvedPawnsNote(letterTargets, title + " " + body);
+
                 string notification = $"{botName} this has occurred in the colony on {mapDesc}{AIChatBotService.FormatCoordsProse(location)}: {title}.";
+                if (!string.IsNullOrWhiteSpace(whoNote))
+                    notification += $" {whoNote}";
                 if (!string.IsNullOrWhiteSpace(factionNote))
                     notification += $" {factionNote}";
                 if (!string.IsNullOrWhiteSpace(body))
@@ -580,12 +588,21 @@ namespace CAP_ChatInteractive.AI
                 }
 
                 string mapDesc = location?.mapLabel ?? AIChatBotService.GetRichMapDescription(map);
+                // Medical emergency / break toasts often omit the colonist name in text —
+                // identity lives on lookTargets. Always enrich so Masie knows who.
+                string whoNote = AiNotificationHelpers.BuildInvolvedPawnsNote(msg.lookTargets, cleaned);
+
                 string addressed = $"{botName}, notice on {mapDesc}{AIChatBotService.FormatCoordsProse(location)}: {cleaned}";
+                if (!string.IsNullOrWhiteSpace(whoNote))
+                    addressed += $" {whoNote}";
                 if (!string.IsNullOrWhiteSpace(mapSlice?.summary))
                     addressed += $" [Area: {mapSlice.summary}]";
 
+                // Prefer rawText that includes who when game text is anonymous ("Medical emergency!")
+                string rawForBot = string.IsNullOrWhiteSpace(whoNote) ? cleaned : $"{cleaned} {whoNote}";
+
                 var gameComp = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>();
-                gameComp?._aiChatBotService?.NotifyColonyMessage(addressed, cleaned, typeDef.defName, location, mapSlice);
+                gameComp?._aiChatBotService?.NotifyColonyMessage(addressed, rawForBot, typeDef.defName, location, mapSlice);
             }
             catch (Exception ex)
             {
@@ -669,4 +686,123 @@ namespace CAP_ChatInteractive.AI
             return Find.CurrentMap ?? Find.AnyPlayerHomeMap;
         }
     }
+
+    /// <summary>
+    /// Shared helpers so Masie letters/toasts know which pawn(s) are involved
+    /// (medical emergency / mental break often put identity only on lookTargets).
+    /// </summary>
+    internal static class AiNotificationHelpers
+    {
+        /// <summary>
+        /// "Who: Mia (female free colonist, mental state: berserk)." from lookTargets.
+        /// Skips building a redundant full line only when every pawn name is already
+        /// in the text and there is no mental-state detail to add — still prefers
+        /// always emitting Who: for health/break clarity when targets exist.
+        /// </summary>
+        internal static string BuildInvolvedPawnsNote(LookTargets lookTargets, string existingText = null)
+        {
+            try
+            {
+                var pawns = CollectPawnsFromLookTargets(lookTargets);
+                if (pawns.Count == 0)
+                    return null;
+
+                string existingLower = existingText?.ToLowerInvariant() ?? "";
+                var parts = new List<string>();
+
+                foreach (var pawn in pawns)
+                {
+                    if (pawn == null)
+                        continue;
+
+                    string name = pawn.LabelShortCap ?? pawn.Name?.ToStringShort ?? "Unknown";
+                    string baseDesc = Patch_Pawn_Kill_DeathNotifications.BuildDeathEntityDescription(pawn, name);
+
+                    // Mental break / catatonic / etc.
+                    string mentalExtra = null;
+                    try
+                    {
+                        if (pawn.InMentalState && pawn.MentalStateDef != null)
+                        {
+                            string ms = pawn.MentalStateDef.label ?? pawn.MentalStateDef.defName;
+                            if (!string.IsNullOrWhiteSpace(ms))
+                                mentalExtra = $"mental state: {ms}";
+                        }
+                    }
+                    catch { /* best effort */ }
+
+                    // Light health flag for medical emergencies (downed / life-threatening)
+                    string healthExtra = null;
+                    try
+                    {
+                        if (pawn.Downed)
+                            healthExtra = "downed";
+                        else if (pawn.health?.ShouldBeDead() == true)
+                            healthExtra = "critical";
+                    }
+                    catch { /* best effort */ }
+
+                    var extras = new List<string>();
+                    if (!string.IsNullOrEmpty(mentalExtra))
+                        extras.Add(mentalExtra);
+                    if (!string.IsNullOrEmpty(healthExtra))
+                        extras.Add(healthExtra);
+
+                    string part = extras.Count > 0
+                        ? $"{baseDesc} [{string.Join("; ", extras)}]"
+                        : baseDesc;
+
+                    // If text already named them and we have no extra state, still include
+                    // Who: once so anonymous titles like "Medical emergency!" get a name.
+                    bool nameAlreadyInText = !string.IsNullOrEmpty(existingLower)
+                        && !string.IsNullOrEmpty(name)
+                        && existingLower.IndexOf(name.ToLowerInvariant(), StringComparison.Ordinal) >= 0;
+
+                    if (!nameAlreadyInText || extras.Count > 0 || pawns.Count == 1)
+                        parts.Add(part);
+                    else if (!parts.Any(p => p.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0))
+                        parts.Add(part);
+                }
+
+                if (parts.Count == 0)
+                    return null;
+
+                return "Who: " + string.Join("; ", parts) + ".";
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        internal static List<Pawn> CollectPawnsFromLookTargets(LookTargets lookTargets)
+        {
+            var result = new List<Pawn>();
+            if (lookTargets == null || lookTargets.targets.NullOrEmpty())
+                return result;
+
+            try
+            {
+                foreach (var t in lookTargets.targets)
+                {
+                    if (!t.IsValid || !t.HasThing || t.Thing == null)
+                        continue;
+
+                    Pawn p = t.Thing as Pawn;
+                    if (p == null && t.Thing is Corpse corpse)
+                        p = corpse.InnerPawn;
+
+                    if (p != null && !result.Contains(p))
+                        result.Add(p);
+
+                    if (result.Count >= 4)
+                        break;
+                }
+            }
+            catch { /* best effort */ }
+
+            return result;
+        }
+    }
 }
+
