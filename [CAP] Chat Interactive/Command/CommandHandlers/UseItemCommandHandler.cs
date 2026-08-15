@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using UnityEngine;
 using Verse;
 using Verse.Sound;
 
@@ -410,14 +411,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (thingDef.IsIngestible && thingDef.ingestible != null)
                 {
-                    GenSpawn.Spawn(thing, pawn.Position, pawn.Map);
-                    float nutritionWanted = pawn.needs?.food?.NutritionWanted ?? 0f;
-                    // Ingested applies nutrition / drug effects itself — do not double-add food
-                    thing.Ingested(pawn, nutritionWanted);
-                    PlayIngestSoundSafely(thingDef, pawn);
-
-                    if (thing.Spawned)
-                        thing.Destroy();
+                    ApplyIngestibleImmediately(thing, thingDef, pawn);
                 }
                 else if (thingDef.IsMedicine)
                 {
@@ -454,6 +448,107 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         GenPlace.TryPlaceThing(thing, pawn.Position, pawn.Map, ThingPlaceMode.Near);
                     SoundDefOf.Standard_Pickup.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
                 }
+            }
+        }
+
+        /// <summary>
+        /// Instantly apply food/drugs. Prefer full-item nutrition so meals always fill when hungry.
+        /// Fallback sets food CurLevel if Ingested applied drug effects but no nutrition
+        /// (seen with spawn+Ingested and some meal mods; UI can look "late" or unchanged).
+        /// </summary>
+        private static void ApplyIngestibleImmediately(Thing thing, ThingDef thingDef, Verse.Pawn pawn)
+        {
+            if (thing == null || thingDef?.ingestible == null || pawn == null)
+                return;
+
+            if (thing.stackCount < 1)
+                thing.stackCount = 1;
+
+            float foodBefore = pawn.needs?.food != null ? pawn.needs.food.CurLevel : -1f;
+
+            float itemNutrition = 0f;
+            try
+            {
+                itemNutrition = FoodUtility.GetNutrition(pawn, thing, thingDef);
+            }
+            catch
+            {
+                // ignore
+            }
+            if (itemNutrition <= 0f)
+            {
+                try
+                {
+                    itemNutrition = thingDef.ingestible.CachedNutrition;
+                }
+                catch
+                {
+                    itemNutrition = 0f;
+                }
+            }
+
+            // At least one full item of nutrition (not only the tiny remainder of NutritionWanted).
+            float nutritionWanted = itemNutrition > 0f ? itemNutrition : 0.01f;
+            if (pawn.needs?.food != null)
+                nutritionWanted = Mathf.Max(nutritionWanted, pawn.needs.food.NutritionWanted);
+
+            // Do not spawn on the map: free food can be hauled/interfered with by mods mid-ingest.
+            try
+            {
+                if (!thing.Destroyed)
+                    thing.Ingested(pawn, nutritionWanted);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[UseItem] Ingested failed for {thingDef.defName}: {ex.Message}");
+            }
+
+            // Guarantee food need moves for real food when the pawn still has room.
+            if (pawn.needs?.food != null && foodBefore >= 0f && IsPrimarilyFood(thingDef))
+            {
+                float foodAfter = pawn.needs.food.CurLevel;
+                float room = pawn.needs.food.MaxLevel - foodAfter;
+                if (room > 0.01f && foodAfter <= foodBefore + 0.001f && itemNutrition > 0f)
+                {
+                    float add = Mathf.Min(itemNutrition, room);
+                    pawn.needs.food.CurLevel = Mathf.Min(pawn.needs.food.MaxLevel, foodBefore + add);
+                }
+            }
+
+            if (!thing.Destroyed)
+                thing.Destroy(DestroyMode.Vanish);
+
+            PlayIngestSoundSafely(thingDef, pawn);
+        }
+
+        /// <summary>True for meals / raw food — not social/hard drugs (those rely on Ingested effects).</summary>
+        private static bool IsPrimarilyFood(ThingDef def)
+        {
+            if (def?.ingestible == null)
+                return false;
+
+            try
+            {
+                if (def.ingestible.IsMeal)
+                    return true;
+
+                // Drugs: coffee/beer/etc. — leave nutrition to Ingested only
+                if (def.ingestible.drugCategory != DrugCategory.None)
+                    return false;
+
+                if (def.IsNutritionGivingIngestible)
+                    return true;
+
+                var ft = def.ingestible.foodType;
+                if ((ft & (FoodTypeFlags.Meal | FoodTypeFlags.Meat | FoodTypeFlags.VegetableOrFruit
+                           | FoodTypeFlags.AnimalProduct | FoodTypeFlags.Processed | FoodTypeFlags.Kibble)) != 0)
+                    return true;
+
+                return def.ingestible.CachedNutrition > 0.05f;
+            }
+            catch
+            {
+                return false;
             }
         }
 
