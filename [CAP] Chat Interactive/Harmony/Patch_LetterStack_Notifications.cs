@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Verse;
+using Verse.AI.Group;
 
 namespace CAP_ChatInteractive.AI
 {
@@ -99,11 +100,15 @@ namespace CAP_ChatInteractive.AI
                     title + " " + body,
                     letterKindHint: null);
 
+                string forceNote = BuildThreatForceNote(let, relevantMap, title, body);
+
                 string notification = $"{botName} this has occurred in the colony on {mapDesc}{AIChatBotService.FormatCoordsProse(location)}: {title}.";
                 if (!string.IsNullOrWhiteSpace(whoNote))
                     notification += $" {whoNote}";
                 if (!string.IsNullOrWhiteSpace(factionNote))
                     notification += $" {factionNote}";
+                if (!string.IsNullOrWhiteSpace(forceNote))
+                    notification += $" {forceNote}";
                 if (!string.IsNullOrWhiteSpace(body))
                     notification += $" {body}";
                 if (!string.IsNullOrWhiteSpace(mapSlice?.summary))
@@ -189,6 +194,204 @@ namespace CAP_ChatInteractive.AI
             catch
             {
                 return "unknown";
+            }
+        }
+
+        /// <summary>
+        /// For raid / manhunter letters, count hostiles actually on the map so Masie
+        /// can say "14 raiders" / "8 manhunter wargs" instead of guessing.
+        /// Omits the note if nothing is spawned yet (do not invent 0).
+        /// </summary>
+        private static string BuildThreatForceNote(Letter let, Map map, string title, string body)
+        {
+            try
+            {
+                if (map == null || map.Disposed)
+                    return null;
+
+                string text = ((title ?? "") + " " + (body ?? "")).ToLowerInvariant();
+                bool manhunter = text.Contains("manhunter");
+                bool raidLike = manhunter
+                    || text.Contains("raid")
+                    || text.Contains("siege")
+                    || text.Contains("sapper")
+                    || text.Contains("mech cluster")
+                    || text.Contains("mechanoid cluster")
+                    || text.Contains("infestation")
+                    || text.Contains("shambler");
+
+                if (!raidLike)
+                    return null;
+
+                Faction raidFaction = TryGetLetterFaction(let);
+
+                if (manhunter)
+                    return CountManhunterForce(map);
+
+                return CountRaidForce(map, raidFaction);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Faction TryGetLetterFaction(Letter let)
+        {
+            try
+            {
+                if (let is ChoiceLetter cl)
+                {
+                    try
+                    {
+                        var fi = typeof(ChoiceLetter).GetField("relatedFaction");
+                        if (fi?.GetValue(cl) is Faction rf && rf != null && !rf.IsPlayer)
+                            return rf;
+                    }
+                    catch { /* no field */ }
+
+                    if (cl.lookTargets != null && !cl.lookTargets.targets.NullOrEmpty())
+                    {
+                        foreach (var t in cl.lookTargets.targets)
+                        {
+                            if (!t.IsValid || !t.HasThing || t.Thing == null) continue;
+                            Faction f = t.Thing.Faction;
+                            if (f != null && !f.IsPlayer)
+                                return f;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private static string CountRaidForce(Map map, Faction raidFaction)
+        {
+            var hostiles = new List<Pawn>();
+            try
+            {
+                var spawned = map.mapPawns?.AllPawnsSpawned;
+                if (spawned != null)
+                {
+                    foreach (var p in spawned)
+                    {
+                        if (p == null || p.Dead || p.Destroyed) continue;
+                        if (p.IsPrisonerOfColony) continue;
+                        if (!p.HostileTo(Faction.OfPlayer)) continue;
+                        if (raidFaction != null && p.Faction != raidFaction) continue;
+                        hostiles.Add(p);
+                    }
+                }
+            }
+            catch { }
+
+            if (hostiles.Count == 0)
+                hostiles = CountHostileLordPawns(map, raidFaction);
+
+            if (hostiles.Count == 0)
+                return null;
+
+            string noun = hostiles.All(p => p.RaceProps?.IsMechanoid == true)
+                ? (hostiles.Count == 1 ? "mechanoid" : "mechanoids")
+                : hostiles.All(p => p.RaceProps?.Insect == true)
+                    ? (hostiles.Count == 1 ? "insect" : "insects")
+                    : hostiles.All(p => p.RaceProps?.Animal == true)
+                        ? (hostiles.Count == 1 ? "hostile animal" : "hostile animals")
+                        : (hostiles.Count == 1 ? "raider" : "raiders");
+
+            string kinds = SummarizePawnKinds(hostiles, maxKinds: 3);
+            string extra = string.IsNullOrEmpty(kinds) ? "" : $" ({kinds})";
+            return $"Force: {hostiles.Count} {noun}{extra}.";
+        }
+
+        private static List<Pawn> CountHostileLordPawns(Map map, Faction raidFaction)
+        {
+            var list = new List<Pawn>();
+            try
+            {
+                var lords = map.lordManager?.lords;
+                if (lords == null) return list;
+                foreach (var lord in lords)
+                {
+                    if (lord?.ownedPawns == null) continue;
+                    if (raidFaction != null && lord.faction != raidFaction) continue;
+                    if (raidFaction == null && (lord.faction == null || !lord.faction.HostileTo(Faction.OfPlayer)))
+                        continue;
+                    foreach (var p in lord.ownedPawns)
+                    {
+                        if (p == null || p.Dead) continue;
+                        if (!list.Contains(p))
+                            list.Add(p);
+                    }
+                }
+            }
+            catch { }
+            return list;
+        }
+
+        private static string CountManhunterForce(Map map)
+        {
+            var pack = new List<Pawn>();
+            try
+            {
+                var spawned = map.mapPawns?.AllPawnsSpawned;
+                if (spawned != null)
+                {
+                    foreach (var p in spawned)
+                    {
+                        if (p == null || p.Dead || p.Destroyed) continue;
+                        if (!IsManhunter(p)) continue;
+                        pack.Add(p);
+                    }
+                }
+            }
+            catch { }
+
+            if (pack.Count == 0)
+                return null;
+
+            string kinds = SummarizePawnKinds(pack, maxKinds: 3);
+            string extra = string.IsNullOrEmpty(kinds) ? "" : $" ({kinds})";
+            string noun = pack.Count == 1 ? "manhunter animal" : "manhunter animals";
+            return $"Force: {pack.Count} {noun}{extra}.";
+        }
+
+        private static bool IsManhunter(Pawn p)
+        {
+            try
+            {
+                if (!p.InMentalState || p.MentalStateDef == null)
+                    return false;
+                if (p.MentalStateDef == MentalStateDefOf.Manhunter)
+                    return true;
+                if (p.MentalStateDef == MentalStateDefOf.ManhunterPermanent)
+                    return true;
+                string n = p.MentalStateDef.defName ?? "";
+                return n.IndexOf("Manhunter", StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string SummarizePawnKinds(List<Pawn> pawns, int maxKinds)
+        {
+            try
+            {
+                var groups = pawns
+                    .Where(p => p?.def != null)
+                    .GroupBy(p => p.def.label ?? p.def.defName)
+                    .OrderByDescending(g => g.Count())
+                    .Take(maxKinds)
+                    .Select(g => g.Count() == 1 ? g.Key : $"{g.Count()} {g.Key}")
+                    .ToList();
+                return groups.Count == 0 ? null : string.Join(", ", groups);
+            }
+            catch
+            {
+                return null;
             }
         }
     }
