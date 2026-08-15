@@ -93,8 +93,11 @@ namespace CAP_ChatInteractive.AI
                 LookTargets letterTargets = null;
                 if (let is ChoiceLetter clForPawns)
                     letterTargets = clForPawns.lookTargets;
-                // Letters (mental break, etc.) often name people in the body; still add Who: for role/state.
-                string whoNote = AiNotificationHelpers.BuildInvolvedPawnsNote(letterTargets, title + " " + body);
+                // Letters (mental break, etc.) often name people in the body; still add Who: with kind + detail.
+                string whoNote = AiNotificationHelpers.BuildInvolvedPawnsNote(
+                    letterTargets,
+                    title + " " + body,
+                    letterKindHint: null);
 
                 string notification = $"{botName} this has occurred in the colony on {mapDesc}{AIChatBotService.FormatCoordsProse(location)}: {title}.";
                 if (!string.IsNullOrWhiteSpace(whoNote))
@@ -589,8 +592,11 @@ namespace CAP_ChatInteractive.AI
 
                 string mapDesc = location?.mapLabel ?? AIChatBotService.GetRichMapDescription(map);
                 // Medical emergency / break toasts often omit the colonist name in text —
-                // identity lives on lookTargets. Always enrich so Masie knows who.
-                string whoNote = AiNotificationHelpers.BuildInvolvedPawnsNote(msg.lookTargets, cleaned);
+                // identity lives on lookTargets. Enrich with kind (hurt vs breaking) + detail.
+                string whoNote = AiNotificationHelpers.BuildInvolvedPawnsNote(
+                    msg.lookTargets,
+                    cleaned,
+                    letterKindHint: typeDef.defName);
 
                 string addressed = $"{botName}, notice on {mapDesc}{AIChatBotService.FormatCoordsProse(location)}: {cleaned}";
                 if (!string.IsNullOrWhiteSpace(whoNote))
@@ -689,17 +695,22 @@ namespace CAP_ChatInteractive.AI
 
     /// <summary>
     /// Shared helpers so Masie letters/toasts know which pawn(s) are involved
-    /// (medical emergency / mental break often put identity only on lookTargets).
+    /// and whether the issue is medical hurt vs mental break (not a generic Who: blob).
     /// </summary>
     internal static class AiNotificationHelpers
     {
         /// <summary>
-        /// "Who: Mia (female free colonist, mental state: berserk)." from lookTargets.
-        /// Skips building a redundant full line only when every pawn name is already
-        /// in the text and there is no mental-state detail to add — still prefers
-        /// always emitting Who: for health/break clarity when targets exist.
+        /// Prose for Masie — dual contract:
+        ///   Hurt: Mia (female free colonist) [downed; bleeding heavily].
+        ///   Breaking: Bob (male free colonist) [mental state: berserk].
+        ///   Who: [MEDICAL EMERGENCY] Mia (…) — longer detail for LLM.
+        /// Masie templates parse Hurt:/Breaking: first (name = first token; detail = [brackets]).
         /// </summary>
-        internal static string BuildInvolvedPawnsNote(LookTargets lookTargets, string existingText = null)
+        /// <param name="letterKindHint">Optional MessageTypeDef name or free text hint (e.g. NegativeHealthEvent).</param>
+        internal static string BuildInvolvedPawnsNote(
+            LookTargets lookTargets,
+            string existingText = null,
+            string letterKindHint = null)
         {
             try
             {
@@ -708,7 +719,11 @@ namespace CAP_ChatInteractive.AI
                     return null;
 
                 string existingLower = existingText?.ToLowerInvariant() ?? "";
-                var parts = new List<string>();
+                string hintLower = letterKindHint?.ToLowerInvariant() ?? "";
+
+                var hurtLines = new List<string>();
+                var breakLines = new List<string>();
+                var whoParts = new List<string>();
 
                 foreach (var pawn in pawns)
                 {
@@ -716,63 +731,417 @@ namespace CAP_ChatInteractive.AI
                         continue;
 
                     string name = pawn.LabelShortCap ?? pawn.Name?.ToStringShort ?? "Unknown";
+                    name = SanitizePawnNameForBot(name);
                     string baseDesc = Patch_Pawn_Kill_DeathNotifications.BuildDeathEntityDescription(pawn, name);
 
-                    // Mental break / catatonic / etc.
-                    string mentalExtra = null;
-                    try
+                    bool isBreaking = DetectMentalBreak(pawn, existingLower, hintLower);
+                    bool isHurt = DetectMedicalCrisis(pawn, existingLower, hintLower);
+                    string kindLabel = ResolveKindLabel(isBreaking, isHurt, existingLower, hintLower);
+
+                    var mentalDetails = new List<string>();
+                    var medicalDetails = new List<string>();
+                    if (isBreaking)
+                        AppendMentalBreakDetails(pawn, mentalDetails);
+                    if (isHurt || (!isBreaking && HasAnyHealthRedFlag(pawn)))
+                        AppendMedicalDetails(pawn, medicalDetails);
+                    else if (!isBreaking && !isHurt)
                     {
-                        if (pawn.InMentalState && pawn.MentalStateDef != null)
+                        AppendMentalBreakDetails(pawn, mentalDetails);
+                        AppendMedicalDetails(pawn, medicalDetails);
+                        if (mentalDetails.Count == 0 && medicalDetails.Count == 0)
+                            kindLabel = null;
+                    }
+
+                    if (mentalDetails.Count > 0)
+                        isBreaking = true;
+                    if (medicalDetails.Count > 0)
+                        isHurt = true;
+                    if (kindLabel == null)
+                        kindLabel = ResolveKindLabel(isBreaking, isHurt, existingLower, hintLower);
+
+                    // Masie Hurt: / Breaking: — short [bracket] detail for TTS templates
+                    if (isHurt || kindLabel == "MEDICAL EMERGENCY" || kindLabel == "MENTAL BREAK + MEDICAL")
+                    {
+                        var shortMed = ShortenDetailsForBotBracket(medicalDetails, maxItems: 4);
+                        hurtLines.Add(shortMed.Count > 0
+                            ? $"{baseDesc} [{string.Join("; ", shortMed)}]"
+                            : baseDesc);
+                    }
+
+                    if (isBreaking || kindLabel == "MENTAL BREAK" || kindLabel == "MENTAL BREAK + MEDICAL")
+                    {
+                        // Bot looks for "mental state: X" inside brackets
+                        var shortBreak = new List<string>();
+                        foreach (var d in mentalDetails)
                         {
-                            string ms = pawn.MentalStateDef.label ?? pawn.MentalStateDef.defName;
-                            if (!string.IsNullOrWhiteSpace(ms))
-                                mentalExtra = $"mental state: {ms}";
+                            if (d.StartsWith("breaking:", StringComparison.OrdinalIgnoreCase))
+                                shortBreak.Add("mental state: " + d.Substring("breaking:".Length).Trim());
+                            else
+                                shortBreak.Add(d);
                         }
+                        shortBreak = ShortenDetailsForBotBracket(shortBreak, maxItems: 3);
+                        breakLines.Add(shortBreak.Count > 0
+                            ? $"{baseDesc} [{string.Join("; ", shortBreak)}]"
+                            : baseDesc);
                     }
-                    catch { /* best effort */ }
 
-                    // Light health flag for medical emergencies (downed / life-threatening)
-                    string healthExtra = null;
-                    try
+                    // Rich Who: for LLM / logging
+                    var allDetails = new List<string>();
+                    allDetails.AddRange(mentalDetails);
+                    allDetails.AddRange(medicalDetails);
+
+                    string whoPart;
+                    if (!string.IsNullOrEmpty(kindLabel))
                     {
-                        if (pawn.Downed)
-                            healthExtra = "downed";
-                        else if (pawn.health?.ShouldBeDead() == true)
-                            healthExtra = "critical";
+                        whoPart = allDetails.Count > 0
+                            ? $"[{kindLabel}] {baseDesc} — {string.Join("; ", allDetails)}"
+                            : $"[{kindLabel}] {baseDesc}";
                     }
-                    catch { /* best effort */ }
-
-                    var extras = new List<string>();
-                    if (!string.IsNullOrEmpty(mentalExtra))
-                        extras.Add(mentalExtra);
-                    if (!string.IsNullOrEmpty(healthExtra))
-                        extras.Add(healthExtra);
-
-                    string part = extras.Count > 0
-                        ? $"{baseDesc} [{string.Join("; ", extras)}]"
-                        : baseDesc;
-
-                    // If text already named them and we have no extra state, still include
-                    // Who: once so anonymous titles like "Medical emergency!" get a name.
-                    bool nameAlreadyInText = !string.IsNullOrEmpty(existingLower)
-                        && !string.IsNullOrEmpty(name)
-                        && existingLower.IndexOf(name.ToLowerInvariant(), StringComparison.Ordinal) >= 0;
-
-                    if (!nameAlreadyInText || extras.Count > 0 || pawns.Count == 1)
-                        parts.Add(part);
-                    else if (!parts.Any(p => p.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0))
-                        parts.Add(part);
+                    else
+                    {
+                        whoPart = allDetails.Count > 0
+                            ? $"{baseDesc} — {string.Join("; ", allDetails)}"
+                            : baseDesc;
+                    }
+                    whoParts.Add(whoPart);
                 }
 
-                if (parts.Count == 0)
+                if (whoParts.Count == 0 && hurtLines.Count == 0 && breakLines.Count == 0)
                     return null;
 
-                return "Who: " + string.Join("; ", parts) + ".";
+                var sb = new StringBuilder();
+                // Order matches Masie preference: Hurt: then Breaking: then Who:
+                if (hurtLines.Count > 0)
+                    sb.Append("Hurt: ").Append(string.Join("; ", hurtLines)).Append('.');
+                if (breakLines.Count > 0)
+                {
+                    if (sb.Length > 0) sb.Append(' ');
+                    sb.Append("Breaking: ").Append(string.Join("; ", breakLines)).Append('.');
+                }
+                if (whoParts.Count > 0)
+                {
+                    if (sb.Length > 0) sb.Append(' ');
+                    sb.Append("Who: ").Append(string.Join("; ", whoParts)).Append('.');
+                }
+
+                return sb.ToString();
             }
             catch
             {
                 return null;
             }
+        }
+
+        private static string SanitizePawnNameForBot(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return "Unknown";
+            name = name.Trim();
+            while (name.Length > 0 && (name[0] == '[' || name[0] == '(' || name[0] == '<' || name[0] == '"'))
+                name = name.Substring(1).TrimStart();
+            return string.IsNullOrWhiteSpace(name) ? "Unknown" : name;
+        }
+
+        /// <summary>Cap bracket payload so TTS templates stay short.</summary>
+        private static List<string> ShortenDetailsForBotBracket(List<string> details, int maxItems)
+        {
+            if (details == null || details.Count == 0)
+                return new List<string>();
+
+            var result = new List<string>();
+            foreach (var d in details)
+            {
+                if (string.IsNullOrWhiteSpace(d))
+                    continue;
+                if (d.StartsWith("tendable wounds:", StringComparison.OrdinalIgnoreCase)
+                    || d.StartsWith("tendable wound:", StringComparison.OrdinalIgnoreCase)
+                    || d.StartsWith("severe/life-threatening:", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!result.Any(x => x.IndexOf("wounds", StringComparison.OrdinalIgnoreCase) >= 0))
+                        result.Add("severe wounds");
+                    continue;
+                }
+                result.Add(d);
+                if (result.Count >= maxItems)
+                    break;
+            }
+            return result;
+        }
+
+        private static string ResolveKindLabel(bool isBreaking, bool isHurt, string textLower, string hintLower)
+        {
+            if (isBreaking && isHurt)
+                return "MENTAL BREAK + MEDICAL";
+            if (isBreaking)
+                return "MENTAL BREAK";
+            if (isHurt)
+                return "MEDICAL EMERGENCY";
+
+            // Text/hint only (pawn not yet in state, or delayed)
+            if (TextSuggestsMentalBreak(textLower, hintLower))
+                return "MENTAL BREAK";
+            if (TextSuggestsMedical(textLower, hintLower))
+                return "MEDICAL EMERGENCY";
+
+            return null;
+        }
+
+        private static bool DetectMentalBreak(Pawn pawn, string textLower, string hintLower)
+        {
+            try
+            {
+                if (pawn.InMentalState)
+                    return true;
+            }
+            catch { }
+
+            return TextSuggestsMentalBreak(textLower, hintLower);
+        }
+
+        private static bool DetectMedicalCrisis(Pawn pawn, string textLower, string hintLower)
+        {
+            if (TextSuggestsMedical(textLower, hintLower))
+                return true;
+
+            return HasAnyHealthRedFlag(pawn);
+        }
+
+        private static bool TextSuggestsMentalBreak(string textLower, string hintLower)
+        {
+            string s = textLower + " " + hintLower;
+            return s.Contains("mental break")
+                || s.Contains("mental state")
+                || s.Contains("mental breakdown")
+                || s.Contains("breakdown")
+                || s.Contains("psychotic")
+                || s.Contains("berserk")
+                || s.Contains("catatonic")
+                || s.Contains("social fight")
+                || s.Contains("gave up")
+                || s.Contains("tantrum")
+                || s.Contains("on a tear")
+                || s.Contains("is having a") && s.Contains("break");
+        }
+
+        private static bool TextSuggestsMedical(string textLower, string hintLower)
+        {
+            string s = textLower + " " + hintLower;
+            return s.Contains("medical")
+                || s.Contains("emergency")
+                || s.Contains("negativehealthevent")
+                || s.Contains("needs treatment")
+                || s.Contains("need treatment")
+                || s.Contains("wounded")
+                || s.Contains("bleeding")
+                || s.Contains("blood loss")
+                || s.Contains("infection")
+                || s.Contains("disease")
+                || s.Contains("heart attack")
+                || s.Contains("anesthetized")
+                || s.Contains("downed")
+                || s.Contains("tended")
+                || s.Contains("injur");
+        }
+
+        private static bool HasAnyHealthRedFlag(Pawn pawn)
+        {
+            try
+            {
+                if (pawn == null || pawn.health?.hediffSet == null)
+                    return false;
+                if (pawn.Downed || pawn.health.ShouldBeDead() || pawn.health.InPainShock)
+                    return true;
+                if (pawn.health.hediffSet.BleedRateTotal > 0.01f)
+                    return true;
+
+                var bloodLoss = pawn.health.hediffSet.GetFirstHediffOfDef(HediffDefOf.BloodLoss);
+                if (bloodLoss != null && bloodLoss.Severity >= 0.15f)
+                    return true;
+
+                foreach (var h in pawn.health.hediffSet.hediffs)
+                {
+                    if (h == null || h.def == null)
+                        continue;
+                    if (h.TendableNow())
+                        return true;
+                    if (h.def.lethalSeverity > 0f && h.Severity >= h.def.lethalSeverity * 0.5f)
+                        return true;
+                    try
+                    {
+                        if (h.IsCurrentlyLifeThreatening)
+                            return true;
+                    }
+                    catch
+                    {
+                        if (h.def.isBad && h.CurStage != null && h.CurStage.lifeThreatening)
+                            return true;
+                    }
+                }
+            }
+            catch { }
+
+            return false;
+        }
+
+        private static void AppendMentalBreakDetails(Pawn pawn, List<string> details)
+        {
+            try
+            {
+                if (pawn == null || !pawn.InMentalState || pawn.MentalStateDef == null)
+                    return;
+
+                string ms = pawn.MentalStateDef.label ?? pawn.MentalStateDef.defName;
+                if (string.IsNullOrWhiteSpace(ms))
+                    ms = "unknown mental state";
+
+                details.Add($"breaking: {ms}");
+
+                // Category helps Masie (e.g. Aggressive vs Misc)
+                try
+                {
+                    var cat = pawn.MentalStateDef.category;
+                    if (cat != MentalStateCategory.Undefined)
+                        details.Add($"break type: {cat}");
+                }
+                catch { }
+            }
+            catch { /* best effort */ }
+        }
+
+        private static void AppendMedicalDetails(Pawn pawn, List<string> details)
+        {
+            try
+            {
+                if (pawn?.health?.hediffSet == null)
+                    return;
+
+                var hs = pawn.health.hediffSet;
+
+                if (pawn.health.ShouldBeDead())
+                    details.Add("near death");
+                if (pawn.Downed)
+                    details.Add("downed");
+                if (pawn.health.InPainShock)
+                    details.Add("pain shock");
+
+                float bleed = hs.BleedRateTotal;
+                if (bleed > 0.01f)
+                {
+                    if (bleed >= 1.0f)
+                        details.Add("bleeding critically");
+                    else if (bleed >= 0.5f)
+                        details.Add("bleeding heavily");
+                    else if (bleed >= 0.15f)
+                        details.Add("bleeding");
+                    else
+                        details.Add("light bleeding");
+                }
+
+                var bloodLoss = hs.GetFirstHediffOfDef(HediffDefOf.BloodLoss);
+                if (bloodLoss != null && bloodLoss.Severity >= 0.12f)
+                {
+                    string sev =
+                        bloodLoss.Severity >= 0.7f ? "critical" :
+                        bloodLoss.Severity >= 0.45f ? "severe" :
+                        bloodLoss.Severity >= 0.25f ? "moderate" : "mild";
+                    details.Add($"{sev} blood loss");
+                }
+
+                // Tendable / life-threatening wounds
+                var tendableLabels = new List<string>();
+                var severeLabels = new List<string>();
+                int tendableCount = 0;
+
+                foreach (var h in hs.hediffs)
+                {
+                    if (h == null || h.def == null)
+                        continue;
+
+                    bool lifeThreatening = false;
+                    try
+                    {
+                        lifeThreatening = h.IsCurrentlyLifeThreatening;
+                    }
+                    catch
+                    {
+                        try
+                        {
+                            lifeThreatening = h.CurStage != null && h.CurStage.lifeThreatening;
+                        }
+                        catch { }
+                    }
+
+                    if (!lifeThreatening && h.def.lethalSeverity > 0f && h.Severity >= h.def.lethalSeverity * 0.55f)
+                        lifeThreatening = true;
+
+                    bool tendable = false;
+                    try { tendable = h.TendableNow(); }
+                    catch { }
+
+                    bool isInjury = h is Hediff_Injury;
+                    if (!tendable && !lifeThreatening && !isInjury)
+                        continue;
+
+                    // Skip pure buffs / implants
+                    if (!h.def.isBad && !tendable)
+                        continue;
+
+                    string label;
+                    try
+                    {
+                        label = h.Label ?? h.LabelBase ?? h.def.label ?? h.def.defName;
+                    }
+                    catch
+                    {
+                        label = h.def.defName;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(label))
+                        continue;
+
+                    if (label.Length > 40)
+                        label = label.Substring(0, 37) + "...";
+
+                    if (lifeThreatening && severeLabels.Count < 4
+                        && !severeLabels.Any(x => x.Equals(label, StringComparison.OrdinalIgnoreCase)))
+                        severeLabels.Add(label);
+
+                    if (tendable)
+                    {
+                        tendableCount++;
+                        if (tendableLabels.Count < 4
+                            && !tendableLabels.Any(x => x.Equals(label, StringComparison.OrdinalIgnoreCase)))
+                            tendableLabels.Add(label);
+                    }
+                    else if (isInjury && h.def.isBad && tendableLabels.Count < 4
+                             && !tendableLabels.Any(x => x.Equals(label, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        // Untended or already-tended injury still useful as wound list for Masie
+                        if (h.Severity >= 0.2f)
+                            tendableLabels.Add(label);
+                    }
+                }
+
+                if (severeLabels.Count > 0)
+                    details.Add("severe/life-threatening: " + string.Join(", ", severeLabels));
+
+                if (tendableCount > 0)
+                {
+                    string woundList = tendableLabels.Count > 0
+                        ? string.Join(", ", tendableLabels)
+                        : "untreated injuries";
+                    details.Add(tendableCount == 1
+                        ? $"tendable wound: {woundList}"
+                        : $"tendable wounds: {woundList} ({tendableCount} total)");
+                }
+                else if (severeLabels.Count == 0 && bleed <= 0.01f && !pawn.Downed)
+                {
+                    // Soft flag from toast text alone
+                    if (details.Count == 0)
+                        details.Add("needs medical attention");
+                }
+            }
+            catch { /* best effort */ }
         }
 
         internal static List<Pawn> CollectPawnsFromLookTargets(LookTargets lookTargets)
@@ -805,4 +1174,5 @@ namespace CAP_ChatInteractive.AI
         }
     }
 }
+
 
