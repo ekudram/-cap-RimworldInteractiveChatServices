@@ -734,33 +734,37 @@ namespace CAP_ChatInteractive.AI
                     name = SanitizePawnNameForBot(name);
                     string baseDesc = Patch_Pawn_Kill_DeathNotifications.BuildDeathEntityDescription(pawn, name);
 
+                    bool moodRisk = TextSuggestsBreakRiskMood(existingLower, hintLower);
                     bool isBreaking = DetectMentalBreak(pawn, existingLower, hintLower);
-                    bool isHurt = DetectMedicalCrisis(pawn, existingLower, hintLower);
-                    string kindLabel = ResolveKindLabel(isBreaking, isHurt, existingLower, hintLower);
+                    bool isHurt = DetectMedicalCrisis(pawn, existingLower, hintLower, moodRisk);
+                    string kindLabel = ResolveKindLabel(isBreaking, isHurt, moodRisk, existingLower, hintLower);
 
                     var mentalDetails = new List<string>();
                     var medicalDetails = new List<string>();
                     if (isBreaking)
                         AppendMentalBreakDetails(pawn, mentalDetails);
-                    if (isHurt || (!isBreaking && HasAnyHealthRedFlag(pawn)))
-                        AppendMedicalDetails(pawn, medicalDetails);
-                    else if (!isBreaking && !isHurt)
+                    if (moodRisk && !isBreaking)
+                        AppendBreakRiskMoodDetails(existingLower, mentalDetails);
+                    if (isHurt || HasAnyHealthRedFlag(pawn))
+                        AppendMedicalDetails(pawn, medicalDetails, allowPlaceholder: isHurt && !moodRisk);
+                    else if (!isBreaking && !isHurt && !moodRisk)
                     {
                         AppendMentalBreakDetails(pawn, mentalDetails);
-                        AppendMedicalDetails(pawn, medicalDetails);
+                        AppendMedicalDetails(pawn, medicalDetails, allowPlaceholder: false);
                         if (mentalDetails.Count == 0 && medicalDetails.Count == 0)
                             kindLabel = null;
                     }
 
-                    if (mentalDetails.Count > 0)
+                    if (mentalDetails.Count > 0 && isBreaking)
                         isBreaking = true;
                     if (medicalDetails.Count > 0)
                         isHurt = true;
                     if (kindLabel == null)
-                        kindLabel = ResolveKindLabel(isBreaking, isHurt, existingLower, hintLower);
+                        kindLabel = ResolveKindLabel(isBreaking, isHurt, moodRisk, existingLower, hintLower);
 
                     // Masie Hurt: / Breaking: — short [bracket] detail for TTS templates
-                    if (isHurt || kindLabel == "MEDICAL EMERGENCY" || kindLabel == "MENTAL BREAK + MEDICAL")
+                    // Mood break-risk must not emit Hurt: (that makes Masie call a doctor).
+                    if (isHurt && kindLabel != "BREAK RISK")
                     {
                         var shortMed = ShortenDetailsForBotBracket(medicalDetails, maxItems: 4);
                         hurtLines.Add(shortMed.Count > 0
@@ -868,19 +872,25 @@ namespace CAP_ChatInteractive.AI
             return result;
         }
 
-        private static string ResolveKindLabel(bool isBreaking, bool isHurt, string textLower, string hintLower)
+        private static string ResolveKindLabel(bool isBreaking, bool isHurt, bool moodRisk, string textLower, string hintLower)
         {
             if (isBreaking && isHurt)
                 return "MENTAL BREAK + MEDICAL";
             if (isBreaking)
                 return "MENTAL BREAK";
+            if (moodRisk && isHurt)
+                return "BREAK RISK + MEDICAL";
+            if (moodRisk)
+                return "BREAK RISK";
             if (isHurt)
                 return "MEDICAL EMERGENCY";
 
             // Text/hint only (pawn not yet in state, or delayed)
+            if (TextSuggestsBreakRiskMood(textLower, hintLower))
+                return "BREAK RISK";
             if (TextSuggestsMentalBreak(textLower, hintLower))
                 return "MENTAL BREAK";
-            if (TextSuggestsMedical(textLower, hintLower))
+            if (TextSuggestsMedical(textLower, hintLower) && !TextSuggestsBreakRiskMood(textLower, hintLower))
                 return "MEDICAL EMERGENCY";
 
             return null;
@@ -898,12 +908,47 @@ namespace CAP_ChatInteractive.AI
             return TextSuggestsMentalBreak(textLower, hintLower);
         }
 
-        private static bool DetectMedicalCrisis(Pawn pawn, string textLower, string hintLower)
+        private static bool DetectMedicalCrisis(Pawn pawn, string textLower, string hintLower, bool moodRisk)
         {
+            // Mood break-risk toasts are not medical. Do not treat MessageType
+            // NegativeHealthEvent as a wound when the body says "break risk".
+            if (moodRisk)
+                return HasAnyHealthRedFlag(pawn);
+
             if (TextSuggestsMedical(textLower, hintLower))
                 return true;
 
             return HasAnyHealthRedFlag(pawn);
+        }
+
+        /// <summary>
+        /// Vanilla alert titles: Minor/Major/Extreme break risk — poor mood, not InMentalState.
+        /// Must not be treated as MEDICAL EMERGENCY or as an actual mental break.
+        /// </summary>
+        private static bool TextSuggestsBreakRiskMood(string textLower, string hintLower)
+        {
+            string s = textLower + " " + hintLower;
+            return s.Contains("break risk")
+                || s.Contains("major break risk")
+                || s.Contains("minor break risk")
+                || s.Contains("extreme break risk");
+        }
+
+        private static void AppendBreakRiskMoodDetails(string textLower, List<string> details)
+        {
+            if (details == null)
+                return;
+            string level = "break risk";
+            if (textLower != null)
+            {
+                if (textLower.Contains("extreme break risk"))
+                    level = "extreme break risk";
+                else if (textLower.Contains("major break risk"))
+                    level = "major break risk";
+                else if (textLower.Contains("minor break risk"))
+                    level = "minor break risk";
+            }
+            details.Add("mood: " + level);
         }
 
         private static bool TextSuggestsMentalBreak(string textLower, string hintLower)
@@ -1008,7 +1053,7 @@ namespace CAP_ChatInteractive.AI
             catch { /* best effort */ }
         }
 
-        private static void AppendMedicalDetails(Pawn pawn, List<string> details)
+        private static void AppendMedicalDetails(Pawn pawn, List<string> details, bool allowPlaceholder = false)
         {
             try
             {
@@ -1134,9 +1179,9 @@ namespace CAP_ChatInteractive.AI
                         ? $"tendable wound: {woundList}"
                         : $"tendable wounds: {woundList} ({tendableCount} total)");
                 }
-                else if (severeLabels.Count == 0 && bleed <= 0.01f && !pawn.Downed)
+                else if (allowPlaceholder && severeLabels.Count == 0 && bleed <= 0.01f && !pawn.Downed)
                 {
-                    // Soft flag from toast text alone
+                    // Only for real medical toasts — never for mood break-risk
                     if (details.Count == 0)
                         details.Add("needs medical attention");
                 }
