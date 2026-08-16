@@ -1056,22 +1056,54 @@ namespace CAP_ChatInteractive.AI
                 return new List<string>();
 
             var result = new List<string>();
+            bool sawUntended = false;
+            bool sawTended = false;
+
             foreach (var d in details)
             {
                 if (string.IsNullOrWhiteSpace(d))
                     continue;
-                if (d.StartsWith("tendable wounds:", StringComparison.OrdinalIgnoreCase)
-                    || d.StartsWith("tendable wound:", StringComparison.OrdinalIgnoreCase)
-                    || d.StartsWith("severe/life-threatening:", StringComparison.OrdinalIgnoreCase))
+
+                // Collapse long wound lists into short TTS cues (tended vs not).
+                if (d.StartsWith("untended:", StringComparison.OrdinalIgnoreCase)
+                    || d.StartsWith("untended wounds", StringComparison.OrdinalIgnoreCase)
+                    || d.StartsWith("tendable wound", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (!result.Any(x => x.IndexOf("wounds", StringComparison.OrdinalIgnoreCase) >= 0))
+                    sawUntended = true;
+                    continue;
+                }
+                if (d.StartsWith("tended:", StringComparison.OrdinalIgnoreCase)
+                    || d.StartsWith("tended wounds", StringComparison.OrdinalIgnoreCase))
+                {
+                    sawTended = true;
+                    continue;
+                }
+                if (d.StartsWith("severe/life-threatening:", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!result.Any(x => x.IndexOf("severe", StringComparison.OrdinalIgnoreCase) >= 0))
                         result.Add("severe wounds");
                     continue;
                 }
+
                 result.Add(d);
                 if (result.Count >= maxItems)
                     break;
             }
+
+            // Prefer explicit tend status over a generic "severe wounds" only.
+            if (sawUntended && result.Count < maxItems
+                && !result.Any(x => x.IndexOf("untended", StringComparison.OrdinalIgnoreCase) >= 0))
+                result.Add("untended wounds");
+            if (sawTended && !sawUntended && result.Count < maxItems
+                && !result.Any(x => x.IndexOf("tended", StringComparison.OrdinalIgnoreCase) >= 0))
+                result.Add("wounds tended");
+            else if (sawTended && sawUntended && result.Count < maxItems
+                     && !result.Any(x => x.IndexOf("tended", StringComparison.OrdinalIgnoreCase) >= 0))
+                result.Add("some wounds tended");
+
+            while (result.Count > maxItems)
+                result.RemoveAt(result.Count - 1);
+
             return result;
         }
 
@@ -1295,10 +1327,12 @@ namespace CAP_ChatInteractive.AI
                     details.Add($"{sev} blood loss");
                 }
 
-                // Tendable / life-threatening wounds
-                var tendableLabels = new List<string>();
+                // Injuries: label as tended vs untended (Masie needs to know if a doctor already treated them).
+                var untendedLabels = new List<string>();
+                var tendedLabels = new List<string>();
                 var severeLabels = new List<string>();
-                int tendableCount = 0;
+                int untendedCount = 0;
+                int tendedCount = 0;
 
                 foreach (var h in hs.hediffs)
                 {
@@ -1322,22 +1356,35 @@ namespace CAP_ChatInteractive.AI
                     if (!lifeThreatening && h.def.lethalSeverity > 0f && h.Severity >= h.def.lethalSeverity * 0.55f)
                         lifeThreatening = true;
 
-                    bool tendable = false;
-                    try { tendable = h.TendableNow(); }
+                    bool tendableNow = false;
+                    try { tendableNow = h.TendableNow(); }
+                    catch { }
+
+                    bool isTended = false;
+                    try { isTended = HediffUtility.IsTended(h); }
                     catch { }
 
                     bool isInjury = h is Hediff_Injury;
-                    if (!tendable && !lifeThreatening && !isInjury)
+                    bool bleedingHediff = false;
+                    try { bleedingHediff = h.Bleeding; }
+                    catch { }
+
+                    // Relevant if injury, still needs tend, already tended injury, bleeding, or life-threatening
+                    if (!tendableNow && !lifeThreatening && !isInjury && !bleedingHediff && !isTended)
                         continue;
 
                     // Skip pure buffs / implants
-                    if (!h.def.isBad && !tendable)
+                    if (!h.def.isBad && !tendableNow && !isTended)
+                        continue;
+
+                    // Skip tiny fully tended scars that no longer matter
+                    if (isInjury && isTended && !tendableNow && !lifeThreatening && !bleedingHediff && h.Severity < 0.15f)
                         continue;
 
                     string label;
                     try
                     {
-                        label = h.Label ?? h.LabelBase ?? h.def.label ?? h.def.defName;
+                        label = h.LabelBase ?? h.def.label ?? h.def.defName;
                     }
                     catch
                     {
@@ -1347,6 +1394,15 @@ namespace CAP_ChatInteractive.AI
                     if (string.IsNullOrWhiteSpace(label))
                         continue;
 
+                    // Strip tend quality noise from labels if present (e.g. " (bandaged)")
+                    try
+                    {
+                        int paren = label.IndexOf(" (");
+                        if (paren > 0)
+                            label = label.Substring(0, paren).Trim();
+                    }
+                    catch { }
+
                     if (label.Length > 40)
                         label = label.Substring(0, 37) + "...";
 
@@ -1354,35 +1410,52 @@ namespace CAP_ChatInteractive.AI
                         && !severeLabels.Any(x => x.Equals(label, StringComparison.OrdinalIgnoreCase)))
                         severeLabels.Add(label);
 
-                    if (tendable)
+                    // Classification: needs tend / not tended → untended; currently tended → tended
+                    bool classifyAsUntended = tendableNow || (isInjury && !isTended && h.def.isBad && h.Severity >= 0.15f);
+                    bool classifyAsTended = isTended && isInjury && h.def.isBad;
+
+                    if (classifyAsUntended)
                     {
-                        tendableCount++;
-                        if (tendableLabels.Count < 4
-                            && !tendableLabels.Any(x => x.Equals(label, StringComparison.OrdinalIgnoreCase)))
-                            tendableLabels.Add(label);
+                        // If it still needs tend, treat as untended even if a partial/old tend exists
+                        untendedCount++;
+                        if (untendedLabels.Count < 4
+                            && !untendedLabels.Any(x => x.Equals(label, StringComparison.OrdinalIgnoreCase)))
+                            untendedLabels.Add(label);
                     }
-                    else if (isInjury && h.def.isBad && tendableLabels.Count < 4
-                             && !tendableLabels.Any(x => x.Equals(label, StringComparison.OrdinalIgnoreCase)))
+                    else if (classifyAsTended)
                     {
-                        // Untended or already-tended injury still useful as wound list for Masie
-                        if (h.Severity >= 0.2f)
-                            tendableLabels.Add(label);
+                        tendedCount++;
+                        if (tendedLabels.Count < 4
+                            && !tendedLabels.Any(x => x.Equals(label, StringComparison.OrdinalIgnoreCase)))
+                            tendedLabels.Add(label);
                     }
                 }
 
                 if (severeLabels.Count > 0)
                     details.Add("severe/life-threatening: " + string.Join(", ", severeLabels));
 
-                if (tendableCount > 0)
+                if (untendedCount > 0)
                 {
-                    string woundList = tendableLabels.Count > 0
-                        ? string.Join(", ", tendableLabels)
-                        : "untreated injuries";
-                    details.Add(tendableCount == 1
-                        ? $"tendable wound: {woundList}"
-                        : $"tendable wounds: {woundList} ({tendableCount} total)");
+                    string woundList = untendedLabels.Count > 0
+                        ? string.Join(", ", untendedLabels)
+                        : "injuries";
+                    details.Add(untendedCount == 1
+                        ? $"untended: {woundList}"
+                        : $"untended: {woundList} ({untendedCount} total)");
                 }
-                else if (allowPlaceholder && severeLabels.Count == 0 && bleed <= 0.01f && !pawn.Downed)
+
+                if (tendedCount > 0)
+                {
+                    string woundList = tendedLabels.Count > 0
+                        ? string.Join(", ", tendedLabels)
+                        : "injuries";
+                    details.Add(tendedCount == 1
+                        ? $"tended: {woundList}"
+                        : $"tended: {woundList} ({tendedCount} total)");
+                }
+
+                if (untendedCount == 0 && tendedCount == 0
+                    && allowPlaceholder && severeLabels.Count == 0 && bleed <= 0.01f && !pawn.Downed)
                 {
                     // Only for real medical toasts — never for mood break-risk
                     if (details.Count == 0)
