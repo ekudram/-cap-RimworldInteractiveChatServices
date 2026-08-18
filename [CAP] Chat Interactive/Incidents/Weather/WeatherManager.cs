@@ -366,5 +366,28 @@ namespace CAP_ChatInteractive.Incidents.Weather
             isInitialized = false;
             InitializeWeather();
         }
+
+        /// <summary>
+        /// Delete Weather.json and rebuild from Defs (editor Reset to base).
+        /// </summary>
+        public static void RebuildFromDefaults()
+        {
+            try
+            {
+                string filePath = JsonFileManager.GetFilePath("Weather.json");
+                if (System.IO.File.Exists(filePath))
+                    System.IO.File.Delete(filePath);
+
+                isInitialized = false;
+                AllBuyableWeather.Clear();
+                InitializeWeather();
+                Logger.Message("[Weather] Rebuilt Weather.json from Defs");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[Weather] RebuildFromDefaults failed: {ex.Message}");
+                throw;
+            }
+        }
     }
 }

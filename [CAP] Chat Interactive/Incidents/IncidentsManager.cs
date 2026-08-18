@@ -725,6 +725,9 @@ namespace CAP_ChatInteractive.Incidents
             }
         }
 
+        /// <summary>Editor Reset to base — same as DebugRebuildIncidents.</summary>
+        public static void RebuildFromDefaults() => DebugRebuildIncidents();
+
         [DebugAction("CAP", "Analyze Incident Filtering", allowedGameStates = AllowedGameStates.Playing)]
         public static void DebugAnalyzeFiltering()
         {

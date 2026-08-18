@@ -141,6 +141,14 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Editor.SaveAs>Save As...</RICS.Editor.SaveAs>
   <RICS.Editor.LoadFile>Load file</RICS.Editor.LoadFile>
   <RICS.Editor.DeleteFile>Delete file</RICS.Editor.DeleteFile>
+  <RICS.Editor.ResetJsonToBase>Reset to base</RICS.Editor.ResetJsonToBase>
+  <RICS.Editor.ResetJsonWarningTitle>Reset JSON to base?</RICS.Editor.ResetJsonWarningTitle>
+  <RICS.Editor.ResetJsonWarningBody>This will DELETE and clear all data in {0}, then rebuild from game/mod Defs (like a fresh install).\n\nThis is only reversible from backups. Use "Backup now" below (or Save Backup on the editor) before confirming if you need to keep your current settings.</RICS.Editor.ResetJsonWarningBody>
+  <RICS.Editor.ResetJsonBackupNow>Backup now</RICS.Editor.ResetJsonBackupNow>
+  <RICS.Editor.ResetJsonConfirm>Confirm reset</RICS.Editor.ResetJsonConfirm>
+  <RICS.Editor.ResetJsonDone>JSON reset to base defaults. Editor reopened.</RICS.Editor.ResetJsonDone>
+  <RICS.Editor.ResetJsonFailed>Reset failed: {0}</RICS.Editor.ResetJsonFailed>
+  <RICS.Editor.ResetJsonBackupEmpty>Nothing to back up (empty data).</RICS.Editor.ResetJsonBackupEmpty>
   <RICS.Editor.Close>Close</RICS.Editor.Close>
   <RICS.Editor.Search>Search:</RICS.Editor.Search>
   <RICS.Editor.BackupSaved>Command settings quick backup saved (timestamped).</RICS.Editor.BackupSaved>

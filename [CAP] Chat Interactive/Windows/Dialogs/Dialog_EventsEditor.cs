@@ -154,6 +154,12 @@ namespace CAP_ChatInteractive
                 ShowDeleteFileMenu();
             }
 
+            // Reset to base (wipe main JSON + rebuild from Defs)
+            float resetX = deleteX + btnW + gap;
+            Rect resetRect = new Rect(resetX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(resetRect, "RICS.Editor.ResetJsonToBase".Translate()))
+                ShowResetJsonToBaseDialog();
+
             // Close (right-aligned)
             float closeX = inRect.xMax - btnW - padding;
             Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
@@ -161,6 +167,21 @@ namespace CAP_ChatInteractive
             {
                 this.Close();
             }
+        }
+
+        private void ShowResetJsonToBaseDialog()
+        {
+            Find.WindowStack.Add(new Dialog_ResetJsonWarning(
+                "EventsEditor",
+                "Incidents.json",
+                () => JsonConvert.SerializeObject(IncidentsManager.AllBuyableIncidents, Formatting.Indented),
+                () =>
+                {
+                    IncidentsManager.RebuildFromDefaults();
+                    Messages.Message("RICS.Editor.ResetJsonDone".Translate(), MessageTypeDefOf.TaskCompletion);
+                    this.Close(doCloseSound: false);
+                    Find.WindowStack.Add(new Dialog_EventsEditor());
+                }));
         }
 
         private void DrawHeader(Rect rect)

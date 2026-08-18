@@ -185,6 +185,11 @@ namespace CAP_ChatInteractive
                 ShowDeleteFileMenu();
             }
 
+            float resetX = deleteX + btnW + gap;
+            Rect resetRect = new Rect(resetX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(resetRect, "RICS.Editor.ResetJsonToBase".Translate()))
+                ShowResetJsonToBaseDialog();
+
             // Close (right-aligned)
             float closeX = inRect.xMax - btnW - padding;
             Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
@@ -193,6 +198,22 @@ namespace CAP_ChatInteractive
                 this.Close();
             }
         }
+
+        private void ShowResetJsonToBaseDialog()
+        {
+            Find.WindowStack.Add(new Dialog_ResetJsonWarning(
+                "StoreEditor",
+                "StoreItems.json",
+                () => JsonConvert.SerializeObject(StoreInventory.AllStoreItems, Formatting.Indented),
+                () =>
+                {
+                    StoreInventory.RebuildFromDefaults();
+                    Messages.Message("RICS.Editor.ResetJsonDone".Translate(), MessageTypeDefOf.TaskCompletion);
+                    this.Close(doCloseSound: false);
+                    Find.WindowStack.Add(new Dialog_StoreEditor());
+                }));
+        }
+
         // DrawHeader creates the top section of the window with title, search bar, and action buttons
         private void DrawHeader(Rect rect)
         {
