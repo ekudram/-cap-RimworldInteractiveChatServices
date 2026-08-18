@@ -543,7 +543,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             return invoice;
         }
-        /// <summary>Best-effort PossessionsPlus ownership (no-op if mod missing).</summary>
+        /// <summary>
+        /// Assign ownership after Equip/Wear/Backpack.
+        /// Possessions Plus active → reflection into PP comps.
+        /// Else if RICS ownership enabled → Comp_RICS_OwnedByPawn.
+        /// </summary>
         private static void TrySetItemOwnership(Thing item, Verse.Pawn ownerPawn)
         {
             try
@@ -551,56 +555,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (item == null || ownerPawn == null)
                     return;
 
-                Type ownershipCompType = Type.GetType("PossessionsPlus.CompOwnedByPawn_Item, PossessionsPlus");
-                if (ownershipCompType == null)
-                    return;
-
-                if (!(item is ThingWithComps thingWithComps))
-                    return;
-
-                var getCompMethod = typeof(ThingWithComps).GetMethod("GetComp")?.MakeGenericMethod(ownershipCompType);
-                if (getCompMethod == null)
-                    return;
-
-                var ownershipComp = getCompMethod.Invoke(thingWithComps, null);
-                if (ownershipComp == null)
-                    return;
-
-                var flags = System.Reflection.BindingFlags.Instance
-                            | System.Reflection.BindingFlags.NonPublic
-                            | System.Reflection.BindingFlags.Public;
-
-                var ownerField = ownershipCompType.GetField("owner", flags);
-                if (ownerField == null)
-                    return;
-
-                ownerField.SetValue(ownershipComp, ownerPawn);
-
-                var startDayField = ownershipCompType.GetField("OwnershipStartDay", flags);
-                if (startDayField != null)
-                {
-                    int currentDay = GenLocalDate.DayOfYear(ownerPawn.MapHeld ?? Find.CurrentMap) + 1;
-                    startDayField.SetValue(ownershipComp, currentDay);
-                }
-
-                try
-                {
-                    var inheritanceHistoryType = Type.GetType("PossessionsPlus.InheritanceHistoryComp, PossessionsPlus");
-                    var addHistoryMethod = inheritanceHistoryType?.GetMethod(
-                        "AddHistoryEntry",
-                        System.Reflection.BindingFlags.Static
-                        | System.Reflection.BindingFlags.Public
-                        | System.Reflection.BindingFlags.NonPublic);
-
-                    addHistoryMethod?.Invoke(null, new object[]
-                    {
-                        item, ownerPawn, "RICS.BICH.Ownership.HistoryEntry".Translate()
-                    });
-                }
-                catch
-                {
-                    // Optional history — ignore
-                }
+                Ownership.RICS_OwnershipUtility.SetOwner(
+                    item,
+                    ownerPawn,
+                    "RICS.BICH.Ownership.HistoryEntry".Translate());
             }
             catch (Exception ex)
             {

@@ -103,13 +103,13 @@ namespace CAP_ChatInteractive
             Rect contentRect = new Rect(0f, 83f, inRect.width, inRect.height - 83f - bottomBarHeight);
             DrawContent(contentRect);
 
-            // ========== BOTTOM BUTTON BAR (Save Backup | Load Backup | Save As... | Load file | Close) ==========
-            // WHY: Matches the Global Settings pattern the user requested. Uses the new reusable BackupUtility
-            // so the exact same buttons/logic can be dropped into Store, Traits, Incidents, Weather, RaceSettings, etc.
+            // ========== BOTTOM BUTTON BAR ==========
+            // 7 buttons: slightly narrower action buttons + short Close so Reset never overlaps.
             float btnH = 38f;
-            float btnW = 140f;
-            float gap = 8f;
-            float padding = 12f;
+            float btnW = 118f;
+            float closeW = 72f; // Close label is short — keep this smaller than action buttons
+            float gap = 6f;
+            float padding = 10f;
             float currentY = inRect.yMax - bottomBarHeight + (bottomBarHeight - btnH) / 2f;
 
             // Save Backup (quick timestamped)
@@ -177,9 +177,12 @@ namespace CAP_ChatInteractive
             if (Widgets.ButtonText(resetRect, "RICS.Editor.ResetJsonToBase".Translate()))
                 ShowResetJsonToBaseDialog();
 
-            // Close (right-aligned)
-            float closeX = inRect.xMax - btnW - padding;
-            Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
+            // Close — shorter width, right-aligned, never overlaps Reset
+            float closeX = inRect.xMax - closeW - padding;
+            float minCloseX = resetX + btnW + gap;
+            if (closeX < minCloseX)
+                closeX = minCloseX;
+            Rect closeRect = new Rect(closeX, currentY, closeW, btnH);
             if (Widgets.ButtonText(closeRect, "RICS.Editor.Close".Translate()))
             {
                 this.Close();

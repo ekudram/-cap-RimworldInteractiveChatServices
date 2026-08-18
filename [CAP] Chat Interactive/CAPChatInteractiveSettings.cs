@@ -320,6 +320,14 @@ namespace CAP_ChatInteractive
         /// </summary>
         public bool AIChatBotForwardTaskCompletion = false;
 
+        // === RICS pawn item ownership (dependency-free; conflicts with Possessions Plus) ===
+        /// <summary>Master switch. Default off. New game recommended. Forced off if Possessions Plus is active.</summary>
+        public bool UseRicsPawnOwnership = false;
+        /// <summary>Block selling/trading colony items that have a RICS owner.</summary>
+        public bool RicsOwnershipBlockTrading = true;
+        /// <summary>On death, transfer owned gear to heir (Spouse → Children → Best Friend).</summary>
+        public bool RicsOwnershipInheritance = true;
+
         // === Twitch Raids feature (Phase 1) ===
         public bool TwitchRaidsEnabled = false;           // global kill-switch
         public bool TwitchRaidsOnlyRaiders = true;     // only twitch raiders and !joinraid in the raid 
@@ -519,6 +527,19 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref AIChatBotCanExecuteCommands, "aiChatBotCanExecuteCommands", true);
             Scribe_Values.Look(ref AIChatBotForwardGameMessages, "aiChatBotForwardGameMessages", true);
             Scribe_Values.Look(ref AIChatBotForwardTaskCompletion, "aiChatBotForwardTaskCompletion", false);
+
+            // RICS pawn ownership
+            Scribe_Values.Look(ref UseRicsPawnOwnership, "useRicsPawnOwnership", false);
+            Scribe_Values.Look(ref RicsOwnershipBlockTrading, "ricsOwnershipBlockTrading", true);
+            Scribe_Values.Look(ref RicsOwnershipInheritance, "ricsOwnershipInheritance", true);
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                try
+                {
+                    Ownership.RICS_OwnershipModDetector.EnforceConflictRules(this, notify: false);
+                }
+                catch { }
+            }
 
             // Twitch Extension bridge
             Scribe_Values.Look(ref TwitchExtensionEnabled, "twitchExtensionEnabled", false);

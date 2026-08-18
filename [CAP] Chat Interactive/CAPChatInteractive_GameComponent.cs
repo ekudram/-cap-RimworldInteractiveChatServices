@@ -258,6 +258,14 @@ namespace CAP_ChatInteractive
             InitializeAIChatBot();
             InitializeTwitchExtension();
 
+            // Ownership: force-off RICS ownership if Possessions Plus is loaded
+            try
+            {
+                var gs = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                Ownership.RICS_OwnershipModDetector.EnforceConflictRules(gs, notify: true);
+            }
+            catch { }
+
             Logger.Message("All core systems initialized");
         }
 
