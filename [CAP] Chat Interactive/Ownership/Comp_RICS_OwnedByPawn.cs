@@ -127,12 +127,28 @@ namespace CAP_ChatInteractive.Ownership
 
         public override string CompInspectStringExtra()
         {
-            if (!RICS_OwnershipUtility.IsRicsOwnershipActive())
-                return null;
             var o = Owner;
             if (o == null)
                 return null;
+            // Show even if setting later toggled off — owner data is still on the item
             return "RICS.Ownership.Inspect.OwnedBy".Translate(o.LabelShortCap);
+        }
+
+        /// <summary>
+        /// Information / stats tab entry (same place Possessions Plus shows "Owned by:").
+        /// </summary>
+        public override IEnumerable<StatDrawEntry> SpecialDisplayStats()
+        {
+            var o = Owner;
+            if (o == null)
+                yield break;
+
+            yield return new StatDrawEntry(
+                StatCategoryDefOf.BasicsImportant,
+                "RICS.Ownership.Stat.OwnedBy".Translate(),
+                o.LabelShortCap,
+                "RICS.Ownership.Stat.OwnedByReport".Translate(),
+                99999);
         }
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()

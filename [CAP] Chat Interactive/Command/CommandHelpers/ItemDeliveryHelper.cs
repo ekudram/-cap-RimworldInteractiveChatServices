@@ -1026,13 +1026,17 @@ public static class ItemDeliveryHelper
 			deliveryResult.PrimaryMethod = DeliveryMethod.Equipped;
 			foreach (Thing item in list)
 			{
+				// Set RICS ownership before equip so worn/held gear already has an owner.
+				TryAssignRicsOwnership(item, pawn);
 				if (PawnItemHelper.EquipItemOnPawn(item, pawn))
 				{
+					TryAssignRicsOwnership(item, pawn);
 					list2.Add(item);
 				}
 				else
 				{
 					TryDeliverToLocker(item, pawn.Map, pawn, deliveryResult);
+					TryAssignRicsOwnership(item, pawn);
 				}
 			}
 		}
@@ -1041,13 +1045,16 @@ public static class ItemDeliveryHelper
 			deliveryResult.PrimaryMethod = DeliveryMethod.Worn;
 			foreach (Thing item2 in list)
 			{
+				TryAssignRicsOwnership(item2, pawn);
 				if (PawnItemHelper.WearApparelOnPawn(item2, pawn))
 				{
+					TryAssignRicsOwnership(item2, pawn);
 					list2.Add(item2);
 				}
 				else
 				{
 					TryDeliverToLocker(item2, pawn.Map, pawn, deliveryResult);
+					TryAssignRicsOwnership(item2, pawn);
 				}
 			}
 		}
@@ -1056,13 +1063,16 @@ public static class ItemDeliveryHelper
 			deliveryResult.PrimaryMethod = DeliveryMethod.Inventory;
 			foreach (Thing item3 in list)
 			{
+				TryAssignRicsOwnership(item3, pawn);
 				if (pawn.inventory.innerContainer.TryAdd(item3))
 				{
+					TryAssignRicsOwnership(item3, pawn);
 					list2.Add(item3);
 				}
 				else
 				{
 					TryDeliverToLocker(item3, pawn.Map, pawn, deliveryResult);
+					TryAssignRicsOwnership(item3, pawn);
 				}
 			}
 		}
@@ -1729,23 +1739,43 @@ public static class ItemDeliveryHelper
 	private static DeliveryResult HandleDirectPawnInteractionWithPreCreated(Thing item, Pawn pawn, bool equipItem, bool wearItem, bool addToInventory, DeliveryResult result)
 	{
 		result.DirectlyDeliveredItems.Add(item);
+		TryAssignRicsOwnership(item, pawn);
 		if (equipItem && PawnItemHelper.EquipItemOnPawn(item, pawn))
 		{
 			result.PrimaryMethod = DeliveryMethod.Equipped;
+			TryAssignRicsOwnership(item, pawn);
 		}
 		else if (wearItem && PawnItemHelper.WearApparelOnPawn(item, pawn))
 		{
 			result.PrimaryMethod = DeliveryMethod.Worn;
+			TryAssignRicsOwnership(item, pawn);
 		}
 		else if (addToInventory && pawn.inventory.innerContainer.TryAdd(item))
 		{
 			result.PrimaryMethod = DeliveryMethod.Inventory;
+			TryAssignRicsOwnership(item, pawn);
 		}
 		else
 		{
 			TryDeliverToLocker(item, pawn.Map, pawn, result);
+			TryAssignRicsOwnership(item, pawn);
 		}
 		return result;
+	}
+
+	/// <summary>Best-effort RICS / Possessions Plus ownership for equip/wear/backpack deliveries.</summary>
+	private static void TryAssignRicsOwnership(Thing item, Pawn pawn)
+	{
+		try
+		{
+			if (item == null || pawn == null || item.Destroyed)
+				return;
+			CAP_ChatInteractive.Ownership.RICS_OwnershipUtility.SetOwner(item, pawn, "RICS purchase");
+		}
+		catch (Exception ex)
+		{
+			Logger.Warning($"[ItemSpawn] Ownership assign failed: {ex.Message}");
+		}
 	}
 
 	private static DeliveryResult HandleRegularDeliveryWithPreCreated(Thing item, Pawn pawn, DeliveryResult result)

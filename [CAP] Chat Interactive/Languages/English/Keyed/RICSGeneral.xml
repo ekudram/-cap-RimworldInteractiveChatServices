@@ -174,6 +174,8 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Ownership.Settings.MidSaveWarn>Enabling RICS ownership mid-save can be unstable. Prefer a new game. Backup your save.</RICS.Ownership.Settings.MidSaveWarn>
   <RICS.Ownership.Conflict.PossessionsPlus>Possessions Plus is active — RICS ownership is disabled and locked. Remove Possessions Plus and start a new game to use RICS ownership. Buy/equip will still assign via Possessions Plus when present.</RICS.Ownership.Conflict.PossessionsPlus>
   <RICS.Ownership.Inspect.OwnedBy>RICS: Owned by {0}</RICS.Ownership.Inspect.OwnedBy>
+  <RICS.Ownership.Stat.OwnedBy>Owned by</RICS.Ownership.Stat.OwnedBy>
+  <RICS.Ownership.Stat.OwnedByReport>This item is personally owned by a colonist (RICS ownership). Others cannot equip or wear it.</RICS.Ownership.Stat.OwnedByReport>
   <RICS.Ownership.Inspect.NotOwnable>RICS: Not ownable</RICS.Ownership.Inspect.NotOwnable>
   <RICS.Ownership.Gizmo.SetOwner>RICS: Set owner…</RICS.Ownership.Gizmo.SetOwner>
   <RICS.Ownership.Gizmo.SetOwnerDesc>Assign a colonist as owner of this item.</RICS.Ownership.Gizmo.SetOwnerDesc>

@@ -257,10 +257,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (karmaEarned > 0f)
                     viewer.GiveKarma(karmaEarned);
 
-                if (needsPawn)
+                if (needsPawn && viewerPawn != null)
                 {
                     foreach (Thing spawnedItem in allSpawnedItems)
                         TrySetItemOwnership(spawnedItem, viewerPawn);
+
+                    // Wear/equip safety: ensure anything now on the pawn for this delivery is owned
+                    // (covers cases where the delivered list missed a worn instance).
+                    TrySetOwnershipOnPawnGear(viewerPawn, allSpawnedItems);
                 }
 
                 LookTargets lookTargets = null;
@@ -552,7 +556,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
-                if (item == null || ownerPawn == null)
+                if (item == null || ownerPawn == null || item.Destroyed)
                     return;
 
                 Ownership.RICS_OwnershipUtility.SetOwner(
@@ -563,6 +567,55 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             catch (Exception ex)
             {
                 Logger.Error($"[BuyItem] Error setting item ownership: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// After wear/equip, re-apply ownership to delivered things found on the pawn
+        /// (apparel tracker / equipment / inventory).
+        /// </summary>
+        private static void TrySetOwnershipOnPawnGear(Verse.Pawn pawn, List<Thing> delivered)
+        {
+            if (pawn == null || delivered == null || delivered.Count == 0)
+                return;
+
+            try
+            {
+                var ids = new HashSet<int>();
+                foreach (var t in delivered)
+                {
+                    if (t != null && !t.Destroyed)
+                        ids.Add(t.thingIDNumber);
+                }
+
+                void Consider(Thing t)
+                {
+                    if (t == null || t.Destroyed)
+                        return;
+                    if (!ids.Contains(t.thingIDNumber))
+                        return;
+                    TrySetItemOwnership(t, pawn);
+                }
+
+                if (pawn.apparel?.WornApparel != null)
+                {
+                    foreach (var a in pawn.apparel.WornApparel)
+                        Consider(a);
+                }
+                if (pawn.equipment?.AllEquipmentListForReading != null)
+                {
+                    foreach (var e in pawn.equipment.AllEquipmentListForReading)
+                        Consider(e);
+                }
+                if (pawn.inventory?.innerContainer != null)
+                {
+                    foreach (var inv in pawn.inventory.innerContainer)
+                        Consider(inv);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[BuyItem] TrySetOwnershipOnPawnGear: {ex.Message}");
             }
         }
     }

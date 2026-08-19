@@ -57,7 +57,14 @@ namespace CAP_ChatInteractive.Ownership
 
             var comp = GetOwnershipComp(thing);
             if (comp == null)
+            {
+                string defName = thing.def?.defName ?? "?";
+                Logger.Warning(
+                    $"[RICS Ownership] No Comp_RICS_OwnedByPawn on {defName}. " +
+                    "Restart RimWorld after enabling ownership so def injection runs, " +
+                    "and ensure Possessions Plus is not loaded.");
                 return false;
+            }
 
             if (owner != null && IsMarkedNotOwnable(thing))
                 return false;
