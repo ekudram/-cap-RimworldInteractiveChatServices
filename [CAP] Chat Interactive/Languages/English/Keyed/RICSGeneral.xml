@@ -197,6 +197,24 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Ownership.Block.Wear>{0} cannot wear {1} (RICS: owned by {2}).</RICS.Ownership.Block.Wear>
   <RICS.Ownership.Inheritance.Message>{0} inherited {2} owned item(s) from {1}.</RICS.Ownership.Inheritance.Message>
 
+  <!-- Owned items HUD browser -->
+  <RICS.Ownership.Browser.Tooltip>RICS: Owned items</RICS.Ownership.Browser.Tooltip>
+  <RICS.Ownership.Browser.Title>RICS — Owned items</RICS.Ownership.Browser.Title>
+  <RICS.Ownership.Browser.DisabledHint>RICS ownership is off.\n\nEnable "Use RICS ownership for Pawns" in Mod Settings → Global (and remove Possessions Plus if present).</RICS.Ownership.Browser.DisabledHint>
+  <RICS.Ownership.Browser.AllPawns>All pawns</RICS.Ownership.Browser.AllPawns>
+  <RICS.Ownership.Browser.Weapons>Weapons</RICS.Ownership.Browser.Weapons>
+  <RICS.Ownership.Browser.Apparel>Apparel</RICS.Ownership.Browser.Apparel>
+  <RICS.Ownership.Browser.Refresh>Refresh</RICS.Ownership.Browser.Refresh>
+  <RICS.Ownership.Browser.Count>{0} owned item(s)</RICS.Ownership.Browser.Count>
+  <RICS.Ownership.Browser.Loc.All>All locations</RICS.Ownership.Browser.Loc.All>
+  <RICS.Ownership.Browser.Loc.ThisMap>This map</RICS.Ownership.Browser.Loc.ThisMap>
+  <RICS.Ownership.Browser.Loc.AnyColony>Any colony</RICS.Ownership.Browser.Loc.AnyColony>
+  <RICS.Ownership.Browser.Loc.Caravans>Caravans</RICS.Ownership.Browser.Loc.Caravans>
+  <RICS.Ownership.Browser.Col.Item>Item</RICS.Ownership.Browser.Col.Item>
+  <RICS.Ownership.Browser.Col.Owner>Owner</RICS.Ownership.Browser.Col.Owner>
+  <RICS.Ownership.Browser.Col.Quality>Quality</RICS.Ownership.Browser.Col.Quality>
+  <RICS.Ownership.Browser.Col.Where>Where</RICS.Ownership.Browser.Col.Where>
+
   <RICS.Updates.CriticalMigration>IMPORTANT: Critical Migration Required!</RICS.Updates.CriticalMigration>
   <RICS.EditClientSecrets.OAuthWarning>⚠ WARNING: YouTube OAuth may require Google verification (days/weeks)</RICS.EditClientSecrets.OAuthWarning>
   
