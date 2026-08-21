@@ -27,6 +27,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             try
             {
                 var parsed = CommandParserUtility.ParseCommandArguments(args, allowQuality: true, allowMaterial: true, allowSide: false, allowQuantity: true);
+                // Keep original request qty for charge clamps (unique equip path can mis-count delivery).
                 if (parsed.HasError)
                     return parsed.Error;
 
@@ -34,6 +35,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 string qualityStr = parsed.Quality;
                 string materialStr = parsed.Material;
                 int quantity = Math.Max(1, parsed.Quantity);
+                int requestedQuantity = quantity;
 
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
@@ -236,17 +238,25 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return "RICS.BICH.Return.NoSpace".Translate(itemName, quantity);
                 }
 
-                int chargeQty = deliveredUnits;
+                // Never charge/report more units than requested (guards unique-weapon double-count).
+                int chargeQty = Math.Min(deliveredUnits, requestedQuantity);
+                if (chargeQty < deliveredUnits)
+                {
+                    Logger.Warning(
+                        $"[BuyItem] Clamped chargeQty {deliveredUnits}→{chargeQty} for {itemName} " +
+                        $"(requested {requestedQuantity}; PrimaryMethod={deliveryResult.PrimaryMethod})");
+                }
+
                 int chargePrice;
-                if (chargeQty >= quantity)
+                if (chargeQty >= requestedQuantity)
                     chargePrice = finalPrice;
                 else if (isUniqueWeapon && finalItem != null)
                     chargePrice = Math.Max(1, (int)(finalItem.MarketValue * chargeQty));
                 else
                 {
                     chargePrice = ItemConfigHelper.CalculateFinalPrice(storeItem, chargeQty, quality, material);
-                    if (chargePrice <= 0 && finalPrice > 0 && quantity > 0)
-                        chargePrice = Math.Max(1, (int)((long)finalPrice * chargeQty / quantity));
+                    if (chargePrice <= 0 && finalPrice > 0 && requestedQuantity > 0)
+                        chargePrice = Math.Max(1, (int)((long)finalPrice * chargeQty / requestedQuantity));
                 }
 
                 viewer.TakeCoins(chargePrice);
@@ -294,10 +304,34 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 else if (needsPawn)
                 {
-                    string serviceType = requireEquippable ? "Equip" : requireWearable ? "Wear" : "Backpack";
-                    string emoji = requireEquippable ? "RICS.BICH.Letter.Emoji.Equip".Translate() :
-                                   requireWearable ? "RICS.BICH.Letter.Emoji.Wear".Translate() :
-                                   "RICS.BICH.Letter.Emoji.Backpack".Translate();
+                    // Invoice service reflects what actually happened (equip may fall back to locker).
+                    string serviceType;
+                    string emoji;
+                    switch (deliveryResult.PrimaryMethod)
+                    {
+                        case DeliveryMethod.Equipped:
+                            serviceType = "Equip";
+                            emoji = "RICS.BICH.Letter.Emoji.Equip".Translate();
+                            break;
+                        case DeliveryMethod.Worn:
+                            serviceType = "Wear";
+                            emoji = "RICS.BICH.Letter.Emoji.Wear".Translate();
+                            break;
+                        case DeliveryMethod.Inventory:
+                            serviceType = "Backpack";
+                            emoji = "RICS.BICH.Letter.Emoji.Backpack".Translate();
+                            break;
+                        case DeliveryMethod.Locker:
+                            serviceType = "Locker";
+                            emoji = "🟡";
+                            break;
+                        default:
+                            serviceType = requireEquippable ? "Equip" : requireWearable ? "Wear" : "Backpack";
+                            emoji = requireEquippable ? "RICS.BICH.Letter.Emoji.Equip".Translate() :
+                                    requireWearable ? "RICS.BICH.Letter.Emoji.Wear".Translate() :
+                                    "RICS.BICH.Letter.Emoji.Backpack".Translate();
+                            break;
+                    }
 
                     invoiceLabel = "RICS.BICH.Letter.Label.Direct".Translate(emoji, serviceType, messageWrapper.Username);
                     invoiceMessage = CreateRimazonDirectInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol, serviceType);
@@ -322,10 +356,31 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 else
                     MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage, lookTargets);
 
-                string action = requireEquippable ? "RICS.BICH.Return.Action.Equipped".Translate() :
-                                requireWearable ? "RICS.BICH.Return.Action.Worn".Translate() :
-                                addToInventory ? "RICS.BICH.Return.Action.AddedToInventory".Translate() :
-                                "RICS.BICH.Return.Action.Delivered".Translate();
+                string action;
+                switch (deliveryResult.PrimaryMethod)
+                {
+                    case DeliveryMethod.Equipped:
+                        action = "RICS.BICH.Return.Action.Equipped".Translate();
+                        break;
+                    case DeliveryMethod.Worn:
+                        action = "RICS.BICH.Return.Action.Worn".Translate();
+                        break;
+                    case DeliveryMethod.Inventory:
+                        action = "RICS.BICH.Return.Action.AddedToInventory".Translate();
+                        break;
+                    case DeliveryMethod.Locker:
+                        action = "RICS.BICH.Return.Action.Locker".Translate();
+                        break;
+                    case DeliveryMethod.DropPod:
+                        action = "RICS.BICH.Return.Action.Delivered".Translate();
+                        break;
+                    default:
+                        action = requireEquippable ? "RICS.BICH.Return.Action.Equipped".Translate() :
+                                 requireWearable ? "RICS.BICH.Return.Action.Worn".Translate() :
+                                 addToInventory ? "RICS.BICH.Return.Action.AddedToInventory".Translate() :
+                                 "RICS.BICH.Return.Action.Delivered".Translate();
+                        break;
+                }
 
                 string success = "RICS.BICH.Return.Success".Translate(
                     quantity,

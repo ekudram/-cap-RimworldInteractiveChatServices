@@ -1738,26 +1738,38 @@ public static class ItemDeliveryHelper
 
 	private static DeliveryResult HandleDirectPawnInteractionWithPreCreated(Thing item, Pawn pawn, bool equipItem, bool wearItem, bool addToInventory, DeliveryResult result)
 	{
-		result.DirectlyDeliveredItems.Add(item);
+		// Do NOT add to DirectlyDeliveredItems before success — locker fallback also
+		// increments LockerDeliveredCount, which previously double-counted qty (stream bug:
+		// Parsed Quantity 1 → chat "Purchased 2" when equip failed on unique weapons).
 		TryAssignRicsOwnership(item, pawn);
 		if (equipItem && PawnItemHelper.EquipItemOnPawn(item, pawn))
 		{
 			result.PrimaryMethod = DeliveryMethod.Equipped;
+			result.DirectlyDeliveredItems.Add(item);
 			TryAssignRicsOwnership(item, pawn);
 		}
 		else if (wearItem && PawnItemHelper.WearApparelOnPawn(item, pawn))
 		{
 			result.PrimaryMethod = DeliveryMethod.Worn;
+			result.DirectlyDeliveredItems.Add(item);
 			TryAssignRicsOwnership(item, pawn);
 		}
-		else if (addToInventory && pawn.inventory.innerContainer.TryAdd(item))
+		else if (addToInventory && pawn?.inventory?.innerContainer != null && pawn.inventory.innerContainer.TryAdd(item))
 		{
 			result.PrimaryMethod = DeliveryMethod.Inventory;
+			result.DirectlyDeliveredItems.Add(item);
 			TryAssignRicsOwnership(item, pawn);
 		}
 		else
 		{
-			TryDeliverToLocker(item, pawn.Map, pawn, result);
+			if (TryDeliverToLocker(item, pawn?.Map, pawn, result))
+			{
+				result.PrimaryMethod = DeliveryMethod.Locker;
+			}
+			else
+			{
+				result.PrimaryMethod = DeliveryMethod.Failed;
+			}
 			TryAssignRicsOwnership(item, pawn);
 		}
 		return result;

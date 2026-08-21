@@ -19,7 +19,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         {
             try
             {
-                if (pawn == null || item == null || item.def == null)
+                if (pawn == null || item == null || item.def == null || item.Destroyed)
                     return false;
 
                 if (!item.def.IsWeapon)
@@ -37,26 +37,78 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 if (!MassUtility.CanEverCarryAnything(pawn))
                     return false;
 
+                // Clear map spawn so AddEquipment can take ownership.
+                if (weapon.Spawned)
+                {
+                    if (pawn.Map == null)
+                        return false;
+                    weapon.DeSpawn();
+                }
+
+                // If still in a container (e.g. temp holder), try to extract without destroying.
+                if (weapon.holdingOwner != null)
+                {
+                    var owner = weapon.holdingOwner;
+                    if (!owner.TryDrop(weapon, pawn.PositionHeld, pawn.MapHeld ?? pawn.Map, ThingPlaceMode.Near, 1, out Thing dropped))
+                    {
+                        // Last resort: remove from owner list if API allows via TryDrop failed
+                        Logger.Warning(
+                            $"[PawnItem] EquipItemOnPawn: could not release {weapon.LabelShort} from holder for {pawn.LabelShort}.");
+                        return false;
+                    }
+                    weapon = dropped as ThingWithComps ?? weapon;
+                    if (weapon == null || weapon.Destroyed)
+                        return false;
+                    if (weapon.Spawned)
+                        weapon.DeSpawn();
+                }
+
                 ThingWithComps oldWeapon = null;
 
                 if (pawn.equipment.Primary != null)
                 {
-                    if (pawn.inventory?.innerContainer == null ||
-                        !pawn.equipment.TryTransferEquipmentToContainer(
-                            pawn.equipment.Primary, pawn.inventory.innerContainer))
+                    ThingWithComps primary = pawn.equipment.Primary;
+                    bool moved = false;
+                    if (pawn.inventory?.innerContainer != null)
                     {
-                        if (!pawn.equipment.TryDropEquipment(
-                                pawn.equipment.Primary, out oldWeapon, pawn.Position))
+                        moved = pawn.equipment.TryTransferEquipmentToContainer(
+                            primary, pawn.inventory.innerContainer);
+                    }
+
+                    if (!moved)
+                    {
+                        if (!pawn.equipment.TryDropEquipment(primary, out oldWeapon, pawn.Position))
                         {
                             Logger.Warning(
                                 $"[PawnItem] Could not make room for {pawn.LabelShort}'s new weapon.");
+                            return false;
                         }
                     }
                 }
 
-                if (MassUtility.WillBeOverEncumberedAfterPickingUp(pawn, weapon, 1) && oldWeapon != null)
+                if (weapon.Destroyed || weapon.holdingOwner != null)
                 {
-                    pawn.equipment.AddEquipment(oldWeapon);
+                    Logger.Warning(
+                        $"[PawnItem] EquipItemOnPawn: weapon not free for AddEquipment ({pawn.LabelShort}).");
+                    // Best-effort restore dropped old weapon
+                    if (oldWeapon != null && !oldWeapon.Destroyed && oldWeapon.holdingOwner == null && !oldWeapon.Spawned)
+                    {
+                        try { pawn.equipment.AddEquipment(oldWeapon); }
+                        catch { /* ignore restore failure */ }
+                    }
+                    return false;
+                }
+
+                if (MassUtility.WillBeOverEncumberedAfterPickingUp(pawn, weapon, 1))
+                {
+                    if (oldWeapon != null && !oldWeapon.Destroyed && oldWeapon.holdingOwner == null && !oldWeapon.Spawned)
+                    {
+                        try { pawn.equipment.AddEquipment(oldWeapon); }
+                        catch (Exception restoreEx)
+                        {
+                            Logger.Warning($"[PawnItem] Failed restoring old weapon: {restoreEx.Message}");
+                        }
+                    }
                     return false;
                 }
 
@@ -65,7 +117,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             }
             catch (Exception ex)
             {
-                Logger.Error($"[PawnItem] EquipItemOnPawn: {ex.Message}");
+                Logger.Error($"[PawnItem] EquipItemOnPawn: {ex}");
                 return false;
             }
         }
