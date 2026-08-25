@@ -161,7 +161,7 @@ namespace CAP_ChatInteractive.Ownership
                         Widgets.DrawLightHighlight(row);
                     Widgets.DrawHighlightIfMouseover(row);
 
-                    string viewer = TryViewerName(pawn);
+                    string viewer = FormatViewerSuffix(pawn);
                     string label = string.IsNullOrEmpty(viewer)
                         ? pawn.LabelShortCap
                         : $"{pawn.LabelShortCap}  ({viewer})";
@@ -220,25 +220,91 @@ namespace CAP_ChatInteractive.Ownership
                     return true;
             }
             catch { }
-            string viewer = TryViewerName(pawn);
+            string viewer = FormatViewerSuffix(pawn);
             return !string.IsNullOrEmpty(viewer) && Contains(viewer, query);
         }
 
-        private static string TryViewerName(Pawn pawn)
+        /// <summary>e.g. "Twitch" or "Twitch: captolamia" — never the numeric platform user id.</summary>
+        private static string FormatViewerSuffix(Pawn pawn)
         {
+            TryGetViewerInfo(pawn, out string service, out string username);
+            if (string.IsNullOrEmpty(service) && string.IsNullOrEmpty(username))
+                return null;
+            if (string.IsNullOrEmpty(username) || LooksLikeRawId(username))
+                return service;
+            if (string.IsNullOrEmpty(service))
+                return username;
+            return $"{service}: {username}";
+        }
+
+        private static void TryGetViewerInfo(Pawn pawn, out string service, out string username)
+        {
+            service = null;
+            username = null;
             try
             {
                 var mgr = CAPChatInteractiveMod.GetPawnAssignmentManager();
                 string id = mgr?.GetUsernameForPawn(pawn);
                 if (string.IsNullOrEmpty(id))
-                    return null;
+                    return;
+
+                string platKey = null;
                 int colon = id.IndexOf(':');
-                return colon >= 0 && colon < id.Length - 1 ? id.Substring(colon + 1) : id;
+                if (colon > 0)
+                    platKey = id.Substring(0, colon);
+
+                service = PrettyService(platKey);
+
+                var viewer = Viewers.GetViewerByPlatformIdentifier(id)
+                             ?? (!string.IsNullOrEmpty(id) ? Viewers.GetViewerNoAdd(id) : null);
+                if (viewer != null)
+                {
+                    username = !string.IsNullOrWhiteSpace(viewer.DisplayName)
+                        ? viewer.DisplayName
+                        : viewer.Username;
+                    if (string.IsNullOrEmpty(service) && viewer.PlatformUserIds != null)
+                    {
+                        foreach (var plat in viewer.PlatformUserIds.Keys)
+                        {
+                            service = PrettyService(plat);
+                            if (!string.IsNullOrEmpty(service))
+                                break;
+                        }
+                    }
+                }
             }
-            catch
-            {
+            catch { }
+        }
+
+        private static string PrettyService(string platform)
+        {
+            if (string.IsNullOrEmpty(platform))
                 return null;
+            switch (platform.Trim().ToLowerInvariant())
+            {
+                case "twitch": return "Twitch";
+                case "youtube": return "YouTube";
+                case "kick": return "Kick";
+                case "username":
+                case "name":
+                case "unknown":
+                    return null;
+                default:
+                    return char.ToUpperInvariant(platform[0]) + platform.Substring(1);
             }
+        }
+
+        private static bool LooksLikeRawId(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+                return true;
+            int digits = 0;
+            for (int i = 0; i < s.Length; i++)
+            {
+                if (char.IsDigit(s[i]))
+                    digits++;
+            }
+            return digits >= 8 && digits * 10 >= s.Length * 7;
         }
 
         private static bool Contains(string hay, string needle)
