@@ -2,8 +2,9 @@
 // Copyright (c) Captolamia
 // Part of CAP Chat Interactive (RICS) — AGPLv3
 //
-// Distinct from Possessions Plus assign UI (title, layout, RICS branding).
+// Searchable pawn picker for item/chest ownership (50+ viewer colonies).
 using RimWorld;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -13,14 +14,64 @@ namespace CAP_ChatInteractive.Ownership
 {
     public class Dialog_RICS_AssignItemOwner : Window
     {
-        private readonly Comp_RICS_OwnedByPawn comp;
-        private Vector2 scrollPos;
+        private readonly string title;
+        private readonly string contextLine;
+        private readonly Pawn currentOwner;
+        private readonly Action<Pawn> onPicked;
+        private readonly bool allowClear;
+        private readonly bool includeAllPawnsOption;
+        private readonly Action onAllPawns;
 
-        public override Vector2 InitialSize => new Vector2(480f, 560f);
+        private Vector2 scrollPos;
+        private string searchText = "";
+        private List<Pawn> cached = new List<Pawn>();
+
+        public override Vector2 InitialSize => new Vector2(520f, 620f);
 
         public Dialog_RICS_AssignItemOwner(Comp_RICS_OwnedByPawn comp)
+            : this(
+                "RICS.Ownership.Dialog.Title".Translate(),
+                comp?.parent != null ? "RICS.Ownership.Dialog.Item".Translate(comp.parent.LabelCap).ToString() : "",
+                comp?.Owner,
+                pawn =>
+                {
+                    if (comp == null || comp.parent == null || comp.parent.Destroyed)
+                        return;
+                    if (pawn == null)
+                    {
+                        comp.ClearOwner("RICS UI");
+                        Messages.Message("RICS.Ownership.Cleared".Translate(comp.parent.LabelNoCount),
+                            MessageTypeDefOf.TaskCompletion, historical: false);
+                    }
+                    else
+                    {
+                        comp.SetOwner(pawn, "RICS UI");
+                        Messages.Message(
+                            "RICS.Ownership.Assigned".Translate(comp.parent.LabelNoCount, pawn.LabelShortCap),
+                            MessageTypeDefOf.TaskCompletion,
+                            historical: false);
+                    }
+                },
+                allowClear: true)
         {
-            this.comp = comp;
+        }
+
+        public Dialog_RICS_AssignItemOwner(
+            string title,
+            string contextLine,
+            Pawn currentOwner,
+            Action<Pawn> onPicked,
+            bool allowClear,
+            bool includeAllPawnsOption = false,
+            Action onAllPawns = null)
+        {
+            this.title = title ?? "RICS.Ownership.Dialog.Title".Translate();
+            this.contextLine = contextLine ?? "";
+            this.currentOwner = currentOwner;
+            this.onPicked = onPicked;
+            this.allowClear = allowClear;
+            this.includeAllPawnsOption = includeAllPawnsOption;
+            this.onAllPawns = onAllPawns;
             forcePause = true;
             absorbInputAroundWindow = true;
             closeOnClickedOutside = true;
@@ -28,85 +79,173 @@ namespace CAP_ChatInteractive.Ownership
             doCloseButton = true;
         }
 
+        public override void PreOpen()
+        {
+            base.PreOpen();
+            Rebuild();
+        }
+
         public override void DoWindowContents(Rect inRect)
         {
-            if (comp?.parent == null || comp.parent.Destroyed)
-            {
-                Close();
-                return;
-            }
-
             Text.Font = GameFont.Medium;
             GUI.color = ColorLibrary.HeaderAccent;
-            Widgets.Label(new Rect(0f, 0f, inRect.width, 32f), "RICS.Ownership.Dialog.Title".Translate());
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 32f), title);
             GUI.color = Color.white;
             Text.Font = GameFont.Small;
 
-            Widgets.Label(new Rect(0f, 36f, inRect.width, 24f),
-                "RICS.Ownership.Dialog.Item".Translate(comp.parent.LabelCap));
+            float y = 36f;
+            if (!string.IsNullOrEmpty(contextLine))
+            {
+                Widgets.Label(new Rect(0f, y, inRect.width, 22f), contextLine);
+                y += 24f;
+            }
 
-            float y = 68f;
-            var owner = comp.Owner;
-            if (owner != null)
+            if (currentOwner != null)
             {
                 Widgets.Label(new Rect(0f, y, inRect.width - 160f, 28f),
-                    "RICS.Ownership.Dialog.CurrentOwner".Translate(owner.LabelShortCap));
-                if (Widgets.ButtonText(new Rect(inRect.width - 150f, y, 140f, 28f),
+                    "RICS.Ownership.Dialog.CurrentOwner".Translate(currentOwner.LabelShortCap));
+                if (allowClear && Widgets.ButtonText(new Rect(inRect.width - 150f, y, 140f, 28f),
                     "RICS.Ownership.Dialog.Clear".Translate()))
                 {
-                    comp.ClearOwner("RICS UI");
-                    Messages.Message("RICS.Ownership.Cleared".Translate(comp.parent.LabelNoCount),
-                        MessageTypeDefOf.TaskCompletion, historical: false);
+                    onPicked?.Invoke(null);
                     Close();
                     return;
                 }
-                y += 36f;
-                Widgets.DrawLineHorizontal(0f, y, inRect.width);
-                y += 10f;
+                y += 32f;
             }
 
-            Widgets.Label(new Rect(0f, y, inRect.width, 24f), "RICS.Ownership.Dialog.Choose".Translate());
-            y += 28f;
+            if (includeAllPawnsOption)
+            {
+                if (Widgets.ButtonText(new Rect(0f, y, 180f, 28f), "RICS.Ownership.Browser.AllPawns".Translate()))
+                {
+                    onAllPawns?.Invoke();
+                    Close();
+                    return;
+                }
+                y += 32f;
+            }
 
+            Widgets.Label(new Rect(0f, y, 80f, 28f), "RICS.Ownership.Dialog.Search".Translate());
+            string next = Widgets.TextField(new Rect(88f, y, inRect.width - 88f, 28f), searchText);
+            if (next != searchText)
+            {
+                searchText = next;
+                Rebuild();
+            }
+            y += 34f;
+
+            Widgets.Label(new Rect(0f, y, inRect.width, 22f), "RICS.Ownership.Dialog.Choose".Translate());
+            y += 24f;
+
+            Rect outRect = new Rect(0f, y, inRect.width, inRect.height - y - 50f);
+            float viewH = Mathf.Max(cached.Count * 36f + 8f, outRect.height);
+            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, viewH);
+            Widgets.BeginScrollView(outRect, ref scrollPos, viewRect);
+
+            if (cached.Count == 0)
+            {
+                Widgets.Label(new Rect(8f, 8f, viewRect.width - 16f, 28f),
+                    "RICS.Ownership.Dialog.NoMatches".Translate());
+            }
+            else
+            {
+                float rowY = 0f;
+                for (int i = 0; i < cached.Count; i++)
+                {
+                    Pawn pawn = cached[i];
+                    if (pawn == null || pawn.Destroyed)
+                        continue;
+
+                    Rect row = new Rect(0f, rowY, viewRect.width, 32f);
+                    if (i % 2 == 0)
+                        Widgets.DrawLightHighlight(row);
+                    Widgets.DrawHighlightIfMouseover(row);
+
+                    string viewer = TryViewerName(pawn);
+                    string label = string.IsNullOrEmpty(viewer)
+                        ? pawn.LabelShortCap
+                        : $"{pawn.LabelShortCap}  ({viewer})";
+
+                    Widgets.Label(new Rect(8f, rowY + 6f, viewRect.width - 176f, 24f), label);
+                    if (Widgets.ButtonText(new Rect(viewRect.width - 164f, rowY + 2f, 156f, 28f),
+                        "RICS.Ownership.Dialog.MakeOwner".Translate())
+                        || Widgets.ButtonInvisible(row))
+                    {
+                        onPicked?.Invoke(pawn);
+                        Close();
+                        break;
+                    }
+                    rowY += 36f;
+                }
+            }
+
+            Widgets.EndScrollView();
+        }
+
+        private void Rebuild()
+        {
+            cached.Clear();
             List<Pawn> colonists;
             try
             {
-                colonists = PawnsFinder.AllMaps_FreeColonistsSpawned?.ToList() ?? new List<Pawn>();
+                colonists = PawnsFinder.AllMaps_FreeColonists?.ToList() ?? new List<Pawn>();
             }
             catch
             {
                 colonists = new List<Pawn>();
             }
 
-            Rect outRect = new Rect(0f, y, inRect.width, inRect.height - y - 50f);
-            float viewH = Mathf.Max(colonists.Count * 40f, outRect.height);
-            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, viewH);
-            Widgets.BeginScrollView(outRect, ref scrollPos, viewRect);
-
-            float rowY = 0f;
-            foreach (var pawn in colonists)
+            string q = searchText?.Trim() ?? "";
+            foreach (var p in colonists.OrderBy(p => p?.LabelShortCap ?? ""))
             {
-                if (pawn == null || pawn.Destroyed || pawn == owner)
+                if (p == null || p.Destroyed)
                     continue;
-
-                Rect row = new Rect(0f, rowY, viewRect.width, 36f);
-                Widgets.DrawHighlightIfMouseover(row);
-                Widgets.Label(new Rect(8f, rowY + 8f, 200f, 24f), pawn.LabelShortCap);
-                if (Widgets.ButtonText(new Rect(220f, rowY + 4f, 160f, 28f),
-                    "RICS.Ownership.Dialog.MakeOwner".Translate()))
-                {
-                    comp.SetOwner(pawn, "RICS UI");
-                    Messages.Message(
-                        "RICS.Ownership.Assigned".Translate(comp.parent.LabelNoCount, pawn.LabelShortCap),
-                        MessageTypeDefOf.TaskCompletion,
-                        historical: false);
-                    Close();
-                    break;
-                }
-                rowY += 40f;
+                if (p == currentOwner)
+                    continue;
+                if (!Matches(p, q))
+                    continue;
+                cached.Add(p);
             }
+        }
 
-            Widgets.EndScrollView();
+        private static bool Matches(Pawn pawn, string query)
+        {
+            if (string.IsNullOrEmpty(query))
+                return true;
+            if (Contains(pawn.LabelShortCap, query))
+                return true;
+            try
+            {
+                if (pawn.Name != null && Contains(pawn.Name.ToStringFull, query))
+                    return true;
+            }
+            catch { }
+            string viewer = TryViewerName(pawn);
+            return !string.IsNullOrEmpty(viewer) && Contains(viewer, query);
+        }
+
+        private static string TryViewerName(Pawn pawn)
+        {
+            try
+            {
+                var mgr = CAPChatInteractiveMod.GetPawnAssignmentManager();
+                string id = mgr?.GetUsernameForPawn(pawn);
+                if (string.IsNullOrEmpty(id))
+                    return null;
+                int colon = id.IndexOf(':');
+                return colon >= 0 && colon < id.Length - 1 ? id.Substring(colon + 1) : id;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static bool Contains(string hay, string needle)
+        {
+            if (string.IsNullOrEmpty(hay) || string.IsNullOrEmpty(needle))
+                return false;
+            return hay.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
         }
     }
 }

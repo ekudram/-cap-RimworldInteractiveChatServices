@@ -95,28 +95,22 @@ namespace CAP_ChatInteractive.Ownership
                 : "RICS.Ownership.Browser.AllPawns".Translate();
             if (Widgets.ButtonText(pawnRect, pawnLabel))
             {
-                var opts = new List<FloatMenuOption>
-                {
-                    new FloatMenuOption("RICS.Ownership.Browser.AllPawns".Translate(), () =>
+                Find.WindowStack.Add(new Dialog_RICS_AssignItemOwner(
+                    "RICS.Ownership.Browser.AllPawns".Translate(),
+                    "RICS.Ownership.Dialog.Choose".Translate(),
+                    selectedPawn,
+                    pawn =>
+                    {
+                        selectedPawn = pawn;
+                        RebuildCache(force: true);
+                    },
+                    allowClear: false,
+                    includeAllPawnsOption: true,
+                    onAllPawns: () =>
                     {
                         selectedPawn = null;
                         RebuildCache(force: true);
-                    })
-                };
-                try
-                {
-                    foreach (var p in PawnsFinder.AllMaps_FreeColonists.OrderBy(p => p.LabelShortCap))
-                    {
-                        var local = p;
-                        opts.Add(new FloatMenuOption(local.LabelShortCap, () =>
-                        {
-                            selectedPawn = local;
-                            RebuildCache(force: true);
-                        }));
-                    }
-                }
-                catch { }
-                Find.WindowStack.Add(new FloatMenu(opts));
+                    }));
             }
 
             // Location filter
