@@ -93,6 +93,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "genes":
                     case "xeno":
                     case "xenotype": settingKey = "enableGenes"; break;
+                    case "owned":
+                    case "own": settingKey = "enableOwned"; break;
+                    case "disown": settingKey = "enableDisown"; break;
                 }
                 if (settingKey != null && !cmdSettings.GetCustom(settingKey, true))
                     return "RICS.MPCH.SubCommandDisabled".Translate(subCommand ?? sub);
@@ -157,6 +160,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "xeno":
                     case "xenotype":
                         return HandleGeneInfo(pawn);
+                    case "owned":
+                    case "own":
+                        return MyPawnCommandHandler_Owned.HandleOwned(messageWrapper, pawn, args);
+                    case "disown":
+                        return MyPawnCommandHandler_Owned.HandleDisown(messageWrapper, pawn, args);
                     default:
                         return "RICS.MPCH.UnknownSubcommand".Translate(subCommand ?? "none");
                 }
