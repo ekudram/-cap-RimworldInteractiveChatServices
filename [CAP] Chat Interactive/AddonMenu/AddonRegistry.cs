@@ -74,19 +74,16 @@ namespace CAP_ChatInteractive
                     }
                     break;
 
-                case ButtonType.MenuButton:
-                    // Fall back to original menu behavior
-                    var menu = addonDef.GetAddonMenu();
-                    if (menu != null)
-                    {
-                        var options = menu.MenuOptions();
-                        if (options != null && options.Count > 0)
-                        {
-                            Find.WindowStack.Add(new FloatMenu(options));
-                        }
-                    }
-                    break;
-            }
+        /// <summary>
+        /// Execute an addon def (same as <see cref="EnhancedChatInteractiveAddonDef.ExecuteDirectly"/>).
+        /// Kept for callers that used the old Registry API.
+        /// </summary>
+        public static void ExecuteAddonDirectly(EnhancedChatInteractiveAddonDef addonDef)
+        {
+            if (addonDef == null || !addonDef.enabled)
+                return;
+
+            addonDef.ExecuteDirectly();
         }
     }
 }

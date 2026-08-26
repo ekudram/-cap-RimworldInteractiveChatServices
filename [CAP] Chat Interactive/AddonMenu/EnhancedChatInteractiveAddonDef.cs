@@ -20,6 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CAP_ChatInteractive.Interfaces;
+using CAP_ChatInteractive.Ownership;
 using UnityEngine;
 using Verse;
 
@@ -49,6 +50,21 @@ namespace CAP_ChatInteractive
         public bool showInToolbar = false;
         // Category for organizing buttons
         public string category = "General";
+
+        /// <summary>
+        /// When true, hide this button unless RICS pawn ownership is active
+        /// (setting on and Possessions Plus not loaded). Checked every draw, not only at load.
+        /// </summary>
+        public bool requireRicsOwnership = false;
+
+        public bool IsCurrentlyVisible()
+        {
+            if (!enabled)
+                return false;
+            if (requireRicsOwnership && !RICS_OwnershipUtility.IsRicsOwnershipActive())
+                return false;
+            return true;
+        }
 
         public override void ResolveReferences()
         {
@@ -81,9 +97,7 @@ namespace CAP_ChatInteractive
         {
             try
             {
-                if (!enabled)
-                {
-                    //Logger.Debug($"AddonDef {defName} is disabled");
+                if (!enabled || buttonType == ButtonType.Divider)
                     return null;
                 }
 
@@ -125,7 +139,8 @@ namespace CAP_ChatInteractive
         /// </summary>
         public void ExecuteDirectly()
         {
-            if (!enabled) return;
+            if (!enabled || buttonType == ButtonType.Divider)
+                return;
 
             try
             {

@@ -38,12 +38,19 @@ namespace CAP_ChatInteractive.Windows
             listing.Label("RICS - Quick Menu");
             listing.GapLine();
 
-            // Group buttons by source mod
-            var groupedButtons = AddonRegistry.AddonDefs
-                .Where(def => def.enabled)
-                .GroupBy(def => def.sourceMod)
-                .OrderBy(g => g.Key == "RICS" ? 0 : 1) // RICS first
-                .ThenBy(g => g.Key) // Then alphabetically
+            var defs = AddonRegistry.AddonDefs;
+            if (defs == null || defs.Count == 0)
+            {
+                listing.Label("No addon buttons loaded.");
+                listing.End();
+                return;
+            }
+
+            var groupedButtons = defs
+                .Where(def => def != null && def.enabled)
+                .GroupBy(def => def.sourceMod ?? "Unknown")
+                .OrderBy(g => g.Key == "RICS" ? 0 : 1)
+                .ThenBy(g => g.Key)
                 .ToList();
 
             foreach (var group in groupedButtons)
@@ -90,15 +97,13 @@ namespace CAP_ChatInteractive.Windows
                 int realButtonCount = AddonRegistry.AddonDefs.Count(d => d.enabled && d.buttonType != ButtonType.Divider);
                 int dividerCount = AddonRegistry.AddonDefs.Count(d => d.enabled && d.buttonType == ButtonType.Divider);
 
-                // Accurate dynamic height:
-                //   Header (label + GapLine) + margins
-                // + every real button (34 px with padding)
-                // + every divider (GapLine ≈ 16 px)
-                // + extra group gaps + generous bottom buffer so last button is never clipped
-                float height = 85f;                         // title + first GapLine + top margin
-                height += realButtonCount * 34f;            // real buttons
-                height += dividerCount * 16f;               // GapLine for each divider
-                height += 40f;                              // safety buffer + inter-group gaps
+                int realButtonCount = defs.Count(d => d != null && d.enabled && d.buttonType != ButtonType.Divider);
+                int dividerCount = defs.Count(d => d != null && d.enabled && d.buttonType == ButtonType.Divider);
+
+                float height = 85f;
+                height += realButtonCount * 34f;
+                height += dividerCount * 16f;
+                height += 40f;
 
                 return new Vector2(320f, height);           // slightly wider for long labels
             }

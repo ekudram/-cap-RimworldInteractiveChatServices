@@ -55,11 +55,25 @@ namespace CAP_ChatInteractive
             if (toolbarButtons.Count == 0 || Current.ProgramState != ProgramState.Playing)
                 return;
 
-            // Group buttons by source mod
+            if (Current.ProgramState != ProgramState.Playing)
+                return;
+
+            try
+            {
+                DrawToolbarInternal();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[AddonMenu] DrawToolbar failed: {ex}");
+            }
+        }
+
+        private static void DrawToolbarInternal()
+        {
             var groupedButtons = toolbarButtons
-                .GroupBy(b => b.sourceMod)
-                .OrderBy(g => g.Key == "RICS" ? 0 : 1) // RICS first
-                .ThenBy(g => g.Key) // Then alphabetically
+                .GroupBy(b => b.sourceMod ?? "Unknown")
+                .OrderBy(g => g.Key == "RICS" ? 0 : 1)
+                .ThenBy(g => g.Key)
                 .ToList();
 
             // Calculate total width cleanly (spacing ONLY between items + safety padding)
@@ -71,7 +85,7 @@ namespace CAP_ChatInteractive
             float totalWidth = 0f;
             bool firstItem = true;
 
-            foreach (var def in toolbarButtons)
+            foreach (var def in visibleButtons)
             {
                 if (!firstItem)
                     totalWidth += spacing;
@@ -221,7 +235,8 @@ namespace CAP_ChatInteractive
             {
                 if (buttonDef.hotkey != null && buttonDef.hotkey.KeyDownEvent)
                 {
-                    buttonDef.ExecuteDirectly();
+                    if (buttonDef?.hotkey != null && buttonDef.hotkey.KeyDownEvent)
+                        buttonDef.ExecuteDirectly();
                 }
             }
         }
