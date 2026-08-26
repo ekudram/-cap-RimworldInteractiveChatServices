@@ -64,7 +64,7 @@ namespace CAP_ChatInteractive.Commands.TestCommands
             "!study shows the current Anomaly research project.",
             "!research shows the colony's current research project.",
             "!research [name] shows progress on that research project.",
-            "Buy a pawn with at least a race: !pawn human [xenotype] [age] [m/f]. Extras optional.",
+            "Buy a pawn: !pawn, or !pawn human [xenotype] [age] [m/f]. Bare !pawn buys if only one race is on.",
             "!races lists races available for !pawn.",
             "Modded events are off by default — enable them in RICS settings.",
             "Anomaly events are off by default — enable them in RICS settings.",

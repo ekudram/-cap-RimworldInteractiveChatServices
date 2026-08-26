@@ -23,30 +23,10 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             // Logger.Debug($"Pawn command executed by {user.Username} with args: [{string.Join(", ", args)}]");
 
-            // Handle different argument patterns
-            if (args.Length == 0)
-            {
-                return ShowPawnHelp();
-            }
-
-            string firstArg = args[0].ToLower();
-
-            // Handle list commands where moved to !races and !xenotypes for better discoverability
-
-            // Handle mypawn command
-            if (firstArg == "mypawn")
-            {
+            if (args != null && args.Length > 0 && args[0].Equals("mypawn", StringComparison.OrdinalIgnoreCase))
                 return HandleMyPawnCommand(messageWrapper);
-            }
 
-            // Handle purchase - delegate ALL parsing to BuyPawnCommandHandler
-            return BuyPawnCommandHandler.HandleBuyPawnCommand(messageWrapper, args);
-        }
-
-        private string ShowPawnHelp()
-        {
-            // return "Usage: !pawn [race] [xenotype] [gender] [age] OR !pawn list [races|xenotypes] OR !pawn mypawn";
-            return "RICS.CC.pawn.usage".Translate();
+            return BuyPawnCommandHandler.HandleBuyPawnCommand(messageWrapper, args ?? Array.Empty<string>());
         }
 
         private string HandleMyPawnCommand(ChatMessageWrapper user)

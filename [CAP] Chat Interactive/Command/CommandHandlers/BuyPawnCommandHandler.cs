@@ -27,10 +27,34 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
-                ParsePawnParameters(args, out string raceName, out string xenotypeName, out string genderName, out string ageString);
+                ParsePawnParameters(args ?? Array.Empty<string>(), out string raceName, out string xenotypeName, out string genderName, out string ageString);
 
                 if (string.IsNullOrEmpty(raceName))
-                    return "RICS.BPCH.Usage".Translate();
+                {
+                    Pawn blocking = FindBlockingAssignedPawn(messageWrapper);
+                    if (blocking != null)
+                        return "RICS.BPCH.AlreadyHasPawn".Translate(blocking.Name.ToStringFull);
+
+                    var enabledRaces = RaceUtils.GetEnabledRaces()
+                        .Where(r => r != null)
+                        .OrderBy(r => r.LabelCap.RawText)
+                        .ToList();
+
+                    if (enabledRaces.Count == 0)
+                        return "RICS.LCH.NoRacesEnabled".Translate();
+
+                    if (enabledRaces.Count == 1)
+                    {
+                        raceName = enabledRaces[0].defName;
+                    }
+                    else
+                    {
+                        string list = RaceUtils.FormatEnabledRacesPriceList(8, out int shown, out int total);
+                        if (total > shown)
+                            list += ReturnDivider + "RICS.BPCH.RacesList.More".Translate(total - shown);
+                        return list + ReturnDivider + "RICS.BPCH.PickARaceHint".Translate();
+                    }
+                }
 
                 var raceDef = RaceUtils.FindRaceByName(raceName);
                 if (raceDef == null)
@@ -166,30 +190,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var viewer = Viewers.GetViewer(messageWrapper);
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
 
-                // Already has living player-faction pawn?
-                Pawn existingPawn = assignmentManager?.GetAssignedPawn(messageWrapper);
-                if (IsBlockingExistingPawn(existingPawn))
+                Pawn existingPawn = FindBlockingAssignedPawn(messageWrapper);
+                if (existingPawn != null)
                     return "RICS.BPCH.AlreadyHasPawn".Translate(existingPawn.Name.ToStringFull);
-
-                // Platform-id + legacy username fallbacks (older saves)
-                if (assignmentManager != null)
-                {
-                    string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
-                    if (assignmentManager.viewerPawnAssignments.TryGetValue(platformId, out string thingId))
-                    {
-                        existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
-                        if (IsBlockingExistingPawn(existingPawn))
-                            return "RICS.BPCH.AlreadyHasPawn".Translate(existingPawn.Name.ToStringFull);
-                    }
-
-                    string usernameLower = messageWrapper.Username.ToLowerInvariant();
-                    if (assignmentManager.viewerPawnAssignments.TryGetValue(usernameLower, out thingId))
-                    {
-                        existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
-                        if (IsBlockingExistingPawn(existingPawn))
-                            return "RICS.BPCH.AlreadyHasPawn".Translate(existingPawn.Name.ToStringFull);
-                    }
-                }
 
                 if (!IsValidPawnRequest(raceName, xenotypeName, out RaceSettings raceSettings))
                 {
@@ -303,6 +306,36 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         }
 
         /// <summary>Living pawn still belonging to the player blocks a new purchase.</summary>
+        private static Pawn FindBlockingAssignedPawn(ChatMessageWrapper messageWrapper)
+        {
+            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+            Pawn existingPawn = assignmentManager?.GetAssignedPawn(messageWrapper);
+            if (IsBlockingExistingPawn(existingPawn))
+                return existingPawn;
+
+            if (assignmentManager == null)
+                return null;
+
+            string platformId = $"{messageWrapper.Platform.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
+            if (assignmentManager.viewerPawnAssignments.TryGetValue(platformId, out string thingId))
+            {
+                existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
+                if (IsBlockingExistingPawn(existingPawn))
+                    return existingPawn;
+            }
+
+            string usernameLower = messageWrapper.Username.ToLowerInvariant();
+            if (assignmentManager.viewerPawnAssignments.TryGetValue(usernameLower, out thingId))
+            {
+                existingPawn = GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
+                if (IsBlockingExistingPawn(existingPawn))
+                    return existingPawn;
+            }
+
+            return null;
+        }
+
+        /// <summary>Living pawn still belonging to the player blocks a new purchase.</summary>
         private static bool IsBlockingExistingPawn(Pawn pawn)
         {
             if (pawn == null || pawn.Dead)
@@ -344,14 +377,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (raceDef == null)
                     return new BuyPawnResult(false, "RICS.BPCH.RaceDefNotFound".Translate(raceName));
 
-                if (raceSettings != null)
+                Gender? fixedGender = ParseGender(genderName);
+                if (fixedGender.HasValue)
                 {
-                    var requestedGender = ParseGender(genderName);
-                    if (requestedGender.HasValue && !IsGenderAllowed(raceSettings.AllowedGenders, requestedGender.Value))
+                    if (raceSettings != null && !IsGenderAllowed(raceSettings.AllowedGenders, fixedGender.Value))
                     {
                         string allowedText = GetAllowedGendersDescription(raceSettings.AllowedGenders);
                         return new BuyPawnResult(false, "RICS.BPCH.GenderNotAllowed".Translate(raceName, allowedText));
                     }
+                }
+                else
+                {
+                    fixedGender = PickRandomAllowedGender(raceSettings?.AllowedGenders);
                 }
 
                 // forceNoGear=false: normal starting clothes; dontGiveWeapon=true: clean delivery
@@ -379,7 +416,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     biocodeApparelChance: 0f,
                     fixedBiologicalAge: age,
                     fixedChronologicalAge: null,
-                    fixedGender: ParseGender(genderName),
+                    fixedGender: fixedGender,
                     fixedLastName: null,
                     forceNoIdeo: false,
                     forceNoBackstory: false,
@@ -635,6 +672,24 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 "female" or "f" => Gender.Female,
                 _ => null // Random gender
             };
+        }
+
+        private static Gender? PickRandomAllowedGender(AllowedGenders allowed)
+        {
+            if (allowed == null)
+                return null;
+
+            var options = new List<Gender>();
+            if (allowed.AllowMale)
+                options.Add(Gender.Male);
+            if (allowed.AllowFemale)
+                options.Add(Gender.Female);
+            if (allowed.AllowOther)
+                options.Add(Gender.None);
+
+            if (options.Count == 0)
+                return null;
+            return options.RandomElement();
         }
 
         /// <summary>

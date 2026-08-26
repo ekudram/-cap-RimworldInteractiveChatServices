@@ -120,7 +120,7 @@
   
   <!-- Pawn Command-->
   <RICS.CC.pawn.usage>
-    Usage: !pawn {race} [xenotype] [gender] [age] OR !pawn mypawn Wiki: https://tinyurl.com/RICSPawnCMD
+    Usage: !pawn [race] [xenotype] [gender] [age]. Bare !pawn buys the only enabled race, or lists races if several. Wiki: https://tinyurl.com/RICSPawnCMD
   </RICS.CC.pawn.usage>
 
   <RICS.CC.pawn.handlist.usage>
