@@ -129,7 +129,7 @@ namespace CAP_ChatInteractive
             sb.AppendLine($"");
 
             sb.AppendLine($"<b>Related Chat Commands:</b>");
-            sb.AppendLine($"• <b>!pawn [race] [xenotype] [gender] [age]</b>");
+            sb.AppendLine($"• <b>!pawn</b> (buys the only enabled race, or lists races) / <b>!pawn [race] [xenotype] [gender] [age]</b>");
             sb.AppendLine($"• <b>!races</b> / <b>!xenotypes [race]</b>");
             sb.AppendLine($"");
 

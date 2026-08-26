@@ -1,19 +1,9 @@
-// RescueMeCommandHandler.cs
+// File: RescueMeCommandHandler.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-//
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
 // !rescueme — recover vanished viewer pawns.
 // Captured/kidnapped → world PrisonerWillingToJoin site (go get them).
@@ -24,7 +14,6 @@ using CAP_ChatInteractive.Commands.Cooldowns;
 using RimWorld;
 using RimWorld.Planet;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Verse;
 
@@ -52,6 +41,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
     public static class RescueMeCommandHandler
     {
         public const string CommandName = "rescueme";
+        private const string ReturnDivider = " | ";
         private const int DefaultLeftBehindCost = 400;
         private const int DefaultCapturedCost = 800;
         private const int SiteMinDist = 4;
@@ -89,9 +79,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                   args[0].Equals("status", StringComparison.OrdinalIgnoreCase);
 
                 RescueDiagnosis diag = Diagnose(message);
-                Logger.Debug(
-                    $"[RescueMe] kind={diag.Kind} pawn={diag.Pawn?.LabelShort ?? "null"} " +
-                    $"holder={diag.HoldingFaction?.Name ?? "none"} note={diag.DebugNote}");
 
                 switch (diag.Kind)
                 {
@@ -134,16 +121,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     ok = TryDropPodHome(diag, message.Username, out chatResult);
 
                 if (!ok)
-                    return chatResult; // failure message, no charge
+                    return chatResult; // no charge
 
                 viewer.TakeCoins(cost);
                 cooldownManager.RecordCommandUse(CommandName);
 
-                Logger.Message(
-                    $"[RescueMe] {message.Username} rescued path={diag.Kind} " +
-                    $"pawn={diag.Pawn.LabelShort} cost={cost}");
-
-                return chatResult + " " + "RICS.RMCH.CostPaid".Translate(cost, currency, viewer.Coins, currency);
+                return chatResult
+                       + ReturnDivider
+                       + "RICS.RMCH.CostPaid".Translate(cost, currency, viewer.Coins, currency);
             }
             catch (Exception ex)
             {
@@ -165,9 +150,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             Pawn pawn = assignment.GetAssignedPawn(message);
             if (pawn == null)
             {
-                // Distinguish no assignment vs missing ThingID
-                string id = null;
-                // HasAssignedPawn returns true even if dead; GetAssignedPawn null means not found
                 if (assignment.HasAssignedPawn(message))
                 {
                     result.Kind = RescueKind.Missing;
@@ -200,10 +182,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return result;
             }
 
-            // Prisoner of non-player (e.g. still on a map)
             if (pawn.IsPrisonerOfColony)
             {
-                // Our prison — treat as safe
                 result.Kind = RescueKind.Safe;
                 result.DebugNote = "player prisoner";
                 return result;
@@ -273,10 +253,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static int GetCost(RescueKind kind, CommandSettings cmdSettings)
         {
             int left = cmdSettings != null
-                ? cmdSettings.GetCustom<int>("leftBehindCost", DefaultLeftBehindCost)
+                ? cmdSettings.GetCustom("leftBehindCost", DefaultLeftBehindCost)
                 : DefaultLeftBehindCost;
             int cap = cmdSettings != null
-                ? cmdSettings.GetCustom<int>("capturedCost", DefaultCapturedCost)
+                ? cmdSettings.GetCustom("capturedCost", DefaultCapturedCost)
                 : DefaultCapturedCost;
             if (left < 0) left = DefaultLeftBehindCost;
             if (cap < 0) cap = DefaultCapturedCost;
@@ -293,8 +273,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 _ => "RICS.RMCH.GenericError".Translate()
             };
         }
-
-        // ─── Left behind: drop pod home ───────────────────────────────────────
 
         private static bool TryDropPodHome(RescueDiagnosis diag, string viewerName, out string message)
         {
@@ -317,14 +295,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             try
             {
-                // Ensure colonist ownership before drop
                 if (pawn.Faction != Faction.OfPlayer)
                     pawn.SetFaction(Faction.OfPlayer);
 
                 if (pawn.guest != null && pawn.IsPrisoner)
                     pawn.guest.SetGuestStatus(null);
 
-                // Despawn if on another map
                 if (pawn.Spawned)
                     pawn.DeSpawn(DestroyMode.Vanish);
 
@@ -353,8 +329,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
         }
 
-        // ─── Captured: world PrisonerWillingToJoin site ───────────────────────
-
         private static bool TryStartCapturedRescueMission(RescueDiagnosis diag, string viewerName, out string message)
         {
             message = null;
@@ -368,11 +342,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             if (holder == null || holder == Faction.OfPlayer)
-            {
-                // Captive state without clear holder — fall back to drop pod
-                Logger.Debug("[RescueMe] Captured without holder faction — drop-pod fallback");
                 return TryDropPodHome(diag, viewerName, out message);
-            }
 
             SitePartDef prisonerPart = DefDatabase<SitePartDef>.GetNamedSilentFail("PrisonerWillingToJoin");
             if (prisonerPart == null)
@@ -397,7 +367,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return false;
                 }
 
-                // Free from kidnapped tracker / despawn so we can host on the site
                 PreparePawnForSiteCustody(pawn, holder);
 
                 SitePart part = site.parts?.FirstOrDefault(p => p.def == prisonerPart);
@@ -413,7 +382,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (!part.things.TryAdd(pawn, canMergeWithExistingStacks: false))
                 {
-                    // Comp path fallback
                     var comp = site.GetComponent<PrisonerWillingToJoinComp>();
                     if (comp == null || !comp.pawn.TryAdd(pawn, canMergeWithExistingStacks: false))
                     {
@@ -436,8 +404,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     letterLabel, letterText, LetterDefOf.NeutralEvent, new LookTargets(site));
 
                 message = "RICS.RMCH.MissionSuccess".Translate(pawn.LabelShort, factionName);
-                Logger.Message(
-                    $"[RescueMe] World rescue site created tile={tile} faction={factionName} pawn={pawn.LabelShort}");
                 return true;
             }
             catch (Exception ex)
@@ -450,7 +416,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static void PreparePawnForSiteCustody(Pawn pawn, Faction hostFaction)
         {
-            // Remove from all kidnapped lists
             foreach (Faction f in Find.FactionManager.AllFactionsListForReading)
             {
                 if (f?.kidnapped == null) continue;
@@ -466,15 +431,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (pawn.guest != null && hostFaction != null)
                     pawn.guest.SetGuestStatus(hostFaction, GuestStatus.Prisoner);
             }
-            catch (Exception ex)
+            catch
             {
-                Logger.Debug($"[RescueMe] SetGuestStatus soft-fail: {ex.Message}");
+                // soft-fail guest status — site still usable
             }
         }
 
         /// <summary>
         /// Fallback when site creation fails: free from kidnap and drop pod home.
-        /// Still recovers the pawn (weaker fantasy, reliable).
         /// </summary>
         private static bool TryDropPodHomeAfterFreeFromKidnap(RescueDiagnosis diag, string viewerName, out string message)
         {
@@ -489,7 +453,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             bool ok = TryDropPodHome(diag, viewerName, out message);
             if (ok)
-                message = "RICS.RMCH.DropSuccessFallback".Translate(diag.Pawn.LabelShort) + " " + message;
+            {
+                message = "RICS.RMCH.DropSuccessFallback".Translate(diag.Pawn.LabelShort)
+                          + ReturnDivider
+                          + message;
+            }
             return ok;
         }
     }

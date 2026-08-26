@@ -19,6 +19,15 @@
   <RICS.SBCH.NoProcedure>No surgical procedure found for {0} on your pawn.</RICS.SBCH.NoProcedure>
   <RICS.SBCH.NoBodyParts>No suitable body parts found for {0} surgery. Available: {1}. Try specifying left/right.</RICS.SBCH.NoBodyParts>
   <RICS.SBCH.NoBodyPartsNotSpecified>No suitable body parts found.</RICS.SBCH.NoBodyPartsNotSpecified>
+  <RICS.SBCH.AlreadyHasImplant>Cannot install: {0} already has an implant/prosthetic ({1}).</RICS.SBCH.AlreadyHasImplant>
+  <RICS.SBCH.RemoveExistingHint>Remove the existing part first (surgery table / doctor), then buy the new implant.</RICS.SBCH.RemoveExistingHint>
+  <RICS.SBCH.PartMissing>Body part is missing and cannot receive this implant: {0}.</RICS.SBCH.PartMissing>
+  <RICS.SBCH.ImplantCannotAfford>You need {0} for {1}× {2} surgery! You have {3}.</RICS.SBCH.ImplantCannotAfford>
+  <RICS.SBCH.ProcedureMissing>Error: {0} procedure not available (mod configuration issue).</RICS.SBCH.ProcedureMissing>
+  <RICS.SBCH.GenderNone>Your pawn has no gender to swap.</RICS.SBCH.GenderNone>
+  <RICS.SBCH.DeliveryLockerShort>delivered to your Rimazon Locker</RICS.SBCH.DeliveryLockerShort>
+  <RICS.SBCH.DeliveryDropPodShort>delivered via drop pod</RICS.SBCH.DeliveryDropPodShort>
+  <RICS.SBCH.DeliveryColonyShort>delivered to colony</RICS.SBCH.DeliveryColonyShort>
   <RICS.SBCH.SuccessScheduled>Scheduled {0} {1} surgery for {2}! Implant {3} please give them to the doctor. Remaining: {4}.</RICS.SBCH.SuccessScheduled>
 
   <!-- Special surgery handlers -->

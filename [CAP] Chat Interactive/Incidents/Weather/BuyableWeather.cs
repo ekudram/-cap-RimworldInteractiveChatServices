@@ -1,4 +1,4 @@
-﻿// BuyableWeather.cs
+// BuyableWeather.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -16,6 +16,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
 // Represents a weather event that can be purchased and triggered in the game.
+using System;
 using System.Linq;
 using RimWorld;
 using Verse;
@@ -28,37 +29,43 @@ namespace CAP_ChatInteractive.Incidents
         public string Label { get; set; }
         public string Description { get; set; }
 
-        // Purchase settings
         public int BaseCost { get; set; } = 200;
         public string KarmaType { get; set; } = "Neutral";
         public int EventCap { get; set; } = 3;
+
         /// <summary>
-        /// Default false like BuyableIncident; constructor enables Core/DLC and leaves third-party mod weather off.
+        /// Default false (safe). Constructor enables Core/DLC only; third-party mod weather stays off until manually enabled.
         /// </summary>
         public bool Enabled { get; set; } = false;
 
-        // Additional data
         public string ModSource { get; set; } = "RimWorld";
+
         /// <summary>
         /// Whether this weather belongs to a currently active (loaded) mod.
-        /// Used by external RICS-Pricelist GitHub exporter to filter weather shown in the online store.
-        /// Reset to false for weather whose mod is no longer active.
+        /// Used by external RICS-Pricelist GitHub exporter. False when the mod is no longer active.
         /// </summary>
         public bool modactive { get; set; } = false;
+
         public int Version { get; set; } = 1;
 
         public BuyableWeather() { }
 
         public BuyableWeather(WeatherDef weatherDef)
         {
+            if (weatherDef == null)
+                throw new ArgumentNullException(nameof(weatherDef));
+
             DefName = weatherDef.defName;
             Label = weatherDef.label;
-            Description = weatherDef.description; // $"Change weather to {weatherDef.label}";
-            ModSource = weatherDef.modContentPack?.Name ?? "RimWorld";
+            Description = weatherDef.description;
+            ModSource = weatherDef.modContentPack?.Name
+                        ?? weatherDef.modContentPack?.PackageId
+                        ?? "Unknown";
 
             SetDefaultPricing(weatherDef);
 
-            // Match events store: Core + official DLC weather on; third-party mod weather off until enabled manually
+            // Match events store: Core + official DLC weather on; third-party mod weather off until enabled manually.
+            // Unknown / null modContentPack is treated as third-party (disabled) — never assume Core.
             if (ShouldAutoDisableModWeather(weatherDef))
                 Enabled = false;
             else
@@ -67,39 +74,52 @@ namespace CAP_ChatInteractive.Incidents
 
         /// <summary>
         /// Same policy as BuyableIncident.ShouldAutoDisableModEvent:
-        /// Core/RimWorld and official DLC stay available; third-party mod weather defaults off.
+        /// Core/RimWorld and official DLC stay available; third-party mod weather defaults off on first discovery.
         /// </summary>
-        private bool ShouldAutoDisableModWeather(WeatherDef weatherDef)
+        public static bool ShouldAutoDisableModWeather(WeatherDef weatherDef)
         {
-            if (ModSource == "RimWorld" || ModSource == "Core")
+            var pack = weatherDef?.modContentPack;
+
+            // No pack metadata (broken/injected defs, some SoS edge cases) → treat as mod content, stay off
+            if (pack == null)
+                return true;
+
+            string packageId = pack.PackageId ?? string.Empty;
+            if (packageId.StartsWith("Ludeon.", StringComparison.OrdinalIgnoreCase))
                 return false;
 
-            // Official DLCs (same set as events; Anomaly intentionally not listed)
+            // Official expansion content (package ids / names)
+            if (packageId.IndexOf("Royalty", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                packageId.IndexOf("Ideology", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                packageId.IndexOf("Biotech", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                packageId.IndexOf("Odyssey", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return false;
+            }
+
+            string modSource = pack.Name ?? string.Empty;
+            if (modSource == "RimWorld" || modSource == "Core")
+                return false;
+
+            // Official DLC display names (Anomaly intentionally not auto-enabled — same as events)
             string[] officialDLCs = { "Royalty", "Ideology", "Biotech", "Odyssey" };
-            if (officialDLCs.Any(dlc => ModSource != null && ModSource.Contains(dlc)))
+            if (officialDLCs.Any(dlc => modSource.IndexOf(dlc, StringComparison.OrdinalIgnoreCase) >= 0))
                 return false;
 
-            // Also treat Ludeon package ids / content as vanilla-side if name is odd
-            string packageId = weatherDef?.modContentPack?.PackageId;
-            if (!string.IsNullOrEmpty(packageId) &&
-                packageId.StartsWith("Ludeon.", System.StringComparison.OrdinalIgnoreCase))
-                return false;
-
+            // Everything else (Save Our Ship, VE, etc.) → disabled on first discovery
             return true;
         }
 
         private void SetDefaultPricing(WeatherDef weatherDef)
         {
-            string defName = weatherDef.defName.ToLower();
+            string defName = weatherDef.defName?.ToLowerInvariant() ?? string.Empty;
 
-            // Doom weather types - most expensive and destructive
             if (defName.Contains("tox") || defName.Contains("blood") || defName.Contains("vomit") ||
                 defName.Contains("doom") || defName.Contains("cataclysm"))
             {
-                BaseCost = 600; // 2x storm pricing
+                BaseCost = 600;
                 KarmaType = "Doom";
             }
-            // Major storms and extreme weather
             else if (defName.Contains("hurricane") || defName.Contains("tornado") ||
                      defName.Contains("catastrophe") || defName.Contains("blizzard") ||
                      defName.Contains("torrential") || defName.Contains("storm"))
@@ -107,25 +127,21 @@ namespace CAP_ChatInteractive.Incidents
                 BaseCost = 300;
                 KarmaType = "Bad";
             }
-            // Cold weather types
             else if (defName.Contains("snow"))
             {
                 BaseCost = 200;
-                KarmaType = isHeavySnow(defName) ? "Bad" : "Neutral";
+                KarmaType = IsHeavySnow(defName) ? "Bad" : "Neutral";
             }
-            // Precipitation and reduced visibility
             else if (defName.Contains("rain") || defName.Contains("fog"))
             {
                 BaseCost = 150;
                 KarmaType = "Neutral";
             }
-            // Clear weather - beneficial
             else if (defName.Contains("clear") || defName.Contains("sunny"))
             {
                 BaseCost = 100;
                 KarmaType = "Good";
             }
-            // Default for unclassified weather
             else
             {
                 BaseCost = 175;
@@ -133,11 +149,12 @@ namespace CAP_ChatInteractive.Incidents
             }
         }
 
-        private bool isHeavySnow(string defName)
+        private static bool IsHeavySnow(string defName)
         {
             return defName.Contains("hard") || defName.Contains("heavy");
         }
     }
+
     public class TemperatureVariant
     {
         public string BaseWeatherDefName { get; set; }

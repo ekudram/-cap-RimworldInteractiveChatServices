@@ -399,7 +399,7 @@ namespace CAP_ChatInteractive
                 {
                     if (IsConnected)
                     {
-                        _client.SendMessage(e.Channel, $"[CAP] Rimwold Interactive Chat Service version {modVer} activated!", false);
+                        _client.SendMessage(e.Channel, $"[CAP] Rimworld Interactive Chat Service version {modVer} activated!", false);
                     }
                 });
             }

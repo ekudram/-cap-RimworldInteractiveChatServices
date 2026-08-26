@@ -321,7 +321,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             {
                 return "RICS.CC.common.PurchaseLimit".Translate(globalSettings.MaxItemPurchases, globalSettings.EventCooldownDays);
             }
-            return SurgeryItemCommandHandler.HandleSurgery(messageWrapper, args);
+            return SurgeryCommandHandler.HandleSurgery(messageWrapper, args);
         }
     }
 }

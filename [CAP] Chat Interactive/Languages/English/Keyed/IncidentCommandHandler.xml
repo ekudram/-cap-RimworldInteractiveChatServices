@@ -26,4 +26,10 @@
 
   <RICS.ICH.RETURN.ErrorTriggeringIncident>Error triggering incident. Please try again.</RICS.ICH.RETURN.ErrorTriggeringIncident>
 
+  <RICS.ICH.RETURN.IncidentSuccess>{0} has been triggered!</RICS.ICH.RETURN.IncidentSuccess>
+  <RICS.ICH.RETURN.IncidentDefMissing>Incident '{0}' definition not found.</RICS.ICH.RETURN.IncidentDefMissing>
+  <RICS.ICH.RETURN.IncidentNoWorker>No worker for incident '{0}'.</RICS.ICH.RETURN.IncidentNoWorker>
+  <RICS.ICH.RETURN.IncidentNoMap>No player home map available for '{0}'.</RICS.ICH.RETURN.IncidentNoMap>
+  <RICS.ICH.RETURN.IncidentCannotFire>'{0}' cannot be triggered right now.</RICS.ICH.RETURN.IncidentCannotFire>
+
 </LanguageData>

@@ -19,7 +19,7 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
+using System.Text.RegularExpressions;
 using Verse;
 
 namespace _CAP__Chat_Interactive.Utilities
@@ -76,6 +76,61 @@ namespace _CAP__Chat_Interactive.Utilities
             }
 
             return enabledRaces;
+        }
+
+        /// <summary>
+        /// Chat list of enabled races and base prices. Same look as !races.
+        /// Does not include xenotypes.
+        /// </summary>
+        public static string FormatEnabledRacesPriceList(int maxEntries, out int shown, out int total)
+        {
+            shown = 0;
+            total = 0;
+            try
+            {
+                var enabledRaces = GetEnabledRaces()
+                    .Where(r => r != null)
+                    .OrderBy(r => r.LabelCap.RawText)
+                    .ToList();
+
+                total = enabledRaces.Count;
+                if (total == 0)
+                    return "RICS.LCH.NoRacesEnabled".Translate();
+
+                var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                var currency = settings?.CurrencyName?.Trim() ?? "¢";
+                var lines = new List<string>();
+
+                foreach (var race in enabledRaces)
+                {
+                    var raceSettings = RaceSettingsManager.GetRaceSettings(race.defName);
+                    if (raceSettings?.Enabled != true)
+                        continue;
+
+                    string name = race.LabelCap.RawText ?? race.defName;
+                    if (!string.IsNullOrEmpty(name))
+                        name = Regex.Replace(name, @"<[^>]+>", string.Empty).Trim();
+                    lines.Add($"{name}: {raceSettings.BasePrice} {currency}");
+                }
+
+                if (lines.Count == 0)
+                    return "RICS.LCH.NoRacesEnabled".Translate();
+
+                shown = Math.Min(Math.Max(maxEntries, 0), lines.Count);
+                string resultList = string.Join(" | ", lines.Take(shown));
+                string header = "RICS.LCH.AllRaces".Translate();
+                return $"🔍 {header}: {resultList}";
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error listing races: {ex}");
+                shown = 0;
+                total = 0;
+                string msg = ex.Message != null && ex.Message.Length > 80
+                    ? ex.Message.Substring(0, 80) + "..."
+                    : ex.Message ?? "";
+                return "RICS.LCH.ErrorListingRaces".Translate(msg);
+            }
         }
 
         public static bool IsRaceEnabled(string raceDefName)

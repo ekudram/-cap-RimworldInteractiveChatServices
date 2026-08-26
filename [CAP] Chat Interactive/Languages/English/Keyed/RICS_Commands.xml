@@ -67,6 +67,12 @@
   <RICS.CC.pricecheck.success>
     💰 Price Check: {0} {1} {2} {3} = {4} {5}
   </RICS.CC.pricecheck.success>
+
+  <RICS.CC.pricecheck.error>Error calculating price. Check the log.</RICS.CC.pricecheck.error>
+  <RICS.CC.pricecheck.meleeDps>⚔️ Melee DPS: {0}</RICS.CC.pricecheck.meleeDps>
+  <RICS.CC.pricecheck.rangedDamage>🔫 Damage: {0}</RICS.CC.pricecheck.rangedDamage>
+  <RICS.CC.pricecheck.rangedDamageAp>🔫 Damage: {0} | AP: {1}</RICS.CC.pricecheck.rangedDamageAp>
+  <RICS.CC.pricecheck.rangedGeneric>🔫 Ranged weapon</RICS.CC.pricecheck.rangedGeneric>
   
   <!-- Surgery Command-->
   <RICS.CC.surgery.usage>
@@ -114,7 +120,7 @@
   
   <!-- Pawn Command-->
   <RICS.CC.pawn.usage>
-    Usage: !pawn {race} [xenotype] [gender] [age] OR !pawn mypawn Wiki: https://tinyurl.com/RICSPawnCMD
+    Usage: !pawn [race] [xenotype] [gender] [age]. Bare !pawn buys the only enabled race, or lists races if several. Wiki: https://tinyurl.com/RICSPawnCMD
   </RICS.CC.pawn.usage>
 
   <RICS.CC.pawn.handlist.usage>

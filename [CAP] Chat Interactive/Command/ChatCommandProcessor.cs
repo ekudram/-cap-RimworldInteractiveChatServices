@@ -1,22 +1,12 @@
-﻿// ChatCommandProcessor.cs
+// ChatCommandProcessor.cs
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
-// Processes chat messages and commands from viewers.
+// Heartbeat: all platform chat → commands / replies / registration (modder-facing public API).
 using CAP_ChatInteractive.Commands.Cooldowns;
+using CAP_ChatInteractive.Utilities;
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -28,72 +18,56 @@ namespace CAP_ChatInteractive
 {
     public static class ChatCommandProcessor
     {
-        public static readonly Dictionary<string, ChatCommand> _commands = new Dictionary<string, ChatCommand>(StringComparer.OrdinalIgnoreCase);
+        /// <summary>Registered commands by name/alias (case-insensitive). Public for tools/UI that need the map.</summary>
+        public static readonly Dictionary<string, ChatCommand> _commands =
+            new Dictionary<string, ChatCommand>(StringComparer.OrdinalIgnoreCase);
+
         private static readonly Dictionary<string, DateTime> _userCooldowns = new Dictionary<string, DateTime>();
 
         public static event Action<ChatMessageWrapper> OnMessageProcessed;
         public static event Action<ChatMessageWrapper, string> OnCommandExecuted;
 
-        // ========== MESSAGE PROCESSING ==========
-        /// <summary>
-        /// ALL chat messages funnel through here
-        /// From all platforms
-        /// </summary>
-        /// <param name="message"></param>
+        // ── Message entry ───────────────────────────────────────────────
+
+        /// <summary>All platform chat messages enter here (Twitch / YouTube / Kick / etc.).</summary>
         public static void ProcessMessage(ChatMessageWrapper message)
         {
-            //Logger.Debug($"Processing message from {message.Username} on {message.Platform}: {message.Message}");
+            if (message == null || string.IsNullOrEmpty(message.Message))
+                return;
+
             try
             {
-                // add validate viewer name here
-                // In ChatCommandProcessor.cs / ProcessMessage
                 var viewer = Viewers.GetViewer(message);
                 if (viewer != null)
                 {
                     bool nameChanged = viewer.UpdateDisplayName(message.DisplayName);
-
-                    // Optional: you could send a fun message only on actual change
                     if (nameChanged && Rand.Chance(0.4f))
                     {
-                        ChatCommandProcessor.SendMessageToUsername(
+                        SendMessageToUsername(
                             message.Username,
                             $"✨ {viewer.DisplayName} just got a fresh new name! Welcome back!");
                     }
                 }
 
-                // Process lootbox welcome for ALL messages (commands and regular chat)
-                // This ensures viewers get daily lootboxes when they first chat each day
                 ProcessLootboxWelcome(message);
 
-                // Check if it's a command
                 if (IsCommand(message.Message))
-                {
                     ProcessCommand(message);
-                }
                 else
-                {
-                    // Handle regular chat messages
                     ProcessChatMessage(message);
-                }
 
                 OnMessageProcessed?.Invoke(message);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error processing chat message: {ex.Message}");
-                // Send a generic error message to the user
-                // SendMessageToUser(message, "An error occurred while processing your message. Please try again.");
+                Logger.Error($"[ChatCommandProcessor] Error processing chat message: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// Special path for the AI ChatBot (Masie) to execute commands.
-        /// Returns the result string instead of sending it to chat.
-        /// Bot Does not need a command cooldown.
-        /// Add settings for MOD command to the bot your make sure you bot does not know how to use them.
-        /// What the bot can do can be controlled by the Bots Knowledge base in its code.
+        /// AI ChatBot path: execute a command and return the result string (no outbound chat).
+        /// Cooldowns are not applied (internal bot; spam protection is for live platforms).
         /// </summary>
-        /// <param name="message"></param>
         public static string ProcessAICommand(ChatMessageWrapper message)
         {
             if (message == null || string.IsNullOrWhiteSpace(message.Message))
@@ -105,8 +79,6 @@ namespace CAP_ChatInteractive
 
             try
             {
-                Logger.Debug($"[RICS AI] Processing AI command from '{message.Username}': {message.Message}");
-
                 if (!IsGameReady())
                     return "Error: Game is not ready yet";
 
@@ -116,59 +88,37 @@ namespace CAP_ChatInteractive
 
                 string commandText = parts[0].TrimStart('!', '$').ToLowerInvariant();
                 string[] args = parts.Skip(1).ToArray();
-
-                // Resolve aliases
                 commandText = ResolveCommandFromAlias(commandText);
 
-                if (!_commands.TryGetValue(commandText, out var command))
+                if (!_commands.TryGetValue(commandText, out var command) || command == null)
                     return $"Error: Unknown command '{commandText}'";
 
                 var viewer = Viewers.GetViewer(message);
                 if (viewer == null)
                     return "Error: Could not create viewer";
 
-                // === FIX: Register the AI bot's platform identity ===
-                // Without this, "aichatbot" never gets added to PlatformUserIds,
-                // so the bot relies on the fragile username-only fallback in HasPermission().
+                // Ensure aichatbot platform id for permission bypass
                 viewer.UpdateFromMessage(message);
 
-                // We will never ban our own local bot.  
-                //if (viewer.IsBanned && !message.Username.Equals("masie", StringComparison.OrdinalIgnoreCase))
-                //    return "Error: Viewer is banned";
-
-                // Permission check (AI bot bypasses via HasPermission override)
                 if (!command.CanExecute(message))
                     return $"Error: Insufficient permission for command '{commandText}'";
 
-
-                // Cooldowns are for Services to prevent chat spam in Twitch, Youtube, Kick, etc. Since Masie is an AI bot executing commands internally.
-                // Cooldown check, Bypass cooldowns for the AI bot (Masie) to allow rapid testing and execution, but you can choose to enforce if desired
-                //if (IsOnCooldown(message.Username, command))
-                //    return "Error: Command is on cooldown";
-
-                // Execute
-                string result = command.Execute(message, args) ?? "";
-
-                // Record cooldown usage for AI bot if you want to enforce cooldowns (currently bypassed)
-                // UpdateCooldown(message.Username, command);
-
-                Logger.Debug($"[RICS AI] AI command '{commandText}' executed. Result: {result}");
-
-                return string.IsNullOrWhiteSpace(result) ? "Command executed successfully (no output)" : result;
+                string result = command.Execute(message, args) ?? string.Empty;
+                return string.IsNullOrWhiteSpace(result)
+                    ? "Command executed successfully (no output)"
+                    : result;
             }
             catch (Exception ex)
             {
-                Logger.Error($"[RICS AI] Error executing AI command '{message.Message}': {ex.Message}");
+                Logger.Error($"[ChatCommandProcessor] AI command '{message.Message}': {ex.Message}");
                 return $"Error: {ex.Message}";
             }
         }
 
-        // Do we check this in other places too?
         public static bool IsGameReady()
         {
             try
             {
-                // Check if Current.Game is available and the game is in a playable state
                 return Current.Game != null &&
                        Current.ProgramState == ProgramState.Playing &&
                        Find.CurrentMap != null;
@@ -181,22 +131,17 @@ namespace CAP_ChatInteractive
 
         public static bool IsCommand(string message)
         {
-            if (string.IsNullOrEmpty(message)) return false;
+            if (string.IsNullOrEmpty(message))
+                return false;
 
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            string prefix = settings?.Prefix ?? "!";
+            string buyPrefix = settings?.BuyPrefix ?? "$";
 
             string trimmed = message.TrimStart();
-
-            return message.StartsWith(settings.Prefix) ||
-                   message.StartsWith(settings.BuyPrefix) ||
-                   message.StartsWith("$");
-
-        }
-
-        private static void SendPleaseWaitMessage(ChatMessageWrapper message)
-        {
-            // SendMessageToUser(message, "Please wait until the game has fully started before using commands.");
-            return;
+            return (!string.IsNullOrEmpty(prefix) && trimmed.StartsWith(prefix)) ||
+                   (!string.IsNullOrEmpty(buyPrefix) && trimmed.StartsWith(buyPrefix)) ||
+                   trimmed.StartsWith("$");
         }
 
         private static void ProcessLootboxWelcome(ChatMessageWrapper message)
@@ -204,212 +149,192 @@ namespace CAP_ChatInteractive
             try
             {
                 var lootboxComponent = Current.Game?.GetComponent<LootBoxComponent>();
-                if (lootboxComponent == null) return;
+                if (lootboxComponent == null)
+                    return;
 
-                // Check if the openlootbox command is enabled before processing
-                if (CommandSettingsManager.GetSettings("openlootbox").Enabled)
-                {
-                    // Process viewer message to check for daily lootboxes
+                if (CommandSettingsManager.GetSettings("openlootbox")?.Enabled == true)
                     lootboxComponent.ProcessViewerMessage(message);
-                }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error processing lootbox welcome: {ex.Message}");
+                Logger.Error($"[ChatCommandProcessor] Lootbox welcome: {ex.Message}");
             }
         }
-        
 
+        // ── Command pipeline ────────────────────────────────────────────
 
-        // ========== COMMAND PROCESSING ==========
         private static void ProcessCommand(ChatMessageWrapper message)
         {
+            // Silent when not in play (no chat spam during load)
             if (!IsGameReady())
-            {
-                SendPleaseWaitMessage(message);
                 return;
-            }
 
-            // Fast exit: Empty message
-            if (string.IsNullOrEmpty(message.Message))
-            {
+            if (message == null || string.IsNullOrEmpty(message.Message))
                 return;
-            }
 
-            // Fast exit: Empty username (shouldn't happen, but safety first)
             if (string.IsNullOrEmpty(message.Username))
             {
-                Logger.Warning("Message received with null username, skipping");
+                Logger.Warning("[ChatCommandProcessor] Message with null username, skipping");
                 return;
             }
 
+            var globalSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (globalSettings == null)
+                return;
+
             var parts = message.Message.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 0) return;
+            if (parts.Length == 0)
+                return;
 
-            var commandText = parts[0];
-            var args = parts.Skip(1).ToArray();
-            var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            string commandText = parts[0];
+            string[] args = parts.Skip(1).ToArray();
 
-            string originalCommandText = commandText; // preserve for logging if needed
+            string prefix = globalSettings.Prefix ?? "!";
+            string buyPrefix = globalSettings.BuyPrefix ?? "$";
 
-            // Strip prefix if present (normal path)
-            if (commandText.StartsWith(globalSettings.Prefix) ||
-                commandText.StartsWith(globalSettings.BuyPrefix))
-            {
-                commandText = commandText.Substring(1);
-            }
+            if (!string.IsNullOrEmpty(prefix) && commandText.StartsWith(prefix))
+                commandText = commandText.Substring(prefix.Length);
+            else if (!string.IsNullOrEmpty(buyPrefix) && commandText.StartsWith(buyPrefix))
+                commandText = commandText.Substring(buyPrefix.Length);
 
             commandText = commandText.ToLowerInvariant();
+            commandText = ResolveCommandFromAlias(commandText);
 
-            // Alias resolution (your existing code)
-            string resolvedCommandName = ResolveCommandFromAlias(commandText);
-            if (resolvedCommandName != commandText)
+            ChatCommand command = null;
+            if (_commands.TryGetValue(commandText, out command) && command != null)
             {
-                commandText = resolvedCommandName;
-            }
-
-            // Normal command lookup
-            if (_commands.TryGetValue(commandText, out var command))
-            {
-                // → proceed with normal cooldown / permission / execute flow
-                // (rest of your function continues here unchanged)
+                // Normal path
             }
             else
             {
-                // Command not found → check for legacy $ buy fallback
-                //Logger.Debug($"Command '{commandText}' not found. Checking for legacy $ buy fallback.");
+                // Legacy $ → buy (when not already a registered command name)
                 string trimmed = message.Message.TrimStart();
                 if (trimmed.StartsWith("$"))
                 {
-                    // It's a $ message and no normal command matched → treat as buy
                     commandText = "buy";
-
-                    // Extract the actual buy arguments (skip the $)
                     string rest = trimmed.Substring(1).Trim();
                     args = string.IsNullOrWhiteSpace(rest)
                         ? Array.Empty<string>()
-                        : rest.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);  
-                    //Logger.Debug($"Legacy $ command detected. Interpreting as 'buy' with args: {string.Join(", ", args)}");
-                    // Optional: mild logging so you can see when legacy path is hit
-                    // Logger.Debug($"$ buy used by {message.Username}: {message.Message}");
+                        : rest.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
-                    // Now look up the "buy" command (should exist)
-                    if (_commands.TryGetValue("buy", out command))
+                    if (!_commands.TryGetValue("buy", out command) || command == null)
                     {
-                        //Logger.Debug($"'buy' command found for legacy $ command. Proceeding with execution.");
-                        // → continue to cooldown/permission/execute as normal
-                        // The buy command will validate args the same way it does for !buy
-                    }
-                    else
-                    {
-                        Logger.Error($"'buy' command not found in command dictionary. This should never happen if the command is properly registered.");
-                        // Very unlikely, but safety
+                        Logger.Error("[ChatCommandProcessor] 'buy' command not registered");
                         return;
                     }
                 }
                 else
                 {
-                    //Logger.Debug($"No command found for '{commandText}' and message does not start with '$'. Ignoring message.");
-                    // Truly unknown, even after $ check
-                    // You can optionally send "Unknown command" here if you want
-                    return;
+                    return; // Unknown command — silent
                 }
             }
 
-            // Get viewer (this creates if doesn't exist - no need to check)
             var viewer = Viewers.GetViewer(message);
+            if (viewer == null)
+                return;
 
-            // Fast exit: Banned viewer
-            if (viewer.IsBanned)
+            // Streamer bypass: channel owner is never blocked by ban
+            bool isStreamer = IsChannelOwner(message, globalSettings);
+            if (viewer.IsBanned && !isStreamer)
             {
-                Logger.Warning($"Banned viewer {message.Username} attempted command: {commandText}");
-                return; // Silent fail for banned users
+                Logger.Warning(
+                    $"[ChatCommandProcessor] Banned viewer {message.Username} attempted: {commandText}");
+                return;
             }
 
-            // NEW: Broadcaster safety — always allow streamer commands (even if somehow banned)
-            if (message.Username.Equals(CAPChatInteractiveMod.Instance.Settings.TwitchSettings.ChannelName, StringComparison.OrdinalIgnoreCase) ||
-                message.Username.Equals(CAPChatInteractiveMod.Instance.Settings.YouTubeSettings.ChannelName, StringComparison.OrdinalIgnoreCase))
-            {
-                // streamer bypasses all restrictions for in-game commands
-            }
-            // Check if the user is the developer by username AND platform ID
-            bool isCaptoLamia = message.Username == "captolamia" &&
-                               message.PlatformUserId == "58513264" &&
-                               message.Platform.ToLowerInvariant() == "twitch";
-            // Fast exit: Command disabled (but allow if it's the developer, for testing purposes)
+            // Dev Twitch ID: may run disabled commands for testing
+            bool isDevBypass = message.Username == "captolamia" &&
+                              message.PlatformUserId == "58513264" &&
+                              string.Equals(message.Platform, "twitch", StringComparison.OrdinalIgnoreCase);
+
             var cmdSettings = CommandSettingsManager.GetSettings(commandText);
-            if (!cmdSettings.Enabled)
+            if (cmdSettings != null && !cmdSettings.Enabled)
             {
-                if (isCaptoLamia)
+                if (isDevBypass)
                 {
-                    // Inform developer but continue execution
-                    SendMessageToUser(message, $"[DEV] Command '{commandText}' is currently disabled in settings — executing anyway for testing.");
-                    //Logger.Debug($"[DEV BYPASS] {message.Username} executed disabled command '{commandText}'");
+                    SendMessageToUser(message,
+                        $"[DEV] Command '{commandText}' is currently disabled — executing anyway for testing.");
                 }
                 else
                 {
-                    // Normal users get blocked
                     SendMessageToUser(message, $"Command {commandText} is currently disabled.");
                     return;
                 }
             }
 
-            // NEW: Global Cooldown Check (before individual user checks)
-            var cooldownManager = GetCooldownManager();
-            var commandSettings = command.GetCommandSettings();
-
-            // 1. Individual user cooldown (cheapest check first)
             if (IsOnCooldown(message.Username, command))
             {
                 SendCooldownMessage(message, command);
                 return;
             }
 
-            // 2. Permissions check
             if (!command.CanExecute(message))
             {
-                //Logger.Debug($"Permission denied for {message.Username} on command {command.Name}. Required: {command.PermissionLevel}");
                 SendPermissionDeniedMessage(message, command);
                 return;
             }
 
-            // EXECUTE - we've passed all checks
             try
             {
-                var result = command.Execute(message, args);
-                // If the command returns a result, send it to chat
+                string result = command.Execute(message, args);
                 if (!string.IsNullOrEmpty(result))
-                {
                     SendMessageToUser(message, result);
-                }
+
                 OnCommandExecuted?.Invoke(message, result);
 
-                // NEW: Record successful command usage for global cooldowns
                 if (!string.IsNullOrEmpty(result) && !result.StartsWith("Error"))
-                {
-                    cooldownManager.RecordCommandUse(command.Name);
-                }
+                    GetCooldownManager()?.RecordCommandUse(command.Name);
 
-                UpdateCooldown(message.Username, command); // Existing individual cooldown
+                UpdateCooldown(message.Username, command);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error executing command {commandText}: {ex.Message}");
+                Logger.Error($"[ChatCommandProcessor] Error executing '{commandText}': {ex.Message}");
                 SendMessageToUser(message, $"Error executing command: {ex.Message}");
             }
         }
 
+        private static bool IsChannelOwner(ChatMessageWrapper message, CAPGlobalChatSettings globalSettings)
+        {
+            if (message == null || globalSettings == null || string.IsNullOrEmpty(message.Username))
+                return false;
+
+            try
+            {
+                string user = message.Username;
+                var mod = CAPChatInteractiveMod.Instance;
+                string twitchChannel = mod?.Settings?.TwitchSettings?.ChannelName;
+                string youtubeChannel = mod?.Settings?.YouTubeSettings?.ChannelName;
+
+                if (!string.IsNullOrEmpty(twitchChannel) &&
+                    user.Equals(twitchChannel, StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                if (!string.IsNullOrEmpty(youtubeChannel) &&
+                    user.Equals(youtubeChannel, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            catch
+            {
+                return false;
+            }
+
+            return false;
+        }
+
         private static string ResolveCommandFromAlias(string commandText)
         {
-            // First, check if it's a direct command match
+            if (string.IsNullOrEmpty(commandText))
+                return commandText;
+
             if (_commands.ContainsKey(commandText))
                 return commandText;
 
-            // Then check aliases
             foreach (var command in _commands.Values.Distinct())
             {
-                //Logger.Debug($"Checking alias for command '{command.Name}': Alias='{command.Alias}'");
-                if (!string.IsNullOrEmpty(command.Alias) && command.Alias == commandText)
+                if (command != null &&
+                    !string.IsNullOrEmpty(command.Alias) &&
+                    command.Alias.Equals(commandText, StringComparison.OrdinalIgnoreCase))
                 {
                     return command.Name;
                 }
@@ -422,241 +347,221 @@ namespace CAP_ChatInteractive
         {
             try
             {
-                // Check if this is a Twitch channel points reward redemption
-                if (message.Platform == "Twitch" && !string.IsNullOrEmpty(message.CustomRewardId))
+                if (message?.Platform != null &&
+                    message.Platform.Equals("Twitch", StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrEmpty(message.CustomRewardId))
                 {
                     ProcessChannelPointsReward(message);
                 }
-
-                // TODO: Handle other regular chat messages (for chat-to-game features)
-                // This could include voting systems, chat interactions, etc.
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error processing chat message: {ex.Message}");
+                Logger.Error($"[ChatCommandProcessor] Error processing chat message: {ex.Message}");
             }
         }
 
         private static bool IsOnCooldown(string username, ChatCommand command)
         {
-            if (command.CooldownSeconds <= 0) return false;
+            if (command == null || command.CooldownSeconds <= 0 || string.IsNullOrEmpty(username))
+                return false;
 
             var key = $"{username}_{command.Name}";
-            bool onCooldown = _userCooldowns.TryGetValue(key, out var lastUsed) &&
+            return _userCooldowns.TryGetValue(key, out var lastUsed) &&
                    DateTime.Now - lastUsed < TimeSpan.FromSeconds(command.CooldownSeconds);
-
-            if (onCooldown)
-            {
-                var remaining = TimeSpan.FromSeconds(command.CooldownSeconds) - (DateTime.Now - lastUsed);
-            }
-            return onCooldown;
         }
 
         public static GlobalCooldownManager GetCooldownManager()
         {
+            if (Current.Game == null)
+                return null;
+
             var manager = Current.Game.GetComponent<GlobalCooldownManager>();
             if (manager == null)
             {
                 manager = new GlobalCooldownManager(Current.Game);
                 Current.Game.components.Add(manager);
             }
+
             return manager;
         }
 
         private static void UpdateCooldown(string username, ChatCommand command)
         {
-            if (command.CooldownSeconds <= 0) return;
+            if (command == null || command.CooldownSeconds <= 0 || string.IsNullOrEmpty(username))
+                return;
 
-            var key = $"{username}_{command.Name}";
-            _userCooldowns[key] = DateTime.Now;
+            _userCooldowns[$"{username}_{command.Name}"] = DateTime.Now;
         }
 
         private static void SendCooldownMessage(ChatMessageWrapper message, ChatCommand command)
         {
-            var key = $"{message.Username}_{command.Name}";
-            var lastUsed = _userCooldowns[key];
-            var remaining = TimeSpan.FromSeconds(command.CooldownSeconds) - (DateTime.Now - lastUsed);
+            if (message == null || command == null)
+                return;
 
-            SendMessageToUser(message, $"Command is on cooldown. Try again in {remaining.Seconds} seconds.");
+            var key = $"{message.Username}_{command.Name}";
+            if (!_userCooldowns.TryGetValue(key, out var lastUsed))
+            {
+                SendMessageToUser(message, "Command is on cooldown.");
+                return;
+            }
+
+            var remaining = TimeSpan.FromSeconds(command.CooldownSeconds) - (DateTime.Now - lastUsed);
+            int secs = Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
+            SendMessageToUser(message, $"Command is on cooldown. Try again in {secs} seconds.");
         }
 
         private static void SendPermissionDeniedMessage(ChatMessageWrapper message, ChatCommand command)
         {
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            SendMessageToUser(message, $"You don't have permission to use {settings.Prefix}{command.Name}. Required: {command.PermissionLevel}");
+            if (message == null || command == null)
+                return;
+
+            string prefix = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.Prefix ?? "!";
+            SendMessageToUser(message,
+                $"You don't have permission to use {prefix}{command.Name}. Required: {command.PermissionLevel}");
         }
 
-        /// <summary>
-        /// Sends a chat message to a user on the specified platform, using the appropriate messaging service and
-        /// format.
-        /// </summary>
-        /// <remarks>The method determines the messaging service to use based on the platform specified in
-        /// the message. If the platform is not recognized or the corresponding service is not connected, the message is
-        /// not sent and a warning is logged. For platforms that do not support private messages, the message is sent
-        /// publicly. Markup tags are removed from the message text before sending.</remarks>
-        /// <param name="message">A wrapper containing information about the user and the chat platform to which the message will be sent.
-        /// Must not be null and must specify a supported platform.</param>
-        /// <param name="text">The message text to send. Leading and trailing whitespace is ignored. If the text is null, empty, or
-        /// contains only markup tags, no message is sent.</param>
+        // ── Outbound send ───────────────────────────────────────────────
+
+        /// <summary>Reply on the same platform as the incoming message (whisper if applicable).</summary>
         public static void SendMessageToUser(ChatMessageWrapper message, string text)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(text)) return;
+                if (message == null || string.IsNullOrWhiteSpace(text))
+                    return;
 
-                string cleanText = RemoveMarkupTags(text);
-                if (string.IsNullOrWhiteSpace(cleanText)) return;
+                string cleanText = XmlTextSanitizer.Sanitize(RemoveMarkupTags(text));
+                if (string.IsNullOrWhiteSpace(cleanText))
+                    return;
 
                 var mod = CAPChatInteractiveMod.Instance;
-                if (mod == null) return;
+                if (mod == null)
+                    return;
 
-                // === Log outbound message so AI bot can see RICS replies ===
+                string platform = message.Platform?.ToLowerInvariant() ?? string.Empty;
+
                 ChatMessageLogger.AddMessage(
                     username: message.Username,
                     message: cleanText,
-                    platform: message.Platform
-                );
+                    platform: message.Platform);
 
-                switch (message.Platform.ToLowerInvariant())
-                {
-                    case "twitch":
-                        if (mod.TwitchService?.IsConnected == true)
-                        {
-                            if (message.IsWhisper)
-                                _ = mod.TwitchService.SendWhisperAsync(message.Username, cleanText);
-                            else
-                                mod.TwitchService.SendMessage($"@{message.Username} {cleanText}");
-                        }
-                        break;
-
-                    case "youtube":
-                        if (mod.YouTubeService?.IsConnected == true)
-                        {
-                            if (mod.YouTubeService.CanSendMessages)
-                                mod.YouTubeService.SendMessage(cleanText);
-                            else
-                                Messages.Message($"[YouTube] @{message.Username} {cleanText}", MessageTypeDefOf.NeutralEvent);
-                        }
-                        break;
-
-                    case "kick":
-                        if (mod.KickService?.IsConnected == true)
-                        {
-                            // For Kick we usually reply publicly (no whispers)
-                            mod.KickService.SendMessage($"{message.Username} {cleanText}");   // or "@username " + cleanText if you prefer mention
-                            Logger.Debug($"[Kick Reply] Sent to chat: {cleanText}");
-                        }
-                        else
-                        {
-                            Logger.Warning("KickService not connected - cannot send reply");
-                        }
-                        break;
-
-                    // add new services here as needed, following the same pattern
-                    default:
-                        Logger.Warning($"Unknown platform in SendMessageToUser: {message.Platform}");
-                        break;
-                }
+                SendToPlatform(mod, platform, message.Username, cleanText, message.IsWhisper);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error sending message to user on {message.Platform}: {ex.Message}");
+                Logger.Error(
+                    $"[ChatCommandProcessor] Error sending to user on {message?.Platform}: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// Sends a chat message to the specified user by username, addressing them directly on their platform if
-        /// possible.
-        /// </summary>
-        /// <remarks>If the user's platform is recognized and the corresponding chat service is connected,
-        /// the message is sent directly to the user on that platform. For YouTube, if direct messaging is not
-        /// available, the message is displayed as an in-game notification. If the platform is unknown or no service is
-        /// connected, the message is sent as a general in-game chat notification. Messages containing only markup tags
-        /// or whitespace are not sent.</remarks>
-        /// <param name="username">The username of the recipient to whom the message will be sent. This should match the user's
-        /// platform-specific identifier.</param>
-        /// <param name="text">The message text to send. Markup tags such as <color>, <b>, and <i> will be removed before sending. Cannot
-        /// be null, empty, or consist only of markup tags.</param>
+        /// <summary>Send to a username using their known platform id (public chat, not whisper).</summary>
         public static void SendMessageToUsername(string username, string text)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(text)) return;
+                if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(text))
+                    return;
 
-                string cleanText = RemoveMarkupTags(text);
-                if (string.IsNullOrWhiteSpace(cleanText)) return;
+                string cleanText = XmlTextSanitizer.Sanitize(RemoveMarkupTags(text));
+                if (string.IsNullOrWhiteSpace(cleanText))
+                    return;
+
                 var viewer = Viewers.GetViewer(username);
-                if (viewer == null) return;
+                if (viewer == null)
+                    return;
 
                 var mod = CAPChatInteractiveMod.Instance;
-                if (mod == null) return;
+                if (mod == null)
+                    return;
 
-                // Try to find the viewer to determine platform
                 string platform = DetermineUserPlatform(viewer);
-                if (platform == null) return;
+                if (string.IsNullOrEmpty(platform))
+                    return;
 
-                // === Log outbound message so AI bot can see RICS replies ===
                 ChatMessageLogger.AddMessage(
                     username: username,
                     message: cleanText,
-                    platform: platform
-                );
+                    platform: platform);
 
-                switch (platform)
-                {
-                    case "twitch":
-                        if (mod.TwitchService?.IsConnected == true)
-                            mod.TwitchService.SendMessage($"@{username} {cleanText}");
-                        break;
-
-                    case "youtube":
-                        if (mod.YouTubeService?.IsConnected == true)
-                            mod.YouTubeService.SendMessage($"@{username} {cleanText}");
-                        break;
-
-                    case "kick":
-                        if (mod.KickService?.IsConnected == true)
-                        {
-                            // Kick doesn't need @ mention for public replies in most cases
-                            mod.KickService.SendMessage(cleanText);
-                            Logger.Debug($"[Kick Reply to {username}] {cleanText}");
-                        }
-                        break;
-
-                    // add new services here as needed, following the same pattern
-                    case null:
-                         Logger.Warning($"Could not determine platform for user {username}. Message not sent.");
-                         break;
-                    default:
-                        Logger.Warning($"Could not determine platform for user {username}. Message not sent.");
-                        break;
-                }
+                // Match long-standing platform-specific addressing for username-only sends
+                if (platform == "youtube")
+                    SendToPlatform(mod, platform, username, $"@{username} {cleanText}", whisper: false, alreadyAddressed: true);
+                else if (platform == "kick")
+                    SendToPlatform(mod, platform, username, cleanText, whisper: false, alreadyAddressed: true);
+                else
+                    SendToPlatform(mod, platform, username, cleanText, whisper: false, alreadyAddressed: false);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error sending message to username {username}: {ex.Message}");
+                Logger.Error($"[ChatCommandProcessor] Error sending to username {username}: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// Removes common markup tags from text for chat compatibility
-        /// </summary>
+        /// <param name="alreadyAddressed">True when body already includes @user (e.g. YouTube username send).</param>
+        private static void SendToPlatform(
+            CAPChatInteractiveMod mod,
+            string platform,
+            string username,
+            string cleanText,
+            bool whisper,
+            bool alreadyAddressed = false)
+        {
+            if (mod == null || string.IsNullOrEmpty(cleanText))
+                return;
+
+            switch (platform?.ToLowerInvariant())
+            {
+                case "twitch":
+                    if (mod.TwitchService?.IsConnected == true)
+                    {
+                        if (whisper)
+                            _ = mod.TwitchService.SendWhisperAsync(username, cleanText);
+                        else
+                            mod.TwitchService.SendMessage(
+                                alreadyAddressed ? cleanText : $"@{username} {cleanText}");
+                    }
+                    break;
+
+                case "youtube":
+                    if (mod.YouTubeService?.IsConnected == true)
+                    {
+                        if (mod.YouTubeService.CanSendMessages)
+                            mod.YouTubeService.SendMessage(cleanText);
+                        else
+                            Messages.Message(
+                                alreadyAddressed ? $"[YouTube] {cleanText}" : $"[YouTube] @{username} {cleanText}",
+                                MessageTypeDefOf.NeutralEvent);
+                    }
+                    break;
+
+                case "kick":
+                    if (mod.KickService?.IsConnected == true)
+                    {
+                        // Public Kick replies: include username for command replies; body-only for some username sends
+                        mod.KickService.SendMessage(
+                            alreadyAddressed ? cleanText : $"{username} {cleanText}");
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        /// <summary>Strip XML-style markup tags for plain chat platforms.</summary>
         public static string RemoveMarkupTags(string text)
         {
             if (string.IsNullOrEmpty(text))
                 return text;
 
-            // Remove common XML-style tags: <color=...>, </color>, <b>, </b>, <i>, </i>, etc.
-            string cleaned = Regex.Replace(text, @"<[^>]+>", string.Empty);
-
-            return cleaned;
+            return Regex.Replace(text, @"<[^>]+>", string.Empty);
         }
-
-
 
         private static string DetermineUserPlatform(Viewer viewer)
         {
-            // Check which platform IDs the user has
+            if (viewer?.PlatformUserIds == null || viewer.PlatformUserIds.Count == 0)
+                return null;
+
             if (viewer.PlatformUserIds.ContainsKey("twitch"))
                 return "twitch";
             if (viewer.PlatformUserIds.ContainsKey("youtube"))
@@ -664,36 +569,33 @@ namespace CAP_ChatInteractive
             if (viewer.PlatformUserIds.ContainsKey("kick"))
                 return "kick";
 
-            // Default to Twitch if we can't determine (most common case)
             return null;
         }
 
+        // ── Registration (modders / Def loader) ─────────────────────────
+
         public static void RegisterCommand(ChatCommand command)
         {
-            _commands[command.Name] = command;
-            //Logger.Debug($"Registered command: '{command.Name}'");
-
-            // Register the single alias if it exists
-            if (!string.IsNullOrEmpty(command.Alias))
+            if (command == null || string.IsNullOrEmpty(command.Name))
             {
-                _commands[command.Alias] = command;
-                //Logger.Debug($"  -> Registered alias: '{command.Alias}'");
+                Logger.Error("[ChatCommandProcessor] RegisterCommand: null command or empty Name");
+                return;
             }
 
-            // Also log the CommandAlias value directly
-            var settings = command.GetCommandSettings();
-            // Logger.Debug($"  -> CommandAlias value: '{settings.CommandAlias}'");
+            _commands[command.Name] = command;
+
+            if (!string.IsNullOrEmpty(command.Alias))
+                _commands[command.Alias] = command;
         }
 
         public static IEnumerable<ChatCommand> GetAvailableCommands(ChatMessageWrapper user)
         {
-            return _commands.Values.Distinct().Where(cmd => cmd.CanExecute(user));
+            return _commands.Values.Distinct().Where(cmd => cmd != null && cmd.CanExecute(user));
         }
 
         /// <summary>
-        /// Tries to retrieve a registered command instance by name (case-insensitive).
-        /// Useful for UI actions (e.g. CustomData buttons in the Command Editor) that need to
-        /// invoke behavior on the live command object.
+        /// Look up a registered command by name (case-insensitive).
+        /// Useful for UI (e.g. CustomData buttons) that need the live command object.
         /// </summary>
         public static bool TryGetCommand(string name, out ChatCommand command)
         {
@@ -702,96 +604,94 @@ namespace CAP_ChatInteractive
                 command = null;
                 return false;
             }
+
             return _commands.TryGetValue(name, out command);
         }
 
-        // Helper method to check if a specific prefix is used
         public static bool UsesPrefix(string message, string prefix)
         {
-            return !string.IsNullOrEmpty(message) && message.StartsWith(prefix);
+            return !string.IsNullOrEmpty(message) &&
+                   !string.IsNullOrEmpty(prefix) &&
+                   message.StartsWith(prefix);
         }
 
-        // Helper method to get the appropriate prefix for a command type
         public static string GetCommandPrefix(bool isBuyCommand = false)
         {
-            var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            return isBuyCommand ? settings.BuyPrefix : settings.Prefix;
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings == null)
+                return isBuyCommand ? "$" : "!";
+
+            return isBuyCommand
+                ? (settings.BuyPrefix ?? "$")
+                : (settings.Prefix ?? "!");
         }
+
+        // ── Channel points ──────────────────────────────────────────────
 
         private static void ProcessChannelPointsReward(ChatMessageWrapper message)
         {
             try
             {
-                var globalSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings as CAPGlobalChatSettings;
-
-                // Fast exit if channel points are disabled or RewardSettings is null
-                if (!globalSettings.ChannelPointsEnabled)
-                {
-                    //Logger.Debug("Channel points processing disabled in settings");
+                var globalSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (globalSettings == null || !globalSettings.ChannelPointsEnabled)
                     return;
-                }
 
                 if (globalSettings.RewardSettings == null)
                 {
-                    Logger.Warning("RewardSettings list is null - channel points processing skipped");
+                    Logger.Warning("[ChatCommandProcessor] RewardSettings list is null");
                     return;
                 }
-                string rewardId = message.CustomRewardId;
 
-                // Find the reward configuration
-                var reward = globalSettings.RewardSettings.FirstOrDefault(r => r.RewardUUID == rewardId && r.Enabled);
+                string rewardId = message.CustomRewardId;
+                var reward = globalSettings.RewardSettings.FirstOrDefault(r =>
+                    r != null && r.RewardUUID == rewardId && r.Enabled);
 
                 if (reward != null)
                 {
-                    // Award coins to the user
-                    if (int.TryParse(reward.CoinsToAward, out int coins))
+                    if (int.TryParse(reward.CoinsToAward, out int coins) && coins != 0)
                     {
                         var viewer = Viewers.GetViewer(message);
-                        viewer.Coins += coins;
-
-                        if (globalSettings.ShowChannelPointsDebugMessages)
+                        if (viewer != null)
                         {
-                            //Logger.Debug($"Awarded {coins} coins to {message.Username} for reward: {reward.RewardName}");
+                            viewer.GiveCoins(coins);
+                            SendMessageToUser(message,
+                                $"Thank you for redeeming '{reward.RewardName}'! You received {coins} coins.");
                         }
-
-                        // Optional: Send confirmation message
-                        SendMessageToUser(message, $"Thank you for redeeming '{reward.RewardName}'! You received {coins} coins.");
                     }
                 }
                 else
                 {
-                    // Handle unconfigured reward with automatic capture
                     if (globalSettings.ShowChannelPointsDebugMessages)
-                    {
-                        Logger.Warning($"Detected a custom reward that wasn't configured: {rewardId}");
-                    }
+                        Logger.Warning(
+                            $"[ChatCommandProcessor] Unconfigured custom reward: {rewardId}");
 
-                    var autoReward = globalSettings.RewardSettings.FirstOrDefault(r => r.AutomaticallyCaptureUUID && r.Enabled);
+                    var autoReward = globalSettings.RewardSettings.FirstOrDefault(r =>
+                        r != null && r.AutomaticallyCaptureUUID && r.Enabled);
+
                     if (autoReward != null)
                     {
                         if (globalSettings.ShowChannelPointsDebugMessages)
                         {
-                            Logger.Message($"A reward with Automatic UUID capture enabled was found. Configuring this reward to use {rewardId}.");
+                            Logger.Message(
+                                $"[ChatCommandProcessor] Auto-capturing reward UUID {rewardId} " +
+                                $"for '{autoReward.RewardName}'");
                         }
 
                         autoReward.AutomaticallyCaptureUUID = false;
                         autoReward.RewardUUID = rewardId;
-
-                        // Optional: Notify about auto-configuration
-                        SendMessageToUser(message, $"Automatically configured '{autoReward.RewardName}' with this reward ID.");
+                        SendMessageToUser(message,
+                            $"Automatically configured '{autoReward.RewardName}' with this reward ID.");
                     }
-                    else
+                    else if (globalSettings.ShowChannelPointsDebugMessages)
                     {
-                        if (globalSettings.ShowChannelPointsDebugMessages)
-                        {
-                            Logger.Message("If this is the reward you would like to use, add this UUID to the mod settings.");
-                        }
+                        Logger.Message(
+                            "[ChatCommandProcessor] Unmatched reward — add this UUID in mod settings if desired.");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error processing channel points reward: {ex.Message}");
+                Logger.Error($"[ChatCommandProcessor] Channel points reward: {ex.Message}");
             }
         }
     }

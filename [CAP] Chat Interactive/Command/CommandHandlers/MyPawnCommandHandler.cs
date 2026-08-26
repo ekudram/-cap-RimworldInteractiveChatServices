@@ -1,19 +1,9 @@
-﻿// MyPawnCommandHandler.cs
+﻿// File: MyPawnCommandHandler.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
 // Handles the !mypawn command and its subcommands to provide detailed information about the viewer's assigned pawn.
 
@@ -32,42 +22,34 @@ using Verse;
 
 namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
-    public static class MyPawnCommandHandler 
+    public static class MyPawnCommandHandler
     {
+        private const string ReturnDivider = " | ";
+
         public static string HandleMyPawnCommand(ChatMessageWrapper messageWrapper, string subCommand, string[] args)
         {
             try
             {
                 var viewer = Viewers.GetViewer(messageWrapper);
                 if (viewer == null)
-                {
                     return "RICS.MPCH.NoViewerData".Translate();
-                }
 
                 var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
                 if (assignmentManager == null)
-                {
-                    return "RICS.Pawn.NoPawn".Translate(); // graceful fallback
-                }
+                    return "RICS.Pawn.NoPawn".Translate();
 
                 Pawn pawn = assignmentManager.GetAssignedPawn(messageWrapper);
-
                 if (pawn == null)
-                {
-                    // return "You need to have a pawn in the colony. Use !buy pawn first.";
                     return "RICS.Pawn.NoPawn".Translate();
-                }
-                // Only Destroyed Here
+
                 if (pawn.Destroyed)
                 {
                     var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(pawn);
-
-                    string deathDetails = deathInfo.ToString(); // e.g. "Deceased (body remains) — bullet wound caused by Assault Rifle"
-
-                    return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+                    return "RICS.Pawn.Dead".Translate()
+                           + ReturnDivider
+                           + "RICS.Return.PawnDeadReason".Translate(deathInfo.ToString());
                 }
 
-                // Check per-subcommand enable via CustomData (added to allow streamers to disable sub-features of !mypawn)
                 var cmdSettings = CommandSettingsManager.GetSettings("mypawn");
                 string sub = subCommand?.ToLowerInvariant() ?? "";
                 string settingKey = null;
@@ -111,14 +93,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "genes":
                     case "xeno":
                     case "xenotype": settingKey = "enableGenes"; break;
+                    case "owned":
+                    case "own": settingKey = "enableOwned"; break;
+                    case "disown": settingKey = "enableDisown"; break;
                 }
-                if (settingKey != null)
-                {
-                    if (!cmdSettings.GetCustom<bool>(settingKey, true))
-                    {
-                        return $"Sub Command {subCommand} is disabled.";
-                    }
-                }
+                if (settingKey != null && !cmdSettings.GetCustom(settingKey, true))
+                    return "RICS.MPCH.SubCommandDisabled".Translate(subCommand ?? sub);
 
                 // Route to sub-handler
                 switch (subCommand?.ToLowerInvariant())
@@ -131,7 +111,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         return MyPawnCommandHandler_Body.HandleImplantsInfo(pawn, args);
                     case "gear":
                         return MyPawnCommandHandler_Combat.HandleGearInfo(pawn, args);
-                    case "weapon":          // ← NEW
+                    case "weapon":
                     case "weapons":
                         return MyPawnCommandHandler_Combat.HandleWeaponInfo(pawn);
                     case "kills":
@@ -180,13 +160,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "xeno":
                     case "xenotype":
                         return HandleGeneInfo(pawn);
+                    case "owned":
+                    case "own":
+                        return MyPawnCommandHandler_Owned.HandleOwned(messageWrapper, pawn, args);
+                    case "disown":
+                        return MyPawnCommandHandler_Owned.HandleDisown(messageWrapper, pawn, args);
                     default:
                         return "RICS.MPCH.UnknownSubcommand".Translate(subCommand ?? "none");
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in MyPawn command handler: {ex}");
+                Logger.Error($"[MyPawn] Error in command handler: {ex}");
                 return "RICS.MPCH.ErrorProcessingPawn".Translate();
             }
         }
@@ -206,7 +191,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var needs = pawn.needs?.AllNeeds;
             if (needs == null || needs.Count == 0)
             {
-                // return $"{pawn.Name} has no needs tracked.";
                 return "RICS.MPCH.NoNeeds".Translate(pawn.LabelShortCap);
             }
 
@@ -314,7 +298,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (assignmentManager == null)
             {
-                // return "Relations system not available.";
                 return "RICS.MPCH.RelationsUnavailable".Translate();
             }
 
@@ -325,7 +308,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 var targetPawn = assignmentManager.GetAssignedPawn(targetViewer);
                 if (targetPawn == null)
                 {
-                    // return $"Viewer '{targetViewer}' doesn't have an active pawn.";
                     return "RICS.MPCH.ViewerNoPawn".Translate(targetViewer);
                 }
 
@@ -1099,7 +1081,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Check if pawn can work
             if (pawn.workSettings == null || !pawn.workSettings.EverWork)
             {
-                // return $"{pawn.Name} is not capable of work.";
                 string pawnName = GetDisplayNameForRelations(pawn);
                 return "RICS.MPCH.NotCapableOfWork".Translate(pawnName);
             }
@@ -1234,7 +1215,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             if (pawn?.jobs == null)
             {
-                // return "Your pawn is doing nothing.";
                 return "RICS.MPCH.PawnJob".Translate("RICS.MPCH.DoingNothing".Translate());
             }
 
@@ -1255,11 +1235,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (!string.IsNullOrEmpty(queuedJob))
             {
-                // return $"Your pawn is: {currentJob} | Queued: {queuedJob}";
                 return "RICS.MPCH.PawnJobQueued".Translate(currentJob, queuedJob);
             }
 
-            // return $"Your pawn is: {currentJob}";
             return "RICS.MPCH.PawnJob".Translate(currentJob);
         }
 
@@ -1269,11 +1247,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             if (pawn == null)
             {
-                Logger.Warning("[MyPawn Psycasts] Pawn is null");
+                /* pawn null */
                 return "RICS.MPCH.NoPsycasts".Translate("Unknown");
             }
 
-            Logger.Debug($"[MyPawn Psycasts] Starting psycasts info for {pawn.LabelShortCap}. RoyaltyActive={ModsConfig.RoyaltyActive} args={(args == null ? "null" : string.Join(",", args))}");
 
             // === VPE support via patch (clean, no reflection) ===
             var vpeProvider = CAPChatInteractiveMod.Instance?.VPEProvider;
@@ -1296,13 +1273,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                                     // Make "speedboost", "blade focus" etc. look nice like in the ITab
                                     return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(raw.ToLowerInvariant());
                                 }));
-                                string vpeClassResult = $"Psycaster level {classInfo.Level} | {className}: {abilitiesList}";
-                                Logger.Debug($"[MyPawn Psycasts] VPE class returned: {vpeClassResult}");
-                                return vpeClassResult;
+                                return "RICS.MPCH.PsycastClassList".Translate(classInfo.Level, className, abilitiesList);
                             }
                             else
                             {
-                                return $"Psycaster level {classInfo.Level} | {className}: none learned yet";
+                                return "RICS.MPCH.PsycastClassEmpty".Translate(classInfo.Level, className);
                             }
                         }
                         else
@@ -1311,13 +1286,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                             if (classInfo != null && classInfo.HasSuggestions)
                             {
                                 string suggestions = string.Join(" • ", classInfo.SuggestedClassLabels);
-                                Logger.Debug($"[MyPawn Psycasts] VPE class no match for '{args[0]}' — suggestions: {suggestions}");
-                                return $"Unknown psycast class '{query}'. Did you mean: {suggestions}?";
+                                return "RICS.MPCH.PsycastClassUnknownSuggest".Translate(query, suggestions);
                             }
 
                             string err = classInfo?.Error != null ? $" ({classInfo.Error})" : "";
-                            Logger.Debug($"[MyPawn Psycasts] VPE class query no match for '{args[0]}'{err}");
-                            return $"Unknown psycast class '{query}'{err}. Try !mypawn psycast for stats or a valid class name.";
+                            return "RICS.MPCH.PsycastClassUnknown".Translate(query, err);
                         }
                     }
 
@@ -1331,11 +1304,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         if (percent < 0) percent = 0;
                         if (percent > 100) percent = 100;
 
-                        string vpeResult = $"Psycaster level {info.Level} | Psyfocus {percent}% full | Need {info.PsyfocusNeededForNextLevel:F1} Psyfocus exp points for next level | Heat {info.CurrentHeat:F1} of {info.MaxHeat:F1} points.";
-                        Logger.Debug($"[MyPawn Psycasts] VPE provider returned: {vpeResult}");
-                        return vpeResult;
+                        return "RICS.MPCH.PsycastVpeStats".Translate(info.Level, percent, info.PsyfocusNeededForNextLevel.ToString("F1"), info.CurrentHeat.ToString("F1"), info.MaxHeat.ToString("F1"));
                     }
-                    Logger.Debug("[MyPawn Psycasts] VPE provider present but no psycasts for this pawn");
                 }
                 catch (Exception ex)
                 {
@@ -1347,14 +1317,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // === Vanilla Royalty path ===
             if (!ModsConfig.RoyaltyActive)
             {
-                Logger.Debug("[MyPawn Psycasts] Royalty DLC not active");
                 return "RICS.MPCH.NoRoyalty".Translate();
             }
 
             if (pawn.abilities == null)
             {
                 pawn.abilities = new Pawn_AbilityTracker(pawn);
-                Logger.Debug("[MyPawn Psycasts] Forced Pawn_AbilityTracker creation");
             }
 
             if (pawn.abilities != null)
@@ -1379,11 +1347,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 if (allAbilities.NullOrEmpty())
                 {
-                    Logger.Warning("[MyPawn Psycasts] AllAbilitiesForReading empty after init");
+                    /* empty abilities */
                     return "RICS.MPCH.NoPsycastsLazyInit".Translate(pawn.LabelShortCap);
                 }
 
-                Logger.Debug("[MyPawn Psycasts] Vanilla path: no psycasts found in AllAbilitiesForReading");
                 return "RICS.MPCH.NoPsycasts".Translate(pawn.LabelShortCap);
             }
 
@@ -1395,7 +1362,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             string result = string.Join("RICS.MPCH.PsycastSeparator".Translate(), levelStrings);
-            Logger.Debug($"[MyPawn Psycasts] Built response with {levelStrings.Count} level groups (vanilla)");
             return result;
         }
 
@@ -1429,32 +1395,27 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             foreach (Pawn mech in assignedOrder)
             {
                 if (mech == null) continue;
-                Logger.Debug($"[MyPawn Mechs] Assigned mech: {mech.LabelShortCap} ({mech.kindDef?.LabelCap ?? "Unknown kind"})");
             }
             mechs.AddRange(assignedOrder);
 
             // Also pull the public lists for completeness
             if (tracker.ControlledPawns != null)
             {
-                Logger.Debug($"[MyPawn Mechs] ControlledPawns count: {tracker.ControlledPawns.Count}");
                 mechs.AddRange(tracker.ControlledPawns);
             }
             if (tracker.OverseenPawns != null)
             {
-                Logger.Debug($"[MyPawn Mechs] OverseenPawns count: {tracker.OverseenPawns.Count}");
                 mechs.AddRange(tracker.OverseenPawns);
             }
             if (tracker.controlGroups != null)
             {
                 foreach (var group in tracker.controlGroups)
                 {
-                    Logger.Debug($"[MyPawn Mechs] Control group '{group?.LabelIndexWithWorkMode ?? "Unknown"}' has {group?.MechsForReading?.Count ?? 0} mechanoids");
                     if (group?.MechsForReading != null)
                         mechs.AddRange(group.MechsForReading);
                 }
             }
 
-            Logger.Debug($"[MyPawn Mechs] {pawn.LabelShortCap} - BW:{usedBw}/{totalBw} ControlledPawns:{tracker.ControlledPawns?.Count ?? 0} Overseen:{tracker.OverseenPawns?.Count ?? 0} Groups:{tracker.controlGroups?.Count ?? 0} AssignedOrder:{assignedOrder.Count} Raw collected:{mechs.Count}");
 
             mechs = mechs
                 .Where(m => m != null)
@@ -1462,7 +1423,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 .Where(m => m.RaceProps != null && m.RaceProps.IsMechanoid)
                 .ToList();
 
-            Logger.Debug($"[MyPawn Mechs] After initial filter: {mechs.Count} mechanoids for {pawn.LabelShortCap}");
 
             // Robust fallback: scan all maps for any mechanoids that list this pawn as their overseer.
             // This can catch mechs that aren't showing up in the internal lists yet.
@@ -1481,22 +1441,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                 }
             }
-            if (mechs.Count > beforeFallback)
-            {
-                Logger.Debug($"[MyPawn Mechs] Fallback scan added {mechs.Count - beforeFallback} more via GetOverseer()");
-            }
-
             mechs = mechs
                 .Where(m => m != null)
                 .Distinct()
                 .Where(m => m.RaceProps != null && m.RaceProps.IsMechanoid)
                 .ToList();
 
-            Logger.Debug($"[MyPawn Mechs] Final count after fallback + filter: {mechs.Count}");
 
             if (mechs.Count == 0)
             {
-                return $"{bwPrefix} | No mechanoids controlled.";
+                return bwPrefix + ReturnDivider + "RICS.MPCH.NoMechsControlled".Translate();
             }
 
             var groups = mechs
@@ -1519,7 +1473,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 });
 
             string listStr = string.Join(" • ", groups);
-            return $"{bwPrefix} | {listStr}";
+            return bwPrefix + ReturnDivider + listStr;
         }
 
         private static string HandleGeneInfo(Pawn pawn)

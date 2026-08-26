@@ -1,4 +1,4 @@
-﻿// File Name: ChatInteractiveAddonMenu.cs
+// ChatInteractiveAddonMenu.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive aka RICS (Rimworld Interactive Chat System).
 // 
@@ -15,8 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
-// This class implements the addon menu for Chat Interactive, providing various options for managing settings, events, economy, and more.
-
+// Built-in RICS MenuButton content (settings, editors, reconnect, economy tools).
 using CAP_ChatInteractive.Interfaces;
 using CAP_ChatInteractive.Windows;
 using RimWorld;
@@ -33,124 +32,69 @@ namespace CAP_ChatInteractive
         public List<FloatMenuOption> MenuOptions()
         {
             return new List<FloatMenuOption>
-    {
-        // Settings
-        new FloatMenuOption("Settings", () =>
-        {
-            var mod = LoadedModManager.GetMod<CAPChatInteractiveMod>();
-            Find.WindowStack.Add(new Dialog_ModSettings(mod));
-        }),
-
-        // Store Editor
-        new FloatMenuOption("Store Editor", () =>
-        {
-            Find.WindowStack.Add(new Dialog_StoreEditor());
-        }),
-
-        // Trait Editor
-        new FloatMenuOption("Trait Editor", () =>
-        {
-            Find.WindowStack.Add(new Dialog_TraitsEditor());
-        }),
-
-        // Weather Editor 
-        new FloatMenuOption("Weather Editor", () =>
-        {
-            Find.WindowStack.Add(new Dialog_WeatherEditor());
-        }),
-
-        // Events Editor 
-        new FloatMenuOption("Events Editor", () =>
-        {
-            Find.WindowStack.Add(new Dialog_EventsEditor());
-        }),
-
-        // Commands Management
-        new FloatMenuOption("Commands", () =>
-        {
-            Find.WindowStack.Add(new Dialog_CommandManager());
-        }),
-
-        // Viewers Management
-        new FloatMenuOption("Viewers", () =>
-        {
-            Find.WindowStack.Add(new Dialog_ViewerManager());
-        }),
-
-        // Pawn Race & Xenotype Settings
-        new FloatMenuOption("Pawn Races", () =>
-        {
-            Find.WindowStack.Add(new Dialog_PawnRaceSettings());
-        }),
-
-        // NEW: Pawn Queue Management
-        new FloatMenuOption("Pawn Queue", () =>
-        {
-            Find.WindowStack.Add(new Dialog_PawnQueue());
-        }),
-
-        new FloatMenuOption("Version History", () =>
-        {
-            Find.WindowStack.Add(new Dialog_RICS_VersionHistory());
-        }),
-
-        // Message Log
-        new FloatMenuOption("Message Log", () =>
-        {
-            Find.WindowStack.Add(new Window_MessageLog());
-        }),
-
-        // Live Chat Monitor
-        new FloatMenuOption("Live Chat", () =>
-        {
-            var existingWindow = Find.WindowStack.Windows.OfType<Window_LiveChat>().FirstOrDefault();
-            if (existingWindow != null)
             {
-                existingWindow.Close();
-            }
-            else
-            {
-                Find.WindowStack.Add(new Window_LiveChat());
-            }
-        }),
+                SafeOption("Settings", () =>
+                {
+                    var mod = LoadedModManager.GetMod<CAPChatInteractiveMod>();
+                    if (mod != null)
+                        Find.WindowStack.Add(new Dialog_ModSettings(mod));
+                }),
 
-        // Connection Status
-        new FloatMenuOption("Connection Status", () =>
-        {
-            ShowConnectionStatus();
-        }),
+                SafeOption("Store Editor", () => Find.WindowStack.Add(new Dialog_StoreEditor())),
+                SafeOption("Trait Editor", () => Find.WindowStack.Add(new Dialog_TraitsEditor())),
+                SafeOption("Weather Editor", () => Find.WindowStack.Add(new Dialog_WeatherEditor())),
+                SafeOption("Events Editor", () => Find.WindowStack.Add(new Dialog_EventsEditor())),
+                SafeOption("Commands", () => Find.WindowStack.Add(new Dialog_CommandManager())),
+                SafeOption("Viewers", () => Find.WindowStack.Add(new Dialog_ViewerManager())),
+                SafeOption("Pawn Races", () => Find.WindowStack.Add(new Dialog_PawnRaceSettings())),
+                SafeOption("Pawn Queue", () => Find.WindowStack.Add(new Dialog_PawnQueue())),
+                SafeOption("Version History", () => Find.WindowStack.Add(new Dialog_RICS_VersionHistory())),
+                SafeOption("Message Log", () => Find.WindowStack.Add(new Window_MessageLog())),
 
-        // Reconnect Services Submenu
-        new FloatMenuOption("Reconnect Services →", () =>
-        {
-            ShowReconnectMenu();
-        }),
+                SafeOption("Live Chat", () =>
+                {
+                    var existing = Find.WindowStack.Windows.OfType<Window_LiveChat>().FirstOrDefault();
+                    if (existing != null)
+                        existing.Close();
+                    else
+                        Find.WindowStack.Add(new Window_LiveChat());
+                }),
 
-        // Economy Tools
-        new FloatMenuOption("Economy Tools →", () =>
-        {
-            ShowEconomyMenu();
-        }),
+                SafeOption("Connection Status", ShowConnectionStatus),
+                SafeOption("Reconnect Services →", ShowReconnectMenu),
+                SafeOption("Economy Tools →", ShowEconomyMenu),
+                SafeOption("Events →", ShowEventsMenu),
 
-        // Events Management Submenu
-        new FloatMenuOption("Events →", () =>
-        {
-            ShowEventsMenu();
-        }),
+                SafeOption("Help", () =>
+                {
+                    Application.OpenURL(
+                        "https://github.com/ekudram/-cap-RimworldInteractiveChatServices/wiki");
+                }),
+            };
+        }
 
-        // Help
-        new FloatMenuOption("Help", () =>
+        private static FloatMenuOption SafeOption(string label, Action action)
         {
-            Application.OpenURL("https://github.com/ekudram/-cap-RimworldInteractiveChatServices/wiki");
-        })
-    };
+            return AddonButtonActions.CreateFloatOption(label, action);
         }
 
         private void ShowConnectionStatus()
         {
             var mod = CAPChatInteractiveMod.Instance;
-            var message = $"Twitch: {(mod.TwitchService?.IsConnected == true ? "✅ Connected" : "❌ Disconnected")}\n" +
-                         $"YouTube: {(mod.YouTubeService?.IsConnected == true ? "✅ Connected" : "❌ Disconnected")}";
+            if (mod == null)
+            {
+                Find.WindowStack.Add(new Dialog_MessageBox("RICS mod instance not available.", "Connection Status"));
+                return;
+            }
+
+            string twitch = mod.TwitchService?.IsConnected == true ? "Connected" : "Disconnected";
+            string youtube = mod.YouTubeService?.IsConnected == true ? "Connected" : "Disconnected";
+            string kick = mod.KickService?.IsConnected == true ? "Connected" : "Disconnected";
+
+            string message =
+                $"Twitch: {twitch}\n" +
+                $"YouTube: {youtube}\n" +
+                $"Kick: {kick}";
 
             Find.WindowStack.Add(new Dialog_MessageBox(message, "Connection Status"));
         }
@@ -159,209 +103,182 @@ namespace CAP_ChatInteractive
         {
             var options = new List<FloatMenuOption>();
             var mod = CAPChatInteractiveMod.Instance;
+            if (mod == null)
+                return;
 
-            // Twitch Reconnect
-            options.Add(new FloatMenuOption("Reconnect Twitch", () =>
+            options.Add(SafeOption("Reconnect Twitch", () =>
             {
-                LongEventHandler.QueueLongEvent(() =>
+                QueueReconnect("TwitchReconnect", () =>
                 {
-                    try
-                    {
-                        mod.TwitchService?.Disconnect();
-                        System.Threading.Thread.Sleep(1000);
-                        mod.TwitchService?.Connect();
-
-                        LongEventHandler.ExecuteWhenFinished(() =>
-                        {
-                            Messages.Message("Twitch reconnection initiated", MessageTypeDefOf.NeutralEvent);
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error($"Twitch reconnect failed: {ex.Message}");
-                    }
-                }, "TwitchReconnect", false, null);
+                    mod.TwitchService?.Disconnect();
+                    mod.TwitchService?.Connect();
+                    Messages.Message("Twitch reconnection initiated", MessageTypeDefOf.NeutralEvent);
+                });
             }));
 
-            // YouTube Reconnect
-            options.Add(new FloatMenuOption("Reconnect YouTube", () =>
+            options.Add(SafeOption("Reconnect YouTube", () =>
             {
-                LongEventHandler.QueueLongEvent(() =>
+                QueueReconnect("YouTubeReconnect", () =>
                 {
-                    try
-                    {
-                        mod.YouTubeService?.Disconnect();
-                        System.Threading.Thread.Sleep(1000);
-                        mod.YouTubeService?.Connect();
-
-                        LongEventHandler.ExecuteWhenFinished(() =>
-                        {
-                            Messages.Message("YouTube reconnection initiated", MessageTypeDefOf.NeutralEvent);
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error($"YouTube reconnect failed: {ex.Message}");
-                    }
-                }, "YouTubeReconnect", false, null);
+                    mod.YouTubeService?.Disconnect();
+                    mod.YouTubeService?.Connect();
+                    Messages.Message("YouTube reconnection initiated", MessageTypeDefOf.NeutralEvent);
+                });
             }));
 
-            // Reconnect All
-            options.Add(new FloatMenuOption("Reconnect All Services", () =>
+            // KickService has Connect only (no Disconnect API) — Connect re-enters if already open
+            options.Add(SafeOption("Reconnect Kick", () =>
             {
-                LongEventHandler.QueueLongEvent(() =>
+                QueueReconnect("KickReconnect", () =>
                 {
-                    try
-                    {
-                        mod.TwitchService?.Disconnect();
-                        mod.YouTubeService?.Disconnect();
-                        System.Threading.Thread.Sleep(2000);
+                    mod.KickService?.Connect();
+                    Messages.Message("Kick reconnection initiated", MessageTypeDefOf.NeutralEvent);
+                });
+            }));
 
-                        mod.TwitchService?.Connect();
-                        mod.YouTubeService?.Connect();
+            options.Add(SafeOption("Reconnect All Services", () =>
+            {
+                QueueReconnect("ReconnectAll", () =>
+                {
+                    mod.TwitchService?.Disconnect();
+                    mod.YouTubeService?.Disconnect();
 
-                        LongEventHandler.ExecuteWhenFinished(() =>
-                        {
-                            Messages.Message("All services reconnection initiated", MessageTypeDefOf.NeutralEvent);
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error($"Reconnect all failed: {ex.Message}");
-                    }
-                }, "ReconnectAll", false, null);
+                    mod.TwitchService?.Connect();
+                    mod.YouTubeService?.Connect();
+                    mod.KickService?.Connect();
+
+                    Messages.Message("All services reconnection initiated", MessageTypeDefOf.NeutralEvent);
+                });
             }));
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
 
-        // In ShowEconomyMenu method - add these options
+        private static void QueueReconnect(string key, Action work)
+        {
+            LongEventHandler.QueueLongEvent(
+                () =>
+                {
+                    try
+                    {
+                        work();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"[AddonMenu] {key} failed: {ex}");
+                    }
+                },
+                key,
+                false,
+                null);
+        }
+
         private void ShowEconomyMenu()
         {
-            var options = new List<FloatMenuOption>();
-
-            // Existing economy options...
-            options.Add(new FloatMenuOption("Award Coins to Active Viewers", () =>
+            var options = new List<FloatMenuOption>
             {
-                Viewers.AwardActiveViewersCoins();
-                Messages.Message("Coins awarded to active viewers", MessageTypeDefOf.NeutralEvent);
-            }));
-
-            options.Add(new FloatMenuOption("Reset All Coins", () =>
-            {
-                Viewers.ResetAllCoins();
-                Messages.Message("All viewer coins reset", MessageTypeDefOf.NeutralEvent);
-            }));
-
-            options.Add(new FloatMenuOption("Reset All Karma", () =>
-            {
-                Viewers.ResetAllKarma();
-                Messages.Message("All viewer karma reset", MessageTypeDefOf.NeutralEvent);
-            }));
-
-            // NEW: Quality & Research Settings
-            options.Add(new FloatMenuOption("Quality & Research Settings", () =>
-            {
-                CAPChatInteractiveMod.OpenQualitySettings();
-            }));
-
-            // Store Management Tools
-            options.Add(new FloatMenuOption("--- Store Tools ---", null)); // Separator
-
-            options.Add(new FloatMenuOption("Reset All Store Prices", () =>
-            {
-                Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                    "Reset all store item prices to default values?",
-                    () => {
-                        foreach (var item in Store.StoreInventory.AllStoreItems.Values)
+                SafeOption("Award Coins to Active Viewers", () =>
+                {
+                    Viewers.AwardActiveViewersCoins();
+                    Messages.Message("Coins awarded to active viewers", MessageTypeDefOf.NeutralEvent);
+                }),
+                SafeOption("Reset All Coins", () =>
+                {
+                    Viewers.ResetAllCoins();
+                    Messages.Message("All viewer coins reset", MessageTypeDefOf.NeutralEvent);
+                }),
+                SafeOption("Reset All Karma", () =>
+                {
+                    Viewers.ResetAllKarma();
+                    Messages.Message("All viewer karma reset", MessageTypeDefOf.NeutralEvent);
+                }),
+                SafeOption("Quality & Research Settings", () => CAPChatInteractiveMod.OpenQualitySettings()),
+                new FloatMenuOption("--- Store Tools ---", null),
+                SafeOption("Reset All Store Prices", () =>
+                {
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        "Reset all store item prices to default values?",
+                        () =>
                         {
-                            var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
-                            if (thingDef != null)
+                            foreach (var item in Store.StoreInventory.AllStoreItems.Values)
                             {
-                                item.BasePrice = (int)(thingDef.BaseMarketValue * 1.67f);
+                                var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
+                                if (thingDef != null)
+                                    item.BasePrice = (int)(thingDef.BaseMarketValue * 1.67f);
                             }
-                        }
-                        Store.StoreInventory.SaveStoreToJson();
-                        Messages.Message("All store prices reset to default", MessageTypeDefOf.PositiveEvent);
+
+                            Store.StoreInventory.SaveStoreToJson();
+                            Messages.Message("All store prices reset to default", MessageTypeDefOf.PositiveEvent);
+                        }));
+                }),
+                SafeOption("Enable All Store Items", () =>
+                {
+                    foreach (var item in Store.StoreInventory.AllStoreItems.Values)
+                        item.Enabled = true;
+
+                    Store.StoreInventory.SaveStoreToJson();
+                    Messages.Message("All store items enabled", MessageTypeDefOf.PositiveEvent);
+                }),
+                SafeOption("View Store Statistics", () =>
+                {
+                    int enabledItems = Store.StoreInventory.GetEnabledItems().Count();
+                    int total = Store.StoreInventory.AllStoreItems.Count;
+                    int categories = Store.StoreInventory.AllStoreItems.Values
+                        .Select(i => i.Category).Distinct().Count();
+
+                    string message =
+                        $"Total Items: {total}\n" +
+                        $"Enabled: {enabledItems}\n" +
+                        $"Disabled: {total - enabledItems}\n" +
+                        $"Categories: {categories}";
+
+                    Find.WindowStack.Add(new Dialog_MessageBox(message, "Store Statistics"));
+                }),
+                SafeOption("View Economy Statistics", () =>
+                {
+                    var activeViewers = Viewers.GetActiveViewers();
+                    int totalCoins = 0;
+                    float totalKarma = 0f;
+
+                    foreach (var viewer in Viewers.All)
+                    {
+                        totalCoins += viewer.Coins;
+                        totalKarma += viewer.Karma;
                     }
-                ));
-            }));
 
-            options.Add(new FloatMenuOption("Enable All Store Items", () =>
-            {
-                foreach (var item in Store.StoreInventory.AllStoreItems.Values)
-                {
-                    item.Enabled = true;
-                }
-                Store.StoreInventory.SaveStoreToJson();
-                Messages.Message("All store items enabled", MessageTypeDefOf.PositiveEvent);
-            }));
+                    int viewerCount = Math.Max(1, Viewers.All.Count);
+                    string message =
+                        $"Active Viewers: {activeViewers.Count}\n" +
+                        $"Total Viewers: {Viewers.All.Count}\n" +
+                        $"Total Coins in Circulation: {totalCoins}\n" +
+                        $"Average Karma: {totalKarma / viewerCount:F2}";
 
-            options.Add(new FloatMenuOption("View Store Statistics", () =>
-            {
-                var enabledItems = Store.StoreInventory.GetEnabledItems().Count();
-                var disabledItems = Store.StoreInventory.AllStoreItems.Count - enabledItems;
-
-                var message = $"Total Items: {Store.StoreInventory.AllStoreItems.Count}\n" +
-                             $"Enabled: {enabledItems}\n" +
-                             $"Disabled: {disabledItems}\n" +
-                             $"Categories: {Store.StoreInventory.AllStoreItems.Values.Select(i => i.Category).Distinct().Count()}";
-
-                Find.WindowStack.Add(new Dialog_MessageBox(message, "Store Statistics"));
-            }));
-
-            // Existing statistics option...
-            options.Add(new FloatMenuOption("View Economy Statistics", () =>
-            {
-                var activeViewers = Viewers.GetActiveViewers();
-                var totalCoins = 0;
-                float totalKarma = 0;
-
-                foreach (var viewer in Viewers.All)
-                {
-                    totalCoins += viewer.Coins;
-                    totalKarma += viewer.Karma;
-                }
-
-                var message = $"Active Viewers: {activeViewers.Count}\n" +
-                             $"Total Viewers: {Viewers.All.Count}\n" +
-                             $"Total Coins in Circulation: {totalCoins}\n" +
-                             $"Average Karma: {totalKarma / Math.Max(1, Viewers.All.Count)}";
-
-                Find.WindowStack.Add(new Dialog_MessageBox(message, "Economy Statistics"));
-            }));
+                    Find.WindowStack.Add(new Dialog_MessageBox(message, "Economy Statistics"));
+                }),
+            };
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
 
         private void ShowEventsMenu()
         {
-            var options = new List<FloatMenuOption>();
-
-            // Weather Editor 
-            options.Add(new FloatMenuOption("Weather Editor", () =>
+            var options = new List<FloatMenuOption>
             {
-                Find.WindowStack.Add(new Dialog_WeatherEditor());
-            }));
+                SafeOption("Weather Editor", () => Find.WindowStack.Add(new Dialog_WeatherEditor())),
+                SafeOption("Events Editor", () => Find.WindowStack.Add(new Dialog_EventsEditor())),
+                SafeOption("Event Statistics", () =>
+                {
+                    int weatherCount = Incidents.Weather.BuyableWeatherManager.AllBuyableWeather.Count;
+                    int enabledWeather = Incidents.Weather.BuyableWeatherManager.AllBuyableWeather.Values
+                        .Count(w => w.Enabled);
 
-            // Events Editor 
-            options.Add(new FloatMenuOption("Events Editor", () =>
-            {
-                Find.WindowStack.Add(new Dialog_EventsEditor());
-            }));
+                    string message =
+                        $"Weather Types: {weatherCount} total, {enabledWeather} enabled\n" +
+                        $"Use the Events / Weather editors for full management.";
 
-            // Event Statistics
-            options.Add(new FloatMenuOption("Event Statistics", () =>
-            {
-                var weatherCount = Incidents.Weather.BuyableWeatherManager.AllBuyableWeather.Count;
-                var enabledWeather = Incidents.Weather.BuyableWeatherManager.AllBuyableWeather.Values.Count(w => w.Enabled);
-
-                var message = $"Weather Types: {weatherCount} total, {enabledWeather} enabled\n" +
-                             $"Raids: System in development\n" +
-                             $"Other Events: System in development";
-
-                Find.WindowStack.Add(new Dialog_MessageBox(message, "Event Statistics"));
-            }));
+                    Find.WindowStack.Add(new Dialog_MessageBox(message, "Event Statistics"));
+                }),
+            };
 
             Find.WindowStack.Add(new FloatMenu(options));
         }

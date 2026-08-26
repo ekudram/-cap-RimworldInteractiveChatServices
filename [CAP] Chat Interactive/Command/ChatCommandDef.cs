@@ -1,24 +1,13 @@
-﻿// ChatCommandDef.cs
+// ChatCommandDef.cs
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
-// RimWorld Def for chat commands that can be loaded from XML
+// RimWorld Def for chat commands loaded from Commands.xml (modder-facing fields documented below).
 using System;
-using Verse;
 using System.Collections.Generic;
+using Verse;
 
 namespace CAP_ChatInteractive
 {
@@ -56,30 +45,35 @@ namespace CAP_ChatInteractive
     }
 
     /// <summary>
-    /// RimWorld Def for chat commands that can be loaded from XML
-    /// This bridges the Def system with your existing ChatCommand processor
+    /// RimWorld Def for chat commands that can be loaded from XML.
+    /// Bridges the Def system with <see cref="ChatCommandProcessor"/>.
     /// </summary>
     public class ChatCommandDef : Def
     {
-        /// <summary>The command text that triggers this command</summary>
+        private static readonly HashSet<string> KnownCustomDataTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "HeaderLabel", "Label", "CheckBox", "LabelTextBox", "NumericTextBox", "Gap", "Button"
+        };
+
+        /// <summary>The command text that triggers this command (chat trigger, usually lowercase).</summary>
         public string commandText = null;
 
-        /// <summary>Whether this command is currently enabled</summary>
+        /// <summary>Whether this command is currently enabled (Def default; runtime JSON settings override).</summary>
         public bool enabled = true;
 
-        /// <summary>The type of command handler that processes this command</summary>
+        /// <summary>The type of command handler that processes this command (must inherit ChatCommand).</summary>
         public Type commandClass = typeof(ChatCommand);
 
-        /// <summary>Whether this command requires mod privileges</summary>
+        /// <summary>Whether this command requires mod privileges (legacy flag; prefer permissionLevel).</summary>
         public bool requiresMod = false;
 
-        /// <summary>Whether this command requires broadcaster privileges</summary>
+        /// <summary>Whether this command requires broadcaster privileges (legacy flag; prefer permissionLevel).</summary>
         public bool requiresBroadcaster = false;
 
-        /// <summary>Description of what the command does</summary>
-        public string commandDescription = ""; // Changed from 'description' to avoid conflict
+        /// <summary>Description of what the command does (shown in editor / help; not Def.label).</summary>
+        public string commandDescription = "";
 
-        /// <summary>Permission level required (everyone, subscriber, vip, moderator, broadcaster)</summary>
+        /// <summary>Permission level required (everyone, subscriber, vip, moderator, broadcaster).</summary>
         public string permissionLevel = "everyone";
 
         /// <summary>
@@ -88,19 +82,17 @@ namespace CAP_ChatInteractive
         /// </summary>
         public bool excludeFromPricelist = false;
 
-        /// <summary>Cooldown in seconds between uses</summary>
+        /// <summary>Cooldown in seconds between uses (default; overridable via CommandSettings JSON).</summary>
         public int cooldownSeconds = 1;
 
-        /// <summary>
-        /// is this an event command (purchased via chat interaction)
-        /// </summary>
-        public bool isEventCommand = false;  // NEW: Identifies event commands
+        /// <summary>True if this is an event-style command (purchased / triggered as a game event via chat).</summary>
+        public bool isEventCommand = false;
 
         /// <summary>
-        /// Cooldown, works oppisite false = uses standard cooldowns, true uses command cooldown
+        /// When false (default), uses standard global/event cooldowns.
+        /// When true, uses this command's own cooldownSeconds setting.
         /// </summary>
         public bool useCommandCooldown = false;
-        /// think of it like this: public bool useCommandCooldown = false;
 
         /// <summary>
         /// The &lt;CustomData&gt; definition for this command (list of UI elements in order).
@@ -112,82 +104,119 @@ namespace CAP_ChatInteractive
         /// </summary>
         public List<CommandCustomSetting> CustomData = new List<CommandCustomSetting>();
 
-        /// <summary>
-        /// Gets the display label for this command, using defName if label is empty
-        /// </summary>
-        public string DisplayLabel
+        /// <summary>Display label for this command (Def label, else defName).</summary>
+        public string DisplayLabel =>
+            !string.IsNullOrEmpty(label) ? label : defName;
+
+        public override IEnumerable<string> ConfigErrors()
         {
-            get
+            foreach (string err in base.ConfigErrors())
+                yield return err;
+
+            if (string.IsNullOrWhiteSpace(commandText))
+                yield return "commandText is null or empty (chat trigger required)";
+
+            if (commandClass == null)
+                yield return "commandClass is null";
+            else if (!typeof(ChatCommand).IsAssignableFrom(commandClass))
+                yield return $"commandClass {commandClass.FullName} must inherit ChatCommand";
+            else if (commandClass.IsAbstract)
+                yield return $"commandClass {commandClass.FullName} is abstract and cannot be instantiated";
+
+            if (cooldownSeconds < 0)
+                yield return "cooldownSeconds cannot be negative";
+
+            if (CustomData == null)
+                yield break;
+
+            for (int i = 0; i < CustomData.Count; i++)
             {
-                if (!string.IsNullOrEmpty(base.label))
+                var item = CustomData[i];
+                if (item == null)
                 {
-                    return base.label;
+                    yield return $"CustomData[{i}] is null";
+                    continue;
                 }
-                return base.defName;
+
+                if (string.IsNullOrWhiteSpace(item.type))
+                {
+                    yield return $"CustomData[{i}] has empty type";
+                    continue;
+                }
+
+                if (!KnownCustomDataTypes.Contains(item.type))
+                {
+                    yield return
+                        $"CustomData[{i}] unknown type '{item.type}' " +
+                        "(expected HeaderLabel, Label, CheckBox, LabelTextBox, NumericTextBox, Gap, Button)";
+                }
+
+                string t = item.type.Trim();
+                bool needsName =
+                    t.Equals("CheckBox", StringComparison.OrdinalIgnoreCase) ||
+                    t.Equals("LabelTextBox", StringComparison.OrdinalIgnoreCase) ||
+                    t.Equals("NumericTextBox", StringComparison.OrdinalIgnoreCase) ||
+                    t.Equals("Button", StringComparison.OrdinalIgnoreCase);
+
+                if (needsName && string.IsNullOrWhiteSpace(item.name))
+                    yield return $"CustomData[{i}] type '{item.type}' requires a non-empty name";
+
+                if (t.Equals("NumericTextBox", StringComparison.OrdinalIgnoreCase) && item.min > item.max)
+                    yield return $"CustomData[{i}] NumericTextBox min ({item.min}) > max ({item.max})";
             }
         }
 
-        /// <summary>
-        /// Registers this command with the ChatCommandProcessor
-        /// </summary>
+        /// <summary>Registers this command with the ChatCommandProcessor (JSON settings control enable at runtime).</summary>
         public void RegisterCommand()
         {
-            // FIX: Remove Def enabled check - register ALL commands so JSON settings control everything
-            // if (!enabled) return;
-
             try
             {
-                if (commandClass == null)
+                if (string.IsNullOrWhiteSpace(commandText))
                 {
-                    Logger.Warning($"Command class type is null for command: {commandText}");
+                    Logger.Warning($"[ChatCommandDef] Skipping register: empty commandText on def '{defName}'");
                     return;
                 }
 
-                // Create instance and register with processor
-                if (Activator.CreateInstance(commandClass) is ChatCommand commandInstance)
+                if (commandClass == null)
                 {
-                    var wrappedCommand = new DefBasedChatCommand(this, commandInstance);
-                    ChatCommandProcessor.RegisterCommand(wrappedCommand);
-                    // Logger.Debug($"Registered command: {commandText}");
+                    Logger.Warning($"[ChatCommandDef] commandClass is null for '{commandText}' ({defName})");
+                    return;
                 }
-                else
+
+                if (!typeof(ChatCommand).IsAssignableFrom(commandClass))
                 {
-                    Logger.Error($"Failed to create command instance for: {commandClass.FullName}");
+                    Logger.Error(
+                        $"[ChatCommandDef] commandClass {commandClass.FullName} must inherit ChatCommand " +
+                        $"(command '{commandText}')");
+                    return;
                 }
+
+                if (commandClass.IsAbstract)
+                {
+                    Logger.Error(
+                        $"[ChatCommandDef] Cannot instantiate abstract commandClass {commandClass.FullName} " +
+                        $"(command '{commandText}')");
+                    return;
+                }
+
+                if (!(Activator.CreateInstance(commandClass) is ChatCommand commandInstance))
+                {
+                    Logger.Error($"[ChatCommandDef] Activator failed for {commandClass.FullName} ('{commandText}')");
+                    return;
+                }
+
+                ChatCommandProcessor.RegisterCommand(new DefBasedChatCommand(this, commandInstance));
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error registering command {commandText}: {ex}");
-            }
-        }
-
-        private void EnsureSettingsAlignment(ChatCommandDef def, ChatCommand command)
-        {
-            try
-            {
-                var settings = CommandSettingsManager.GetSettings(def.defName);
-                if (settings != null)
-                {
-                    // If we have settings stored by defName, also make them available by command name
-                    var commandNameSettings = CommandSettingsManager.GetSettings(command.Name);
-
-                    // Copy alias from defName settings to command name settings if they differ
-                    if (!string.IsNullOrEmpty(settings.CommandAlias) &&
-                        string.IsNullOrEmpty(commandNameSettings.CommandAlias))
-                    {
-                        commandNameSettings.CommandAlias = settings.CommandAlias;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error ensuring settings alignment for {def.defName}: {ex}");
+                Logger.Error($"[ChatCommandDef] Error registering '{commandText}' ({defName}): {ex}");
             }
         }
     }
 
     /// <summary>
     /// Wrapper that adapts a ChatCommand instance to use Def-based properties
+    /// (command text, description, default permission) while still honoring JSON overrides.
     /// </summary>
     public class DefBasedChatCommand : ChatCommand
     {
@@ -196,28 +225,29 @@ namespace CAP_ChatInteractive
 
         public DefBasedChatCommand(ChatCommandDef def, ChatCommand wrappedCommand)
         {
-            _def = def;
-            _wrappedCommand = wrappedCommand;
+            _def = def ?? throw new ArgumentNullException(nameof(def));
+            _wrappedCommand = wrappedCommand ?? throw new ArgumentNullException(nameof(wrappedCommand));
         }
 
         public override string Name => _def.commandText;
 
         public override string Alias => _wrappedCommand.Alias;
 
-        public override string Description => !string.IsNullOrEmpty(_def.commandDescription) ? _def.commandDescription : _wrappedCommand.Description;
+        public override string Description =>
+            !string.IsNullOrEmpty(_def.commandDescription)
+                ? _def.commandDescription
+                : _wrappedCommand.Description;
 
-        // FIX: Only use JSON settings, never the Def
+        /// <summary>JSON CommandSettings permission if set; otherwise Def permissionLevel.</summary>
         public override string PermissionLevel
         {
             get
             {
-                // Allow per-command override from settings (for subscriber-only / paid access etc.)
-                // Fall back to the Def default if not overridden.
                 var s = GetCommandSettings();
                 if (s != null && !string.IsNullOrEmpty(s.PermissionLevel))
                     return s.PermissionLevel;
 
-                return _def.permissionLevel;
+                return _def.permissionLevel ?? "everyone";
             }
         }
 
@@ -225,19 +255,39 @@ namespace CAP_ChatInteractive
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
-            return _wrappedCommand.Execute(user, args);
+            try
+            {
+                return _wrappedCommand.Execute(user, args ?? Array.Empty<string>());
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[ChatCommandDef] Execute failed for '{Name}': {ex}");
+                return "Command error. Check the game log.";
+            }
         }
 
         public override bool CanExecute(ChatMessageWrapper message)
         {
+            if (message == null)
+                return false;
+
             var viewer = Viewers.GetViewer(message);
-            if (viewer == null) return false;
+            if (viewer == null)
+                return false;
+
             return viewer.HasPermission(PermissionLevel);
         }
 
         public override void OnCustomDataButtonClicked(string buttonName, CommandSettings settings)
         {
-            _wrappedCommand.OnCustomDataButtonClicked(buttonName, settings);
+            try
+            {
+                _wrappedCommand.OnCustomDataButtonClicked(buttonName, settings);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[ChatCommandDef] OnCustomDataButtonClicked '{buttonName}' on '{Name}': {ex.Message}");
+            }
         }
     }
 }

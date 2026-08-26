@@ -1,4 +1,4 @@
-﻿// ButtonUtils.cs
+// ButtonUtils.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -15,74 +15,79 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
-// Utility methods for modders to easily add buttons to RICS
+// Runtime API for third-party mods to add RICS toolbar buttons.
+// Prefer XML EnhancedChatInteractiveAddonDef for main-tab + toolbar; this API is toolbar-only.
+// See Defs/AddonDefs/ChatInteractiveAddon.xml for the full modder cookbook.
 using CAP_ChatInteractive.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 using Verse;
 
 namespace CAP_ChatInteractive
 {
+    /// <summary>
+    /// Helper methods for other mods to register buttons on the RICS quick toolbar.
+    /// Call after game defs are loaded (e.g. StaticConstructorOnStartup or LongEvent).
+    /// For main-tab listing + load-order safety, ship an XML Def instead.
+    /// </summary>
     public static class ButtonUtils
     {
         /// <summary>
-        /// Easy method for modders to add a settings button for their mod
+        /// Add a DirectDialogButton that opens a settings-style Window.
         /// </summary>
-        public static void AddModSettingsButton(string modName, Type settingsDialogType,
-            string buttonLabel = null, string iconPath = null, int displayOrder = 1000)
+        public static void AddModSettingsButton(
+            string modName,
+            Type settingsDialogType,
+            string buttonLabel = null,
+            string iconPath = null,
+            int displayOrder = 1000)
         {
-            if (settingsDialogType == null)
-            {
-                Logger.Error($"Cannot add settings button for {modName}: settingsDialogType is null");
+            if (!ValidateWindowType(settingsDialogType, modName, buttonLabel ?? "Settings"))
                 return;
-            }
 
-            if (!typeof(Window).IsAssignableFrom(settingsDialogType))
-            {
-                Logger.Error($"Cannot add settings button for {modName}: {settingsDialogType.Name} must inherit from Window");
-                return;
-            }
-
-            // Create button definition
             var buttonDef = new EnhancedChatInteractiveAddonDef
             {
-                defName = $"{modName.Replace(" ", "")}_Settings",
+                defName = $"{SanitizeId(modName)}_Settings",
                 label = buttonLabel ?? $"{modName} Settings",
                 description = $"Open {modName} settings",
                 dialogClass = settingsDialogType,
                 buttonType = ButtonType.DirectDialogButton,
-                sourceMod = modName,
+                sourceMod = modName ?? "Unknown",
                 enabled = true,
                 displayOrder = displayOrder,
                 showInToolbar = true,
                 iconPath = iconPath
             };
 
-            // Register the button
             ToolbarButtonManager.AddToolbarButton(buttonDef);
-
-            Logger.Debug($"Added settings button for mod: {modName}");
         }
 
         /// <summary>
-        /// Add a custom button that opens a dialog directly
+        /// Add a button that opens a dialog immediately (toolbar only unless you also ship XML).
+        /// Use displayOrder 200+ (or 1000+) to stay clear of RICS built-ins (~85–101).
         /// </summary>
-        public static void AddDirectDialogButton(string modName, string defName, string label,
-            Type dialogClass, string description = null, string iconPath = null,
-            int displayOrder = 1000, bool showInToolbar = true)
+        public static void AddDirectDialogButton(
+            string modName,
+            string defName,
+            string label,
+            Type dialogClass,
+            string description = null,
+            string iconPath = null,
+            int displayOrder = 1000,
+            bool showInToolbar = true)
         {
-            ValidateDialogType(dialogClass, modName, label);
+            if (!ValidateWindowType(dialogClass, modName, label))
+                return;
 
             var buttonDef = new EnhancedChatInteractiveAddonDef
             {
-                defName = $"{modName.Replace(" ", "")}_{defName}",
+                defName = $"{SanitizeId(modName)}_{SanitizeId(defName)}",
                 label = label,
                 description = description ?? $"Open {label}",
                 dialogClass = dialogClass,
                 buttonType = ButtonType.DirectDialogButton,
-                sourceMod = modName,
+                sourceMod = modName ?? "Unknown",
                 enabled = true,
                 displayOrder = displayOrder,
                 showInToolbar = showInToolbar,
@@ -90,26 +95,30 @@ namespace CAP_ChatInteractive
             };
 
             ToolbarButtonManager.AddToolbarButton(buttonDef);
-            Logger.Debug($"Added dialog button: {label} for mod: {modName}");
         }
 
-        /// <summary>
-        /// Add a button that toggles a window open/closed
-        /// </summary>
-        public static void AddToggleWindowButton(string modName, string defName, string label,
-            Type windowClass, string description = null, string iconPath = null,
-            int displayOrder = 1000, bool showInToolbar = true)
+        /// <summary>Add a button that toggles a Window open/closed.</summary>
+        public static void AddToggleWindowButton(
+            string modName,
+            string defName,
+            string label,
+            Type windowClass,
+            string description = null,
+            string iconPath = null,
+            int displayOrder = 1000,
+            bool showInToolbar = true)
         {
-            ValidateWindowType(windowClass, modName, label);
+            if (!ValidateWindowType(windowClass, modName, label))
+                return;
 
             var buttonDef = new EnhancedChatInteractiveAddonDef
             {
-                defName = $"{modName.Replace(" ", "")}_{defName}",
+                defName = $"{SanitizeId(modName)}_{SanitizeId(defName)}",
                 label = label,
                 description = description ?? $"Toggle {label} window",
                 windowClass = windowClass,
                 buttonType = ButtonType.ToggleWindowButton,
-                sourceMod = modName,
+                sourceMod = modName ?? "Unknown",
                 enabled = true,
                 displayOrder = displayOrder,
                 showInToolbar = showInToolbar,
@@ -117,36 +126,43 @@ namespace CAP_ChatInteractive
             };
 
             ToolbarButtonManager.AddToolbarButton(buttonDef);
-            Logger.Debug($"Added toggle window button: {label} for mod: {modName}");
         }
 
         /// <summary>
-        /// Add a menu button with custom options
+        /// Add a MenuButton whose menuClass implements <see cref="IAddonMenu"/>.
         /// </summary>
-        public static void AddMenuButton(string modName, string defName, string label,
-            Type menuClass, string description = null, string iconPath = null,
-            int displayOrder = 1000, bool showInToolbar = true)
+        public static void AddMenuButton(
+            string modName,
+            string defName,
+            string label,
+            Type menuClass,
+            string description = null,
+            string iconPath = null,
+            int displayOrder = 1000,
+            bool showInToolbar = true)
         {
             if (menuClass == null)
             {
-                Logger.Error($"Cannot add menu button {label} for {modName}: menuClass is null");
+                Logger.Error($"[AddonMenu] Cannot add menu button {label} for {modName}: menuClass is null");
                 return;
             }
 
             if (!typeof(IAddonMenu).IsAssignableFrom(menuClass))
             {
-                Logger.Error($"Cannot add menu button {label} for {modName}: {menuClass.Name} must implement IAddonMenu");
+                Logger.Error(
+                    $"[AddonMenu] Cannot add menu button {label} for {modName}: " +
+                    $"{menuClass.Name} must implement IAddonMenu");
                 return;
             }
 
             var buttonDef = new EnhancedChatInteractiveAddonDef
             {
-                defName = $"{modName.Replace(" ", "")}_{defName}",
+                defName = $"{SanitizeId(modName)}_{SanitizeId(defName)}",
                 label = label,
                 description = description ?? $"Open {label} menu",
                 menuClass = menuClass,
                 buttonType = ButtonType.MenuButton,
-                sourceMod = modName,
+                sourceMod = modName ?? "Unknown",
                 enabled = true,
                 displayOrder = displayOrder,
                 showInToolbar = showInToolbar,
@@ -154,79 +170,72 @@ namespace CAP_ChatInteractive
             };
 
             ToolbarButtonManager.AddToolbarButton(buttonDef);
-            Logger.Debug($"Added menu button: {label} for mod: {modName}");
         }
 
-        /// <summary>
-        /// Remove all buttons from a specific mod
-        /// </summary>
+        /// <summary>Remove all runtime toolbar buttons registered under this sourceMod name.</summary>
         public static void RemoveAllButtonsFromMod(string modName)
         {
-            var buttonsToRemove = ToolbarButtonManager.GetAllToolbarButtons()
-                .Where(b => b.sourceMod == modName)
-                .ToList();
+            if (string.IsNullOrEmpty(modName))
+                return;
 
-            foreach (var button in buttonsToRemove)
+            foreach (var button in ToolbarButtonManager.GetAllToolbarButtons()
+                         .Where(b => b != null && b.sourceMod == modName)
+                         .ToList())
             {
                 ToolbarButtonManager.RemoveToolbarButton(button.defName);
             }
-
-            Logger.Debug($"Removed {buttonsToRemove.Count} buttons from mod: {modName}");
         }
 
-        /// <summary>
-        /// Remove a specific button by defName
-        /// </summary>
+        /// <summary>Remove a toolbar button by full defName.</summary>
         public static void RemoveButton(string defName)
         {
             ToolbarButtonManager.RemoveToolbarButton(defName);
-            Logger.Debug($"Removed button: {defName}");
         }
 
-        /// <summary>
-        /// Get all buttons from a specific mod
-        /// </summary>
+        /// <summary>List toolbar buttons currently attributed to a sourceMod.</summary>
         public static List<EnhancedChatInteractiveAddonDef> GetButtonsFromMod(string modName)
         {
             return ToolbarButtonManager.GetAllToolbarButtons()
-                .Where(b => b.sourceMod == modName)
+                .Where(b => b != null && b.sourceMod == modName)
                 .ToList();
         }
 
         /// <summary>
-        /// Check if RICS is available for button integration
+        /// True if RICS (any package id used by this project) is active.
         /// </summary>
         public static bool IsRICSLoaded()
         {
-            return ModLister.GetActiveModWithIdentifier("Captolamia.CAPChatInteractive") != null;
+            return ModLister.GetActiveModWithIdentifier("Captolamia.RICS.Beta") != null
+                   || ModLister.GetActiveModWithIdentifier("Captolamia.CAPChatInteractive") != null
+                   || ModLister.GetActiveModWithIdentifier("Captolamia.RICS") != null;
         }
 
-        private static void ValidateDialogType(Type dialogClass, string modName, string label)
-        {
-            if (dialogClass == null)
-            {
-                Logger.Error($"Cannot add button {label} for {modName}: dialogClass is null");
-                return;
-            }
-
-            if (!typeof(Window).IsAssignableFrom(dialogClass))
-            {
-                Logger.Error($"Cannot add button {label} for {modName}: {dialogClass.Name} must inherit from Window");
-            }
-        }
-
-        private static void ValidateWindowType(Type windowClass, string modName, string label)
+        private static bool ValidateWindowType(Type windowClass, string modName, string label)
         {
             if (windowClass == null)
             {
-                Logger.Error($"Cannot add button {label} for {modName}: windowClass is null");
-                return;
+                Logger.Error($"[AddonMenu] Cannot add button {label} for {modName}: type is null");
+                return false;
             }
 
             if (!typeof(Window).IsAssignableFrom(windowClass))
             {
-                Logger.Error($"Cannot add button {label} for {modName}: {windowClass.Name} must inherit from Window");
+                Logger.Error(
+                    $"[AddonMenu] Cannot add button {label} for {modName}: " +
+                    $"{windowClass.Name} must inherit from Verse.Window");
+                return false;
             }
+
+            return true;
+        }
+
+        private static string SanitizeId(string raw)
+        {
+            if (string.IsNullOrEmpty(raw))
+                return "Mod";
+
+            char[] chars = raw.Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray();
+            return chars.Length > 0 ? new string(chars) : "Mod";
         }
     }
 }

@@ -43,6 +43,7 @@ using _CAP__Chat_Interactive.Utilities;
 using RimWorld;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEngine;
@@ -618,6 +619,28 @@ namespace CAP_ChatInteractive.Store
                 isInitialized = false;
                 AllStoreItems.Clear();
                 _completeStoreData.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Delete StoreItems.json and rebuild from Defs (editor / debug).
+        /// </summary>
+        public static void RebuildFromDefaults()
+        {
+            try
+            {
+                string filePath = JsonFileManager.GetFilePath("StoreItems.json");
+                if (File.Exists(filePath))
+                    File.Delete(filePath);
+
+                DebugResetForRebuild();
+                InitializeStore();
+                Logger.Message("[Store] Rebuilt StoreItems.json from Defs");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[Store] RebuildFromDefaults failed: {ex.Message}");
+                throw;
             }
         }
 

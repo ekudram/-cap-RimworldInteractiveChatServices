@@ -14,13 +14,13 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-// A game component that handles periodic tasks such as awarding coins to active viewers and managing storyteller ticks.
-// Uses an efficient tick system to minimize performance impact.
-// Storyteller tick logic can be expanded as needed.
+// Periodic tasks: wall-clock coin rewards (~2 real minutes), karma decay, AI file commands, etc.
+// Coin payouts use DateTime.UtcNow so game speed / pause catch-up-once do not skew stream cadence.
 
 
 using _CAP__Chat_Interactive.Utilities;
 using CAP_ChatInteractive.AI;
+using CAP_ChatInteractive.Extension;
 using CAP_ChatInteractive.Incidents;
 using CAP_ChatInteractive.Incidents.Weather;
 using CAP_ChatInteractive.Store;
@@ -38,8 +38,12 @@ namespace CAP_ChatInteractive
 {
     public class CAPChatInteractive_GameComponent : GameComponent
     {
+        // General tick counter (raid throttle, etc.) — not used for coin cadence anymore.
         private int tickCounter = 0;
-        private const int TICKS_PER_REWARD = 120 * 60;
+
+        // Coin rewards: wall-clock (~2 real minutes), independent of game speed / pause catch-up-once.
+        private const double CoinRewardIntervalMinutes = 2.0;
+        private long lastCoinRewardFileTime; // DateTime.ToFileTimeUtc(); 0 = not set yet
 
         private int karmaDecayTickCounter = 0;
         private int aiChatBotStateUpdateTickCounter = 0;
@@ -54,6 +58,10 @@ namespace CAP_ChatInteractive
 
         // AI ChatBot Service
         public AIChatBotService _aiChatBotService;
+
+        // Twitch Extension bridge (LocalHttp / OutboundPoll)
+        public ExtensionService _extensionService;
+        private static ExtensionService _activeExtensionService;
 
         // For batched death reports to AI bot (throttled, not every tick)
         private readonly List<string> recentDeaths = new List<string>();
@@ -76,6 +84,12 @@ namespace CAP_ChatInteractive
             {
                 game.components.Add(new LootBoxComponent(game));
                 Logger.Debug("LootBoxComponent created by GameComponent");
+            }
+
+            // Persist custom favorite ColorDefs for !setfavoritecolor across save/load
+            if (game.GetComponent<GameComponent_CustomColorDefs>() == null)
+            {
+                game.components.Add(new GameComponent_CustomColorDefs(game));
             }
         }
 
@@ -115,17 +129,21 @@ namespace CAP_ChatInteractive
             // Can be used later for very-late setup if needed
         }
 
+        public override void ExposeData()
+        {
+            Scribe_Values.Look(ref lastCoinRewardFileTime, "lastCoinRewardFileTime", 0L);
+            base.ExposeData();
+        }
+
         public override void GameComponentTick()
         {
             tickCounter++;
 
-            // === 2-MINUTE COIN REWARD (unchanged - already efficient) ===
-            if (tickCounter >= TICKS_PER_REWARD)
-            {
-                tickCounter = 0;
-                Viewers.AwardActiveViewersCoins();
-                Logger.Debug("2-minute coin reward tick executed");
-            }
+            // === WALL-CLOCK COIN REWARD (~every 2 real minutes) ===
+            // Independent of game speed. While paused Tick may not run; on resume we pay once if due
+            // (no multi-interval spam). Active viewers still filtered by LastSeen wall clock in Viewers.
+            if (tickCounter % 60 == 0) // check ~1/sec at 1x; still wall-clock based
+                TryAwardWallClockCoinReward();
 
             // === KARMA DECAY TIMER (already counter-based) ===
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
@@ -144,8 +162,7 @@ namespace CAP_ChatInteractive
             }
 
             // === RAID TIMER (only runs when actually needed — keep this gated) ===
-            // This block is intentionally throttled and conditional so it adds zero overhead
-            // when Twitch Raids are enabled but no raid is currently happening.
+            // Separate from coin cadence (uses tickCounter only as a 60-tick throttle).
             if (tickCounter % 60 == 0)
             {
                 var twitch = CAPChatInteractiveMod.Instance?.TwitchService;
@@ -183,6 +200,12 @@ namespace CAP_ChatInteractive
                         _aiChatBotService.PushCurrentGameStateToBot();
                     }
                 }
+            }
+
+            // === TWITCH EXTENSION BRIDGE (LocalHttp job queue / OutboundPoll stub) ===
+            if (_extensionService != null)
+            {
+                _extensionService.Tick();
             }
 
             // === THROTTLED DEATH REPORTS TO AI BOT ===
@@ -239,8 +262,58 @@ namespace CAP_ChatInteractive
 
             // Initialize AI ChatBot listener if enabled
             InitializeAIChatBot();
+            InitializeTwitchExtension();
+
+            // Ownership: force-off RICS ownership if Possessions Plus is loaded
+            try
+            {
+                var gs = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                Ownership.RICS_OwnershipModDetector.EnforceConflictRules(gs, notify: true);
+            }
+            catch { }
 
             Logger.Message("All core systems initialized");
+        }
+
+        /// <summary>
+        /// Pay active viewers if ≥ CoinRewardIntervalMinutes of real time have elapsed since last payout.
+        /// Catch-up-once after pause: at most one award per check, then stamp now.
+        /// </summary>
+        private void TryAwardWallClockCoinReward()
+        {
+            try
+            {
+                DateTime now = DateTime.UtcNow;
+                if (lastCoinRewardFileTime == 0)
+                {
+                    // First check this session/save: start the clock without an instant payout.
+                    lastCoinRewardFileTime = now.ToFileTimeUtc();
+                    return;
+                }
+
+                DateTime last;
+                try
+                {
+                    last = DateTime.FromFileTimeUtc(lastCoinRewardFileTime);
+                }
+                catch
+                {
+                    lastCoinRewardFileTime = now.ToFileTimeUtc();
+                    return;
+                }
+
+                if ((now - last).TotalMinutes < CoinRewardIntervalMinutes)
+                    return;
+
+                // Stamp first so a slow award / exception cannot double-fire next tick.
+                lastCoinRewardFileTime = now.ToFileTimeUtc();
+                int awarded = Viewers.AwardActiveViewersCoins();
+                Logger.Debug($"Wall-clock coin reward (~{CoinRewardIntervalMinutes:0} real min) — awarded {awarded} active viewer(s)");
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[RICS] Wall-clock coin reward failed (non-fatal): {ex.Message}");
+            }
         }
 
         private void PerformVersionCheckIfNeeded()
@@ -319,6 +392,26 @@ namespace CAP_ChatInteractive
             _aiChatBotService.PushCurrentGameStateToBot();
 
             Logger.Debug("AI ChatBot service initialized + initial game state cached");
+        }
+
+        private void InitializeTwitchExtension()
+        {
+            // Always stop previous so port rebinds cleanly on load
+            _activeExtensionService?.Stop();
+            _activeExtensionService = null;
+            _extensionService = null;
+
+            var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            if (settings?.TwitchExtensionEnabled != true)
+            {
+                Logger.Debug("[RICS Extension] Bridge off");
+                return;
+            }
+
+            _extensionService = new ExtensionService();
+            _activeExtensionService = _extensionService;
+            _extensionService.StartFromSettings();
+            Logger.Message("[RICS Extension] " + _extensionService.StatusLine());
         }
 
         public void RecordDeath(string deathMessage, AiMapLocation location = null, AiMapSlicePayload mapSlice = null)

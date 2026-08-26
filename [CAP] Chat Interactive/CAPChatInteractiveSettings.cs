@@ -121,7 +121,7 @@ namespace CAP_ChatInteractive
     public class CAPGlobalChatSettings : IExposable
     {
         // Existing properties...
-        public string modVersion = "1.46";  // Current mod version WE DONT SAVE THIS! Used in history control
+        public string modVersion = "1.47";  // Current mod version WE DONT SAVE THIS! Used in history control
         public string modVersionSaved = "";
         public string priceListUrl = "https://github.com/ekudram/RICS-Pricelist";
         public bool EnableDebugLogging = false;
@@ -320,6 +320,14 @@ namespace CAP_ChatInteractive
         /// </summary>
         public bool AIChatBotForwardTaskCompletion = false;
 
+        // === RICS pawn item ownership (dependency-free; conflicts with Possessions Plus) ===
+        /// <summary>Master switch. Default off. New game recommended. Forced off if Possessions Plus is active.</summary>
+        public bool UseRicsPawnOwnership = false;
+        /// <summary>Block selling/trading colony items that have a RICS owner.</summary>
+        public bool RicsOwnershipBlockTrading = true;
+        /// <summary>On death, transfer owned gear to heir (Spouse → Children → Best Friend).</summary>
+        public bool RicsOwnershipInheritance = true;
+
         // === Twitch Raids feature (Phase 1) ===
         public bool TwitchRaidsEnabled = false;           // global kill-switch
         public bool TwitchRaidsOnlyRaiders = true;     // only twitch raiders and !joinraid in the raid 
@@ -335,6 +343,18 @@ namespace CAP_ChatInteractive
         /// Fallback when Twitch IRC OnUserJoined (JOIN) events are missing/late.
         /// </summary>
         public bool TwitchRaidsAutoAddChatDuringWindow = true;
+
+        // === Twitch Extension bridge (Viewer Hub) — Option C LocalHttp first, Option A OutboundPoll later ===
+        /// <summary>Master switch for Extension structured API (not chat processor).</summary>
+        public bool TwitchExtensionEnabled = false;
+        /// <summary>0 = LocalHttp (127.0.0.1), 1 = OutboundPoll (EBS stub until R7).</summary>
+        public int TwitchExtensionTransport = 0; // ExtensionTransportMode
+        public int TwitchExtensionLocalPort = 17999;
+        /// <summary>Allow X-RICS-Dev-Viewer header / ?viewer= on loopback LocalHttp only.</summary>
+        public bool TwitchExtensionAllowDevIdentity = true;
+        public string TwitchExtensionEbsPollUrl = "";
+        public string TwitchExtensionAgentToken = "";
+        public int TwitchExtensionPollIntervalMs = 750;
 
         public CAPGlobalChatSettings()
         {
@@ -507,6 +527,34 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref AIChatBotCanExecuteCommands, "aiChatBotCanExecuteCommands", true);
             Scribe_Values.Look(ref AIChatBotForwardGameMessages, "aiChatBotForwardGameMessages", true);
             Scribe_Values.Look(ref AIChatBotForwardTaskCompletion, "aiChatBotForwardTaskCompletion", false);
+
+            // RICS pawn ownership
+            Scribe_Values.Look(ref UseRicsPawnOwnership, "useRicsPawnOwnership", false);
+            Scribe_Values.Look(ref RicsOwnershipBlockTrading, "ricsOwnershipBlockTrading", true);
+            Scribe_Values.Look(ref RicsOwnershipInheritance, "ricsOwnershipInheritance", true);
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                try
+                {
+                    Ownership.RICS_OwnershipModDetector.EnforceConflictRules(this, notify: false);
+                }
+                catch { }
+            }
+
+            // Twitch Extension bridge
+            Scribe_Values.Look(ref TwitchExtensionEnabled, "twitchExtensionEnabled", false);
+            Scribe_Values.Look(ref TwitchExtensionTransport, "twitchExtensionTransport", 0);
+            Scribe_Values.Look(ref TwitchExtensionLocalPort, "twitchExtensionLocalPort", 17999);
+            Scribe_Values.Look(ref TwitchExtensionAllowDevIdentity, "twitchExtensionAllowDevIdentity", true);
+            Scribe_Values.Look(ref TwitchExtensionEbsPollUrl, "twitchExtensionEbsPollUrl", "");
+            Scribe_Values.Look(ref TwitchExtensionAgentToken, "twitchExtensionAgentToken", "");
+            Scribe_Values.Look(ref TwitchExtensionPollIntervalMs, "twitchExtensionPollIntervalMs", 750);
+            if (Scribe.mode == LoadSaveMode.LoadingVars || Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                TwitchExtensionLocalPort = UnityEngine.Mathf.Clamp(TwitchExtensionLocalPort, 1024, 65535);
+                TwitchExtensionTransport = UnityEngine.Mathf.Clamp(TwitchExtensionTransport, 0, 1);
+                TwitchExtensionPollIntervalMs = UnityEngine.Mathf.Clamp(TwitchExtensionPollIntervalMs, 250, 10000);
+            }
 
             // Channel Points Reward Settings
             if (Scribe.mode == LoadSaveMode.LoadingVars)

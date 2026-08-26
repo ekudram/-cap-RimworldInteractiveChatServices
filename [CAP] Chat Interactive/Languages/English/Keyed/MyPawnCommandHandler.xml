@@ -134,6 +134,13 @@
   <RICS.MPCH.PsycastSeparator> • </RICS.MPCH.PsycastSeparator>
   <RICS.MPCH.NoPsycastsLazyInit>Pawn abilities not loaded yet (common with mods). Open {0}'s Bio/Abilities tab in-game, then try again.</RICS.MPCH.NoPsycastsLazyInit>
   <RICS.MPCH.NoPsycastsVPE>Psycasts from Vanilla Psycasts Expanded (now supported via !mypawn psycasts). If nothing shows, open the pawn's Bio/Abilities tab to initialize.</RICS.MPCH.NoPsycastsVPE>
+  <RICS.MPCH.SubCommandDisabled>Sub-command '{0}' is currently disabled.</RICS.MPCH.SubCommandDisabled>
+  <RICS.MPCH.PsycastClassList>Psycaster level {0} | {1}: {2}</RICS.MPCH.PsycastClassList>
+  <RICS.MPCH.PsycastClassEmpty>Psycaster level {0} | {1}: none learned yet</RICS.MPCH.PsycastClassEmpty>
+  <RICS.MPCH.PsycastClassUnknownSuggest>Unknown psycast class '{0}'. Did you mean: {1}?</RICS.MPCH.PsycastClassUnknownSuggest>
+  <RICS.MPCH.PsycastClassUnknown>Unknown psycast class '{0}'{1}. Try !mypawn psycast for stats or a valid class name.</RICS.MPCH.PsycastClassUnknown>
+  <RICS.MPCH.PsycastVpeStats>Psycaster level {0} | Psyfocus {1}% full | Need {2} Psyfocus exp for next level | Heat {3} of {4} points.</RICS.MPCH.PsycastVpeStats>
+  <RICS.MPCH.NoMechsControlled>No mechanoids controlled.</RICS.MPCH.NoMechsControlled>
 
   <!-- Weapon -->
   <RICS.MPCH.WeaponHeader>🔫⚔️ Weapon Report:</RICS.MPCH.WeaponHeader>

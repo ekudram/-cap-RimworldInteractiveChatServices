@@ -1,20 +1,10 @@
 ﻿
 // MyPawnCommandHandler.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
 // Handles the !mypawn command and its subcommands to provide detailed information about the viewer's assigned pawn.
 
@@ -149,7 +139,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // if (pawn.health?.hediffSet?.hediffs == null || pawn.health.hediffSet.hediffs.Count == 0)
             //{
             //    // return $"{bodyTypeInfo}{pawn.Name} has no health conditions. 🟢";
-            //    return "RICS.MPCH.BodyNoConditions".Translate(pawn.LabelShortCap);
             //}
 
             var report = new StringBuilder();
@@ -176,7 +165,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (targetPart == null)
                 {
-                    // return $"❌ Body part '{bodyPartFilter}' not found. Try: torso, head, arm, leg, etc.";
                     return "RICS.MPCH.BodyPartNotFound".Translate(bodyPartFilter);
                 }
 
@@ -565,13 +553,11 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // High severity injuries
             //if (hediff.Severity > 0.6f)
             //{
-            //    return true;
             //}
 
             // Infections and serious injuries
             //if (hediff.def.hediffClass == typeof(Hediff_Injury) && hediff.Severity > 0.4f)
             //{
-            //    return true;
             //}
 
             // Check if it's life-threatening
@@ -645,7 +631,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Painful conditions that affect functionality
             //if (hediff.PainFactor > 1.5f || hediff.PainOffset > 0.3f)
             //{
-            //    return true;
             //}
 
             // Check summary health impact (conditions that significantly affect health)
@@ -919,7 +904,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (missingPart == null || pawn.health?.hediffSet?.hediffs == null)
                 return false;
 
-            Logger.Debug($"=== Checking if missing part {missingPart.def?.label} is replaced by implant ===");
 
             // Get all visible implants
             var allImplants = pawn.health.hediffSet.hediffs
@@ -936,7 +920,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (affectedParts.Contains(missingPart))
                 {
-                    Logger.Debug($"Implant {implant.def.defName} replaces missing part {missingPart.def?.label}");
                     return true;
                 }
             }
@@ -1068,7 +1051,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             // Apply adjustment (clamp between 0 and 1)
             float adjustedHealthPercent = Mathf.Clamp01(healthPercent + adjustment);
 
-            // Return based on adjusted health
             if (adjustedHealthPercent >= 0.85f) return "Excellent 🟢";
             if (adjustedHealthPercent >= 0.65f) return "Good 🟢";
             if (adjustedHealthPercent >= 0.45f) return "Fair 🟡";
@@ -1082,7 +1064,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             if (pawn.health?.hediffSet?.hediffs == null)
             {
-                // return $"{pawn.Name} has no health records.";
                 return "RICS.MPCH.NoHealthRecords".Translate(pawn.LabelShortCap);
             }
 

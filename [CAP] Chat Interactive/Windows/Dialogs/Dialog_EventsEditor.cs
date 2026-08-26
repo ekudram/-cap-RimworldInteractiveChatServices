@@ -1,4 +1,4 @@
-﻿// Dialog_EventsEditor.cs
+// Dialog_EventsEditor.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -79,7 +79,8 @@ namespace CAP_ChatInteractive
             // ========== BOTTOM BUTTON BAR (Save Backup | Load Backup | Save As... | Load file | Delete file | Close) ==========
             // WHY: Consistent with Command Manager. Uses reusable BackupUtility + Dialog_TextInput.
             float btnH = 38f;
-            float btnW = 130f;
+            float btnW = 118f;
+            float closeW = 72f; // short Close — avoids overlapping Reset
             float gap = 6f;
             float padding = 10f;
             float currentY = inRect.yMax - bottomBarHeight + (bottomBarHeight - btnH) / 2f;
@@ -154,13 +155,37 @@ namespace CAP_ChatInteractive
                 ShowDeleteFileMenu();
             }
 
-            // Close (right-aligned)
-            float closeX = inRect.xMax - btnW - padding;
-            Rect closeRect = new Rect(closeX, currentY, btnW, btnH);
+            // Reset to base (wipe main JSON + rebuild from Defs)
+            float resetX = deleteX + btnW + gap;
+            Rect resetRect = new Rect(resetX, currentY, btnW, btnH);
+            if (Widgets.ButtonText(resetRect, "RICS.Editor.ResetJsonToBase".Translate()))
+                ShowResetJsonToBaseDialog();
+
+            // Close — shorter width, right-aligned, never overlaps Reset
+            float closeX = inRect.xMax - closeW - padding;
+            float minCloseX = resetX + btnW + gap;
+            if (closeX < minCloseX)
+                closeX = minCloseX;
+            Rect closeRect = new Rect(closeX, currentY, closeW, btnH);
             if (Widgets.ButtonText(closeRect, "RICS.Editor.Close".Translate()))
             {
                 this.Close();
             }
+        }
+
+        private void ShowResetJsonToBaseDialog()
+        {
+            Find.WindowStack.Add(new Dialog_ResetJsonWarning(
+                "EventsEditor",
+                "Incidents.json",
+                () => JsonConvert.SerializeObject(IncidentsManager.AllBuyableIncidents, Formatting.Indented),
+                () =>
+                {
+                    IncidentsManager.RebuildFromDefaults();
+                    Messages.Message("RICS.Editor.ResetJsonDone".Translate(), MessageTypeDefOf.TaskCompletion);
+                    this.Close(doCloseSound: false);
+                    Find.WindowStack.Add(new Dialog_EventsEditor());
+                }));
         }
 
         private void DrawHeader(Rect rect)

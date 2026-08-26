@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<!-- Defs/MainButtons/ChatInteractiveMainButton.xml -->
+<!--
+  RICS main button (bottom bar). Opens MainTabWindow_ChatInteractive, which lists
+  all enabled EnhancedChatInteractiveAddonDef (see Defs/AddonDefs/ChatInteractiveAddon.xml).
+  Third-party mods add buttons via those AddonDefs — not by editing this file.
+-->
 <Defs>
   <MainButtonDef>
     <defName>CAPChatInteractive</defName>

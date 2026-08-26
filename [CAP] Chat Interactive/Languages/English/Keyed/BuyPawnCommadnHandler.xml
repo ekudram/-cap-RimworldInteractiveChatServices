@@ -42,7 +42,8 @@
   <RICS.BPCH.Gender.Any>any gender</RICS.BPCH.Gender.Any>
 
   <!-- Command Usage -->
-  <RICS.BPCH.Usage>You must specify a race. Usage: !pawn [race] [xenotype] [gender] [age]</RICS.BPCH.Usage>
+  <RICS.BPCH.Usage>Usage: !pawn [race] [xenotype] [gender] [age]. Bare !pawn buys if only one race is enabled, or lists races if several.</RICS.BPCH.Usage>
+  <RICS.BPCH.PickARaceHint>Use !pawn &lt;race&gt; to buy. More races: !races. Xenotypes: !xenotypes [race].</RICS.BPCH.PickARaceHint>
   <RICS.BPCH.RaceNotFound.Suggestion>Did you mean: {0}?</RICS.BPCH.RaceNotFound.Suggestion>
   <RICS.BPCH.RaceNotFound.UseList>Use !races to see available races.</RICS.BPCH.RaceNotFound.UseList>
   <RICS.BPCH.ParseError>Error parsing command. Usage: !pawn [race] [xenotype] [gender] [age]</RICS.BPCH.ParseError>

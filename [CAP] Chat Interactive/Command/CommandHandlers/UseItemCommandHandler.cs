@@ -1,20 +1,11 @@
-﻿// Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// File: UseItemCommandHandler.cs
 //
-// Command handler for buying items from Rimazon store
+// Copyright (c) Captolamia
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
+// !use — immediately consume/apply store items (food, serums, trainers, implants)
 using _CAP__Chat_Interactive.Command.CommandHelpers;
 using CAP_ChatInteractive.Commands.Cooldowns;
 using CAP_ChatInteractive.Store;
@@ -24,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using UnityEngine;
 using Verse;
 using Verse.Sound;
 
@@ -31,23 +23,27 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     internal static class UseItemCommandHandler
     {
+        private const string ReturnDivider = " | ";
 
         public static string HandleUseItem(ChatMessageWrapper messageWrapper, string[] args)
         {
             try
             {
-                Logger.Debug($"HandleUseItem called for user: {messageWrapper.Username}, args: {string.Join(", ", args)}");
-
+                args = args ?? Array.Empty<string>();
                 if (args.Length == 0)
-                {
                     return "RICS.UICH.Usage".Translate();
-                }
 
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-                var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
+                var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (settings == null)
+                    return "RICS.UICH.GenericError".Translate();
+
+                string currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
                 var viewer = Viewers.GetViewer(messageWrapper);
+                if (viewer == null)
+                    return "RICS.UICH.GenericError".Translate();
 
-                var parsed = CommandParserUtility.ParseCommandArguments(args, allowQuality: false, allowMaterial: false, allowSide: false, allowQuantity: true);
+                var parsed = CommandParserUtility.ParseCommandArguments(
+                    args, allowQuality: false, allowMaterial: false, allowSide: false, allowQuantity: true);
                 if (parsed.HasError)
                     return parsed.Error;
 
@@ -56,157 +52,110 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 var storeItem = StoreCommandHelper.GetStoreItemByName(itemName);
                 if (storeItem == null)
-                {
                     return "RICS.UICH.ItemNotFound".Translate(itemName);
-                }
 
                 if (!storeItem.IsUsable)
-                {
                     return "RICS.UICH.NotUsable".Translate(itemName);
-                }
 
                 var researchResult = StoreCommandHelper.HasRequiredResearch(storeItem);
                 if (!researchResult.Allowed)
                 {
                     string researchInfo = string.IsNullOrEmpty(researchResult.BlockingResearchLabel)
-                        ? ""
-                        : $" (research needed: {researchResult.BlockingResearchLabel})";
+                        ? string.Empty
+                        : ReturnDivider + researchResult.BlockingResearchLabel;
                     return "RICS.UICH.ResearchRequired".Translate(itemName) + researchInfo;
                 }
 
                 if (!int.TryParse(quantityStr, out int quantity) || quantity < 1)
-                {
                     quantity = 1;
-                }
 
                 if (storeItem.HasQuantityLimit && quantity > storeItem.QuantityLimit)
-                {
-                    Logger.Debug($"Quantity {quantity} exceeds limit of {storeItem.QuantityLimit} for {itemName}, clamping to maximum");
                     quantity = storeItem.QuantityLimit;
-                }
 
-                var viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
-                Verse.Pawn rimworldPawn = viewerPawn;
-
+                Verse.Pawn viewerPawn = PawnItemHelper.GetViewerPawn(messageWrapper);
                 if (viewerPawn == null)
-                {
                     return "RICS.Pawn.NoPawn".Translate();
-                }
 
                 bool isResurrectorSerum = storeItem.DefName == "MechSerumResurrector";
 
-                if (viewerPawn.Dead && !isResurrectorSerum)
+                if ((viewerPawn.Destroyed || viewerPawn.Dead) && !isResurrectorSerum)
                 {
                     var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
-
-                    string deathDetails = deathInfo.ToString();
-
-                    return "RICS.Pawn.Dead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+                    return "RICS.Pawn.Dead".Translate()
+                           + ReturnDivider
+                           + "RICS.Return.PawnDeadReason".Translate(deathInfo.ToString());
                 }
 
                 if (isResurrectorSerum && viewerPawn.Dead)
-                {
                     quantity = 1;
-                }
 
                 int finalPrice = storeItem.BasePrice * quantity;
-
                 if (viewer.Coins < finalPrice)
                 {
                     return "RICS.UICH.NotEnoughCoins".Translate(
                         StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
                         quantity,
                         itemName,
-                        StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)
-                    );
+                        StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
                 }
 
                 var thingDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
                 if (thingDef == null)
-                {
-                    return "RICS.UICH.ItemDefMissing".Translate(itemName);  
-                }
+                    return "RICS.UICH.ItemDefMissing".Translate(itemName);
 
                 if (isResurrectorSerum && viewerPawn.Dead && CannotResurrectPawn(viewerPawn))
-                {
                     return "RICS.UICH.BodyDestroyed".Translate();
-                }
 
-                string validationError = ValidateMechanitorImplant(storeItem, rimworldPawn, itemName, quantity);
+                string validationError = ValidateMechanitorImplant(storeItem, viewerPawn, itemName, quantity);
                 if (validationError != null)
-                {
                     return validationError;
+
+                // Apply first, then charge
+                if (isResurrectorSerum && viewerPawn.Dead)
+                {
+                    ResurrectPawn(viewerPawn);
+                    if (viewerPawn.Dead)
+                        return "RICS.UICH.BodyDestroyed".Translate();
+                }
+                else
+                {
+                    UseItemImmediately(thingDef, quantity, viewerPawn);
                 }
 
                 viewer.TakeCoins(finalPrice);
+                AwardUseKarma(viewer, finalPrice, settings.KarmaPerStoreItem);
+                Current.Game?.GetComponent<GlobalCooldownManager>()?.RecordItemPurchase(storeItem.DefName);
 
-                float karmaEarned = finalPrice * settings.KarmaPerStoreItem / 100;
-                if (karmaEarned > 0f)
-                {
-                    viewer.GiveKarma(karmaEarned);
-                    Logger.Debug($"Awarded {karmaEarned:F2} karma for {finalPrice} coin item use");
-                }
+                string itemLabel = thingDef.label ?? itemName;
+                LookTargets lookTargets = new LookTargets(viewerPawn);
 
-                if (isResurrectorSerum && viewerPawn.Dead)
+                if (isResurrectorSerum)
                 {
-                    var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
-                    cooldownManager.RecordItemPurchase(storeItem.DefName);
-                    ResurrectPawn(viewerPawn);
-                }
-                else
-                {
-                    var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
-                    cooldownManager.RecordItemPurchase(storeItem.DefName);
-                    UseItemImmediately(thingDef, quantity, rimworldPawn);
-                }
+                    string invoiceLabel = "RICS.UICH.InvoiceResurrectLabel".Translate(messageWrapper.Username);
+                    string invoiceMessage = CreateRimazonResurrectionInvoice(
+                        messageWrapper.Username, itemLabel, finalPrice, currencySymbol);
+                    MessageHandler.SendPinkLetter(invoiceLabel, invoiceMessage, lookTargets);
 
-                string itemLabel = thingDef?.LabelCap ?? itemName;
-                string invoiceLabel;
-                string invoiceMessage;
-
-                if (isResurrectorSerum && viewerPawn.Dead)
-                {
-                    invoiceLabel = "RICS.UICH.InvoiceResurrectLabel".Translate(messageWrapper.Username);
-                    invoiceMessage = CreateRimazonResurrectionInvoice(messageWrapper.Username, itemLabel, finalPrice, currencySymbol);  // ← translate this function separately if pasted
-                    LookTargets resurrectionLookTargets = new LookTargets(viewerPawn);
-                    MessageHandler.SendPinkLetter(invoiceLabel, invoiceMessage, resurrectionLookTargets);
-                }
-                else if (IsMajorPurchase(finalPrice, null))
-                {
-                    invoiceLabel = "RICS.UICH.InvoiceInstantLabel".Translate(messageWrapper.Username);
-                    invoiceMessage = CreateRimazonInstantInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol);  // ← translate this function separately if pasted
-                    LookTargets useLookTargets = new LookTargets(rimworldPawn);
-                    MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, useLookTargets);
-                }
-                else
-                {
-                    invoiceLabel = "RICS.UICH.InvoiceInstantLabel".Translate(messageWrapper.Username);
-                    invoiceMessage = CreateRimazonInstantInvoice(messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol);
-                    LookTargets useLookTargets = new LookTargets(rimworldPawn);
-                    MessageHandler.SendBlueLetter(invoiceLabel, invoiceMessage, useLookTargets);
-                }
-
-                if (isResurrectorSerum && viewerPawn.Dead)
-                {
                     return "RICS.UICH.SuccessResurrect".Translate(
                         itemName,
                         StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
-                        StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)
-                    );
+                        StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
                 }
-                else
-                {
-                    return "RICS.UICH.SuccessNormal".Translate(
-                        quantity,
-                        itemName,
-                        StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
-                        StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol)
-                    );
-                }
+
+                string instantLabel = "RICS.UICH.InvoiceInstantLabel".Translate(messageWrapper.Username);
+                string instantMessage = CreateRimazonInstantInvoice(
+                    messageWrapper.Username, itemLabel, quantity, finalPrice, currencySymbol);
+                MessageHandler.SendBlueLetter(instantLabel, instantMessage, lookTargets);
+
+                return "RICS.UICH.SuccessNormal".Translate(
+                    quantity,
+                    itemName,
+                    StoreCommandHelper.FormatCurrencyMessage(finalPrice, currencySymbol),
+                    StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol));
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in HandleUseItem: {ex}");
+                Logger.Error($"[UseItem] Error in HandleUseItem: {ex}");
                 return "RICS.UICH.GenericError".Translate();
             }
         }
@@ -214,24 +163,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         public static string CreateRimazonResurrectionInvoice(string username, string itemName, int price, string currencySymbol)
         {
             var sb = new StringBuilder();
-
             sb.AppendLine("RICS.UICH.Invoice.Resurrect.Header".Translate());
             sb.AppendLine("RICS.UICH.Invoice.Separator".Translate());
-
             sb.AppendLine("RICS.UICH.Invoice.Customer".Translate(username));
             sb.AppendLine("RICS.UICH.Invoice.Service".Translate());
             sb.AppendLine("RICS.UICH.Invoice.Item".Translate(itemName));
-
             sb.AppendLine("RICS.UICH.Invoice.Separator".Translate());
-
             sb.AppendLine("RICS.UICH.Invoice.Total".Translate(price, currencySymbol));
-
             sb.AppendLine("RICS.UICH.Invoice.Separator".Translate());
-
             sb.AppendLine("RICS.UICH.Invoice.ThankYou".Translate());
             sb.AppendLine("RICS.UICH.Invoice.Restored".Translate());
             sb.AppendLine("RICS.UICH.Invoice.Closing".Translate());
-
             return sb.ToString();
         }
 
@@ -241,157 +183,109 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return true;
 
             if (pawn.Discarded)
-            {
-                Logger.Debug($"Pawn {pawn.Name} is discarded (permanently destroyed)");
                 return true;
-            }
 
             Corpse corpse = pawn.Corpse;
             if (corpse == null)
-            {
-                Logger.Debug($"Pawn {pawn.Name} has no corpse reference - likely completely destroyed, eaten, or buried");
                 return true;
-            }
 
             if (corpse.Destroyed || corpse.Map == null)
-            {
-                Logger.Debug($"Pawn {pawn.Name} corpse is destroyed or not on any map (buried/off-map)");
                 return true;
-            }
 
-            // Multi-map colony safety
-            if (corpse.Map != Find.CurrentMap)
-            {
-                Logger.Debug($"Pawn {pawn.Name} corpse is on another map");
+            // Multi-map colony: corpse must be on the current map for simple revive path
+            if (Find.CurrentMap != null && corpse.Map != Find.CurrentMap)
                 return true;
-            }
 
-            return false; // Corpse exists and is valid on current map → can resurrect
+            return false;
         }
 
         public static bool IsPawnCompletelyDestroyed(Verse.Pawn pawn)
         {
             try
             {
-                // Check if the pawn exists as a corpse in any map
+                if (pawn == null)
+                    return true;
+
                 foreach (var map in Find.Maps)
                 {
                     foreach (var thing in map.listerThings.AllThings)
                     {
                         if (thing is Corpse corpse && corpse.InnerPawn == pawn)
-                        {
-                            return false; // Corpse exists, not completely destroyed
-                        }
+                            return false;
                     }
                 }
 
-                // Check if pawn exists in world pawns (dead)
                 if (Find.WorldPawns.AllPawnsDead.Contains(pawn))
-                {
-                    return false; // Pawn exists in world pawns
-                }
+                    return false;
 
-                // If we get here, the pawn is completely gone
-                // Logger.Debug($"Pawn {pawn.Name} is completely destroyed - no corpse found in any map or world pawns");
                 return true;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error checking if pawn is destroyed: {ex}");
-                return true; // Assume destroyed if we can't check
+                Logger.Error($"[UseItem] Error checking if pawn is destroyed: {ex}");
+                return true;
             }
         }
 
-        // ===== RESURRECTION METHODS =====
         public static void ResurrectPawn(Verse.Pawn pawn)
         {
             try
             {
-                Logger.Debug($"Attempting to resurrect pawn: {pawn?.Name}");
-
-                // Safety check - ensure pawn exists and is actually dead
                 if (pawn == null)
                 {
-                    Logger.Error("Cannot resurrect - pawn is null");
+                    Logger.Error("[UseItem] Cannot resurrect — pawn is null");
                     return;
                 }
 
                 if (!pawn.Dead)
-                {
-                    Logger.Warning($"Pawn {pawn.Name} is not dead, cannot resurrect");
                     return;
-                }
 
-                // Check if pawn is completely destroyed (no corpse exists)
                 if (CannotResurrectPawn(pawn))
-                {
-                    Logger.Error($"Cannot resurrect {pawn.Name} - pawn is completely destroyed (no corpse exists)");
                     return;
-                }
 
-                Logger.Debug($"Resurrecting pawn: {pawn.Name}");
-
-                // Use RimWorld's built-in resurrection method with side effects
                 try
                 {
                     ResurrectionUtility.TryResurrectWithSideEffects(pawn);
                 }
                 catch (NullReferenceException)
                 {
-                    Logger.Warning("Failed to revive with side effects -- falling back to regular revive");
+                    Logger.Warning("[UseItem] Revive with side effects failed — falling back to TryResurrect");
                     ResurrectionUtility.TryResurrect(pawn);
                 }
-
-                Logger.Debug($"Successfully resurrected pawn: {pawn.Name}");
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error resurrecting pawn: {ex}");
+                Logger.Error($"[UseItem] Error resurrecting pawn: {ex}");
                 throw;
             }
         }
 
-        private static string CreateRimazonInstantInvoice(string username, string itemName, int quantity, int price, string currencySymbol)
+        public static bool IsMajorPurchase(int price, QualityCategory? quality)
+        {
+            if (quality.HasValue && quality.Value == QualityCategory.Legendary)
+                return true;
+            return price >= 5000;
+        }
+
+        private static string CreateRimazonInstantInvoice(
+            string username,
+            string itemName,
+            int quantity,
+            int price,
+            string currencySymbol)
         {
             var sb = new StringBuilder();
-
             sb.AppendLine("RICS.UICH.Invoice.Instant.Header".Translate());
             sb.AppendLine("RICS.UICH.Invoice.Separator".Translate());
-
             sb.AppendLine("RICS.UICH.Invoice.Customer".Translate(username));
             sb.AppendLine("RICS.UICH.Invoice.Iteminstant".Translate(itemName, quantity));
             sb.AppendLine("RICS.UICH.Invoice.Service.Immediate".Translate());
-
             sb.AppendLine("RICS.UICH.Invoice.Separator".Translate());
-
             sb.AppendLine("RICS.UICH.Invoice.Total".Translate(price, currencySymbol));
-
             sb.AppendLine("RICS.UICH.Invoice.Separator".Translate());
-
             sb.AppendLine("RICS.UICH.Invoice.ThankYouInstant".Translate());
             sb.AppendLine("RICS.UICH.Invoice.NoDelivery".Translate());
-
             return sb.ToString();
-        }
-
-        private static SkillDef GetSkillDefFromNeurotrainer(string defName)
-        {
-            return defName.ToLower() switch
-            {
-                string s when s.Contains("melee") => SkillDefOf.Melee,
-                string s when s.Contains("shooting") => SkillDefOf.Shooting,
-                string s when s.Contains("construction") => SkillDefOf.Construction,
-                string s when s.Contains("mining") => SkillDefOf.Mining,
-                string s when s.Contains("cooking") => SkillDefOf.Cooking,
-                string s when s.Contains("plants") => SkillDefOf.Plants,
-                string s when s.Contains("animals") => SkillDefOf.Animals,
-                string s when s.Contains("crafting") => SkillDefOf.Crafting,
-                string s when s.Contains("artistic") => SkillDefOf.Artistic,
-                string s when s.Contains("medical") => SkillDefOf.Medicine,
-                string s when s.Contains("social") => SkillDefOf.Social,
-                string s when s.Contains("intellectual") => SkillDefOf.Intellectual,
-                _ => null
-            };
         }
 
         private static bool HasPsylink(Verse.Pawn pawn)
@@ -399,39 +293,25 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (pawn?.health?.hediffSet?.hediffs == null)
                 return false;
 
-            // Check for any psylink hediff
             return pawn.health.hediffSet.hediffs.Any(hediff =>
-                hediff.def?.defName?.Contains("Psylink") == true ||
-                hediff.def?.defName?.Contains("Psychic") == true);
-        }
-
-        // ===== UTILITY METHODS =====
-        public static bool IsMajorPurchase(int price, QualityCategory? quality)
-        {
-            // Legendary quality items
-            if (quality.HasValue && quality.Value == QualityCategory.Legendary)
-                return true;
-
-            // Very expensive items (adjust threshold as needed)
-            if (price >= 5000)
-                return true;
-
-            return false;
+                hediff.def?.defName?.IndexOf("Psylink", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                hediff.def?.defName?.IndexOf("Psychic", StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         private static bool IsSustainerSound(string soundDefName)
         {
-            if (string.IsNullOrEmpty(soundDefName)) return false;
+            if (string.IsNullOrEmpty(soundDefName))
+                return false;
 
-            // Common sustainer sound names that shouldn't be played as one-shot
-            string[] sustainerKeywords = {
-        "Sustain", "Loop", "Ambient", "Meal_Eat", "Ingest_", "Burning",
-        "Wind", "Engine", "Working", "Charging", "Ritual"
-    };
+            string[] sustainerKeywords =
+            {
+                "Sustain", "Loop", "Ambient", "Meal_Eat", "Ingest_", "Burning",
+                "Wind", "Engine", "Working", "Charging", "Ritual"
+            };
 
             foreach (string keyword in sustainerKeywords)
             {
-                if (soundDefName.Contains(keyword))
+                if (soundDefName.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
                     return true;
             }
 
@@ -442,187 +322,233 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
+                if (pawn?.Map == null)
+                    return;
+
+                TargetInfo target = new TargetInfo(pawn.Position, pawn.Map);
+
                 if (thingDef.IsDrug)
                 {
-                    // Use specific drug sounds based on drug type
-                    if (thingDef.ingestible.drugCategory == DrugCategory.Social || thingDef.defName.Contains("Smoke"))
+                    if (thingDef.ingestible?.drugCategory == DrugCategory.Social ||
+                        thingDef.defName.IndexOf("Smoke", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
-                        SoundDefOf.Interact_Ignite.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+                        SoundDefOf.Interact_Ignite.PlayOneShot(target);
                     }
-                    else if (thingDef.ingestible.drugCategory == DrugCategory.Hard)
+                    else if (thingDef.ingestible?.drugCategory == DrugCategory.Hard)
                     {
-                        SoundDefOf.Crunch.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+                        SoundDefOf.Crunch.PlayOneShot(target);
                     }
                     else
                     {
-                        SoundDefOf.Click.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+                        SoundDefOf.Click.PlayOneShot(target);
                     }
                 }
-                else if (thingDef.ingestible.IsMeal)
+                else if (thingDef.ingestible?.IsMeal == true)
                 {
-                    // Use crunch sound for meals (eating sound)
-                    SoundDefOf.Crunch.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+                    SoundDefOf.Crunch.PlayOneShot(target);
                 }
-                else if (thingDef.IsCorpse || thingDef.defName.Contains("Meat"))
+                else if (thingDef.IsCorpse ||
+                         thingDef.defName.IndexOf("Meat", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    SoundDefOf.RawMeat_Eat.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+                    SoundDefOf.RawMeat_Eat.PlayOneShot(target);
                 }
                 else if (thingDef.IsIngestible && thingDef.ingestible != null &&
                          (thingDef.ingestible.foodType & FoodTypeFlags.Liquor) != 0)
                 {
-                    // For beer and other liquor, use a liquid sound
-                    SoundDefOf.HissSmall.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+                    SoundDefOf.HissSmall.PlayOneShot(target);
                 }
-                else if (thingDef.defName.Contains("Berry") || thingDef.defName.Contains("Fruit"))
+                else if (thingDef.defName.IndexOf("Berry", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                         thingDef.defName.IndexOf("Fruit", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    // For fruits/berries, use raw vegetable eat sound
-                    SoundDefOf.RawMeat_Eat.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+                    SoundDefOf.RawMeat_Eat.PlayOneShot(target);
                 }
                 else
                 {
-                    // Default for vegetables and other foods
-                    SoundDefOf.Crunch.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+                    SoundDefOf.Crunch.PlayOneShot(target);
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Logger.Debug($"Error in PlayFallbackIngestSound: {ex.Message}");
-                // Final fallback - use a very basic sound
-                SoundDefOf.Click.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+                if (pawn?.Map != null)
+                    SoundDefOf.Click.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
             }
         }
 
-        // ===== SOUND METHODS =====
         private static void PlayIngestSoundSafely(ThingDef thingDef, Verse.Pawn pawn)
         {
             try
             {
-                // Try to use the ingest sound from the thing definition first
-                if (thingDef.ingestible.ingestSound != null)
+                if (pawn?.Map == null)
+                    return;
+
+                if (thingDef.ingestible?.ingestSound != null)
                 {
-                    // Check if this is a sustainer sound that shouldn't be played as one-shot
                     string soundName = thingDef.ingestible.ingestSound.defName;
                     if (IsSustainerSound(soundName))
-                    {
-                        Logger.Debug($"Skipping sustainer sound: {soundName}, using fallback");
                         PlayFallbackIngestSound(thingDef, pawn);
-                    }
                     else
-                    {
-                        // It's safe to play as one-shot
                         thingDef.ingestible.ingestSound.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
-                    }
                 }
                 else
                 {
-
-                    // No specific ingest sound defined, use fallback
                     PlayFallbackIngestSound(thingDef, pawn);
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Logger.Debug($"Error playing ingest sound for {thingDef.defName}: {ex.Message}");
                 PlayFallbackIngestSound(thingDef, pawn);
             }
         }
 
-        // ===== ITEM USAGE  =====
-
         private static void UseItemImmediately(ThingDef thingDef, int quantity, Verse.Pawn pawn)
         {
+            if (thingDef == null || pawn == null || pawn.Map == null)
+                return;
+
             for (int i = 0; i < quantity; i++)
             {
                 Thing thing = ThingMaker.MakeThing(thingDef);
 
-                // Handle different types of usable items with appropriate sounds
                 if (thingDef.IsIngestible && thingDef.ingestible != null)
                 {
-                    // DEBUG: Log nutrition before ingestion
-                    float nutritionBefore = pawn.needs.food?.CurLevel ?? 0f;
-                    Logger.Debug($"Nutrition before ingestion: {nutritionBefore}");
-
-                    // SPAWN THE ITEM FIRST so ingestion works properly
-                    GenSpawn.Spawn(thing, pawn.Position, pawn.Map);
-
-                    // Now ingest the spawned item and APPLY the nutrition
-                    float nutritionWanted = pawn.needs.food?.NutritionWanted ?? 0f;
-                    Logger.Debug($"Nutrition wanted: {nutritionWanted}");
-
-                    // Ingest returns the nutrition gained - we need to apply it to the pawn
-                    float nutritionGained = thing.Ingested(pawn, nutritionWanted);
-                    Logger.Debug($"Nutrition gained from ingestion: {nutritionGained}");
-
-                    // Apply the nutrition to the pawn's food need
-                    if (pawn.needs.food != null)
-                    {
-                        pawn.needs.food.CurLevel += nutritionGained;
-                        Logger.Debug($"Nutrition after manual application: {pawn.needs.food.CurLevel}");
-                    }
-
-                    // Play appropriate sound - use safe sound playing method
-                    PlayIngestSoundSafely(thingDef, pawn);
-
-                    // Clean up - the item should be consumed/destroyed by Ingested(), but ensure it's gone
-                    if (thing.Spawned)
-                    {
-                        thing.Destroy();
-                    }
+                    ApplyIngestibleImmediately(thing, thingDef, pawn);
                 }
                 else if (thingDef.IsMedicine)
                 {
-                    // Medicine - add to inventory since immediate use is complex
-                    if (!pawn.inventory.innerContainer.TryAdd(thing))
-                    {
+                    if (pawn.inventory?.innerContainer == null || !pawn.inventory.innerContainer.TryAdd(thing))
                         GenPlace.TryPlaceThing(thing, pawn.Position, pawn.Map, ThingPlaceMode.Near);
-                    }
                     SoundDefOf.Interact_Tend.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
                 }
                 else if (thingDef.HasComp(typeof(CompUsable)) || thingDef.HasComp(typeof(CompUsableImplant)))
                 {
-                    // NEW: Generalized handling for all CompUsable items (includes implants, trainers, etc.)
-                    UseCompUseEffectItem(thing, pawn);  // Updated method name for clarity
-                    Logger.Debug($"Applying CompUsable/Implant effect for {thingDef.defName} on {pawn.Name}");
-                    SoundDefOf.PsychicPulseGlobal.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
-                }
-                else if (thingDef.defName.Contains("Psytrainer") || thingDef.defName.Contains("Neurotrainer") || thingDef.defName == "PsychicAmplifier")
-                {
-
-                    // FIX: Actually use psy trainers and neurotrainers instead of just adding to inventory
                     UseCompUseEffectItem(thing, pawn);
-                    Logger.Debug($"Used psy/neuro trainer {thingDef.defName} on {pawn.Name}");
-                }
-                else if (thingDef.defName.Contains("Neuroformer"))
-                {
-                    // Neuroformers - add to inventory (these are typically used via right-click)
-                    if (!pawn.inventory.innerContainer.TryAdd(thing))
-                    {
-                        GenPlace.TryPlaceThing(thing, pawn.Position, pawn.Map, ThingPlaceMode.Near);
-                    }
                     SoundDefOf.PsychicPulseGlobal.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
                 }
-                else if (thingDef.defName.Contains("MechSerum"))
+                else if (thingDef.defName.IndexOf("Psytrainer", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                         thingDef.defName.IndexOf("Neurotrainer", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                         thingDef.defName == "PsychicAmplifier")
                 {
-                    // Mech serums - add to inventory
-                    if (!pawn.inventory.innerContainer.TryAdd(thing))
-                    {
+                    UseCompUseEffectItem(thing, pawn);
+                }
+                else if (thingDef.defName.IndexOf("Neuroformer", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    if (pawn.inventory?.innerContainer == null || !pawn.inventory.innerContainer.TryAdd(thing))
                         GenPlace.TryPlaceThing(thing, pawn.Position, pawn.Map, ThingPlaceMode.Near);
-                    }
+                    SoundDefOf.PsychicPulseGlobal.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
+                }
+                else if (thingDef.defName.IndexOf("MechSerum", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    if (pawn.inventory?.innerContainer == null || !pawn.inventory.innerContainer.TryAdd(thing))
+                        GenPlace.TryPlaceThing(thing, pawn.Position, pawn.Map, ThingPlaceMode.Near);
                     SoundDefOf.MechSerumUsed.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
                 }
                 else
                 {
-                    // Fallback for other usable items - add to inventory
-                    if (!pawn.inventory.innerContainer.TryAdd(thing))
-                    {
+                    if (pawn.inventory?.innerContainer == null || !pawn.inventory.innerContainer.TryAdd(thing))
                         GenPlace.TryPlaceThing(thing, pawn.Position, pawn.Map, ThingPlaceMode.Near);
-                    }
                     SoundDefOf.Standard_Pickup.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
                 }
-                var cooldownManager = Current.Game.GetComponent<GlobalCooldownManager>();
-                cooldownManager.RecordItemPurchase(thingDef.defName); // or "apparel", "item", etc.
+            }
+        }
 
-                Logger.Debug($"Used item {thingDef.defName}, played sound effect");
+        /// <summary>
+        /// Instantly apply food/drugs. Prefer full-item nutrition so meals always fill when hungry.
+        /// Fallback sets food CurLevel if Ingested applied drug effects but no nutrition
+        /// (seen with spawn+Ingested and some meal mods; UI can look "late" or unchanged).
+        /// </summary>
+        private static void ApplyIngestibleImmediately(Thing thing, ThingDef thingDef, Verse.Pawn pawn)
+        {
+            if (thing == null || thingDef?.ingestible == null || pawn == null)
+                return;
+
+            if (thing.stackCount < 1)
+                thing.stackCount = 1;
+
+            float foodBefore = pawn.needs?.food != null ? pawn.needs.food.CurLevel : -1f;
+
+            float itemNutrition = 0f;
+            try
+            {
+                itemNutrition = FoodUtility.GetNutrition(pawn, thing, thingDef);
+            }
+            catch
+            {
+                // ignore
+            }
+            if (itemNutrition <= 0f)
+            {
+                try
+                {
+                    itemNutrition = thingDef.ingestible.CachedNutrition;
+                }
+                catch
+                {
+                    itemNutrition = 0f;
+                }
+            }
+
+            // At least one full item of nutrition (not only the tiny remainder of NutritionWanted).
+            float nutritionWanted = itemNutrition > 0f ? itemNutrition : 0.01f;
+            if (pawn.needs?.food != null)
+                nutritionWanted = Mathf.Max(nutritionWanted, pawn.needs.food.NutritionWanted);
+
+            // Do not spawn on the map: free food can be hauled/interfered with by mods mid-ingest.
+            try
+            {
+                if (!thing.Destroyed)
+                    thing.Ingested(pawn, nutritionWanted);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[UseItem] Ingested failed for {thingDef.defName}: {ex.Message}");
+            }
+
+            // Guarantee food need moves for real food when the pawn still has room.
+            if (pawn.needs?.food != null && foodBefore >= 0f && IsPrimarilyFood(thingDef))
+            {
+                float foodAfter = pawn.needs.food.CurLevel;
+                float room = pawn.needs.food.MaxLevel - foodAfter;
+                if (room > 0.01f && foodAfter <= foodBefore + 0.001f && itemNutrition > 0f)
+                {
+                    float add = Mathf.Min(itemNutrition, room);
+                    pawn.needs.food.CurLevel = Mathf.Min(pawn.needs.food.MaxLevel, foodBefore + add);
+                }
+            }
+
+            if (!thing.Destroyed)
+                thing.Destroy(DestroyMode.Vanish);
+
+            PlayIngestSoundSafely(thingDef, pawn);
+        }
+
+        /// <summary>True for meals / raw food — not social/hard drugs (those rely on Ingested effects).</summary>
+        private static bool IsPrimarilyFood(ThingDef def)
+        {
+            if (def?.ingestible == null)
+                return false;
+
+            try
+            {
+                if (def.ingestible.IsMeal)
+                    return true;
+
+                // Drugs: coffee/beer/etc. — leave nutrition to Ingested only
+                if (def.ingestible.drugCategory != DrugCategory.None)
+                    return false;
+
+                if (def.IsNutritionGivingIngestible)
+                    return true;
+
+                var ft = def.ingestible.foodType;
+                if ((ft & (FoodTypeFlags.Meal | FoodTypeFlags.Meat | FoodTypeFlags.VegetableOrFruit
+                           | FoodTypeFlags.AnimalProduct | FoodTypeFlags.Processed | FoodTypeFlags.Kibble)) != 0)
+                    return true;
+
+                return def.ingestible.CachedNutrition > 0.05f;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -630,149 +556,94 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         {
             try
             {
-                //Logger.Debug($"Attempting to use item: {thing.def.defName} on pawn {pawn.Name}");
+                if (thing == null || pawn?.Map == null)
+                    return;
 
-                // Spawn the item temporarily so comps can initialize
                 GenSpawn.Spawn(thing, pawn.Position, pawn.Map);
 
-                List<CompUseEffect> compUseEffects = new List<CompUseEffect>();
-
-                // Get ALL CompUseEffect components, not just the first one
+                var compUseEffects = new List<CompUseEffect>();
                 if (thing is ThingWithComps thingWithComps)
                 {
                     foreach (var comp in thingWithComps.AllComps)
                     {
                         if (comp is CompUseEffect compUseEffect)
-                        {
                             compUseEffects.Add(compUseEffect);
-                        }
                     }
                 }
 
-                Logger.Debug($"Found {compUseEffects.Count} CompUseEffect components");
-
-                bool anyEffectApplied = false;
-
-                if (thing.def.defName.Contains("Psytrainer") && !HasPsylink(pawn))
+                if (thing.def.defName.IndexOf("Psytrainer", StringComparison.OrdinalIgnoreCase) >= 0 && !HasPsylink(pawn))
                 {
-                    Logger.Debug($"Pawn {pawn.Name} does not have psylink, cannot use psy trainer");
-                    // Add to inventory instead of using
                     if (thing.Spawned)
-                    {
                         thing.DeSpawn();
-                    }
-                    if (!pawn.inventory.innerContainer.TryAdd(thing))
-                    {
+                    if (pawn.inventory?.innerContainer == null || !pawn.inventory.innerContainer.TryAdd(thing))
                         GenPlace.TryPlaceThing(thing, pawn.Position, pawn.Map, ThingPlaceMode.Near);
-                    }
                     return;
                 }
 
                 foreach (var compUseEffect in compUseEffects)
                 {
-                    Logger.Debug($"Processing CompUseEffect: {compUseEffect.GetType().FullName}");
-
                     AcceptanceReport acceptance = compUseEffect.CanBeUsedBy(pawn);
-                    Logger.Debug($"CanBeUsedBy result for {compUseEffect.GetType().Name}: Accepted={acceptance.Accepted}, Reason={acceptance.Reason}");
+                    if (!acceptance.Accepted)
+                        continue;
 
-                    if (acceptance.Accepted)
+                    compUseEffect.DoEffect(pawn);
+                    try
                     {
-                        Logger.Debug($"Calling DoEffect on {compUseEffect.GetType().Name}...");
-                        compUseEffect.DoEffect(pawn);
-                        Logger.Debug($"DoEffect completed on {compUseEffect.GetType().Name}");
-                        anyEffectApplied = true;
-
-                        // Try SelectedUseOption as well
-                        try
-                        {
-                            Logger.Debug($"Calling SelectedUseOption on {compUseEffect.GetType().Name}...");
-                            bool selectedResult = compUseEffect.SelectedUseOption(pawn);
-                            Logger.Debug($"SelectedUseOption result on {compUseEffect.GetType().Name}: {selectedResult}");
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Debug($"SelectedUseOption failed on {compUseEffect.GetType().Name} (may be normal): {ex.Message}");
-                        }
+                        compUseEffect.SelectedUseOption(pawn);
                     }
-                    else
+                    catch
                     {
-                        Logger.Warning($"Cannot use {compUseEffect.GetType().Name} on pawn {pawn.Name}: {acceptance.Reason}");
+                        // SelectedUseOption may throw for non-interactive uses
                     }
                 }
 
-                if (!anyEffectApplied)
-                {
-                    Logger.Warning("No CompUseEffect components could be applied to pawn");
-                }
-
-                // Despawn the item after use (it's consumed)
                 if (thing.Spawned)
-                {
                     thing.DeSpawn();
-                }
 
                 SoundDefOf.PsychicPulseGlobal.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));
-
-                // Log skill levels for debugging
-                if (thing.def.defName.Contains("Neurotrainer"))
-                {
-                    var skillDef = GetSkillDefFromNeurotrainer(thing.def.defName);
-                    if (skillDef != null)
-                    {
-                        int skillLevel = pawn.skills.GetSkill(skillDef).Level;
-                        Logger.Debug($"Pawn {pawn.Name} {skillDef.defName} skill level after use: {skillLevel}");
-                    }
-                }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error using item {thing.def.defName}: {ex}");
-                // Fallback: add to inventory if usage fails
-                if (thing.Spawned)
+                Logger.Error($"[UseItem] Error using item {thing?.def?.defName}: {ex}");
+                if (thing != null)
                 {
-                    thing.DeSpawn();
-                }
-                if (!pawn.inventory.innerContainer.TryAdd(thing))
-                {
-                    GenPlace.TryPlaceThing(thing, pawn.Position, pawn.Map, ThingPlaceMode.Near);
+                    if (thing.Spawned)
+                        thing.DeSpawn();
+                    if (pawn.inventory?.innerContainer == null || !pawn.inventory.innerContainer.TryAdd(thing))
+                    {
+                        if (pawn.Map != null)
+                            GenPlace.TryPlaceThing(thing, pawn.Position, pawn.Map, ThingPlaceMode.Near);
+                    }
                 }
             }
         }
 
-        // ===== Biotech Implant Handling (example of a specific CompUsable item) =====
-
         private static string ValidateMechanitorImplant(StoreItem storeItem, Verse.Pawn pawn, string itemName, int quantity)
         {
-            // Skip validation if Biotech DLC is not active
-            if (!ModLister.BiotechInstalled)
+            if (!ModLister.BiotechInstalled || storeItem == null || pawn == null)
                 return null;
 
-            // Check if this is a Mechanitor implant
-            bool isMechlink = string.Equals(storeItem.DefName, "Mechlink", StringComparison.OrdinalIgnoreCase);
-            bool isControlSublink = storeItem.DefName == "ControlSublink";
-            bool isControlSublinkHigh = storeItem.DefName == "ControlSublinkHigh";
-            bool isMechFormfeeder = storeItem.DefName == "MechFormfeeder";
-            bool isRemoteRepairer = storeItem.DefName == "RemoteRepairer";
-            bool isRemoteShielder = storeItem.DefName == "RemoteShielder";
-            bool isRepairProbe = storeItem.DefName == "RepairProbe";
+            string def = storeItem.DefName;
+            bool isMechlink = string.Equals(def, "Mechlink", StringComparison.OrdinalIgnoreCase);
+            bool isControlSublink = def == "ControlSublink";
+            bool isControlSublinkHigh = def == "ControlSublinkHigh";
+            bool isMechFormfeeder = def == "MechFormfeeder";
+            bool isRemoteRepairer = def == "RemoteRepairer";
+            bool isRemoteShielder = def == "RemoteShielder";
+            bool isRepairProbe = def == "RepairProbe";
 
             if (!isMechlink && !isControlSublink && !isControlSublinkHigh && !isMechFormfeeder &&
                 !isRemoteRepairer && !isRemoteShielder && !isRepairProbe)
                 return null;
 
-            // NEW: Check for Psychically Deaf trait (prevents mechanitor implant use/benefit)
             TraitDef psychicallyDeafDef = DefDatabase<TraitDef>.GetNamedSilentFail("PsychicallyDeaf");
             if (psychicallyDeafDef != null && (pawn.story?.traits?.HasTrait(psychicallyDeafDef) ?? false))
-            {
                 return "RICS.UICH.Mechanitor.PsychicallyDeaf".Translate();
-            }
 
-            // Get all hediffs on the pawn
             var hediffs = pawn.health?.hediffSet?.hediffs;
             if (hediffs == null)
                 return null;
 
-            // Mechlink: only one implant ever (hediffDef MechlinkImplant / Hediff_Mechlink)
             if (isMechlink)
             {
                 bool alreadyHas = hediffs.Any(h =>
@@ -781,7 +652,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                      string.Equals(h.def.defName, "Mechlink", StringComparison.OrdinalIgnoreCase) ||
                      h is Hediff_Mechlink));
 
-                // Also treat existing mechanitor as already linked
                 if (!alreadyHas)
                 {
                     try
@@ -790,7 +660,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                     catch
                     {
-                        // MechanitorUtility may be unavailable without Biotech at runtime edge cases
+                        // ignore if utility unavailable
                     }
                 }
 
@@ -800,186 +670,82 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (quantity > 1)
                     return "RICS.UICH.Mechanitor.MechlinkOneOnly".Translate();
 
-                return null; // first Mechlink OK
+                return null;
             }
 
-            // For ControlSublink implants - they use a single Hediff_Level with severity as count
             if (isControlSublink || isControlSublinkHigh)
             {
-                var sublinkHediff = hediffs.FirstOrDefault(h => h.def.defName == "ControlSublinkImplant") as Hediff_Level;
+                var sublinkHediff = hediffs.FirstOrDefault(h => h.def?.defName == "ControlSublinkImplant") as Hediff_Level;
                 int currentLevel = sublinkHediff?.level ?? 0;
 
                 if (isControlSublink)
-                {
-                    // Standard sublink: max 3
-                    int maxAllowed = 3;
-                    if (currentLevel >= maxAllowed)
-                    {
-                        return "RICS.UICH.Mechanitor.MaxReached".Translate(
-                            itemName,
-                            maxAllowed,
-                            currentLevel
-                        );
-                    }
+                    return CheckLevelLimit(itemName, quantity, currentLevel, maxAllowed: 3);
 
-                    // Check if quantity would exceed max limit
-                    if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
-                    {
-                        int availableSlots = maxAllowed - currentLevel;
-                        return "RICS.UICH.Mechanitor.ExceedsLimit".Translate(
-                            quantity,
-                            itemName,
-                            availableSlots,
-                            currentLevel,
-                            maxAllowed
-                        );
-                    }
-                }
-                else if (isControlSublinkHigh)
-                {
-                    // High sublink: max 6, requires at least 3 standard first
-                    if (currentLevel < 3)
-                    {
-                        return "RICS.UICH.Mechanitor.StandardRequired".Translate(
-                            itemName,
-                            currentLevel
-                        );
-                    }
+                if (currentLevel < 3)
+                    return "RICS.UICH.Mechanitor.StandardRequired".Translate(itemName, currentLevel);
 
-                    int maxAllowed = 6;
-                    if (currentLevel >= maxAllowed)
-                    {
-                        return "RICS.UICH.Mechanitor.MaxReached".Translate(
-                            itemName,
-                            maxAllowed,
-                            currentLevel
-                        );
-                    }
-
-                    // Check if quantity would exceed max limit
-                    if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
-                    {
-                        int availableSlots = maxAllowed - currentLevel;
-                        return "RICS.UICH.Mechanitor.ExceedsLimit".Translate(
-                            quantity,
-                            itemName,
-                            availableSlots,
-                            currentLevel,
-                            maxAllowed
-                        );
-                    }
-                }
+                return CheckLevelLimit(itemName, quantity, currentLevel, maxAllowed: 6);
             }
-            else if (isMechFormfeeder)
+
+            if (isMechFormfeeder)
             {
-                var hediff = hediffs.FirstOrDefault(h => h.def.defName == "MechFormfeederImplant") as Hediff_Level;
-                int currentLevel = hediff?.level ?? 0;
-                int maxAllowed = 6;
-
-                if (currentLevel >= maxAllowed)
-                {
-                    return "RICS.UICH.Mechanitor.MaxReached".Translate(
-                        itemName,
-                        maxAllowed,
-                        currentLevel
-                    );
-                }
-
-                if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
-                {
-                    int availableSlots = maxAllowed - currentLevel;
-                    return "RICS.UICH.Mechanitor.ExceedsLimit".Translate(
-                        quantity,
-                        itemName,
-                        availableSlots,
-                        currentLevel,
-                        maxAllowed
-                    );
-                }
+                int currentLevel = (hediffs.FirstOrDefault(h => h.def?.defName == "MechFormfeederImplant") as Hediff_Level)?.level ?? 0;
+                return CheckLevelLimit(itemName, quantity, currentLevel, maxAllowed: 6);
             }
-            else if (isRemoteRepairer)
+
+            if (isRemoteRepairer)
             {
-                var hediff = hediffs.FirstOrDefault(h => h.def.defName == "RemoteRepairerImplant") as Hediff_Level;
-                int currentLevel = hediff?.level ?? 0;
-                int maxAllowed = 3;
-
-                if (currentLevel >= maxAllowed)
-                {
-                    return "RICS.UICH.Mechanitor.MaxReached".Translate(
-                        itemName,
-                        maxAllowed,
-                        currentLevel
-                    );
-                }
-
-                if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
-                {
-                    int availableSlots = maxAllowed - currentLevel;
-                    return "RICS.UICH.Mechanitor.ExceedsLimit".Translate(
-                        quantity,
-                        itemName,
-                        availableSlots,
-                        currentLevel,
-                        maxAllowed
-                    );
-                }
+                int currentLevel = (hediffs.FirstOrDefault(h => h.def?.defName == "RemoteRepairerImplant") as Hediff_Level)?.level ?? 0;
+                return CheckLevelLimit(itemName, quantity, currentLevel, maxAllowed: 3);
             }
-            else if (isRemoteShielder)
+
+            if (isRemoteShielder)
             {
-                var hediff = hediffs.FirstOrDefault(h => h.def.defName == "RemoteShielderImplant") as Hediff_Level;
-                int currentLevel = hediff?.level ?? 0;
-                int maxAllowed = 3;
-
-                if (currentLevel >= maxAllowed)
-                {
-                    return "RICS.UICH.Mechanitor.MaxReached".Translate(
-                        itemName,
-                        maxAllowed,
-                        currentLevel
-                    );
-                }
-
-                if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
-                {
-                    int availableSlots = maxAllowed - currentLevel;
-                    return "RICS.UICH.Mechanitor.ExceedsLimit".Translate(
-                        quantity,
-                        itemName,
-                        availableSlots,
-                        currentLevel,
-                        maxAllowed
-                    );
-                }
+                int currentLevel = (hediffs.FirstOrDefault(h => h.def?.defName == "RemoteShielderImplant") as Hediff_Level)?.level ?? 0;
+                return CheckLevelLimit(itemName, quantity, currentLevel, maxAllowed: 3);
             }
-            else if (isRepairProbe)
+
+            if (isRepairProbe)
             {
-                var hediff = hediffs.FirstOrDefault(h => h.def.defName == "RepairProbeImplant") as Hediff_Level;
-                int currentLevel = hediff?.level ?? 0;
-                int maxAllowed = 6;
-
-                if (currentLevel >= maxAllowed)
-                {
-                    return "RICS.UICH.Mechanitor.MaxReached".Translate(
-                        itemName,
-                        maxAllowed,
-                        currentLevel
-                    );
-                }
-
-                if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
-                {
-                    int availableSlots = maxAllowed - currentLevel;
-                    return "RICS.UICH.Mechanitor.ExceedsLimit".Translate(
-                        quantity,
-                        itemName,
-                        availableSlots,
-                        currentLevel,
-                        maxAllowed
-                    );
-                }
+                int currentLevel = (hediffs.FirstOrDefault(h => h.def?.defName == "RepairProbeImplant") as Hediff_Level)?.level ?? 0;
+                return CheckLevelLimit(itemName, quantity, currentLevel, maxAllowed: 6);
             }
 
             return null;
+        }
+
+        private static string CheckLevelLimit(string itemName, int quantity, int currentLevel, int maxAllowed)
+        {
+            if (currentLevel >= maxAllowed)
+            {
+                return "RICS.UICH.Mechanitor.MaxReached".Translate(
+                    itemName,
+                    maxAllowed,
+                    currentLevel);
+            }
+
+            if (quantity > 1 && (currentLevel + quantity) > maxAllowed)
+            {
+                int availableSlots = maxAllowed - currentLevel;
+                return "RICS.UICH.Mechanitor.ExceedsLimit".Translate(
+                    quantity,
+                    itemName,
+                    availableSlots,
+                    currentLevel,
+                    maxAllowed);
+            }
+
+            return null;
+        }
+
+        private static void AwardUseKarma(Viewer viewer, int totalCost, float karmaPerStoreItem)
+        {
+            if (viewer == null || totalCost <= 0)
+                return;
+
+            float karmaEarned = totalCost * karmaPerStoreItem / 100f;
+            if (karmaEarned > 0f)
+                viewer.GiveKarma(karmaEarned);
         }
     }
 }

@@ -433,5 +433,8 @@ namespace _CAP__Chat_Interactive.Utilities
                 Logger.Error($"Error rebuilding race settings: {ex.Message}");
             }
         }
+
+        /// <summary>Editor Reset to base — same as DebugRebuildRaceSettings.</summary>
+        public static void RebuildFromDefaults() => DebugRebuildRaceSettings();
     }
 }

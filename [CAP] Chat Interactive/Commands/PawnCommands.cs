@@ -1,28 +1,15 @@
-﻿// PawnCommands.cs
+﻿// File: PawnCommands.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
 // Handles pawn-related chat commands: !pawn, !mypawn, trait commands, and queue management.
-using _CAP__Chat_Interactive.Utilities;
 using CAP_ChatInteractive.Commands.CommandHandlers;
 using CAP_ChatInteractive.Commands.Cooldowns;
-using CAP_ChatInteractive.Traits;
 using RimWorld;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Verse;
 
@@ -36,30 +23,10 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             // Logger.Debug($"Pawn command executed by {user.Username} with args: [{string.Join(", ", args)}]");
 
-            // Handle different argument patterns
-            if (args.Length == 0)
-            {
-                return ShowPawnHelp();
-            }
-
-            string firstArg = args[0].ToLower();
-
-            // Handle list commands where moved to !races and !xenotypes for better discoverability
-
-            // Handle mypawn command
-            if (firstArg == "mypawn")
-            {
+            if (args != null && args.Length > 0 && args[0].Equals("mypawn", StringComparison.OrdinalIgnoreCase))
                 return HandleMyPawnCommand(messageWrapper);
-            }
 
-            // Handle purchase - delegate ALL parsing to BuyPawnCommandHandler
-            return BuyPawnCommandHandler.HandleBuyPawnCommand(messageWrapper, args);
-        }
-
-        private string ShowPawnHelp()
-        {
-            // return "Usage: !pawn [race] [xenotype] [gender] [age] OR !pawn list [races|xenotypes] OR !pawn mypawn";
-            return "RICS.CC.pawn.usage".Translate();
+            return BuyPawnCommandHandler.HandleBuyPawnCommand(messageWrapper, args ?? Array.Empty<string>());
         }
 
         private string HandleMyPawnCommand(ChatMessageWrapper user)
