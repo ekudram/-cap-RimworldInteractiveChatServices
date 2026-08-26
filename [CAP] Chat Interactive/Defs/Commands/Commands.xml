@@ -1040,6 +1040,18 @@
 		<label>Genes</label>
 		<defaultValue>true</defaultValue>
 	  </li>
+      <li>
+        <type>CheckBox</type>
+        <name>enableOwned</name>
+        <label>Owned items</label>
+        <defaultValue>true</defaultValue>
+      </li>
+      <li>
+        <type>CheckBox</type>
+        <name>enableDisown</name>
+        <label>Disown</label>
+        <defaultValue>true</defaultValue>
+      </li>
     </CustomData>
   </CAP_ChatInteractive.ChatCommandDef>
 

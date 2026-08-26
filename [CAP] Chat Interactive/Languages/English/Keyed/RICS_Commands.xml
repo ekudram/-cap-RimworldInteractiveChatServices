@@ -129,7 +129,7 @@
   
   <!-- MyPawn Command-->
   <RICS.CC.mypawn.usage>
-    !mypawn {type}: body, health, implants, gear, kills, needs, relations, skills, stats, story, traits, work
+    !mypawn {type}: body, health, implants, gear, kills, needs, relations, skills, stats, story, traits, work, owned, disown
   </RICS.CC.mypawn.usage>
   
   <!-- Leave Command-->

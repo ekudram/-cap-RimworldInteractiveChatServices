@@ -190,6 +190,8 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Ownership.Dialog.Clear>Clear owner</RICS.Ownership.Dialog.Clear>
   <RICS.Ownership.Dialog.Choose>Choose a colonist:</RICS.Ownership.Dialog.Choose>
   <RICS.Ownership.Dialog.MakeOwner>Make owner</RICS.Ownership.Dialog.MakeOwner>
+  <RICS.Ownership.Dialog.Search>Search</RICS.Ownership.Dialog.Search>
+  <RICS.Ownership.Dialog.NoMatches>No colonists match that search.</RICS.Ownership.Dialog.NoMatches>
   <RICS.Ownership.Assigned>RICS: {0} assigned to {1}.</RICS.Ownership.Assigned>
   <RICS.Ownership.Cleared>RICS: Cleared ownership of {0}.</RICS.Ownership.Cleared>
   <RICS.Ownership.Reject.NotOwnable>This item is marked not ownable.</RICS.Ownership.Reject.NotOwnable>
@@ -217,6 +219,9 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Ownership.Browser.Col.Owner>Owner</RICS.Ownership.Browser.Col.Owner>
   <RICS.Ownership.Browser.Col.Quality>Quality</RICS.Ownership.Browser.Col.Quality>
   <RICS.Ownership.Browser.Col.Where>Where</RICS.Ownership.Browser.Col.Where>
+  <RICS.Ownership.ITab.Label>RICS owned</RICS.Ownership.ITab.Label>
+  <RICS.Ownership.ITab.Header>{0}: {1} owned item(s)</RICS.Ownership.ITab.Header>
+  <RICS.Ownership.ITab.Empty>No RICS-owned weapons or apparel.</RICS.Ownership.ITab.Empty>
 
   <RICS.Updates.CriticalMigration>IMPORTANT: Critical Migration Required!</RICS.Updates.CriticalMigration>
   <RICS.EditClientSecrets.OAuthWarning>⚠ WARNING: YouTube OAuth may require Google verification (days/weeks)</RICS.EditClientSecrets.OAuthWarning>

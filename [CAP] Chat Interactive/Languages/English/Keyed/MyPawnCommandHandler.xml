@@ -4,7 +4,7 @@
   <!-- MyPawnCommandHandler.cs - General -->
   <RICS.MPCH.NoViewerData>Could not find your viewer data.</RICS.MPCH.NoViewerData>
   <RICS.MPCH.ErrorProcessingPawn>An error occurred while processing your pawn information.</RICS.MPCH.ErrorProcessingPawn>
-  <RICS.MPCH.UnknownSubcommand>Unknown subcommand: {0}. Available: body, health, implants, gear, weapon, kills, needs, relations, skills, stats, story, traits, work, mechs, psycasts</RICS.MPCH.UnknownSubcommand>
+  <RICS.MPCH.UnknownSubcommand>Unknown subcommand: {0}. Available: body, health, implants, gear, weapon, kills, needs, relations, skills, stats, story, traits, work, mechs, psycasts, genes, owned, disown</RICS.MPCH.UnknownSubcommand>
   
   <!-- Implants -->
   <RICS.MPCH.NoHealthRecords>{0} has no health records.</RICS.MPCH.NoHealthRecords>
@@ -156,5 +156,23 @@
   <RICS.MPCH.Complexity>Complexity({0})</RICS.MPCH.Complexity>
   <RICS.MPCH.Metabolism>-Metabolism({0})</RICS.MPCH.Metabolism>
 
-  
+  <!-- RICS owned items -->
+  <RICS.MPCH.Owned.Disabled>RICS ownership is off. Ask the streamer to enable it in Mod Settings.</RICS.MPCH.Owned.Disabled>
+  <RICS.MPCH.Owned.Usage>Usage: !mypawn owned [all|weapons|armor]</RICS.MPCH.Owned.Usage>
+  <RICS.MPCH.Owned.Header>{0}'s owned gear:</RICS.MPCH.Owned.Header>
+  <RICS.MPCH.Owned.Weapons>Weapons:</RICS.MPCH.Owned.Weapons>
+  <RICS.MPCH.Owned.Armor>Armor:</RICS.MPCH.Owned.Armor>
+  <RICS.MPCH.Owned.None>none</RICS.MPCH.Owned.None>
+  <RICS.MPCH.Owned.More>(+{0} more)</RICS.MPCH.Owned.More>
+  <RICS.MPCH.Owned.DisownHint>Disown: !mypawn disown &lt;number or name&gt;</RICS.MPCH.Owned.DisownHint>
+  <RICS.MPCH.Disown.Usage>Usage: !mypawn disown &lt;list number or item name&gt;. List first with !mypawn owned.</RICS.MPCH.Disown.Usage>
+  <RICS.MPCH.Disown.NoneOwned>You have no owned weapons or apparel.</RICS.MPCH.Disown.NoneOwned>
+  <RICS.MPCH.Disown.NeedList>Use !mypawn owned first, then !mypawn disown &lt;number&gt;.</RICS.MPCH.Disown.NeedList>
+  <RICS.MPCH.Disown.BadNumber>That list only has {0} item(s).</RICS.MPCH.Disown.BadNumber>
+  <RICS.MPCH.Disown.Gone>That item is gone. Run !mypawn owned again.</RICS.MPCH.Disown.Gone>
+  <RICS.MPCH.Disown.NotFound>No owned item matching '{0}'.</RICS.MPCH.Disown.NotFound>
+  <RICS.MPCH.Disown.Ambiguous>{0} items match '{1}'. Be more specific or use a list number from !mypawn owned.</RICS.MPCH.Disown.Ambiguous>
+  <RICS.MPCH.Disown.Failed>Could not clear ownership of {0}.</RICS.MPCH.Disown.Failed>
+  <RICS.MPCH.Disown.Ok>You disowned {0}. Anyone can use it now.</RICS.MPCH.Disown.Ok>
+
 </LanguageData>

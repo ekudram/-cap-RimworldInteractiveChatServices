@@ -133,15 +133,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         private static string FormatLine(int n, RICS_OwnedItem item, bool armor = false)
         {
+            // LabelCap already includes quality (e.g. "Hyperweave gloves (legendary 98%)").
             string label = item.Thing?.LabelCap ?? "?";
-            string q = item.QualityLabel;
             string where = item.Where;
             if (armor)
             {
                 string ar = RICS_OwnedItemsCollector.ArmorSummary(item);
-                return $"{n}. {label} ({q}, {ar}) — {where}";
+                if (!string.IsNullOrEmpty(ar))
+                    return $"{n}. {label} ({ar}) — {where}";
             }
-            return $"{n}. {label} ({q}) — {where}";
+            return $"{n}. {label} — {where}";
         }
 
         private static void Cache(ChatMessageWrapper user, List<RICS_OwnedItem> shown)

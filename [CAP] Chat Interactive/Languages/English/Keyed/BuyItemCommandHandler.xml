@@ -36,6 +36,7 @@
   <RICS.BICH.Return.Action.Equipped>equipped to your pawn</RICS.BICH.Return.Action.Equipped>
   <RICS.BICH.Return.Action.Worn>worn by your pawn</RICS.BICH.Return.Action.Worn>
   <RICS.BICH.Return.Action.Delivered>delivered via Rimazon</RICS.BICH.Return.Action.Delivered>
+  <RICS.BICH.Return.Action.Locker>placed in the Rimazon locker</RICS.BICH.Return.Action.Locker>
 
 
   <!-- ===== SECTION: INVOICE/LETTER FORMATS ===== -->
