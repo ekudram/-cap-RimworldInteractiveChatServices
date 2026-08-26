@@ -230,21 +230,21 @@ namespace CAP_ChatInteractive.Ownership
                     return true;
             }
             catch { }
-            string viewer = FormatViewerSuffix(pawn);
-            return !string.IsNullOrEmpty(viewer) && Contains(viewer, query);
+            TryGetViewerInfo(pawn, out string service, out string username);
+            if (!string.IsNullOrEmpty(service) && Contains(service, query))
+                return true;
+            return !string.IsNullOrEmpty(username) && Contains(username, query);
         }
 
-        /// <summary>e.g. "Twitch" or "Twitch: captolamia" — never the numeric platform user id.</summary>
+        /// <summary>Platform only next to the pawn name, e.g. "Twitch" — never "Twitch: captolamia".</summary>
         private static string FormatViewerSuffix(Pawn pawn)
         {
             TryGetViewerInfo(pawn, out string service, out string username);
-            if (string.IsNullOrEmpty(service) && string.IsNullOrEmpty(username))
-                return null;
-            if (string.IsNullOrEmpty(username) || LooksLikeRawId(username))
+            if (!string.IsNullOrEmpty(service))
                 return service;
-            if (string.IsNullOrEmpty(service))
-                return username;
-            return $"{service}: {username}";
+            if (string.IsNullOrEmpty(username) || LooksLikeRawId(username))
+                return null;
+            return username;
         }
 
         private static void TryGetViewerInfo(Pawn pawn, out string service, out string username)
