@@ -77,22 +77,10 @@ namespace CAP_ChatInteractive
         /// </summary>
         public static void ExecuteAddonDirectly(EnhancedChatInteractiveAddonDef addonDef)
         {
-            if (addonDef == null || !addonDef.enabled)
+            if (addonDef == null || !addonDef.IsCurrentlyVisible())
                 return;
 
-                case ButtonType.MenuButton:
-                    // Fall back to original menu behavior
-                    var menu = addonDef.GetAddonMenu();
-                    if (menu != null)
-                    {
-                        var options = menu.MenuOptions();
-                        if (options != null && options.Count > 0)
-                        {
-                            Find.WindowStack.Add(new FloatMenu(options));
-                        }
-                    }
-                    break;
-            }
+            addonDef.ExecuteDirectly();
         }
     }
 }

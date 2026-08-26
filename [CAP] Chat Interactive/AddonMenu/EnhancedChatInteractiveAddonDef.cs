@@ -150,7 +150,7 @@ namespace CAP_ChatInteractive
         {
             try
             {
-                if (!enabled || buttonType == ButtonType.Divider)
+                if (!IsCurrentlyVisible() || buttonType == ButtonType.Divider)
                     return null;
 
                 switch (buttonType)
@@ -189,7 +189,7 @@ namespace CAP_ChatInteractive
         /// </summary>
         public void ExecuteDirectly()
         {
-            if (!enabled || buttonType == ButtonType.Divider)
+            if (!IsCurrentlyVisible() || buttonType == ButtonType.Divider)
                 return;
 
             string ctx = defName ?? label ?? "addon";

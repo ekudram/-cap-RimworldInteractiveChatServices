@@ -1243,6 +1243,7 @@ MyPawnCommandHandler.xml"
 <b>UPDATED</b>
 ──────────────
 - !pawn with no race: if only one enabled race is on, buys that race (random age/gender within race settings; Baseliner or another enabled xenotype). If several races are enabled, lists the first 8 with prices in the same format as !races (no xenotypes; use !xenotypes).
+- RICS toolbar / main tab Owned Items button: toggles the owned-items browser. Hidden when RICS pawn ownership is off (or Possessions Plus is loaded).
 "
             }
 

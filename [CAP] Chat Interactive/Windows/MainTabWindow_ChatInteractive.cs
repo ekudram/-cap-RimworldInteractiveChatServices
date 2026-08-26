@@ -43,7 +43,7 @@ namespace CAP_ChatInteractive.Windows
             }
 
             var groupedButtons = defs
-                .Where(def => def != null && def.enabled)
+                .Where(def => def != null && def.IsCurrentlyVisible())
                 .GroupBy(def => def.sourceMod ?? "Unknown")
                 .OrderBy(g => g.Key == "RICS" ? 0 : 1)
                 .ThenBy(g => g.Key)
@@ -95,8 +95,8 @@ namespace CAP_ChatInteractive.Windows
                 if (defs == null || defs.Count == 0)
                     return new Vector2(320f, 120f);
 
-                int realButtonCount = defs.Count(d => d != null && d.enabled && d.buttonType != ButtonType.Divider);
-                int dividerCount = defs.Count(d => d != null && d.enabled && d.buttonType == ButtonType.Divider);
+                int realButtonCount = defs.Count(d => d != null && d.IsCurrentlyVisible() && d.buttonType != ButtonType.Divider);
+                int dividerCount = defs.Count(d => d != null && d.IsCurrentlyVisible() && d.buttonType == ButtonType.Divider);
 
                 float height = 85f;
                 height += realButtonCount * 34f;

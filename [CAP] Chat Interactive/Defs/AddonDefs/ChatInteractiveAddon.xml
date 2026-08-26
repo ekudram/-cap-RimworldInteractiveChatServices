@@ -42,7 +42,9 @@
     iconPath      — Textures path, e.g. UI/QuickButtons/MyIcon (optional)
     tooltip       — optional hover text
     hotkey        — optional KeyBindingDef (toolbar)
-    category      — optional organizational tag
+    category               — optional organizational tag
+    requireRicsOwnership   — true hides the button unless RICS pawn ownership is active
+                             (Use RICS ownership on, Possessions Plus not loaded). Runtime check.
 
   TYPE-SPECIFIC FIELDS
     MenuButton:         menuClass
@@ -239,6 +241,22 @@
     <displayOrder>99</displayOrder>
     <showInToolbar>true</showInToolbar>
     <iconPath>UI/QuickButtons/PawnRace</iconPath>
+  </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+
+  <!-- Quick Access: Owned Items (hidden unless RICS ownership is active) -->
+  <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
+    <defName>Quick_OwnedItems</defName>
+    <label>Owned Items</label>
+    <description>Open the RICS owned-items browser</description>
+    <tooltip>RICS: Owned items</tooltip>
+    <windowClass>CAP_ChatInteractive.Ownership.Dialog_RICS_OwnedItemsBrowser</windowClass>
+    <buttonType>ToggleWindowButton</buttonType>
+    <requireRicsOwnership>true</requireRicsOwnership>
+    <enabled>true</enabled>
+    <sourceMod>RICS</sourceMod>
+    <displayOrder>100</displayOrder>
+    <showInToolbar>true</showInToolbar>
+    <iconPath>UI/RICS_OwnedItemsIcon</iconPath>
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>

@@ -75,7 +75,13 @@ namespace CAP_ChatInteractive
 
         private static void DrawToolbarInternal()
         {
-            var groupedButtons = toolbarButtons
+            var visibleButtons = toolbarButtons
+                .Where(b => b != null && b.IsCurrentlyVisible())
+                .ToList();
+            if (visibleButtons.Count == 0)
+                return;
+
+            var groupedButtons = visibleButtons
                 .GroupBy(b => b.sourceMod ?? "Unknown")
                 .OrderBy(g => g.Key == "RICS" ? 0 : 1)
                 .ThenBy(g => g.Key)
@@ -213,7 +219,9 @@ namespace CAP_ChatInteractive
             {
                 foreach (var buttonDef in toolbarButtons)
                 {
-                    if (buttonDef?.hotkey != null && buttonDef.hotkey.KeyDownEvent)
+                    if (buttonDef == null || !buttonDef.IsCurrentlyVisible())
+                        continue;
+                    if (buttonDef.hotkey != null && buttonDef.hotkey.KeyDownEvent)
                         buttonDef.ExecuteDirectly();
                 }
             }
