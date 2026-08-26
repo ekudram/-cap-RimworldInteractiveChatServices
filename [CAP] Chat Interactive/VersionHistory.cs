@@ -1238,12 +1238,46 @@ MyPawnCommandHandler.xml"
             {"1.47",
                 @"===========================================================
                          RICS version 1.47 - Changelog
-                         Released: August 5, 2026
+                         Released: August 29, 2026
+===========================================================
+
+<b>MEMORANDUM</b>
+─────────────────
+- Easier !pawn for chat, optional light item ownership, and a lot of command cleanup (less log spam, fewer odd errors).
+- RICS ownership is a lighter built-in take on pawn-owned gear. Do not use it with Possessions Plus — if that mod is loaded, RICS ownership turns itself off.
+- Turn RICS ownership on for a new game when you can. Mid-save is riskier; back up first.
+- The idea of colonists truly owning their weapons and apparel was inspired by Side1iner's Possessions Plus. Thank you. RICS's version is our own smaller system (no copied code).
+- Twitch Extension / Viewer Hub code is in this build but is not turned on yet.
+- Optional extra mod: [CAP] RICS Personal Storage — personal chests for a pawn's stuff.
+
+<b>ADDED</b>
+────────────
+- RICS pawn item ownership (off by default in Mod Settings → Global). Weapons and apparel can belong to a colonist. Others cannot equip or wear that gear. Items can pass on when the owner dies. Browse owned gear from Play Settings and (when ownership is on) the RICS toolbar / main tab. Chat: !mypawn owned and !mypawn disown.
+- Optional companion: Personal Storage units. Assign a chest to a pawn so their extra gear has a home.
+- Bare !pawn is viewer-friendly. One enabled race (typical Human-only colony): !pawn buys that race — random age and gender inside your race settings, Baseliner or another xenotype you actually enabled. Several races: lists the first 8 with prices (same look as !races). Xenotypes stay on !xenotypes [race].
+- Reset to base on the big editors (store, events, and similar) with a confirm prompt and backup.
+- Viewer coin ticks now follow real-world time (about every 2 minutes), even if the game is paused or running fast.
 
 <b>UPDATED</b>
 ──────────────
-- !pawn with no race: if only one enabled race is on, buys that race (random age/gender within race settings; Baseliner or another enabled xenotype). If several races are enabled, lists the first 8 with prices in the same format as !races (no xenotypes; use !xenotypes).
-- RICS toolbar / main tab Owned Items button: toggles the owned-items browser. Hidden when RICS pawn ownership is off (or Possessions Plus is loaded).
+- !pawn help text matches the new behavior.
+- Ownership picker: Select when you are only choosing whose items to look at. Make owner when you are assigning a chest or an item. Viewer tag is (Twitch), not (Twitch:username).
+
+<b>FIXED</b>
+────────────
+- Chat could buy xenotypes you had turned off in Race Settings. Disabled types are blocked now.
+- Unique / special weapons in the store now follow research gating like their base weapon when Require Research is on.
+- Twitch connect message said Rimwold. It now says Rimworld.
+- Failed equip/wear should not charge viewers for gear that never arrived.
+- Command handlers: less debug spam in the log, clearer errors in chat.
+
+<b>UNDER THE HOOD</b>
+──────────────────
+Skip this if you only care about play. Command pipeline, cooldowns, lootboxes, and XML text cleaning (helps avoid bad characters in saves). Twitch Extension bridge is present but inactive. Colony AI / gamestate work is for the few streams that use the bot — ignore it for a normal RICS game.
+
+<b>TRANSLATIONS</b>
+───────────────────
+- Ownership, owned-items browser, and !pawn usage keys.
 "
             }
 

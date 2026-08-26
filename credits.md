@@ -4,6 +4,7 @@
 
 ## Conceptual Inspiration
 - **TwitchToolkit Concept**: The general concept of integrating Twitch chat with RimWorld's pawn system was inspired by hodlhodl1132's original TwitchToolkit project (AGPLv3). However, this implementation represents a complete ground-up rewrite with substantial architectural differences and no code was directly copied.
+- **Pawn item ownership**: The idea that colonists can truly own weapons and apparel (and that others should not use that gear) was inspired by Side1iner's Possessions Plus. RICS ownership is a lighter, built-in system written for this mod — not their source.
 
 ## Assets
 - **RimWorld Font**: Used with explicit permission from Tynan Sylvester for modder use. [Forum Link](https://ludeon.com/forums/index.php?topic=11022.0)
