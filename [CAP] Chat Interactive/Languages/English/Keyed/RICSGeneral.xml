@@ -202,6 +202,9 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Ownership.Browser.Title>RICS — Owned items</RICS.Ownership.Browser.Title>
   <RICS.Ownership.Browser.DisabledHint>RICS ownership is off.\n\nEnable "Use RICS ownership for Pawns" in Mod Settings → Global (and remove Possessions Plus if present).</RICS.Ownership.Browser.DisabledHint>
   <RICS.Ownership.Browser.AllPawns>All pawns</RICS.Ownership.Browser.AllPawns>
+  <RICS.Ownership.Browser.PickPawnTitle>RICS — View pawn items</RICS.Ownership.Browser.PickPawnTitle>
+  <RICS.Ownership.Browser.SelectPawn>Select</RICS.Ownership.Browser.SelectPawn>
+  <RICS.Ownership.Browser.CurrentlyViewing>Currently viewing: {0}</RICS.Ownership.Browser.CurrentlyViewing>
   <RICS.Ownership.Browser.Weapons>Weapons</RICS.Ownership.Browser.Weapons>
   <RICS.Ownership.Browser.Apparel>Apparel</RICS.Ownership.Browser.Apparel>
   <RICS.Ownership.Browser.Refresh>Refresh</RICS.Ownership.Browser.Refresh>

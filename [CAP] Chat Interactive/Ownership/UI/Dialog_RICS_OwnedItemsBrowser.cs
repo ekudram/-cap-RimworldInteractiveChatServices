@@ -96,7 +96,7 @@ namespace CAP_ChatInteractive.Ownership
             if (Widgets.ButtonText(pawnRect, pawnLabel))
             {
                 Find.WindowStack.Add(new Dialog_RICS_AssignItemOwner(
-                    "RICS.Ownership.Browser.AllPawns".Translate(),
+                    "RICS.Ownership.Browser.PickPawnTitle".Translate(),
                     "RICS.Ownership.Dialog.Choose".Translate(),
                     selectedPawn,
                     pawn =>
@@ -110,7 +110,11 @@ namespace CAP_ChatInteractive.Ownership
                     {
                         selectedPawn = null;
                         RebuildCache(force: true);
-                    }));
+                    },
+                    pickButtonLabel: "RICS.Ownership.Browser.SelectPawn".Translate().ToString(),
+                    currentPawnLine: selectedPawn != null
+                        ? "RICS.Ownership.Browser.CurrentlyViewing".Translate(selectedPawn.LabelShortCap).ToString()
+                        : null));
             }
 
             // Location filter

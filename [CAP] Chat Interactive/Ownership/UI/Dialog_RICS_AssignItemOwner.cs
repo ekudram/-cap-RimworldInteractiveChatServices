@@ -21,6 +21,8 @@ namespace CAP_ChatInteractive.Ownership
         private readonly bool allowClear;
         private readonly bool includeAllPawnsOption;
         private readonly Action onAllPawns;
+        private readonly string pickButtonLabel;
+        private readonly string currentPawnLine;
 
         private Vector2 scrollPos;
         private string searchText = "";
@@ -63,7 +65,9 @@ namespace CAP_ChatInteractive.Ownership
             Action<Pawn> onPicked,
             bool allowClear,
             bool includeAllPawnsOption = false,
-            Action onAllPawns = null)
+            Action onAllPawns = null,
+            string pickButtonLabel = null,
+            string currentPawnLine = null)
         {
             this.title = title ?? "RICS.Ownership.Dialog.Title".Translate();
             this.contextLine = contextLine ?? "";
@@ -72,6 +76,10 @@ namespace CAP_ChatInteractive.Ownership
             this.allowClear = allowClear;
             this.includeAllPawnsOption = includeAllPawnsOption;
             this.onAllPawns = onAllPawns;
+            this.pickButtonLabel = string.IsNullOrEmpty(pickButtonLabel)
+                ? "RICS.Ownership.Dialog.MakeOwner".Translate()
+                : pickButtonLabel;
+            this.currentPawnLine = currentPawnLine;
             forcePause = true;
             absorbInputAroundWindow = true;
             closeOnClickedOutside = true;
@@ -102,8 +110,10 @@ namespace CAP_ChatInteractive.Ownership
 
             if (currentOwner != null)
             {
-                Widgets.Label(new Rect(0f, y, inRect.width - 160f, 28f),
-                    "RICS.Ownership.Dialog.CurrentOwner".Translate(currentOwner.LabelShortCap));
+                string currentLine = string.IsNullOrEmpty(currentPawnLine)
+                    ? "RICS.Ownership.Dialog.CurrentOwner".Translate(currentOwner.LabelShortCap).ToString()
+                    : currentPawnLine;
+                Widgets.Label(new Rect(0f, y, inRect.width - 160f, 28f), currentLine);
                 if (allowClear && Widgets.ButtonText(new Rect(inRect.width - 150f, y, 140f, 28f),
                     "RICS.Ownership.Dialog.Clear".Translate()))
                 {
@@ -168,7 +178,7 @@ namespace CAP_ChatInteractive.Ownership
 
                     Widgets.Label(new Rect(8f, rowY + 6f, viewRect.width - 176f, 24f), label);
                     if (Widgets.ButtonText(new Rect(viewRect.width - 164f, rowY + 2f, 156f, 28f),
-                        "RICS.Ownership.Dialog.MakeOwner".Translate())
+                        pickButtonLabel)
                         || Widgets.ButtonInvisible(row))
                     {
                         onPicked?.Invoke(pawn);
