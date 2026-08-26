@@ -1,4 +1,4 @@
-﻿// IAddonMenu.cs
+// IAddonMenu.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive.
 // 
@@ -14,14 +14,21 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-// Interface for addon menus to provide their menu options
+//
+// Contract for MenuButton / SubmenuButton menuClass types.
 using System.Collections.Generic;
 using Verse;
 
 namespace CAP_ChatInteractive.Interfaces
 {
+    /// <summary>
+    /// Implement this on a public parameterless class and point
+    /// <c>EnhancedChatInteractiveAddonDef.menuClass</c> at it for a MenuButton.
+    /// Return FloatMenuOption entries; RICS shows them in a FloatMenu.
+    /// </summary>
     public interface IAddonMenu
     {
+        /// <summary>Options shown when the MenuButton is activated.</summary>
         List<FloatMenuOption> MenuOptions();
     }
 }

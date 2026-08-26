@@ -34,5 +34,9 @@
 
 	<RICS.Raid.NoPlayerMaps>No player home maps found.</RICS.Raid.NoPlayerMaps>
 	<RICS.Raid.NoValidTargets>No valid targets or factions available for raid right now.</RICS.Raid.NoValidTargets>
+	<RICS.Raid.DetailFaction>Faction: {0}</RICS.Raid.DetailFaction>
+	<RICS.Raid.DetailStrategy>Strategy: {0}</RICS.Raid.DetailStrategy>
+	<RICS.Raid.DetailType>Type: {0}</RICS.Raid.DetailType>
+	<RICS.Raid.DetailCost>Cost: {0}{1}</RICS.Raid.DetailCost>
 
 </LanguageData>

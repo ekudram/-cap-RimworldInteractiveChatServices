@@ -16,6 +16,7 @@
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // Draws the Twitch settings tab in the mod settings window
 using CAP_ChatInteractive;
+using CAP_ChatInteractive.Extension;
 using RimWorld;
 using System;
 using UnityEngine;
@@ -622,6 +623,90 @@ namespace _CAP__Chat_Interactive
                 ref globalSettings.TwitchRaidsAutoAddChatDuringWindow);
             TooltipHandler.TipRegion(chatAutoAddRect, "RICS.Twitch.RaidsChatAutoAddTooltip".Translate());
 
+            // === Twitch Extension bridge (Viewer Hub) ===
+            listing.Gap(24f);
+            Text.Font = GameFont.Medium;
+            GUI.color = ColorLibrary.SubHeader;
+            listing.Label("Twitch Extension (Viewer Hub)");
+            Text.Font = GameFont.Small;
+            GUI.color = Color.white;
+            listing.GapLine(6f);
+            listing.Gap(4f);
+
+            Rect extEnRect = listing.GetRect(28f);
+            Widgets.CheckboxLabeled(extEnRect, "Enable Extension bridge (structured API)", ref globalSettings.TwitchExtensionEnabled);
+            TooltipHandler.TipRegion(extEnRect, "LocalHttp = Option C for Local Test (127.0.0.1). OutboundPoll = Option A EBS (stub until R7). Not the chat command processor.");
+
+            if (globalSettings.TwitchExtensionEnabled)
+            {
+                listing.Gap(6f);
+                Rect transportLabel = listing.GetRect(22f);
+                string transportName = globalSettings.TwitchExtensionTransport == 0 ? "LocalHttp (C — Local Test)" : "OutboundPoll (A — EBS stub)";
+                Widgets.Label(transportLabel, "Transport: " + transportName);
+                Rect transportBtn = listing.GetRect(28f);
+                if (Widgets.ButtonText(transportBtn, "Toggle transport (LocalHttp ↔ OutboundPoll)"))
+                {
+                    globalSettings.TwitchExtensionTransport = globalSettings.TwitchExtensionTransport == 0 ? 1 : 0;
+                }
+
+                if (globalSettings.TwitchExtensionTransport == 0)
+                {
+                    listing.Gap(4f);
+                    Rect portLabel = listing.GetRect(22f);
+                    Widgets.Label(portLabel, "Local port (127.0.0.1 only)");
+                    Rect portField = listing.GetRect(28f);
+                    string portBuf = globalSettings.TwitchExtensionLocalPort.ToString();
+                    UIUtilities.TextFieldNumericFlexible(portField, ref globalSettings.TwitchExtensionLocalPort, ref portBuf, 1024, 65535);
+
+                    Rect devIdRect = listing.GetRect(28f);
+                    Widgets.CheckboxLabeled(devIdRect, "Allow dev identity header (loopback)", ref globalSettings.TwitchExtensionAllowDevIdentity);
+                    TooltipHandler.TipRegion(devIdRect, "X-RICS-Dev-Viewer or ?viewer= for Local Test. Disable for stricter local tests.");
+
+                    Rect urlHint = listing.GetRect(36f);
+                    GUI.color = Color.gray;
+                    Widgets.Label(urlHint, $"Ping: http://127.0.0.1:{globalSettings.TwitchExtensionLocalPort}/extension/ping");
+                    GUI.color = Color.white;
+                }
+                else
+                {
+                    listing.Gap(4f);
+                    Rect pollLabel = listing.GetRect(22f);
+                    Widgets.Label(pollLabel, "EBS poll URL (R7)");
+                    Rect pollField = listing.GetRect(28f);
+                    globalSettings.TwitchExtensionEbsPollUrl = Widgets.TextField(pollField, globalSettings.TwitchExtensionEbsPollUrl ?? "");
+                    Rect tokLabel = listing.GetRect(22f);
+                    Widgets.Label(tokLabel, "Agent token (R7)");
+                    Rect tokField = listing.GetRect(28f);
+                    globalSettings.TwitchExtensionAgentToken = Widgets.TextField(tokField, globalSettings.TwitchExtensionAgentToken ?? "");
+                }
+
+                listing.Gap(6f);
+                Rect restartBtn = listing.GetRect(30f);
+                if (Widgets.ButtonText(restartBtn, "Apply / restart Extension bridge"))
+                {
+                    var gc = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>();
+                    // Reflect private init via public service restart
+                    if (gc != null)
+                    {
+                        gc._extensionService?.Stop();
+                        gc._extensionService = new CAP_ChatInteractive.Extension.ExtensionService();
+                        gc._extensionService.StartFromSettings();
+                        Messages.Message(gc._extensionService.StatusLine(), MessageTypeDefOf.NeutralEvent);
+                    }
+                    else
+                    {
+                        Messages.Message("Load a colony first, then apply Extension bridge.", MessageTypeDefOf.RejectInput);
+                    }
+                }
+
+                Rect statusExt = listing.GetRect(40f);
+                GUI.color = Color.gray;
+                string st = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>()?._extensionService?.StatusLine()
+                            ?? (globalSettings.TwitchExtensionEnabled ? "Enabled in settings — apply after loading a game." : "Off");
+                Widgets.Label(statusExt, st);
+                GUI.color = Color.white;
+            }
+
             listing.Gap(12f);
             Rect tipsRect = listing.GetRect(85f); // More height for tips
             //string tips =
@@ -676,6 +761,9 @@ namespace _CAP__Chat_Interactive
             // Twitch Raids section: enable + delay + min raiders + join window + chat auto-add
             // Header 30 + enable 30 + delay (24+30+20) + min (12+24+30+20) + join (12+24+30+20) + chatAuto (8+30) + gaps ≈ 350
             height += 350f;
+
+            // Twitch Extension bridge section
+            height += 280f;
 
             // Quick Tips: Header 30 + gap 6 + gap 4 + content 85 = 125
             height += 125f;

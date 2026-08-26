@@ -1,4 +1,5 @@
-﻿// Copyright (c) Captolamia
+// AddonRegistry.cs
+// Copyright (c) Captolamia
 // This file is part of: RICS - Rimworld Interactive Chat Services
 // 
 // CAP Chat Interactive is free software: you can redistribute it and/or modify
@@ -13,6 +14,8 @@
 // 
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+//
+// Loads all enabled EnhancedChatInteractiveAddonDef at startup for the main tab.
 using CAP_ChatInteractive.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -24,55 +27,49 @@ namespace CAP_ChatInteractive
     [StaticConstructorOnStartup]
     public static class AddonRegistry
     {
+        /// <summary>Enabled addon defs sorted by displayOrder (main tab source of truth).</summary>
         public static List<EnhancedChatInteractiveAddonDef> AddonDefs { get; private set; }
+            = new List<EnhancedChatInteractiveAddonDef>();
 
         static AddonRegistry()
         {
+            try
+            {
+                Refresh();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[AddonMenu] AddonRegistry failed to initialize: {ex}");
+                AddonDefs = new List<EnhancedChatInteractiveAddonDef>();
+            }
+        }
+
+        /// <summary>Rebuild the enabled-def list (e.g. after dynamic registration if ever needed).</summary>
+        public static void Refresh()
+        {
             AddonDefs = DefDatabase<EnhancedChatInteractiveAddonDef>.AllDefs
-                .Where(def => def.enabled)
+                .Where(def => def != null && def.enabled)
                 .OrderBy(def => def.displayOrder)
                 .ToList();
-
-            // Logger.Debug($"Loaded {AddonDefs.Count} addon defs");
         }
 
+        /// <summary>
+        /// Primary RICS menu (def CAPChatInteractive), or first MenuButton fallback.
+        /// </summary>
         public static IAddonMenu GetMainMenu()
         {
-            var mainDef = AddonDefs.FirstOrDefault();
-            return mainDef?.GetAddonMenu();
-        }
-
-        public static void ExecuteAddonDirectly(EnhancedChatInteractiveAddonDef addonDef)
-        {
-            if (addonDef == null || !addonDef.enabled) return;
-
-            if (addonDef.buttonType == ButtonType.Divider) return;   // Dividers have no action
-
-            switch (addonDef.buttonType)
+            try
             {
-                case ButtonType.DirectDialogButton when addonDef.dialogClass != null:
-                    var dialog = Activator.CreateInstance(addonDef.dialogClass) as Window;
-                    if (dialog != null)
-                    {
-                        Find.WindowStack.Add(dialog);
-                    }
-                    break;
-
-                case ButtonType.ToggleWindowButton when addonDef.windowClass != null:
-                    var existingWindow = Find.WindowStack.Windows.FirstOrDefault(w => w.GetType() == addonDef.windowClass);
-                    if (existingWindow != null)
-                    {
-                        existingWindow.Close();
-                    }
-                    else
-                    {
-                        var window = Activator.CreateInstance(addonDef.windowClass) as Window;
-                        if (window != null)
-                        {
-                            Find.WindowStack.Add(window);
-                        }
-                    }
-                    break;
+                var mainDef = AddonDefs.FirstOrDefault(d => d.defName == "CAPChatInteractive")
+                              ?? AddonDefs.FirstOrDefault(d => d.buttonType == ButtonType.MenuButton);
+                return mainDef?.GetAddonMenu();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[AddonMenu] GetMainMenu failed: {ex}");
+                return null;
+            }
+        }
 
         /// <summary>
         /// Execute an addon def (same as <see cref="EnhancedChatInteractiveAddonDef.ExecuteDirectly"/>).
@@ -83,7 +80,19 @@ namespace CAP_ChatInteractive
             if (addonDef == null || !addonDef.enabled)
                 return;
 
-            addonDef.ExecuteDirectly();
+                case ButtonType.MenuButton:
+                    // Fall back to original menu behavior
+                    var menu = addonDef.GetAddonMenu();
+                    if (menu != null)
+                    {
+                        var options = menu.MenuOptions();
+                        if (options != null && options.Count > 0)
+                        {
+                            Find.WindowStack.Add(new FloatMenu(options));
+                        }
+                    }
+                    break;
+            }
         }
     }
 }

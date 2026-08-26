@@ -1,21 +1,10 @@
 // GameComponent_CommandsInitializer.cs
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
-// Initializes chat commands when a game is loaded or started.
+// Loads / migrates CommandSettings.json and registers ChatCommandDefs when a game starts.
 using LudeonTK;
 using Newtonsoft.Json;
 using RimWorld;
@@ -27,7 +16,7 @@ namespace CAP_ChatInteractive
 {
     public class GameComponent_CommandsInitializer : GameComponent
     {
-        public bool commandsInitialized = false;
+        public bool commandsInitialized;
 
         public GameComponent_CommandsInitializer(Game game) { }
 
@@ -43,48 +32,30 @@ namespace CAP_ChatInteractive
 
         public override void GameComponentTick()
         {
-            // Initialize on first tick to ensure all defs are loaded
+            // First playing tick: ensure all defs are loaded before register.
             if (!commandsInitialized && Current.ProgramState == ProgramState.Playing)
-            {
                 InitializeCommands();
-            }
         }
+
         public void InitializeCommands()
         {
-            if (!commandsInitialized)
-            {
-                Logger.Debug("Initializing commands via GameComponent...");
+            if (commandsInitialized)
+                return;
 
-                // Validate and fix JSON permissions BEFORE initialization
-                ValidateAndFixJsonPermissions();
+            ValidateAndFixJsonPermissions();
+            CAP_InitializeCommandSettings();
+            EnsureCustomSettingsDefaults();
+            RegisterDefCommands();
+            EnsureRaidSettingsInitialized();
 
-                // Initialize settings
-                CAP_InitializeCommandSettings();
+            // Migrations: global CAP settings → per-command CustomData in CommandSettings.json.
+            // Keep until older installs have had time to upgrade (do not remove yet).
+            EnsurePassionSettingsMigrated();
+            EnsureSurgerySettingsMigrated();
+            EnsureShuffleChildhoodSettingsMigrated();
+            EnsureShuffleAdulthoodSettingsMigrated();
 
-                // Ensure custom per-command settings defaults from Defs (populates CustomData)
-                EnsureCustomSettingsDefaults();
-
-                // Then register commands
-                RegisterDefCommands();
-
-                // Ensure raid settings are properly initialized
-                EnsureRaidSettingsInitialized();
-
-                // Seed passion command CustomData from global values on first use / migration (one-time copy of tuned numbers).
-                EnsurePassionSettingsMigrated();
-
-                // Same for surgery (checkboxes + costs).
-                EnsureSurgerySettingsMigrated();
-
-                // Shuffle Childhood (single wager cost)
-                EnsureShuffleChildhoodSettingsMigrated();
-
-                // Shuffle Adulthood (single wager cost)
-                EnsureShuffleAdulthoodSettingsMigrated();
-
-                commandsInitialized = true;
-                Logger.Message("Commands initialized successfully");
-            }
+            commandsInitialized = true;
         }
 
         public void ResetCommands()
@@ -95,18 +66,12 @@ namespace CAP_ChatInteractive
 
         private void CAP_InitializeCommandSettings()
         {
-            Logger.Message("=== CAP_InitializeCommandSettings called ===");
-
-            // FORCE check for any missing commands and add them
             ForceAddMissingCommands();
-
-            Logger.Message($"=== Command settings initialized ===");
         }
 
         /// <summary>
-        /// For every ChatCommandDef that declares &lt;customSettings&gt;, ensure the corresponding
-        /// CommandSettings has the keys populated with schema defaults (stored in CustomData).
-        /// Safe to call multiple times; does not overwrite existing values.
+        /// For every ChatCommandDef with CustomData / metadata, ensure CommandSettings.json has keys
+        /// and refreshed label/description/pricelist flags. Does not overwrite existing custom values.
         /// </summary>
         private void EnsureCustomSettingsDefaults()
         {
@@ -115,7 +80,8 @@ namespace CAP_ChatInteractive
                 string jsonContent = JsonFileManager.LoadFile("CommandSettings.json");
                 var current = string.IsNullOrEmpty(jsonContent)
                     ? new Dictionary<string, CommandSettings>()
-                    : (JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(jsonContent) ?? new Dictionary<string, CommandSettings>());
+                    : (JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(jsonContent)
+                       ?? new Dictionary<string, CommandSettings>());
 
                 bool changed = false;
                 foreach (var def in DefDatabase<ChatCommandDef>.AllDefsListForReading)
@@ -126,13 +92,17 @@ namespace CAP_ChatInteractive
                     string key = def.commandText.ToLowerInvariant();
                     if (!current.TryGetValue(key, out var s))
                     {
-                        s = new CommandSettings { Enabled = def.enabled, CooldownSeconds = def.cooldownSeconds, PermissionLevel = def.permissionLevel, useCommandCooldown = def.useCommandCooldown };
-                        // PermissionLevel starts from Def but can be overridden later by user in Command Editor
+                        s = new CommandSettings
+                        {
+                            Enabled = def.enabled,
+                            CooldownSeconds = def.cooldownSeconds,
+                            PermissionLevel = def.permissionLevel,
+                            useCommandCooldown = def.useCommandCooldown
+                        };
                         current[key] = s;
                         changed = true;
                     }
 
-                    // Always refresh label/description/pricelist flag from XML (not user-editable)
                     string prevLabel = s.Label;
                     string prevDesc = s.CommandDescription;
                     bool prevExclude = s.ExcludeFromPricelist;
@@ -149,13 +119,14 @@ namespace CAP_ChatInteractive
 
                 if (changed)
                 {
-                    JsonFileManager.SaveFile("CommandSettings.json", JsonConvert.SerializeObject(current, Formatting.Indented));
-                    Logger.Message("Ensured custom settings defaults / command descriptions for CommandSettings.json");
+                    JsonFileManager.SaveFile(
+                        "CommandSettings.json",
+                        JsonConvert.SerializeObject(current, Formatting.Indented));
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error ensuring custom settings defaults: {ex}");
+                Logger.Error($"[CommandsInitializer] Error ensuring custom settings defaults: {ex}");
             }
         }
 
@@ -163,131 +134,125 @@ namespace CAP_ChatInteractive
         {
             try
             {
-                // Load current settings
                 string jsonContent = JsonFileManager.LoadFile("CommandSettings.json");
-                var currentSettings = new Dictionary<string, CommandSettings>();
-
-                if (!string.IsNullOrEmpty(jsonContent))
-                {
-                    currentSettings = JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(jsonContent) ?? new Dictionary<string, CommandSettings>();
-                }
+                var currentSettings = string.IsNullOrEmpty(jsonContent)
+                    ? new Dictionary<string, CommandSettings>()
+                    : (JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(jsonContent)
+                       ?? new Dictionary<string, CommandSettings>());
 
                 bool settingsChanged = false;
-                var commandDefs = DefDatabase<ChatCommandDef>.AllDefsListForReading;
 
-                // Check every command def and ensure it exists in settings
-                foreach (var def in commandDefs)
+                foreach (var def in DefDatabase<ChatCommandDef>.AllDefsListForReading)
                 {
-                    if (!string.IsNullOrEmpty(def.commandText))
+                    if (string.IsNullOrEmpty(def.commandText))
+                        continue;
+
+                    string commandName = def.commandText.ToLowerInvariant();
+                    bool isNew = !currentSettings.ContainsKey(commandName);
+                    if (isNew)
                     {
-                        // FIX: Use lowercase consistently
-                        string commandName = def.commandText.ToLowerInvariant();
-                        bool isNew = !currentSettings.ContainsKey(commandName);
+                        currentSettings[commandName] = new CommandSettings
+                        {
+                            Enabled = def.enabled,
+                            CooldownSeconds = def.cooldownSeconds,
+                            PermissionLevel = def.permissionLevel,
+                            useCommandCooldown = def.useCommandCooldown
+                        };
+                        settingsChanged = true;
+                    }
+
+                    var settings = currentSettings[commandName];
+
+                    string prevLabel = settings.Label;
+                    string prevDesc = settings.CommandDescription;
+                    bool prevExclude = settings.ExcludeFromPricelist;
+                    settings.ApplyDefMetadata(def);
+                    if (prevLabel != settings.Label
+                        || prevDesc != settings.CommandDescription
+                        || prevExclude != settings.ExcludeFromPricelist)
+                        settingsChanged = true;
+
+                    if (def.CustomData != null && def.CustomData.Count > 0)
+                    {
+                        settings.EnsureCustomDefaults(def.CustomData);
                         if (isNew)
-                        {
-                            currentSettings[commandName] = new CommandSettings
-                            {
-                                Enabled = def.enabled,
-                                CooldownSeconds = def.cooldownSeconds,
-                                PermissionLevel = def.permissionLevel,
-                                useCommandCooldown = def.useCommandCooldown
-                            };
                             settingsChanged = true;
-                            Logger.Message($"FORCE ADDED missing command: '{commandName}'");
-                        }
-
-                        // Ensure custom settings defaults (from XML <CustomData>) are present
-                        var settings = currentSettings[commandName];
-
-                        // Always refresh label/description/pricelist flag from Commands.xml for pricelist export
-                        string prevLabel = settings.Label;
-                        string prevDesc = settings.CommandDescription;
-                        bool prevExclude = settings.ExcludeFromPricelist;
-                        settings.ApplyDefMetadata(def);
-                        if (prevLabel != settings.Label || prevDesc != settings.CommandDescription || prevExclude != settings.ExcludeFromPricelist)
-                            settingsChanged = true;
-
-                        if (def.CustomData != null && def.CustomData.Count > 0)
-                        {
-                            settings.EnsureCustomDefaults(def.CustomData);
-                            if (isNew) settingsChanged = true;
-                        }
                     }
                 }
 
-                // Save if changes were made
                 if (settingsChanged)
                 {
-                    string newJson = JsonConvert.SerializeObject(currentSettings, Formatting.Indented);
-                    JsonFileManager.SaveFile("CommandSettings.json", newJson);
-                    Logger.Message("Added missing commands to settings");
+                    JsonFileManager.SaveFile(
+                        "CommandSettings.json",
+                        JsonConvert.SerializeObject(currentSettings, Formatting.Indented));
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in ForceAddMissingCommands: {ex}");
+                Logger.Error($"[CommandsInitializer] Error in ForceAddMissingCommands: {ex}");
             }
         }
 
         private void RegisterDefCommands()
         {
-            var defs = DefDatabase<ChatCommandDef>.AllDefsListForReading;
-            // Logger.Debug($"Registering {defs.Count} commands from Defs...");
-
-            foreach (var commandDef in defs)
-            {
+            foreach (var commandDef in DefDatabase<ChatCommandDef>.AllDefsListForReading)
                 commandDef.RegisterCommand();
-            }
         }
 
         private void EnsureRaidSettingsInitialized()
         {
             try
             {
-                var raidSettings = CommandSettingsManager.GetSettings("raid"); // CORRECT
+                var raidSettings = CommandSettingsManager.GetSettings("raid");
+                if (raidSettings == null)
+                    return;
 
-                // Initialize raid-specific lists if they're null or empty
                 if (raidSettings.AllowedRaidTypes == null || raidSettings.AllowedRaidTypes.Count == 0)
                 {
-                    raidSettings.AllowedRaidTypes = new List<string> {
-                "standard", "drop", "dropcenter", "dropedge", "dropchaos",
-                "dropgroups", "mech", "mechcluster", "manhunter", "infestation",
-                "water", "wateredge"
-            };
+                    raidSettings.AllowedRaidTypes = new List<string>
+                    {
+                        "standard", "drop", "dropcenter", "dropedge", "dropchaos",
+                        "dropgroups", "mech", "mechcluster", "manhunter", "infestation",
+                        "water", "wateredge"
+                    };
                 }
 
                 if (raidSettings.AllowedRaidStrategies == null || raidSettings.AllowedRaidStrategies.Count == 0)
                 {
-                    raidSettings.AllowedRaidStrategies = new List<string> {
-                "default", "immediate", "smart", "sappers", "breach",
-                "breachsmart", "stage", "siege"
-            };
+                    raidSettings.AllowedRaidStrategies = new List<string>
+                    {
+                        "default", "immediate", "smart", "sappers", "breach",
+                        "breachsmart", "stage", "siege"
+                    };
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error ensuring raid settings are initialized: {ex}");
+                Logger.Error($"[CommandsInitializer] Error ensuring raid settings: {ex}");
             }
         }
 
         /// <summary>
-        /// One-time migration helper: copy current global passion values into the "passion" command's CustomData
-        /// (if the keys are not yet present or still at XML defaults). This lets users keep their tuned numbers
-        /// after the passion settings were moved out of CAPGlobalChatSettings.
+        /// Migration: copy global passion wager/chance values into passion command CustomData
+        /// when keys are missing or still at XML defaults. Keeps tuned numbers for older installs
+        /// after settings moved out of CAPGlobalChatSettings.
         /// </summary>
         private void EnsurePassionSettingsMigrated()
         {
             try
             {
-                var global = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var global = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (global == null)
+                    return;
+
                 var passionSettings = CommandSettingsManager.GetSettings("passion");
-                if (passionSettings == null) return;
+                if (passionSettings == null)
+                    return;
 
-                passionSettings.EnsureCustomDefaults(DefDatabase<ChatCommandDef>.GetNamed("Passion", false)?.CustomData);
+                passionSettings.EnsureCustomDefaults(
+                    DefDatabase<ChatCommandDef>.GetNamed("Passion", false)?.CustomData);
 
-                // Only overwrite if the value is still the XML default (heuristic: compare to known defaults or empty).
-                // Simpler: always set from global on init if the custom value matches the schema default (first run after migration).
-                // To keep it non-destructive for people who already edited in the new UI, only seed when the key is missing or default.
+                // Seed only when still at default / empty so user edits in the new UI are kept.
                 var cd = passionSettings.GetCustom<string>("minPassionWager", "");
                 if (string.IsNullOrEmpty(cd) || cd == "500")
                 {
@@ -309,27 +274,31 @@ namespace CAP_ChatInteractive
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error migrating passion settings from global: {ex.Message}");
+                Logger.Error($"[CommandsInitializer] Error migrating passion settings: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// One-time migration for surgery: copy global surgery costs/allows into the "surgery" command's CustomData.
+        /// Migration: copy global surgery costs/allows into surgery command CustomData when still default.
         /// </summary>
         private void EnsureSurgerySettingsMigrated()
         {
             try
             {
-                var global = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var global = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (global == null)
+                    return;
+
                 var s = CommandSettingsManager.GetSettings("surgery");
-                if (s == null) return;
+                if (s == null)
+                    return;
 
                 var def = DefDatabase<ChatCommandDef>.GetNamed("Surgery", false);
                 if (def?.CustomData != null && def.CustomData.Count > 0)
                     s.EnsureCustomDefaults(def.CustomData);
 
-                // Seed if still at default values (first migration)
-                if (s.GetCustom<string>("genderSwapCost", "") == "1000" || string.IsNullOrEmpty(s.GetCustom<string>("genderSwapCost", "")))
+                if (s.GetCustom<string>("genderSwapCost", "") == "1000"
+                    || string.IsNullOrEmpty(s.GetCustom<string>("genderSwapCost", "")))
                 {
                     s.SetCustom("allowGenderSwap", global.SurgeryAllowGenderSwap);
                     s.SetCustom("genderSwapCost", global.SurgeryGenderSwapCost);
@@ -353,153 +322,144 @@ namespace CAP_ChatInteractive
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error migrating surgery settings from global: {ex.Message}");
+                Logger.Error($"[CommandsInitializer] Error migrating surgery settings: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// One-time migration for Shuffle Childhood: copy global ChildhoodWager into the command's CustomData.
+        /// Migration: copy global ChildhoodWager into shufflechildhood CustomData when still default.
         /// </summary>
         private void EnsureShuffleChildhoodSettingsMigrated()
         {
             try
             {
-                var global = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var global = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (global == null)
+                    return;
+
                 var s = CommandSettingsManager.GetSettings("shufflechildhood");
-                if (s == null) return;
+                if (s == null)
+                    return;
 
                 var def = DefDatabase<ChatCommandDef>.GetNamed("ShuffleChildhood", false);
                 if (def?.CustomData != null && def.CustomData.Count > 0)
                     s.EnsureCustomDefaults(def.CustomData);
 
-                // Seed if still at default
-                if (s.GetCustom<string>("childhoodWager", "") == "1000" || string.IsNullOrEmpty(s.GetCustom<string>("childhoodWager", "")))
+                if (s.GetCustom<string>("childhoodWager", "") == "1000"
+                    || string.IsNullOrEmpty(s.GetCustom<string>("childhoodWager", "")))
                 {
                     s.SetCustom("childhoodWager", global.ChildhoodWager);
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error migrating shuffle childhood settings from global: {ex.Message}");
+                Logger.Error($"[CommandsInitializer] Error migrating shuffle childhood settings: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// One-time migration for Shuffle Adulthood: copy global AdulthoodWager into the command's CustomData.
+        /// Migration: copy global AdulthoodWager into shuffleadulthood CustomData when still default.
         /// </summary>
         private void EnsureShuffleAdulthoodSettingsMigrated()
         {
             try
             {
-                var global = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var global = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (global == null)
+                    return;
+
                 var s = CommandSettingsManager.GetSettings("shuffleadulthood");
-                if (s == null) return;
+                if (s == null)
+                    return;
 
                 var def = DefDatabase<ChatCommandDef>.GetNamed("ShuffleAdulthood", false);
                 if (def?.CustomData != null && def.CustomData.Count > 0)
                     s.EnsureCustomDefaults(def.CustomData);
 
-                // Seed if still at default
-                if (s.GetCustom<string>("adulthoodWager", "") == "1000" || string.IsNullOrEmpty(s.GetCustom<string>("adulthoodWager", "")))
+                if (s.GetCustom<string>("adulthoodWager", "") == "1000"
+                    || string.IsNullOrEmpty(s.GetCustom<string>("adulthoodWager", "")))
                 {
                     s.SetCustom("adulthoodWager", global.AdulthoodWager);
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error migrating shuffle adulthood settings from global: {ex.Message}");
+                Logger.Error($"[CommandsInitializer] Error migrating shuffle adulthood settings: {ex.Message}");
             }
         }
 
-        
+        /// <summary>
+        /// Light JSON pass: fill missing cooldowns from Def when JSON has 0.
+        /// Does not overwrite user PermissionLevel (Command Editor owns that).
+        /// </summary>
         private void ValidateAndFixJsonPermissions()
         {
             try
             {
-                Logger.Message("Validating JSON permissions against XML Defs...");
-
-                // Load current JSON
                 string jsonContent = JsonFileManager.LoadFile("CommandSettings.json");
                 if (string.IsNullOrEmpty(jsonContent))
-                {
-                    Logger.Warning("No CommandSettings.json found, will be created from XML");
                     return;
-                }
 
                 var currentSettings = JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(jsonContent);
                 if (currentSettings == null)
                 {
-                    Logger.Error("CommandSettings.json is empty or invalid");
+                    Logger.Error("[CommandsInitializer] CommandSettings.json is empty or invalid");
                     return;
                 }
 
                 bool fixedAny = false;
-                var commandDefs = DefDatabase<ChatCommandDef>.AllDefsListForReading;
-
-                foreach (var def in commandDefs)
+                foreach (var def in DefDatabase<ChatCommandDef>.AllDefsListForReading)
                 {
                     if (string.IsNullOrEmpty(def.commandText))
                         continue;
 
                     string commandKey = def.commandText.ToLowerInvariant();
+                    if (!currentSettings.TryGetValue(commandKey, out var settings))
+                        continue;
 
-                    if (currentSettings.TryGetValue(commandKey, out var settings))
+                    // PermissionLevel is user-editable; only backfill cooldown from XML when unset.
+                    if (settings.CooldownSeconds == 0 && def.cooldownSeconds > 0)
                     {
-                        // Do NOT force PermissionLevel from Def here anymore.
-                        // This allows users to change a command's permission level (e.g. subscriber-only / paid access)
-                        // via the Command Editor. Defaults from XML are still applied at first creation.
-
-                        // Only ensure other XML values like cooldown if not set
-                        if (settings.CooldownSeconds == 0 && def.cooldownSeconds > 0)
-                        {
-                            settings.CooldownSeconds = def.cooldownSeconds;
-                            fixedAny = true;
-                        }
+                        settings.CooldownSeconds = def.cooldownSeconds;
+                        fixedAny = true;
                     }
                 }
 
                 if (fixedAny)
                 {
-                    // Save the fixed JSON
-                    string fixedJson = JsonConvert.SerializeObject(currentSettings, Formatting.Indented);
-                    JsonFileManager.SaveFile("CommandSettings.json", fixedJson);
-                    Logger.Message("Fixed JSON permissions to match XML Defs");
-                }
-                else
-                {
-                    Logger.Message("All JSON permissions match XML Defs");
+                    JsonFileManager.SaveFile(
+                        "CommandSettings.json",
+                        JsonConvert.SerializeObject(currentSettings, Formatting.Indented));
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error validating JSON permissions: {ex}");
+                Logger.Error($"[CommandsInitializer] Error validating JSON permissions: {ex}");
             }
         }
-
 
         [DebugAction("CAP", "Fix JSON Permissions", allowedGameStates = AllowedGameStates.Playing)]
         public static void DebugFixJsonPermissions()
         {
             try
             {
-                var comp = Current.Game.GetComponent<GameComponent_CommandsInitializer>();
-                if (comp != null)
-                {
-                    // Call the validation method directly
-                    typeof(GameComponent_CommandsInitializer)
-                        .GetMethod("ValidateAndFixJsonPermissions",
-                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                        ?.Invoke(comp, null);
+                var comp = Current.Game?.GetComponent<GameComponent_CommandsInitializer>();
+                if (comp == null)
+                    return;
 
-                    Messages.Message("JSON permissions fixed to match XML Defs", MessageTypeDefOf.TaskCompletion);
-                }
+                typeof(GameComponent_CommandsInitializer)
+                    .GetMethod(
+                        "ValidateAndFixJsonPermissions",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                    ?.Invoke(comp, null);
+
+                Messages.Message("JSON permissions fixed to match XML Defs", MessageTypeDefOf.TaskCompletion);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in debug action: {ex}");
+                Logger.Error($"[CommandsInitializer] Error in debug action: {ex}");
                 Messages.Message($"Error fixing permissions: {ex.Message}", MessageTypeDefOf.NegativeEvent);
             }
         }
     }
-
 }

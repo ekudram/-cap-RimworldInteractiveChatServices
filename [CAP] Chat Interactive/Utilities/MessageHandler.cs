@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 // Utility class for sending in-game letters/notifications
+using CAP_ChatInteractive.Utilities;
 using RimWorld;
 using Verse;
 
@@ -66,14 +67,16 @@ public static class MessageHandler
 
             try
             {
-                // Create letter with look targets if provided
+                // Strip NUL / illegal XML control chars — they break save when archived
+                label = XmlTextSanitizer.Sanitize(label) ?? string.Empty;
+                message = XmlTextSanitizer.Sanitize(message) ?? string.Empty;
+
                 Letter letter = LetterMaker.MakeLetter(label, message, letterDef, lookTargets);
                 Find.LetterStack.ReceiveLetter(letter);
-                Logger.Debug($"Sent letter: {label} - {message} with lookTargets: {lookTargets != null}");
             }
             catch (System.Exception ex)
             {
-                Logger.Error($"Error sending letter: {ex.Message}");
+                Logger.Error($"[MessageHandler] Error sending letter: {ex.Message}");
             }
         }
 

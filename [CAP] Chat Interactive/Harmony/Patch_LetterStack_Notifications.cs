@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Verse;
+using Verse.AI.Group;
 
 namespace CAP_ChatInteractive.AI
 {
@@ -90,9 +91,24 @@ namespace CAP_ChatInteractive.AI
                 string mapDesc = location?.mapLabel ?? AIChatBotService.GetRichMapDescription(relevantMap);
                 string factionNote = BuildInvolvedFactionNote(let);
 
+                LookTargets letterTargets = null;
+                if (let is ChoiceLetter clForPawns)
+                    letterTargets = clForPawns.lookTargets;
+                // Letters (mental break, etc.) often name people in the body; still add Who: with kind + detail.
+                string whoNote = AiNotificationHelpers.BuildInvolvedPawnsNote(
+                    letterTargets,
+                    title + " " + body,
+                    letterKindHint: null);
+
+                string forceNote = BuildThreatForceNote(let, relevantMap, title, body);
+
                 string notification = $"{botName} this has occurred in the colony on {mapDesc}{AIChatBotService.FormatCoordsProse(location)}: {title}.";
+                if (!string.IsNullOrWhiteSpace(whoNote))
+                    notification += $" {whoNote}";
                 if (!string.IsNullOrWhiteSpace(factionNote))
                     notification += $" {factionNote}";
+                if (!string.IsNullOrWhiteSpace(forceNote))
+                    notification += $" {forceNote}";
                 if (!string.IsNullOrWhiteSpace(body))
                     notification += $" {body}";
                 if (!string.IsNullOrWhiteSpace(mapSlice?.summary))
@@ -178,6 +194,204 @@ namespace CAP_ChatInteractive.AI
             catch
             {
                 return "unknown";
+            }
+        }
+
+        /// <summary>
+        /// For raid / manhunter letters, count hostiles actually on the map so Masie
+        /// can say "14 raiders" / "8 manhunter wargs" instead of guessing.
+        /// Omits the note if nothing is spawned yet (do not invent 0).
+        /// </summary>
+        private static string BuildThreatForceNote(Letter let, Map map, string title, string body)
+        {
+            try
+            {
+                if (map == null || map.Disposed)
+                    return null;
+
+                string text = ((title ?? "") + " " + (body ?? "")).ToLowerInvariant();
+                bool manhunter = text.Contains("manhunter");
+                bool raidLike = manhunter
+                    || text.Contains("raid")
+                    || text.Contains("siege")
+                    || text.Contains("sapper")
+                    || text.Contains("mech cluster")
+                    || text.Contains("mechanoid cluster")
+                    || text.Contains("infestation")
+                    || text.Contains("shambler");
+
+                if (!raidLike)
+                    return null;
+
+                Faction raidFaction = TryGetLetterFaction(let);
+
+                if (manhunter)
+                    return CountManhunterForce(map);
+
+                return CountRaidForce(map, raidFaction);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Faction TryGetLetterFaction(Letter let)
+        {
+            try
+            {
+                if (let is ChoiceLetter cl)
+                {
+                    try
+                    {
+                        var fi = typeof(ChoiceLetter).GetField("relatedFaction");
+                        if (fi?.GetValue(cl) is Faction rf && rf != null && !rf.IsPlayer)
+                            return rf;
+                    }
+                    catch { /* no field */ }
+
+                    if (cl.lookTargets != null && !cl.lookTargets.targets.NullOrEmpty())
+                    {
+                        foreach (var t in cl.lookTargets.targets)
+                        {
+                            if (!t.IsValid || !t.HasThing || t.Thing == null) continue;
+                            Faction f = t.Thing.Faction;
+                            if (f != null && !f.IsPlayer)
+                                return f;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private static string CountRaidForce(Map map, Faction raidFaction)
+        {
+            var hostiles = new List<Pawn>();
+            try
+            {
+                var spawned = map.mapPawns?.AllPawnsSpawned;
+                if (spawned != null)
+                {
+                    foreach (var p in spawned)
+                    {
+                        if (p == null || p.Dead || p.Destroyed) continue;
+                        if (p.IsPrisonerOfColony) continue;
+                        if (!p.HostileTo(Faction.OfPlayer)) continue;
+                        if (raidFaction != null && p.Faction != raidFaction) continue;
+                        hostiles.Add(p);
+                    }
+                }
+            }
+            catch { }
+
+            if (hostiles.Count == 0)
+                hostiles = CountHostileLordPawns(map, raidFaction);
+
+            if (hostiles.Count == 0)
+                return null;
+
+            string noun = hostiles.All(p => p.RaceProps?.IsMechanoid == true)
+                ? (hostiles.Count == 1 ? "mechanoid" : "mechanoids")
+                : hostiles.All(p => p.RaceProps?.Insect == true)
+                    ? (hostiles.Count == 1 ? "insect" : "insects")
+                    : hostiles.All(p => p.RaceProps?.Animal == true)
+                        ? (hostiles.Count == 1 ? "hostile animal" : "hostile animals")
+                        : (hostiles.Count == 1 ? "raider" : "raiders");
+
+            string kinds = SummarizePawnKinds(hostiles, maxKinds: 3);
+            string extra = string.IsNullOrEmpty(kinds) ? "" : $" ({kinds})";
+            return $"Force: {hostiles.Count} {noun}{extra}.";
+        }
+
+        private static List<Pawn> CountHostileLordPawns(Map map, Faction raidFaction)
+        {
+            var list = new List<Pawn>();
+            try
+            {
+                var lords = map.lordManager?.lords;
+                if (lords == null) return list;
+                foreach (var lord in lords)
+                {
+                    if (lord?.ownedPawns == null) continue;
+                    if (raidFaction != null && lord.faction != raidFaction) continue;
+                    if (raidFaction == null && (lord.faction == null || !lord.faction.HostileTo(Faction.OfPlayer)))
+                        continue;
+                    foreach (var p in lord.ownedPawns)
+                    {
+                        if (p == null || p.Dead) continue;
+                        if (!list.Contains(p))
+                            list.Add(p);
+                    }
+                }
+            }
+            catch { }
+            return list;
+        }
+
+        private static string CountManhunterForce(Map map)
+        {
+            var pack = new List<Pawn>();
+            try
+            {
+                var spawned = map.mapPawns?.AllPawnsSpawned;
+                if (spawned != null)
+                {
+                    foreach (var p in spawned)
+                    {
+                        if (p == null || p.Dead || p.Destroyed) continue;
+                        if (!IsManhunter(p)) continue;
+                        pack.Add(p);
+                    }
+                }
+            }
+            catch { }
+
+            if (pack.Count == 0)
+                return null;
+
+            string kinds = SummarizePawnKinds(pack, maxKinds: 3);
+            string extra = string.IsNullOrEmpty(kinds) ? "" : $" ({kinds})";
+            string noun = pack.Count == 1 ? "manhunter animal" : "manhunter animals";
+            return $"Force: {pack.Count} {noun}{extra}.";
+        }
+
+        private static bool IsManhunter(Pawn p)
+        {
+            try
+            {
+                if (!p.InMentalState || p.MentalStateDef == null)
+                    return false;
+                if (p.MentalStateDef == MentalStateDefOf.Manhunter)
+                    return true;
+                if (p.MentalStateDef == MentalStateDefOf.ManhunterPermanent)
+                    return true;
+                string n = p.MentalStateDef.defName ?? "";
+                return n.IndexOf("Manhunter", StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string SummarizePawnKinds(List<Pawn> pawns, int maxKinds)
+        {
+            try
+            {
+                var groups = pawns
+                    .Where(p => p?.def != null)
+                    .GroupBy(p => p.def.label ?? p.def.defName)
+                    .OrderByDescending(g => g.Count())
+                    .Take(maxKinds)
+                    .Select(g => g.Count() == 1 ? g.Key : $"{g.Count()} {g.Key}")
+                    .ToList();
+                return groups.Count == 0 ? null : string.Join(", ", groups);
+            }
+            catch
+            {
+                return null;
             }
         }
     }
@@ -580,12 +794,24 @@ namespace CAP_ChatInteractive.AI
                 }
 
                 string mapDesc = location?.mapLabel ?? AIChatBotService.GetRichMapDescription(map);
+                // Medical emergency / break toasts often omit the colonist name in text —
+                // identity lives on lookTargets. Enrich with kind (hurt vs breaking) + detail.
+                string whoNote = AiNotificationHelpers.BuildInvolvedPawnsNote(
+                    msg.lookTargets,
+                    cleaned,
+                    letterKindHint: typeDef.defName);
+
                 string addressed = $"{botName}, notice on {mapDesc}{AIChatBotService.FormatCoordsProse(location)}: {cleaned}";
+                if (!string.IsNullOrWhiteSpace(whoNote))
+                    addressed += $" {whoNote}";
                 if (!string.IsNullOrWhiteSpace(mapSlice?.summary))
                     addressed += $" [Area: {mapSlice.summary}]";
 
+                // Prefer rawText that includes who when game text is anonymous ("Medical emergency!")
+                string rawForBot = string.IsNullOrWhiteSpace(whoNote) ? cleaned : $"{cleaned} {whoNote}";
+
                 var gameComp = Current.Game?.GetComponent<CAPChatInteractive_GameComponent>();
-                gameComp?._aiChatBotService?.NotifyColonyMessage(addressed, cleaned, typeDef.defName, location, mapSlice);
+                gameComp?._aiChatBotService?.NotifyColonyMessage(addressed, rawForBot, typeDef.defName, location, mapSlice);
             }
             catch (Exception ex)
             {
@@ -669,4 +895,605 @@ namespace CAP_ChatInteractive.AI
             return Find.CurrentMap ?? Find.AnyPlayerHomeMap;
         }
     }
+
+    /// <summary>
+    /// Shared helpers so Masie letters/toasts know which pawn(s) are involved
+    /// and whether the issue is medical hurt vs mental break (not a generic Who: blob).
+    /// </summary>
+    internal static class AiNotificationHelpers
+    {
+        /// <summary>
+        /// Prose for Masie — dual contract:
+        ///   Hurt: Mia (female free colonist) [downed; bleeding heavily].
+        ///   Breaking: Bob (male free colonist) [mental state: berserk].
+        ///   Who: [MEDICAL EMERGENCY] Mia (…) — longer detail for LLM.
+        /// Masie templates parse Hurt:/Breaking: first (name = first token; detail = [brackets]).
+        /// </summary>
+        /// <param name="letterKindHint">Optional MessageTypeDef name or free text hint (e.g. NegativeHealthEvent).</param>
+        internal static string BuildInvolvedPawnsNote(
+            LookTargets lookTargets,
+            string existingText = null,
+            string letterKindHint = null)
+        {
+            try
+            {
+                var pawns = CollectPawnsFromLookTargets(lookTargets);
+                if (pawns.Count == 0)
+                    return null;
+
+                string existingLower = existingText?.ToLowerInvariant() ?? "";
+                string hintLower = letterKindHint?.ToLowerInvariant() ?? "";
+
+                var hurtLines = new List<string>();
+                var breakLines = new List<string>();
+                var whoParts = new List<string>();
+
+                foreach (var pawn in pawns)
+                {
+                    if (pawn == null)
+                        continue;
+
+                    string name = pawn.LabelShortCap ?? pawn.Name?.ToStringShort ?? "Unknown";
+                    name = SanitizePawnNameForBot(name);
+                    string baseDesc = Patch_Pawn_Kill_DeathNotifications.BuildDeathEntityDescription(pawn, name);
+
+                    bool moodRisk = TextSuggestsBreakRiskMood(existingLower, hintLower);
+                    bool isBreaking = DetectMentalBreak(pawn, existingLower, hintLower);
+                    bool isHurt = DetectMedicalCrisis(pawn, existingLower, hintLower, moodRisk);
+                    string kindLabel = ResolveKindLabel(isBreaking, isHurt, moodRisk, existingLower, hintLower);
+
+                    var mentalDetails = new List<string>();
+                    var medicalDetails = new List<string>();
+                    if (isBreaking)
+                        AppendMentalBreakDetails(pawn, mentalDetails);
+                    if (moodRisk && !isBreaking)
+                        AppendBreakRiskMoodDetails(existingLower, mentalDetails);
+                    if (isHurt || HasAnyHealthRedFlag(pawn))
+                        AppendMedicalDetails(pawn, medicalDetails, allowPlaceholder: isHurt && !moodRisk);
+                    else if (!isBreaking && !isHurt && !moodRisk)
+                    {
+                        AppendMentalBreakDetails(pawn, mentalDetails);
+                        AppendMedicalDetails(pawn, medicalDetails, allowPlaceholder: false);
+                        if (mentalDetails.Count == 0 && medicalDetails.Count == 0)
+                            kindLabel = null;
+                    }
+
+                    if (mentalDetails.Count > 0 && isBreaking)
+                        isBreaking = true;
+                    if (medicalDetails.Count > 0)
+                        isHurt = true;
+                    if (kindLabel == null)
+                        kindLabel = ResolveKindLabel(isBreaking, isHurt, moodRisk, existingLower, hintLower);
+
+                    // Masie Hurt: / Breaking: — short [bracket] detail for TTS templates
+                    // Mood break-risk must not emit Hurt: (that makes Masie call a doctor).
+                    if (isHurt && kindLabel != "BREAK RISK")
+                    {
+                        var shortMed = ShortenDetailsForBotBracket(medicalDetails, maxItems: 4);
+                        hurtLines.Add(shortMed.Count > 0
+                            ? $"{baseDesc} [{string.Join("; ", shortMed)}]"
+                            : baseDesc);
+                    }
+
+                    if (isBreaking || kindLabel == "MENTAL BREAK" || kindLabel == "MENTAL BREAK + MEDICAL")
+                    {
+                        // Bot looks for "mental state: X" inside brackets
+                        var shortBreak = new List<string>();
+                        foreach (var d in mentalDetails)
+                        {
+                            if (d.StartsWith("breaking:", StringComparison.OrdinalIgnoreCase))
+                                shortBreak.Add("mental state: " + d.Substring("breaking:".Length).Trim());
+                            else
+                                shortBreak.Add(d);
+                        }
+                        shortBreak = ShortenDetailsForBotBracket(shortBreak, maxItems: 3);
+                        breakLines.Add(shortBreak.Count > 0
+                            ? $"{baseDesc} [{string.Join("; ", shortBreak)}]"
+                            : baseDesc);
+                    }
+
+                    // Rich Who: for LLM / logging
+                    var allDetails = new List<string>();
+                    allDetails.AddRange(mentalDetails);
+                    allDetails.AddRange(medicalDetails);
+
+                    string whoPart;
+                    if (!string.IsNullOrEmpty(kindLabel))
+                    {
+                        whoPart = allDetails.Count > 0
+                            ? $"[{kindLabel}] {baseDesc} — {string.Join("; ", allDetails)}"
+                            : $"[{kindLabel}] {baseDesc}";
+                    }
+                    else
+                    {
+                        whoPart = allDetails.Count > 0
+                            ? $"{baseDesc} — {string.Join("; ", allDetails)}"
+                            : baseDesc;
+                    }
+                    whoParts.Add(whoPart);
+                }
+
+                if (whoParts.Count == 0 && hurtLines.Count == 0 && breakLines.Count == 0)
+                    return null;
+
+                var sb = new StringBuilder();
+                // Order matches Masie preference: Hurt: then Breaking: then Who:
+                if (hurtLines.Count > 0)
+                    sb.Append("Hurt: ").Append(string.Join("; ", hurtLines)).Append('.');
+                if (breakLines.Count > 0)
+                {
+                    if (sb.Length > 0) sb.Append(' ');
+                    sb.Append("Breaking: ").Append(string.Join("; ", breakLines)).Append('.');
+                }
+                if (whoParts.Count > 0)
+                {
+                    if (sb.Length > 0) sb.Append(' ');
+                    sb.Append("Who: ").Append(string.Join("; ", whoParts)).Append('.');
+                }
+
+                return sb.ToString();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string SanitizePawnNameForBot(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return "Unknown";
+            name = name.Trim();
+            while (name.Length > 0 && (name[0] == '[' || name[0] == '(' || name[0] == '<' || name[0] == '"'))
+                name = name.Substring(1).TrimStart();
+            return string.IsNullOrWhiteSpace(name) ? "Unknown" : name;
+        }
+
+        /// <summary>Cap bracket payload so TTS templates stay short.</summary>
+        private static List<string> ShortenDetailsForBotBracket(List<string> details, int maxItems)
+        {
+            if (details == null || details.Count == 0)
+                return new List<string>();
+
+            var result = new List<string>();
+            bool sawUntended = false;
+            bool sawTended = false;
+
+            foreach (var d in details)
+            {
+                if (string.IsNullOrWhiteSpace(d))
+                    continue;
+
+                // Collapse long wound lists into short TTS cues (tended vs not).
+                if (d.StartsWith("untended:", StringComparison.OrdinalIgnoreCase)
+                    || d.StartsWith("untended wounds", StringComparison.OrdinalIgnoreCase)
+                    || d.StartsWith("tendable wound", StringComparison.OrdinalIgnoreCase))
+                {
+                    sawUntended = true;
+                    continue;
+                }
+                if (d.StartsWith("tended:", StringComparison.OrdinalIgnoreCase)
+                    || d.StartsWith("tended wounds", StringComparison.OrdinalIgnoreCase))
+                {
+                    sawTended = true;
+                    continue;
+                }
+                if (d.StartsWith("severe/life-threatening:", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!result.Any(x => x.IndexOf("severe", StringComparison.OrdinalIgnoreCase) >= 0))
+                        result.Add("severe wounds");
+                    continue;
+                }
+
+                result.Add(d);
+                if (result.Count >= maxItems)
+                    break;
+            }
+
+            // Prefer explicit tend status over a generic "severe wounds" only.
+            if (sawUntended && result.Count < maxItems
+                && !result.Any(x => x.IndexOf("untended", StringComparison.OrdinalIgnoreCase) >= 0))
+                result.Add("untended wounds");
+            if (sawTended && !sawUntended && result.Count < maxItems
+                && !result.Any(x => x.IndexOf("tended", StringComparison.OrdinalIgnoreCase) >= 0))
+                result.Add("wounds tended");
+            else if (sawTended && sawUntended && result.Count < maxItems
+                     && !result.Any(x => x.IndexOf("tended", StringComparison.OrdinalIgnoreCase) >= 0))
+                result.Add("some wounds tended");
+
+            while (result.Count > maxItems)
+                result.RemoveAt(result.Count - 1);
+
+            return result;
+        }
+
+        private static string ResolveKindLabel(bool isBreaking, bool isHurt, bool moodRisk, string textLower, string hintLower)
+        {
+            if (isBreaking && isHurt)
+                return "MENTAL BREAK + MEDICAL";
+            if (isBreaking)
+                return "MENTAL BREAK";
+            if (moodRisk && isHurt)
+                return "BREAK RISK + MEDICAL";
+            if (moodRisk)
+                return "BREAK RISK";
+            if (isHurt)
+                return "MEDICAL EMERGENCY";
+
+            // Text/hint only (pawn not yet in state, or delayed)
+            if (TextSuggestsBreakRiskMood(textLower, hintLower))
+                return "BREAK RISK";
+            if (TextSuggestsMentalBreak(textLower, hintLower))
+                return "MENTAL BREAK";
+            if (TextSuggestsMedical(textLower, hintLower) && !TextSuggestsBreakRiskMood(textLower, hintLower))
+                return "MEDICAL EMERGENCY";
+
+            return null;
+        }
+
+        private static bool DetectMentalBreak(Pawn pawn, string textLower, string hintLower)
+        {
+            try
+            {
+                if (pawn.InMentalState)
+                    return true;
+            }
+            catch { }
+
+            return TextSuggestsMentalBreak(textLower, hintLower);
+        }
+
+        private static bool DetectMedicalCrisis(Pawn pawn, string textLower, string hintLower, bool moodRisk)
+        {
+            // Mood break-risk toasts are not medical. Do not treat MessageType
+            // NegativeHealthEvent as a wound when the body says "break risk".
+            if (moodRisk)
+                return HasAnyHealthRedFlag(pawn);
+
+            if (TextSuggestsMedical(textLower, hintLower))
+                return true;
+
+            return HasAnyHealthRedFlag(pawn);
+        }
+
+        /// <summary>
+        /// Vanilla alert titles: Minor/Major/Extreme break risk — poor mood, not InMentalState.
+        /// Must not be treated as MEDICAL EMERGENCY or as an actual mental break.
+        /// </summary>
+        private static bool TextSuggestsBreakRiskMood(string textLower, string hintLower)
+        {
+            string s = textLower + " " + hintLower;
+            return s.Contains("break risk")
+                || s.Contains("major break risk")
+                || s.Contains("minor break risk")
+                || s.Contains("extreme break risk");
+        }
+
+        private static void AppendBreakRiskMoodDetails(string textLower, List<string> details)
+        {
+            if (details == null)
+                return;
+            string level = "break risk";
+            if (textLower != null)
+            {
+                if (textLower.Contains("extreme break risk"))
+                    level = "extreme break risk";
+                else if (textLower.Contains("major break risk"))
+                    level = "major break risk";
+                else if (textLower.Contains("minor break risk"))
+                    level = "minor break risk";
+            }
+            details.Add("mood: " + level);
+        }
+
+        private static bool TextSuggestsMentalBreak(string textLower, string hintLower)
+        {
+            string s = textLower + " " + hintLower;
+            return s.Contains("mental break")
+                || s.Contains("mental state")
+                || s.Contains("mental breakdown")
+                || s.Contains("breakdown")
+                || s.Contains("psychotic")
+                || s.Contains("berserk")
+                || s.Contains("catatonic")
+                || s.Contains("social fight")
+                || s.Contains("gave up")
+                || s.Contains("tantrum")
+                || s.Contains("on a tear")
+                || s.Contains("is having a") && s.Contains("break");
+        }
+
+        private static bool TextSuggestsMedical(string textLower, string hintLower)
+        {
+            string s = textLower + " " + hintLower;
+            return s.Contains("medical")
+                || s.Contains("emergency")
+                || s.Contains("negativehealthevent")
+                || s.Contains("needs treatment")
+                || s.Contains("need treatment")
+                || s.Contains("wounded")
+                || s.Contains("bleeding")
+                || s.Contains("blood loss")
+                || s.Contains("infection")
+                || s.Contains("disease")
+                || s.Contains("heart attack")
+                || s.Contains("anesthetized")
+                || s.Contains("downed")
+                || s.Contains("tended")
+                || s.Contains("injur");
+        }
+
+        private static bool HasAnyHealthRedFlag(Pawn pawn)
+        {
+            try
+            {
+                if (pawn == null || pawn.health?.hediffSet == null)
+                    return false;
+                if (pawn.Downed || pawn.health.ShouldBeDead() || pawn.health.InPainShock)
+                    return true;
+                if (pawn.health.hediffSet.BleedRateTotal > 0.01f)
+                    return true;
+
+                var bloodLoss = pawn.health.hediffSet.GetFirstHediffOfDef(HediffDefOf.BloodLoss);
+                if (bloodLoss != null && bloodLoss.Severity >= 0.15f)
+                    return true;
+
+                foreach (var h in pawn.health.hediffSet.hediffs)
+                {
+                    if (h == null || h.def == null)
+                        continue;
+                    if (h.TendableNow())
+                        return true;
+                    if (h.def.lethalSeverity > 0f && h.Severity >= h.def.lethalSeverity * 0.5f)
+                        return true;
+                    try
+                    {
+                        if (h.IsCurrentlyLifeThreatening)
+                            return true;
+                    }
+                    catch
+                    {
+                        if (h.def.isBad && h.CurStage != null && h.CurStage.lifeThreatening)
+                            return true;
+                    }
+                }
+            }
+            catch { }
+
+            return false;
+        }
+
+        private static void AppendMentalBreakDetails(Pawn pawn, List<string> details)
+        {
+            try
+            {
+                if (pawn == null || !pawn.InMentalState || pawn.MentalStateDef == null)
+                    return;
+
+                string ms = pawn.MentalStateDef.label ?? pawn.MentalStateDef.defName;
+                if (string.IsNullOrWhiteSpace(ms))
+                    ms = "unknown mental state";
+
+                details.Add($"breaking: {ms}");
+
+                // Category helps Masie (e.g. Aggressive vs Misc)
+                try
+                {
+                    var cat = pawn.MentalStateDef.category;
+                    if (cat != MentalStateCategory.Undefined)
+                        details.Add($"break type: {cat}");
+                }
+                catch { }
+            }
+            catch { /* best effort */ }
+        }
+
+        private static void AppendMedicalDetails(Pawn pawn, List<string> details, bool allowPlaceholder = false)
+        {
+            try
+            {
+                if (pawn?.health?.hediffSet == null)
+                    return;
+
+                var hs = pawn.health.hediffSet;
+
+                if (pawn.health.ShouldBeDead())
+                    details.Add("near death");
+                if (pawn.Downed)
+                    details.Add("downed");
+                if (pawn.health.InPainShock)
+                    details.Add("pain shock");
+
+                float bleed = hs.BleedRateTotal;
+                if (bleed > 0.01f)
+                {
+                    if (bleed >= 1.0f)
+                        details.Add("bleeding critically");
+                    else if (bleed >= 0.5f)
+                        details.Add("bleeding heavily");
+                    else if (bleed >= 0.15f)
+                        details.Add("bleeding");
+                    else
+                        details.Add("light bleeding");
+                }
+
+                var bloodLoss = hs.GetFirstHediffOfDef(HediffDefOf.BloodLoss);
+                if (bloodLoss != null && bloodLoss.Severity >= 0.12f)
+                {
+                    string sev =
+                        bloodLoss.Severity >= 0.7f ? "critical" :
+                        bloodLoss.Severity >= 0.45f ? "severe" :
+                        bloodLoss.Severity >= 0.25f ? "moderate" : "mild";
+                    details.Add($"{sev} blood loss");
+                }
+
+                // Injuries: label as tended vs untended (Masie needs to know if a doctor already treated them).
+                var untendedLabels = new List<string>();
+                var tendedLabels = new List<string>();
+                var severeLabels = new List<string>();
+                int untendedCount = 0;
+                int tendedCount = 0;
+
+                foreach (var h in hs.hediffs)
+                {
+                    if (h == null || h.def == null)
+                        continue;
+
+                    bool lifeThreatening = false;
+                    try
+                    {
+                        lifeThreatening = h.IsCurrentlyLifeThreatening;
+                    }
+                    catch
+                    {
+                        try
+                        {
+                            lifeThreatening = h.CurStage != null && h.CurStage.lifeThreatening;
+                        }
+                        catch { }
+                    }
+
+                    if (!lifeThreatening && h.def.lethalSeverity > 0f && h.Severity >= h.def.lethalSeverity * 0.55f)
+                        lifeThreatening = true;
+
+                    bool tendableNow = false;
+                    try { tendableNow = h.TendableNow(); }
+                    catch { }
+
+                    bool isTended = false;
+                    try { isTended = HediffUtility.IsTended(h); }
+                    catch { }
+
+                    bool isInjury = h is Hediff_Injury;
+                    bool bleedingHediff = false;
+                    try { bleedingHediff = h.Bleeding; }
+                    catch { }
+
+                    // Relevant if injury, still needs tend, already tended injury, bleeding, or life-threatening
+                    if (!tendableNow && !lifeThreatening && !isInjury && !bleedingHediff && !isTended)
+                        continue;
+
+                    // Skip pure buffs / implants
+                    if (!h.def.isBad && !tendableNow && !isTended)
+                        continue;
+
+                    // Skip tiny fully tended scars that no longer matter
+                    if (isInjury && isTended && !tendableNow && !lifeThreatening && !bleedingHediff && h.Severity < 0.15f)
+                        continue;
+
+                    string label;
+                    try
+                    {
+                        label = h.LabelBase ?? h.def.label ?? h.def.defName;
+                    }
+                    catch
+                    {
+                        label = h.def.defName;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(label))
+                        continue;
+
+                    // Strip tend quality noise from labels if present (e.g. " (bandaged)")
+                    try
+                    {
+                        int paren = label.IndexOf(" (");
+                        if (paren > 0)
+                            label = label.Substring(0, paren).Trim();
+                    }
+                    catch { }
+
+                    if (label.Length > 40)
+                        label = label.Substring(0, 37) + "...";
+
+                    if (lifeThreatening && severeLabels.Count < 4
+                        && !severeLabels.Any(x => x.Equals(label, StringComparison.OrdinalIgnoreCase)))
+                        severeLabels.Add(label);
+
+                    // Classification: needs tend / not tended → untended; currently tended → tended
+                    bool classifyAsUntended = tendableNow || (isInjury && !isTended && h.def.isBad && h.Severity >= 0.15f);
+                    bool classifyAsTended = isTended && isInjury && h.def.isBad;
+
+                    if (classifyAsUntended)
+                    {
+                        // If it still needs tend, treat as untended even if a partial/old tend exists
+                        untendedCount++;
+                        if (untendedLabels.Count < 4
+                            && !untendedLabels.Any(x => x.Equals(label, StringComparison.OrdinalIgnoreCase)))
+                            untendedLabels.Add(label);
+                    }
+                    else if (classifyAsTended)
+                    {
+                        tendedCount++;
+                        if (tendedLabels.Count < 4
+                            && !tendedLabels.Any(x => x.Equals(label, StringComparison.OrdinalIgnoreCase)))
+                            tendedLabels.Add(label);
+                    }
+                }
+
+                if (severeLabels.Count > 0)
+                    details.Add("severe/life-threatening: " + string.Join(", ", severeLabels));
+
+                if (untendedCount > 0)
+                {
+                    string woundList = untendedLabels.Count > 0
+                        ? string.Join(", ", untendedLabels)
+                        : "injuries";
+                    details.Add(untendedCount == 1
+                        ? $"untended: {woundList}"
+                        : $"untended: {woundList} ({untendedCount} total)");
+                }
+
+                if (tendedCount > 0)
+                {
+                    string woundList = tendedLabels.Count > 0
+                        ? string.Join(", ", tendedLabels)
+                        : "injuries";
+                    details.Add(tendedCount == 1
+                        ? $"tended: {woundList}"
+                        : $"tended: {woundList} ({tendedCount} total)");
+                }
+
+                if (untendedCount == 0 && tendedCount == 0
+                    && allowPlaceholder && severeLabels.Count == 0 && bleed <= 0.01f && !pawn.Downed)
+                {
+                    // Only for real medical toasts — never for mood break-risk
+                    if (details.Count == 0)
+                        details.Add("needs medical attention");
+                }
+            }
+            catch { /* best effort */ }
+        }
+
+        internal static List<Pawn> CollectPawnsFromLookTargets(LookTargets lookTargets)
+        {
+            var result = new List<Pawn>();
+            if (lookTargets == null || lookTargets.targets.NullOrEmpty())
+                return result;
+
+            try
+            {
+                foreach (var t in lookTargets.targets)
+                {
+                    if (!t.IsValid || !t.HasThing || t.Thing == null)
+                        continue;
+
+                    Pawn p = t.Thing as Pawn;
+                    if (p == null && t.Thing is Corpse corpse)
+                        p = corpse.InnerPawn;
+
+                    if (p != null && !result.Contains(p))
+                        result.Add(p);
+
+                    if (result.Count >= 4)
+                        break;
+                }
+            }
+            catch { /* best effort */ }
+
+            return result;
+        }
+    }
 }
+
+

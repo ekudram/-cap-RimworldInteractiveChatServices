@@ -1,23 +1,11 @@
-﻿
-// StoreCommandHelper.cs
-// Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// File: PawnItemHelper.cs
 //
-// Helper methods for store command handling
-
+// Copyright (c) Captolamia
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
+// Equip/wear helpers and viewer pawn lookup for store commands.
 using CAP_ChatInteractive;
 using RimWorld;
 using System;
@@ -27,72 +15,109 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
 {
     public static class PawnItemHelper
     {
-
-        // === PawnItemHelper
-
         public static bool EquipItemOnPawn(Thing item, Verse.Pawn pawn)
         {
             try
             {
-                if (pawn == null || item == null) return false;
+                if (pawn == null || item == null || item.def == null || item.Destroyed)
+                    return false;
 
-                // Check if it's a weapon
-                if (item.def.IsWeapon)
+                if (!item.def.IsWeapon)
+                    return false;
+
+                if (!(item is ThingWithComps weapon))
+                    return false;
+
+                if (pawn.equipment == null)
+                    return false;
+
+                if (!EquipmentUtility.CanEquip(weapon, pawn))
+                    return false;
+
+                if (!MassUtility.CanEverCarryAnything(pawn))
+                    return false;
+
+                // Clear map spawn so AddEquipment can take ownership.
+                if (weapon.Spawned)
                 {
-                    var weapon = item as ThingWithComps;
-                    if (weapon != null)
+                    if (pawn.Map == null)
+                        return false;
+                    weapon.DeSpawn();
+                }
+
+                // If still in a container (e.g. temp holder), try to extract without destroying.
+                if (weapon.holdingOwner != null)
+                {
+                    var owner = weapon.holdingOwner;
+                    if (!owner.TryDrop(weapon, pawn.PositionHeld, pawn.MapHeld ?? pawn.Map, ThingPlaceMode.Near, 1, out Thing dropped))
                     {
-                        // Check if pawn can equip this weapon
-                        if (!EquipmentUtility.CanEquip(weapon, pawn))
+                        // Last resort: remove from owner list if API allows via TryDrop failed
+                        Logger.Warning(
+                            $"[PawnItem] EquipItemOnPawn: could not release {weapon.LabelShort} from holder for {pawn.LabelShort}.");
+                        return false;
+                    }
+                    weapon = dropped as ThingWithComps ?? weapon;
+                    if (weapon == null || weapon.Destroyed)
+                        return false;
+                    if (weapon.Spawned)
+                        weapon.DeSpawn();
+                }
+
+                ThingWithComps oldWeapon = null;
+
+                if (pawn.equipment.Primary != null)
+                {
+                    ThingWithComps primary = pawn.equipment.Primary;
+                    bool moved = false;
+                    if (pawn.inventory?.innerContainer != null)
+                    {
+                        moved = pawn.equipment.TryTransferEquipmentToContainer(
+                            primary, pawn.inventory.innerContainer);
+                    }
+
+                    if (!moved)
+                    {
+                        if (!pawn.equipment.TryDropEquipment(primary, out oldWeapon, pawn.Position))
                         {
-                            Logger.Debug($"Pawn cannot equip {weapon.def.defName}");
+                            Logger.Warning(
+                                $"[PawnItem] Could not make room for {pawn.LabelShort}'s new weapon.");
                             return false;
                         }
-
-                        // Check if pawn can carry anything
-                        if (!MassUtility.CanEverCarryAnything(pawn))
-                        {
-                            Logger.Debug($"Pawn cannot carry anything");
-                            return false;
-                        }
-
-                        ThingWithComps oldWeapon = null;
-
-                        // Try to handle current equipment
-                        if (pawn.equipment.Primary != null)
-                        {
-                            // Try to move current weapon to inventory
-                            if (!pawn.equipment.TryTransferEquipmentToContainer(pawn.equipment.Primary, pawn.inventory.innerContainer))
-                            {
-                                // If inventory full, try to drop it
-                                if (!pawn.equipment.TryDropEquipment(pawn.equipment.Primary, out oldWeapon, pawn.Position))
-                                {
-                                    Logger.Warning($"Could not make room for {pawn.Name}'s new weapon.");
-                                }
-                            }
-                        }
-
-                        // Check if pawn would be over encumbered
-                        if (MassUtility.WillBeOverEncumberedAfterPickingUp(pawn, weapon, 1) && oldWeapon != null)
-                        {
-                            // Re-equip old weapon and spawn new one
-                            pawn.equipment.AddEquipment(oldWeapon);
-                            Logger.Debug($"Pawn would be over encumbered, spawning weapon instead");
-                            return false;
-                        }
-
-                        // Equip the new weapon
-                        pawn.equipment.AddEquipment(weapon);
-                        Logger.Debug($"Equipped weapon: {item.def.defName} on pawn {pawn.Name}");
-                        return true;
                     }
                 }
 
-                return false;
+                if (weapon.Destroyed || weapon.holdingOwner != null)
+                {
+                    Logger.Warning(
+                        $"[PawnItem] EquipItemOnPawn: weapon not free for AddEquipment ({pawn.LabelShort}).");
+                    // Best-effort restore dropped old weapon
+                    if (oldWeapon != null && !oldWeapon.Destroyed && oldWeapon.holdingOwner == null && !oldWeapon.Spawned)
+                    {
+                        try { pawn.equipment.AddEquipment(oldWeapon); }
+                        catch { /* ignore restore failure */ }
+                    }
+                    return false;
+                }
+
+                if (MassUtility.WillBeOverEncumberedAfterPickingUp(pawn, weapon, 1))
+                {
+                    if (oldWeapon != null && !oldWeapon.Destroyed && oldWeapon.holdingOwner == null && !oldWeapon.Spawned)
+                    {
+                        try { pawn.equipment.AddEquipment(oldWeapon); }
+                        catch (Exception restoreEx)
+                        {
+                            Logger.Warning($"[PawnItem] Failed restoring old weapon: {restoreEx.Message}");
+                        }
+                    }
+                    return false;
+                }
+
+                pawn.equipment.AddEquipment(weapon);
+                return true;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error equipping item on pawn: {ex}");
+                Logger.Error($"[PawnItem] EquipItemOnPawn: {ex}");
                 return false;
             }
         }
@@ -101,20 +126,28 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         {
             try
             {
-                var manager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-                if (manager == null || messageWrapper == null) return null;
+                if (messageWrapper == null)
+                    return null;
 
-                string key = $"{messageWrapper.Platform?.ToLowerInvariant()}:{messageWrapper.PlatformUserId}";
-                if (string.IsNullOrEmpty(key) || key == ":") return null;
+                var manager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+                if (manager?.viewerPawnAssignments == null)
+                    return null;
+
+                if (string.IsNullOrEmpty(messageWrapper.PlatformUserId))
+                    return null;
+
+                string plat = messageWrapper.Platform?.ToLowerInvariant() ?? "unknown";
+                string key = $"{plat}:{messageWrapper.PlatformUserId}";
 
                 if (manager.viewerPawnAssignments.TryGetValue(key, out string thingId))
                     return GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
 
-                return null;
+                // Fallback: assignment manager full lookup (legacy keys)
+                return manager.GetAssignedPawn(messageWrapper);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error getting viewer pawn: {ex}");
+                Logger.Error($"[PawnItem] GetViewerPawn: {ex.Message}");
                 return null;
             }
         }
@@ -123,60 +156,56 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         {
             if (string.IsNullOrEmpty(username))
                 return null;
-            var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-            if (assignmentManager != null && assignmentManager.HasAssignedPawn(username))
+
+            try
             {
-                return assignmentManager.GetAssignedPawn(username);
+                var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+                if (assignmentManager == null)
+                    return null;
+
+                if (assignmentManager.HasAssignedPawn(username))
+                    return assignmentManager.GetAssignedPawn(username);
+
+                return null;
             }
-            return null;
+            catch (Exception ex)
+            {
+                Logger.Error($"[PawnItem] GetViewerPawn(username): {ex.Message}");
+                return null;
+            }
         }
 
         public static bool WearApparelOnPawn(Thing item, Verse.Pawn pawn)
         {
             try
             {
-                if (pawn == null || item == null) return false;
+                if (pawn == null || item == null || item.def == null || pawn.apparel == null)
+                    return false;
 
-                // Check if it's apparel
-                if (item.def.IsApparel)
-                {
-                    var apparel = item as Apparel;
-                    if (apparel != null)
-                    {
-                        // Check if pawn has body parts to wear this apparel
-                        if (!ApparelUtility.HasPartsToWear(pawn, item.def))
-                        {
-                            Logger.Debug($"Pawn lacks body parts to wear {item.def.defName}");
-                            return false;
-                        }
+                if (!item.def.IsApparel)
+                    return false;
 
-                        // Check if this would replace locked apparel
-                        if (pawn.apparel.WouldReplaceLockedApparel(apparel))
-                        {
-                            Logger.Debug($"Would replace locked apparel with {item.def.defName}");
-                            return false;
-                        }
+                if (!(item is Apparel apparel))
+                    return false;
 
-                        // Check if pawn can equip this apparel
-                        if (!EquipmentUtility.CanEquip(apparel, pawn))
-                        {
-                            Logger.Debug($"Pawn cannot equip {item.def.defName}");
-                            return false;
-                        }
+                if (!ApparelUtility.HasPartsToWear(pawn, item.def))
+                    return false;
 
-                        // Wear the apparel and force it to be worn
-                        pawn.apparel.Wear(apparel, dropReplacedApparel: true);
-                        pawn.outfits.forcedHandler.SetForced(apparel, true);
-                        Logger.Debug($"Wore apparel: {item.def.defName} on pawn {pawn.Name}");
-                        return true;
-                    }
-                }
+                if (pawn.apparel.WouldReplaceLockedApparel(apparel))
+                    return false;
 
-                return false;
+                if (!EquipmentUtility.CanEquip(apparel, pawn))
+                    return false;
+
+                pawn.apparel.Wear(apparel, dropReplacedApparel: true);
+                if (pawn.outfits?.forcedHandler != null)
+                    pawn.outfits.forcedHandler.SetForced(apparel, true);
+
+                return true;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error wearing apparel on pawn: {ex}");
+                Logger.Error($"[PawnItem] WearApparelOnPawn: {ex.Message}");
                 return false;
             }
         }

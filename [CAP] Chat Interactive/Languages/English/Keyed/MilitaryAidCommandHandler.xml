@@ -16,6 +16,7 @@
   <RICS.MACH.NoFriendlyFactions>No friendly factions are available to send aid right now.</RICS.MACH.NoFriendlyFactions>
   <RICS.MACH.MilitaryAidFailed>{0} No {1} were deducted.</RICS.MACH.MilitaryAidFailed>
   <RICS.MACH.MilitaryAidError>Error calling military aid: {0}</RICS.MACH.MilitaryAidError>
+  <RICS.MACH.MilitaryAidErrorGeneric>Error calling military aid. Please try again.</RICS.MACH.MilitaryAidErrorGeneric>
 
   <!-- Success / execution -->
   <RICS.MACH.SendingAid>Sending military aid from {0}...</RICS.MACH.SendingAid>

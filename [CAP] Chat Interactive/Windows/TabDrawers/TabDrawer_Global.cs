@@ -31,7 +31,7 @@ namespace _CAP__Chat_Interactive
         public static void Draw(Rect region)
         {
             var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-            var view = new Rect(0f, 0f, region.width - 16f, 1100f);
+            var view = new Rect(0f, 0f, region.width - 16f, 1350f);
 
             Widgets.BeginScrollView(region, ref _scrollPosition, view);
             var listing = new Listing_Standard();
@@ -126,6 +126,54 @@ namespace _CAP__Chat_Interactive
             {
                 settings.priceListUrl = newPriceListUrl;
             }
+
+            listing.Gap(24f);
+
+            // === RICS pawn item ownership ===
+            Text.Font = GameFont.Medium;
+            GUI.color = ColorLibrary.HeaderAccent;
+            listing.Label("RICS.Ownership.Settings.Header".Translate());
+            Text.Font = GameFont.Small;
+            GUI.color = Color.white;
+            listing.GapLine(6f);
+
+            CAP_ChatInteractive.Ownership.RICS_OwnershipModDetector.EnforceConflictRules(settings, notify: true);
+            bool ppActive = CAP_ChatInteractive.Ownership.RICS_OwnershipModDetector.IsPossessionsPlusActive();
+
+            GUI.color = Verse.ColorLibrary.RedReadable;
+            listing.Label("RICS.Ownership.Settings.Warning".Translate());
+            GUI.color = Color.white;
+
+            if (ppActive)
+            {
+                GUI.color = Verse.ColorLibrary.Orange;
+                listing.Label("RICS.Ownership.Conflict.PossessionsPlus".Translate());
+                GUI.color = Color.white;
+                bool lockedOff = false;
+                listing.CheckboxLabeled("RICS.Ownership.Settings.UseRics".Translate(), ref lockedOff);
+                settings.UseRicsPawnOwnership = false;
+            }
+            else
+            {
+                bool prev = settings.UseRicsPawnOwnership;
+                bool use = prev;
+                listing.CheckboxLabeled("RICS.Ownership.Settings.UseRics".Translate(), ref use);
+                // Mid-colony enable: allow but warn (PP itself advises against mid-save)
+                if (use && !prev && Current.ProgramState == ProgramState.Playing
+                    && Find.TickManager != null && Find.TickManager.TicksGame > 60000)
+                {
+                    Messages.Message("RICS.Ownership.Settings.MidSaveWarn".Translate(), MessageTypeDefOf.CautionInput);
+                }
+                settings.UseRicsPawnOwnership = use;
+            }
+
+            listing.CheckboxLabeled("RICS.Ownership.Settings.BlockTrading".Translate(), ref settings.RicsOwnershipBlockTrading);
+            listing.CheckboxLabeled("RICS.Ownership.Settings.Inheritance".Translate(), ref settings.RicsOwnershipInheritance);
+            Text.Font = GameFont.Tiny;
+            GUI.color = ColorLibrary.LightText;
+            listing.Label("RICS.Ownership.Settings.Footer".Translate());
+            Text.Font = GameFont.Small;
+            GUI.color = Color.white;
 
             listing.Gap(24f);
             listing.End();

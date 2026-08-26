@@ -1245,6 +1245,11 @@ MyPawnCommandHandler.xml"
 - !pawn with no race: if only one enabled race is on, buys that race (random age/gender within race settings; Baseliner or another enabled xenotype). If several races are enabled, lists the first 8 with prices in the same format as !races (no xenotypes; use !xenotypes).
 "
             }
+
+/*
+@"===========================================================
+                         RICS version 1.47 - Changelog
+                         Released: August 5, 2026 }
 /*
             // Add more versions here as they're released
 ===========================================================
@@ -1266,7 +1271,6 @@ MyPawnCommandHandler.xml"
 
 <b>TRANSLATIONS</b>
 ───────────────────
-
 */
             // Add more versions here as they're released+
         };

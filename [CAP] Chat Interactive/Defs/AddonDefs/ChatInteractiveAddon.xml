@@ -87,7 +87,7 @@
 -->
 
 <Defs>
-  <!-- Main Interactive Service Button (Existing) -->
+  <!-- Main Interactive Service Button -->
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
     <defName>CAPChatInteractive</defName>
     <label>Rimworld Interactive Chat Service</label>
@@ -101,7 +101,7 @@
     <iconPath>UI/QuickButtons/CommandEditor</iconPath>
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
-  <!-- Divider (note each Divider must have a custom defName)-->
+  <!-- Divider (each Divider must have a unique defName) -->
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
     <defName>Divider_AfterMain</defName>
     <buttonType>Divider</buttonType>
@@ -109,7 +109,6 @@
     <enabled>true</enabled>
     <displayOrder>86</displayOrder>
     <showInToolbar>true</showInToolbar>
-    <!-- no label, icon, dialogClass, etc. needed -->
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
   <!-- Quick Access: Command Editor -->
@@ -182,7 +181,6 @@
     <iconPath>UI/QuickButtons/EventsEditor</iconPath>
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
-  <!-- Divider (note each Divider must have a custom defName)-->
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
     <defName>Divider_AfterEditors</defName>
     <buttonType>Divider</buttonType>
@@ -190,7 +188,6 @@
     <enabled>true</enabled>
     <displayOrder>95</displayOrder>
     <showInToolbar>true</showInToolbar>
-    <!-- no label, icon, dialogClass, etc. needed -->
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
   <!-- Quick Access: Viewer Manager -->
@@ -207,7 +204,6 @@
     <iconPath>UI/QuickButtons/ViewerManager</iconPath>
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
-  <!-- Divider (note each Divider must have a custom defName)-->
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
     <defName>Divider_AfterViewerManager</defName>
     <buttonType>Divider</buttonType>
@@ -215,10 +211,9 @@
     <enabled>true</enabled>
     <displayOrder>97</displayOrder>
     <showInToolbar>true</showInToolbar>
-    <!-- no label, icon, dialogClass, etc. needed -->
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
-  <!-- Quick Access: Pawn Queue Dialog -->
+  <!-- Quick Access: Pawn Queue -->
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
     <defName>Quick_PawnQueue</defName>
     <label>Pawn Queue</label>
@@ -232,7 +227,7 @@
     <iconPath>UI/QuickButtons/PawnQueue</iconPath>
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
-  <!-- Quick Access: Pawn Race Dialog -->
+  <!-- Quick Access: Pawn Race -->
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
     <defName>Quick_PawnRace</defName>
     <label>Pawn Race Settings</label>
@@ -247,13 +242,12 @@
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
-    <defName>Divider_AfterPawnRace</defName>  
+    <defName>Divider_AfterPawnRace</defName>
     <buttonType>Divider</buttonType>
     <sourceMod>RICS</sourceMod>
     <enabled>true</enabled>
     <displayOrder>101</displayOrder>
     <showInToolbar>true</showInToolbar>
-    <!-- no label, icon, dialogClass, etc. needed -->
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
 
   <CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
@@ -268,5 +262,4 @@
     <showInToolbar>true</showInToolbar>
     <iconPath>UI/QuickButtons/PawnRace</iconPath>
   </CAP_ChatInteractive.EnhancedChatInteractiveAddonDef>
-  
 </Defs>

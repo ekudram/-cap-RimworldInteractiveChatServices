@@ -646,5 +646,8 @@ namespace CAP_ChatInteractive.Traits
                 Logger.Error($"Error rebuilding traits: {ex.Message}");
             }
         }
+
+        /// <summary>Editor Reset to base — same as DebugRebuildTraits.</summary>
+        public static void RebuildFromDefaults() => DebugRebuildTraits();
     }
 }

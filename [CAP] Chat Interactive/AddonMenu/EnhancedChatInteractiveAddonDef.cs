@@ -1,4 +1,4 @@
-﻿// EnhancedChatInteractiveAddonDef.cs
+// EnhancedChatInteractiveAddonDef.cs
 // Copyright (c) Captolamia
 // This file is part of CAP Chat Interactive aka RICS (Rimworld Interactive Chat System).
 // 
@@ -15,10 +15,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
 //
-// ENHANCED VERSION: Supports multiple button types and quick-access functionality
+// Def type for RICS main-tab / toolbar buttons. Third-party mods can ship their own
+// EnhancedChatInteractiveAddonDef XML (preferred) or use ButtonUtils at runtime (toolbar only).
+// See Defs/AddonDefs/ChatInteractiveAddon.xml for a full modder cookbook.
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using CAP_ChatInteractive.Interfaces;
 using CAP_ChatInteractive.Ownership;
 using UnityEngine;
@@ -26,29 +27,53 @@ using Verse;
 
 namespace CAP_ChatInteractive
 {
+    /// <summary>
+    /// Registers a button on the RICS main tab and optionally the top quick toolbar.
+    /// Place defs in any mod's Defs/ folder with this type name.
+    /// </summary>
     public class EnhancedChatInteractiveAddonDef : Def
     {
-        // --- Original Fields (Backward Compatible) ---
+        /// <summary>
+        /// For <see cref="ButtonType.MenuButton"/>: type implementing <see cref="IAddonMenu"/>.
+        /// Default is RICS's built-in menu when omitted on the main CAPChatInteractive def.
+        /// </summary>
         public Type menuClass = typeof(ChatInteractiveAddonMenu);
+
+        /// <summary>When false, def is ignored by AddonRegistry and toolbar.</summary>
         public bool enabled = true;
+
+        /// <summary>
+        /// Sort order. RICS uses ~85–101. Third-party mods should use 200+ to avoid collisions.
+        /// </summary>
         public int displayOrder = 10;
+
+        /// <summary>
+        /// Short name for grouping (toolbar separators / main-tab headers). Defaults to package mod name.
+        /// </summary>
         public string sourceMod = "RICS";
 
-        // Button type determines behavior
+        /// <summary>Determines click behavior. See <see cref="ButtonType"/>.</summary>
         public ButtonType buttonType = ButtonType.MenuButton;
-        // For DirectDialogButton: Opens a specific dialog
+
+        /// <summary>For DirectDialogButton: Window type with a parameterless constructor.</summary>
         public Type dialogClass = null;
-        // For ToggleWindowButton: Toggles a window
+
+        /// <summary>For ToggleWindowButton: Window type toggled open/closed.</summary>
         public Type windowClass = null;
-        // Optional hotkey for quick access
+
+        /// <summary>Optional hotkey (toolbar / CheckHotkeys).</summary>
         public KeyBindingDef hotkey = null;
-        // Optional icon path for toolbar buttons
+
+        /// <summary>Texture path under Textures/ (e.g. UI/QuickButtons/MyIcon).</summary>
         public string iconPath = null;
-        // Tooltip that appears on hover
+
+        /// <summary>Hover tip; falls back to description if empty.</summary>
         public string tooltip = "";
-        // Whether to show in quick toolbar (separate from main menu)
+
+        /// <summary>When true, appears on the top-of-screen quick toolbar during play.</summary>
         public bool showInToolbar = false;
-        // Category for organizing buttons
+
+        /// <summary>Optional organizational tag (not currently required for layout).</summary>
         public string category = "General";
 
         /// <summary>
@@ -70,141 +95,148 @@ namespace CAP_ChatInteractive
         {
             base.ResolveReferences();
 
-            // Auto-fill tooltip if not specified
             if (string.IsNullOrEmpty(tooltip))
-            {
-                tooltip = description;
-            }
+                tooltip = description ?? string.Empty;
 
-            // Auto-detect source mod if not specified
             if (string.IsNullOrEmpty(sourceMod))
             {
-                // Try to get mod from the def package
-                if (modContentPack != null)
-                {
-                    sourceMod = modContentPack.Name;
-                }
-                else
-                {
-                    sourceMod = "Unknown";
-                }
+                sourceMod = modContentPack != null
+                    ? (modContentPack.Name ?? "Unknown")
+                    : "Unknown";
             }
-
-            //Logger.Debug($"EnhancedAddonDef resolved: {defName}, Type: {buttonType}, Source: {sourceMod}");
         }
 
+        public override IEnumerable<string> ConfigErrors()
+        {
+            foreach (string err in base.ConfigErrors())
+                yield return err;
+
+            if (buttonType == ButtonType.Divider)
+                yield break;
+
+            if (buttonType == ButtonType.MenuButton)
+            {
+                if (menuClass == null)
+                    yield return "MenuButton requires menuClass";
+                else if (!typeof(IAddonMenu).IsAssignableFrom(menuClass))
+                    yield return $"menuClass {menuClass.Name} must implement IAddonMenu";
+            }
+            else if (buttonType == ButtonType.DirectDialogButton)
+            {
+                if (dialogClass == null)
+                    yield return "DirectDialogButton requires dialogClass";
+                else if (!typeof(Window).IsAssignableFrom(dialogClass))
+                    yield return $"dialogClass {dialogClass.Name} must inherit from Window";
+            }
+            else if (buttonType == ButtonType.ToggleWindowButton)
+            {
+                if (windowClass == null)
+                    yield return "ToggleWindowButton requires windowClass";
+                else if (!typeof(Window).IsAssignableFrom(windowClass))
+                    yield return $"windowClass {windowClass.Name} must inherit from Window";
+            }
+            else if (buttonType == ButtonType.SubmenuButton)
+            {
+                // Reserved for nested menus; treat like MenuButton if menuClass set
+                if (menuClass == null || !typeof(IAddonMenu).IsAssignableFrom(menuClass))
+                    yield return "SubmenuButton requires menuClass implementing IAddonMenu (same as MenuButton)";
+            }
+        }
+
+        /// <summary>
+        /// Build the IAddonMenu used when this def is shown as a FloatMenu entry list.
+        /// </summary>
         public IAddonMenu GetAddonMenu()
         {
             try
             {
                 if (!enabled || buttonType == ButtonType.Divider)
                     return null;
-                }
 
-                if (buttonType == ButtonType.Divider) return null;
-
-                // Create appropriate menu based on button type
                 switch (buttonType)
                 {
                     case ButtonType.MenuButton:
-                        var menu = Activator.CreateInstance(menuClass) as IAddonMenu;
-                        //Logger.Debug($"MenuButton created: {menu != null}");
-                        return menu;
+                    case ButtonType.SubmenuButton:
+                        if (menuClass == null || !typeof(IAddonMenu).IsAssignableFrom(menuClass))
+                        {
+                            Logger.Error($"[AddonMenu] {defName}: invalid menuClass");
+                            return null;
+                        }
+
+                        return Activator.CreateInstance(menuClass) as IAddonMenu;
 
                     case ButtonType.DirectDialogButton:
-                        // Return a wrapper that opens the dialog directly
                         return new DirectDialogMenuWrapper(this);
 
                     case ButtonType.ToggleWindowButton:
-                        // Return a wrapper that toggles the window
                         return new ToggleWindowMenuWrapper(this);
 
-                    case ButtonType.Divider:
-                        return null;
-
                     default:
-                        Logger.Error($"Unknown button type: {buttonType} for {defName}");
+                        Logger.Error($"[AddonMenu] Unknown button type {buttonType} for {defName}");
                         return null;
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Failed to create addon menu for {defName}: {ex.Message}");
+                Logger.Error($"[AddonMenu] Failed to create menu for {defName}: {ex}");
                 return null;
             }
         }
 
         /// <summary>
-        /// Directly execute this button's action (for toolbar hotkeys)
+        /// Run this button's primary action (toolbar click, main-tab click, hotkey).
+        /// Safe: errors are logged, never thrown to UI.
         /// </summary>
         public void ExecuteDirectly()
         {
             if (!enabled || buttonType == ButtonType.Divider)
                 return;
 
-            try
+            string ctx = defName ?? label ?? "addon";
+
+            switch (buttonType)
             {
-                if (buttonType == ButtonType.Divider) return;   // Dividers have no action
+                case ButtonType.DirectDialogButton:
+                    AddonButtonActions.TryOpenDialog(dialogClass, ctx);
+                    break;
 
-                switch (buttonType)
-                {
-                    case ButtonType.DirectDialogButton when dialogClass != null:
-                        var dialog = Activator.CreateInstance(dialogClass) as Window;
-                        if (dialog != null)
-                        {
-                            Find.WindowStack.Add(dialog);
-                        }
-                        break;
+                case ButtonType.ToggleWindowButton:
+                    AddonButtonActions.TryToggleWindow(windowClass, ctx);
+                    break;
 
-                    case ButtonType.ToggleWindowButton when windowClass != null:
-                        var existingWindow = Find.WindowStack.Windows.FirstOrDefault(w => w.GetType() == windowClass);
-                        if (existingWindow != null)
-                        {
-                            existingWindow.Close();
-                        }
-                        else
-                        {
-                            var window = Activator.CreateInstance(windowClass) as Window;
-                            if (window != null)
-                            {
-                                Find.WindowStack.Add(window);
-                            }
-                        }
-                        break;
-
-                    case ButtonType.MenuButton:
-                        // For menu buttons, show the float menu
-                        var menu = GetAddonMenu();
-                        if (menu != null)
-                        {
-                            var options = menu.MenuOptions();
-                            Find.WindowStack.Add(new FloatMenu(options));
-                        }
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Failed to execute button {defName}: {ex.Message}");
+                case ButtonType.MenuButton:
+                case ButtonType.SubmenuButton:
+                    AddonButtonActions.TryShowMenu(GetAddonMenu(), ctx);
+                    break;
             }
         }
     }
 
-    // --- Button Type Enum ---
+    /// <summary>
+    /// Behavior for <see cref="EnhancedChatInteractiveAddonDef.buttonType"/>.
+    /// </summary>
     public enum ButtonType
     {
-        MenuButton,          // Opens a FloatMenu with options
-        DirectDialogButton,  // Opens a dialog window directly
-        ToggleWindowButton,  // Toggles a window open/closed
-        SubmenuButton,       // Opens another FloatMenu (nested)
-        Divider              // Visual separator bar — non-clickable, zero logic
+        /// <summary>Opens a FloatMenu from menuClass.MenuOptions().</summary>
+        MenuButton,
+
+        /// <summary>Opens dialogClass as a Window immediately.</summary>
+        DirectDialogButton,
+
+        /// <summary>Toggles windowClass open/closed.</summary>
+        ToggleWindowButton,
+
+        /// <summary>Same as MenuButton (nested menu entry). Prefer MenuButton for new content.</summary>
+        SubmenuButton,
+
+        /// <summary>Visual separator only — unique defName required; no click action.</summary>
+        Divider
     }
 
-    // --- Wrapper Classes for Different Button Types ---
-
+    /// <summary>Wraps a DirectDialogButton as a single FloatMenu option (for menus that list it).</summary>
     public class DirectDialogMenuWrapper : IAddonMenu
     {
-        private EnhancedChatInteractiveAddonDef def;
+        private readonly EnhancedChatInteractiveAddonDef def;
 
         public DirectDialogMenuWrapper(EnhancedChatInteractiveAddonDef def)
         {
@@ -213,70 +245,24 @@ namespace CAP_ChatInteractive
 
         public List<FloatMenuOption> MenuOptions()
         {
-            Texture2D icon = LoadIcon(def.iconPath);
+            if (def == null)
+                return new List<FloatMenuOption>();
 
-            // Create FloatMenuOption with icon if available
-            FloatMenuOption option;
-            if (icon != null)
+            Texture2D icon = AddonButtonActions.LoadIcon(def.iconPath);
+            return new List<FloatMenuOption>
             {
-                // Use constructor with Texture2D icon
-                option = new FloatMenuOption(
+                AddonButtonActions.CreateFloatOption(
                     def.label,
-                    () =>
-                    {
-                        if (def.dialogClass != null)
-                        {
-                            var dialog = Activator.CreateInstance(def.dialogClass) as Window;
-                            if (dialog != null)
-                            {
-                                Find.WindowStack.Add(dialog);
-                            }
-                        }
-                    },
-                    iconTex: icon,
-                    iconColor: Color.white
-                );
-            }
-            else
-            {
-                // Use basic constructor without icon
-                option = new FloatMenuOption(
-                    def.label,
-                    () =>
-                    {
-                        if (def.dialogClass != null)
-                        {
-                            var dialog = Activator.CreateInstance(def.dialogClass) as Window;
-                            if (dialog != null)
-                            {
-                                Find.WindowStack.Add(dialog);
-                            }
-                        }
-                    }
-                );
-            }
-
-            // Add tooltip if provided (RimWorld handles tooltips differently)
-            if (!string.IsNullOrEmpty(def.tooltip))
-            {
-                // You can set tooltip using TipSignal if needed
-                // Note: RimWorld's FloatMenuOption doesn't have a direct tooltip property in constructor
-                // Tooltips are usually handled by TooltipHandler elsewhere
-            }
-
-            return new List<FloatMenuOption> { option };
-        }
-
-        private static Texture2D LoadIcon(string path)
-        {
-            if (string.IsNullOrEmpty(path)) return null;
-            return ContentFinder<Texture2D>.Get(path, false);
+                    () => AddonButtonActions.TryOpenDialog(def.dialogClass, def.defName),
+                    icon)
+            };
         }
     }
 
+    /// <summary>Wraps a ToggleWindowButton as a single FloatMenu option.</summary>
     public class ToggleWindowMenuWrapper : IAddonMenu
     {
-        private EnhancedChatInteractiveAddonDef def;
+        private readonly EnhancedChatInteractiveAddonDef def;
 
         public ToggleWindowMenuWrapper(EnhancedChatInteractiveAddonDef def)
         {
@@ -285,72 +271,17 @@ namespace CAP_ChatInteractive
 
         public List<FloatMenuOption> MenuOptions()
         {
-            Texture2D icon = LoadIcon(def.iconPath);
+            if (def == null)
+                return new List<FloatMenuOption>();
 
-            // Create FloatMenuOption with icon if available
-            FloatMenuOption option;
-            if (icon != null)
+            Texture2D icon = AddonButtonActions.LoadIcon(def.iconPath);
+            return new List<FloatMenuOption>
             {
-                // Use constructor with Texture2D icon
-                option = new FloatMenuOption(
+                AddonButtonActions.CreateFloatOption(
                     def.label,
-                    () =>
-                    {
-                        if (def.windowClass != null)
-                        {
-                            var existingWindow = Find.WindowStack.Windows.FirstOrDefault(w => w.GetType() == def.windowClass);
-                            if (existingWindow != null)
-                            {
-                                existingWindow.Close();
-                            }
-                            else
-                            {
-                                var window = Activator.CreateInstance(def.windowClass) as Window;
-                                if (window != null)
-                                {
-                                    Find.WindowStack.Add(window);
-                                }
-                            }
-                        }
-                    },
-                    iconTex: icon,
-                    iconColor: Color.white
-                );
-            }
-            else
-            {
-                // Use basic constructor without icon
-                option = new FloatMenuOption(
-                    def.label,
-                    () =>
-                    {
-                        if (def.windowClass != null)
-                        {
-                            var existingWindow = Find.WindowStack.Windows.FirstOrDefault(w => w.GetType() == def.windowClass);
-                            if (existingWindow != null)
-                            {
-                                existingWindow.Close();
-                            }
-                            else
-                            {
-                                var window = Activator.CreateInstance(def.windowClass) as Window;
-                                if (window != null)
-                                {
-                                    Find.WindowStack.Add(window);
-                                }
-                            }
-                        }
-                    }
-                );
-            }
-
-            return new List<FloatMenuOption> { option };
-        }
-
-        private static Texture2D LoadIcon(string path)
-        {
-            if (string.IsNullOrEmpty(path)) return null;
-            return ContentFinder<Texture2D>.Get(path, false);
+                    () => AddonButtonActions.TryToggleWindow(def.windowClass, def.defName),
+                    icon)
+            };
         }
     }
 }

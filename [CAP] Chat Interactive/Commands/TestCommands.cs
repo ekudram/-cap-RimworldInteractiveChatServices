@@ -1,32 +1,24 @@
-﻿// TestCommands.cs
+// TestCommands.cs
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-// A simple test command that responds with a greeting message
-using System;
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
+// Hello + CaptoLamia tip / presence commands (random RICS & RimWorld quotes).
 using Verse;
 
 namespace CAP_ChatInteractive.Commands.TestCommands
 {
     public class Hello : ChatCommand
     {
-        public override string Name =>  "hello";
+        public override string Name => "hello";
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
-            return $"Hello {messageWrapper.Username}! Thanks for testing the chat system! 🎉";
+            string user = messageWrapper?.Username;
+            if (string.IsNullOrEmpty(user))
+                return "Hello! Thanks for testing the chat system!";
+            return $"Hello {user}! Thanks for testing the chat system! 🎉";
         }
     }
 
@@ -36,56 +28,75 @@ namespace CAP_ChatInteractive.Commands.TestCommands
 
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
-            var globalChatSettings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+            bool isCaptoLamia =
+                messageWrapper != null
+                && string.Equals(messageWrapper.Username, "captolamia", System.StringComparison.OrdinalIgnoreCase)
+                && messageWrapper.PlatformUserId == "58513264"
+                && string.Equals(messageWrapper.Platform, "twitch", System.StringComparison.OrdinalIgnoreCase);
 
-            // Check if the user is you by username AND platform ID
-            bool isCaptoLamia = messageWrapper.Username == "captolamia" &&
-                               messageWrapper.PlatformUserId == "58513264" &&
-                               messageWrapper.Platform.ToLowerInvariant() == "twitch";
-
-            if (!isCaptoLamia)
+            if (isCaptoLamia)
             {
-                // RICS tips 
-                var tips = new[]
-                {
-                    "You can have multiple Rimworld Lockers",
-                    "Rimworld Lockers have settings so you can have Lockers in different areas receiving specific items.",
-                    "!mypawn weapon will give you weapon stats for the weapon your pawn is currently holding.",
-                    "!pricecheck [item name] [quality] [material] [quantity] will give you the market value of that item.",
-                    "!storage [item name] will show you the colony inventory of specific items.",
-                    "!weather [weather] will change in the colony",
-                    "!karmasettings will show you your current karma settings.",
-                    "!purchaselist will tell you the streamers Github link where they have a list of items they want to be purchased for them in the game.",
-                    "!help will show you a wiki link to the list of available commands and how to use them.",
-                    "!modversion will show you the current version of RICS that is running.",
-                    "!study will show you the current anomaly research project being worked on in the colony.",
-                    "!research will show you the current research project being worked on in the colony.",
-                    "!research [project name] will show you the progress of that research project in the colony.",
-                    "To buy a pawn you have to at least select a race.  Example: !pawn human [xenotype] [age] [m/f gender].  Xenotype, age and Gender are optional.",
-                    "Events from mods are off by default.  If you want to enable them, you can do so in the RICS settings.",
-                    "Anomoly events are off by default.  If you want to enable them, you can do so in the RICS settings.",
-                    "!races will list all the races that are available to be bought with the !pawn command.",
-                    "Did you know you can add an alias to a command in the Command Editor?  This allows you to have multiple ways to call the same command. For example, you could add an alias of `!bald` to `!bal` so both commands work the same way.  This can also be used to add translations for commands in other languages.  For example, you could add `!dar` as an alias for `!raid` for Spanish speakers.",
-                    "The Rimazon Locker has settings so you can set up multiple lockers in different areas of the map and have them receive specific items.  For example, you could have a locker in the freezer that only receives food and medicine, and a locker in the workshop that only receives weapons and apparel.",
-                    "The `!dye` command can be used to change hair color.  Example !dye hair blue will change your pawns hair color to blue.",
-                    "Many purchase use fuzzy logic in their item matching.  This means that you don't have to type the exact name of an item for it to be recognized.  For example, !event soothe will buy !event psychic soothe.",
-                    "Meow!",
-                    "Good prompt engineering is basically \"How do I speak to a superintelligent alien who has no cultural context and takes everything literally?\" - Grok",
-                    "Ok so the one thing I learned with AI is to be direct. And the english language is if full of ambiquity. -- Captolamia",
-                    "LenzaRNG is a Pretty Princess.!",
-                    "The !event command can be used to trigger events in the colony.  Example: !event psychic soothe will trigger a psychic soothe event.",
-                    "LenzaRNG, KillerKeo, JennaDorDor all streamers that tested RICS during development and provided feedback to make RICS better.  They are all amazing streamers and I highly recommend checking them out.",
-
-
-
-                    // Add more tips here later - they will be picked randomly
-                };
-
-                string randomTip = tips[Rand.Range(0, tips.Length)];
-                return $"RICS Tip: {randomTip}";
+                string version = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.modVersion ?? "?";
+                string display = !string.IsNullOrEmpty(messageWrapper.DisplayName)
+                    ? messageWrapper.DisplayName
+                    : messageWrapper.Username;
+                return $"😸 Hello {display}! RICS {version}. The mod developer is present in chat!";
             }
 
-            return $"😸 Hello {messageWrapper.DisplayName}! RICS {globalChatSettings.modVersion}. The MOD Developer is present in chat! ";
+            string tip = Tips[Rand.Range(0, Tips.Length)];
+            return $"RICS Tip: {tip}";
         }
+
+        /// <summary>Useful RICS tips, RimWorld flavor, and a few dad jokes. Picked at random.</summary>
+        private static readonly string[] Tips =
+        {
+            // ── Useful RICS ───────────────────────────────────────────
+            "You can place multiple Rimazon lockers on the map.",
+            "Rimazon lockers have settings so different areas can receive specific items.",
+            "!mypawn weapon shows stats for the weapon your pawn is holding.",
+            "!pricecheck [item] [quality] [material] [qty] shows market value.",
+            "!storage [item] shows colony stock of that item.",
+            "!weather [type] sets colony weather (when allowed).",
+            "!karmasettings shows your current karma settings.",
+            "!purchaselist links the streamer's GitHub wish list (if set).",
+            "!help opens the wiki for available commands.",
+            "!modversion shows the running RICS version.",
+            "!study shows the current Anomaly research project.",
+            "!research shows the colony's current research project.",
+            "!research [name] shows progress on that research project.",
+            "Buy a pawn: !pawn, or !pawn human [xenotype] [age] [m/f]. Bare !pawn buys if only one race is on.",
+            "!races lists races available for !pawn.",
+            "Modded events are off by default — enable them in RICS settings.",
+            "Anomaly events are off by default — enable them in RICS settings.",
+            "Command Editor: add aliases so one command has many names (or translations).",
+            "Example alias: !bald → !bal, or !dar → !raid for Spanish chat.",
+            "Freezer locker for food/medicine, workshop locker for weapons — filter per locker.",
+            "!dye hair blue recolors your pawn's hair (when dye is set up).",
+            "Purchases use fuzzy matching: !event soothe can find Psychic Soothe.",
+            "!event psychic soothe triggers that event (if enabled and affordable).",
+
+            // ── Personality ───────────────────────────────────────────
+            "Meow!",
+            "LenzaRNG is a Pretty Princess!",
+            "LenzaRNG, KillerKeo, and JennaDorDor helped test RICS — go watch them stream!",
+            "Good prompt engineering: speak to a superintelligent alien who takes everything literally. — Grok",
+
+            // ── RimWorld flavor ───────────────────────────────────────
+            "Randy is not a weather report.",
+            "Mental break? That's just passion with extra steps.",
+            "The chicken is plotting. Trust the chicken.",
+            "Steel is temporary. Mountain bases are forever.",
+            "Never trust a quiet map. The insects are studying.",
+            "Beauty is optional. Cover is not.",
+            "If the pawn is happy, the colony lives. If not… wealth redistribution.",
+
+            // ── Dad jokes / puns ──────────────────────────────────────
+            "Why did the colonist bring a ladder to the mountain base? To rise above the raids.",
+            "I told my pawn a chemistry joke — they had no reaction.",
+            "What do you call a rich raider? A wealth redistribution event.",
+            "My furniture has feelings. It's a mood-link thing.",
+            "Why don't raiders play cards in a siege? Too many cheats and too little cover.",
+            "I asked Randy for mercy. He sent a trade caravan. With a siege.",
+        };
     }
 }

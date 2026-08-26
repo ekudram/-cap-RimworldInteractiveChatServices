@@ -3,6 +3,10 @@
   
   <!-- Return messages -->
   <RICS.HPCH.Return.Notavailble>Healer Mech Serum is not available for healing services.</RICS.HPCH.Return.Notavailble>
+  <RICS.HPCH.Return.SelfDisabled>Self heal is currently disabled.</RICS.HPCH.Return.SelfDisabled>
+  <RICS.HPCH.Return.AllDisabled>Complete/all heal is currently disabled.</RICS.HPCH.Return.AllDisabled>
+  <RICS.HPCH.Return.TargetDisabled>Target heal is currently disabled.</RICS.HPCH.Return.TargetDisabled>
+  <RICS.HPCH.Return.HealUnspecified>health condition improved (unspecified)</RICS.HPCH.Return.HealUnspecified>
   <RICS.HPCH.Return.Error>Error processing heal command.  Send this stack trace to mod devolper!</RICS.HPCH.Return.Error>
   <RICS.HPCH.Return.TargetNoPawn>{0} doesn't have a pawn assigned.</RICS.HPCH.Return.TargetNoPawn>
   <RICS.HPCH.Return.TargetPawnDead>{0}'s pawn is dead. Use !revivepawn first.</RICS.HPCH.Return.TargetPawnDead>
@@ -49,4 +53,8 @@
   <RICS.HPCH.Invoice.ColonyThanks>The colony thanks you for your generosity! You have healed {0} injuries across {1} pawns! 💚</RICS.HPCH.Invoice.ColonyThanks>
 
   <RICS.HPCH.Invoice.Separator>====================</RICS.HPCH.Invoice.Separator>
+  <RICS.HPCH.Invoice.InjuriesTreatedHeader>Injuries Treated:</RICS.HPCH.Invoice.InjuriesTreatedHeader>
+  <RICS.HPCH.Invoice.SampleInjuriesHeader>Sample Injuries Treated:</RICS.HPCH.Invoice.SampleInjuriesHeader>
+  <RICS.HPCH.Invoice.AndMore>...and {0} more</RICS.HPCH.Invoice.AndMore>
+  <RICS.HPCH.Invoice.AndMoreAcrossPawns>...and {0} more across all pawns</RICS.HPCH.Invoice.AndMoreAcrossPawns>
 </LanguageData>

@@ -1,19 +1,9 @@
-// HealPawnCommandHandler.cs
+﻿// File: HealPawnCommandHandler.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
 // Command handler for the !healpawn command
 using _CAP__Chat_Interactive.Command.CommandHelpers;
@@ -30,53 +20,34 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 {
     public static class HealPawnCommandHandler
     {
+        private const string ReturnDivider = " | ";
+
         public static string HandleHealPawn(ChatMessageWrapper messageWrapper, string[] args)
         {
             try
             {
-                Logger.Debug($"HandleHealPawn called for user: {messageWrapper.Username}, args: {string.Join(", ", args)}");
-
                 var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
                 var viewer = Viewers.GetViewer(messageWrapper);
 
-                // Get the Healer Mech Serum store item for pricing
                 var healerSerum = StoreInventory.GetStoreItem("MechSerumHealer");
-                if (healerSerum == null)
-                {
-                    // return "Healer Mech Serum is not available for healing services.";
+                if (healerSerum == null || (!healerSerum.IsUsable && !healerSerum.Enabled))
                     return "RICS.HPCH.Return.Notavailble".Translate();
-                }
-
-                // Check if the item is usable (IsUsable = true) OR if it's enabled (Enabled = true)
-                if (!healerSerum.IsUsable && !healerSerum.Enabled)
-                {
-                    // return "Healer Mech Serum is not available for healing services.";
-                    return "RICS.HPCH.Return.Notavailble".Translate();
-                }
 
                 int pricePerHeal = healerSerum.BasePrice;
-
                 var cmdSettings = CommandSettingsManager.GetSettings("healpawn");
-                float mult = cmdSettings.GetCustom<float>("healCostMultiplier", 1.0f);
+                float mult = cmdSettings.GetCustom("healCostMultiplier", 1.0f);
                 pricePerHeal = (int)(pricePerHeal * mult);
 
-                // Parse command arguments
-                //   !healpawn                  → 1 dose self
-                //   !healpawn all              → complete heal self
-                //   !healpawn all @user        → complete heal other (NEW)
-                //   !healpawn @user all        → complete heal other (NEW)
-                //   !healpawn allpawns         → mass all assigned
-                //   !healpawn @user            → 1 dose other
-                //   !healpawn 5 @user          → 5 doses other
+                // !healpawn | all | all @user | @user all | allpawns | @user | N @user
+                args = args ?? Array.Empty<string>();
                 if (args.Length == 0)
                 {
-                    if (!cmdSettings.GetCustom<bool>("enableSelfHeal", true))
-                        return "Sub Command self is disabled.";
+                    if (!cmdSettings.GetCustom("enableSelfHeal", true))
+                        return "RICS.HPCH.Return.SelfDisabled".Translate();
                     return HealSelf(messageWrapper, viewer, pricePerHeal, currencySymbol, 1);
                 }
 
-                // Normalize tokens (strip @, lower)
                 var tokens = args
                     .Where(a => !string.IsNullOrWhiteSpace(a))
                     .Select(a =>
@@ -90,8 +61,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (tokens.Count == 0)
                 {
-                    if (!cmdSettings.GetCustom<bool>("enableSelfHeal", true))
-                        return "Sub Command self is disabled.";
+                    if (!cmdSettings.GetCustom("enableSelfHeal", true))
+                        return "RICS.HPCH.Return.SelfDisabled".Translate();
                     return HealSelf(messageWrapper, viewer, pricePerHeal, currencySymbol, 1);
                 }
 
@@ -99,7 +70,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 string target = null;
                 bool completeHeal = false;
 
-                // Extract quantity if any token is a positive int
                 for (int i = 0; i < tokens.Count; i++)
                 {
                     if (int.TryParse(tokens[i], out int q) && q > 0)
@@ -110,7 +80,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                 }
 
-                // Complete-heal keywords
                 for (int i = tokens.Count - 1; i >= 0; i--)
                 {
                     string t = tokens[i];
@@ -121,52 +90,45 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     }
                 }
 
-                // Remaining non-keyword tokens are the username (if any)
                 if (tokens.Count > 0)
                     target = tokens[0];
 
-                // allpawns must be checked before treating "all" alone as self-complete
-                // (allpawns is not in tokens if user typed allpawns as sole arg — handle first)
+                // allpawns before bare "all"
                 if (args.Length >= 1 && args[0].Trim().Equals("allpawns", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (!cmdSettings.GetCustom<bool>("enableAllHeal", true))
-                        return "Sub Command all is disabled.";
+                    if (!cmdSettings.GetCustom("enableAllHeal", true))
+                        return "RICS.HPCH.Return.AllDisabled".Translate();
                     return HealAllPawns(messageWrapper, viewer, pricePerHeal, currencySymbol, quantity);
                 }
 
-                // Complete heal other: "all Bob" or "Bob all" (completeHeal + target)
                 if (completeHeal && !string.IsNullOrEmpty(target) && target != "allpawns")
                 {
-                    if (!cmdSettings.GetCustom<bool>("enableTargetHeal", true))
-                        return "Sub Command target is disabled.";
+                    if (!cmdSettings.GetCustom("enableTargetHeal", true))
+                        return "RICS.HPCH.Return.TargetDisabled".Translate();
                     return HealAllSpecificUser(messageWrapper, viewer, target, pricePerHeal, currencySymbol);
                 }
 
-                // Complete heal self: bare "all" / "full" / "complete"
                 if (completeHeal && string.IsNullOrEmpty(target))
                 {
-                    if (!cmdSettings.GetCustom<bool>("enableAllHeal", true))
-                        return "Sub Command all is disabled.";
+                    if (!cmdSettings.GetCustom("enableAllHeal", true))
+                        return "RICS.HPCH.Return.AllDisabled".Translate();
                     return HealAllSelf(messageWrapper, viewer, pricePerHeal, currencySymbol, quantity);
                 }
 
-                // Single-dose / N-dose target
                 if (!string.IsNullOrEmpty(target))
                 {
-                    if (!cmdSettings.GetCustom<bool>("enableTargetHeal", true))
-                        return "Sub Command target is disabled.";
+                    if (!cmdSettings.GetCustom("enableTargetHeal", true))
+                        return "RICS.HPCH.Return.TargetDisabled".Translate();
                     return HealSpecificUser(messageWrapper, viewer, target, pricePerHeal, currencySymbol, quantity);
                 }
 
-                // Fallback self single dose
-                if (!cmdSettings.GetCustom<bool>("enableSelfHeal", true))
-                    return "Sub Command self is disabled.";
+                if (!cmdSettings.GetCustom("enableSelfHeal", true))
+                    return "RICS.HPCH.Return.SelfDisabled".Translate();
                 return HealSelf(messageWrapper, viewer, pricePerHeal, currencySymbol, quantity);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in HandleHealPawn: {ex}");
-                // return "Error processing heal command. Please try again.";  <- Better phrasing
+                Logger.Error($"[HealPawn] Error in HandleHealPawn: {ex}");
                 return "RICS.HPCH.Return.Error".Translate();
             }
         }
@@ -181,8 +143,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (viewerPawn.Dead)
             {
                 var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
-                string deathDetails = deathInfo.ToString();
-                return "RICS.HPCH.Return.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+                return "RICS.HPCH.Return.PawnDead".Translate()
+                       + ReturnDivider
+                       + "RICS.Return.PawnDeadReason".Translate(deathInfo.ToString());
             }
 
             int maxDoses = Math.Max(1, quantity);
@@ -209,10 +172,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 messageWrapper.Username, messageWrapper.Username, successfulHeals, totalCost, currencySymbol, healedDescriptions);
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
 
-            Logger.Debug(
-                $"Heal self successful: {messageWrapper.Username} used {successfulHeals} Healer Serum dose(s): " +
-                string.Join("; ", healedDescriptions));
-
             return "RICS.HPCH.Return.HealSuccess".Translate(
                 StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
                 StoreCommandHelper.FormatCurrencyMessage(viewer.Coins, currencySymbol),
@@ -233,8 +192,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             if (viewerPawn.Dead)
             {
                 var deathInfo = GameComponent_PawnAssignmentManager.GetPawnDeathInfo(viewerPawn);
-                string deathDetails = deathInfo.ToString();
-                return "RICS.HPCH.Return.PawnDead".Translate() + "RICS.Return.PawnDeadReason".Translate(deathDetails);
+                return "RICS.HPCH.Return.PawnDead".Translate()
+                       + ReturnDivider
+                       + "RICS.Return.PawnDeadReason".Translate(deathInfo.ToString());
             }
 
             if (!CanApplyHealerSerum(viewerPawn))
@@ -267,9 +227,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
 
             bool moreCouldHeal = CanApplyHealerSerum(viewerPawn);
-            Logger.Debug(
-                $"Heal all self: {messageWrapper.Username} applied {dosesApplied} serum dose(s) for {totalCost}; " +
-                $"moreNeeded={moreCouldHeal}. Fixed: {string.Join("; ", healedDescriptions)}");
 
             if (moreCouldHeal)
             {
@@ -290,7 +247,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string HealSpecificUser(ChatMessageWrapper messageWrapper, Viewer viewer, string targetUsername, int pricePerHeal, string currencySymbol, int quantity)
         {
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
-            var targetPawn = assignmentManager.GetAssignedPawn(targetUsername);
+            var targetPawn = assignmentManager?.GetAssignedPawn(targetUsername);
 
             if (targetPawn == null)
                 return "RICS.HPCH.Return.TargetNoPawn".Translate(targetUsername);
@@ -324,10 +281,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             string invoiceMessage = CreateMultiUserHealingInvoice(
                 messageWrapper.Username, patientLabel, successfulHeals, totalCost, currencySymbol, healedDescriptions);
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
-
-            Logger.Debug(
-                $"Heal specific: {messageWrapper.Username} → {targetUsername} {successfulHeals} dose(s): " +
-                string.Join("; ", healedDescriptions));
 
             return "RICS.HPCH.Return.HealSuccessTarget".Translate(
                 StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
@@ -387,9 +340,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
 
             bool moreCouldHeal = CanApplyHealerSerum(targetPawn);
-            Logger.Debug(
-                $"Heal all specific: {messageWrapper.Username} → {targetUsername} {dosesApplied} dose(s) for {totalCost}; " +
-                $"moreNeeded={moreCouldHeal}. Fixed: {string.Join("; ", healedDescriptions)}");
 
             if (moreCouldHeal)
             {
@@ -410,6 +360,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string HealAllPawns(ChatMessageWrapper messageWrapper, Viewer viewer, int pricePerHeal, string currencySymbol, int quantity)
         {
             var assignmentManager = CAPChatInteractiveMod.GetPawnAssignmentManager();
+            if (assignmentManager == null)
+                return "RICS.HPCH.Return.Error".Translate();
+
             var allAssignedUsernames = assignmentManager.GetAllAssignedUsernames().ToList();
 
             var candidates = new List<(string username, Pawn pawn)>();
@@ -468,9 +421,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             string invoiceMessage = CreateMassHealingInvoice(
                 messageWrapper.Username, pawnsTreated, totalDoses, totalCost, currencySymbol, allHealedDescriptions);
             MessageHandler.SendGreenLetter(invoiceLabel, invoiceMessage);
-
-            Logger.Debug(
-                $"Heal all pawns: {messageWrapper.Username} {totalDoses} dose(s) on {pawnsTreated} pawn(s) for {totalCost}");
 
             return "RICS.HPCH.Return.HealMassSuccess".Translate(
                 StoreCommandHelper.FormatCurrencyMessage(totalCost, currencySymbol),
@@ -599,14 +549,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string DescribeHealDiff(List<HediffSnap> before, Pawn afterPawn)
         {
             if (before == null || before.Count == 0)
-                return "health condition improved (unspecified)";
+                return "RICS.HPCH.Return.HealUnspecified".Translate();
 
             var afterKeys = new HashSet<string>(
                 SnapshotHediffs(afterPawn).Select(s => s.Key));
 
             var removed = before.Where(b => !afterKeys.Contains(b.Key)).ToList();
             if (removed.Count == 0)
-                return "health condition improved (unspecified)";
+                return "RICS.HPCH.Return.HealUnspecified".Translate();
 
             // Prefer permanent injuries/scars; then missing parts; then first
             var pick = removed.FirstOrDefault(r => !r.IsMissingPart);
@@ -707,7 +657,6 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 doses++;
                 descriptions.Add(what);
-                Logger.Debug($"Healer serum dose {doses} on {pawn.LabelShort}: {what}");
             }
 
             return (doses, descriptions);
@@ -729,7 +678,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string CreateHealingInvoice(string healerUsername, string targetUsername, int injuriesHealed, int price, string currencySymbol, List<string> healedItems = null)
         {
             string baseInvoice = "RICS.HPCH.Invoice.HealingTitle".Translate() + "\n" +
-                "====================".Translate() + "\n" +
+                "RICS.HPCH.Invoice.Separator".Translate() + "\n" +
                 "RICS.HPCH.Invoice.Healer".Translate(healerUsername) + "\n" +
                 "RICS.HPCH.Invoice.Patient".Translate(targetUsername) + "\n" +
                 "RICS.HPCH.Invoice.ServiceInjuryHealing".Translate() + "\n" +
@@ -737,7 +686,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (healedItems != null && healedItems.Count > 0)
             {
-                baseInvoice += "Injuries Treated:\n";
+                baseInvoice += "RICS.HPCH.Invoice.InjuriesTreatedHeader".Translate() + "\n";
                 int showCount = Math.Min(healedItems.Count, 6);
                 for (int i = 0; i < showCount; i++)
                 {
@@ -745,17 +694,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 if (healedItems.Count > showCount)
                 {
-                    baseInvoice += $"• ...and {healedItems.Count - showCount} more\n";
+                    baseInvoice += "• " + "RICS.HPCH.Invoice.AndMore".Translate(healedItems.Count - showCount) + "\n";
                 }
-                baseInvoice += "====================".Translate() + "\n";
+                baseInvoice += "RICS.HPCH.Invoice.Separator".Translate() + "\n";
             }
             else
             {
-                baseInvoice += "====================".Translate() + "\n";
+                baseInvoice += "RICS.HPCH.Invoice.Separator".Translate() + "\n";
             }
 
             baseInvoice += "RICS.HPCH.Invoice.Total".Translate(StoreCommandHelper.FormatCurrencyMessage(price, currencySymbol)) + "\n" +
-                "====================".Translate() + "\n" +
+                "RICS.HPCH.Invoice.Separator".Translate() + "\n" +
                 "RICS.HPCH.Invoice.ThankYouHealing".Translate() + "\n" +
                 "RICS.HPCH.Invoice.PawnFeelingBetter".Translate();
 
@@ -765,14 +714,14 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string CreateCompleteHealingInvoice(string username, int injuriesHealed, int totalPrice, string currencySymbol, List<string> healedItems = null)
         {
             string baseInvoice = "RICS.HPCH.Invoice.CompleteHealingTitle".Translate() + "\n" +
-                "====================".Translate() + "\n" +
+                "RICS.HPCH.Invoice.Separator".Translate() + "\n" +
                 "RICS.HPCH.Invoice.Patient".Translate(username) + "\n" +
                 "RICS.HPCH.Invoice.ServiceCompleteHealing".Translate() + "\n" +
                 "RICS.HPCH.Invoice.InjuriesHealed".Translate(injuriesHealed) + "\n";
 
             if (healedItems != null && healedItems.Count > 0)
             {
-                baseInvoice += "Injuries Treated:\n";
+                baseInvoice += "RICS.HPCH.Invoice.InjuriesTreatedHeader".Translate() + "\n";
                 int showCount = Math.Min(healedItems.Count, 6);
                 for (int i = 0; i < showCount; i++)
                 {
@@ -780,17 +729,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 if (healedItems.Count > showCount)
                 {
-                    baseInvoice += $"• ...and {healedItems.Count - showCount} more\n";
+                    baseInvoice += "• " + "RICS.HPCH.Invoice.AndMore".Translate(healedItems.Count - showCount) + "\n";
                 }
-                baseInvoice += "====================".Translate() + "\n";
+                baseInvoice += "RICS.HPCH.Invoice.Separator".Translate() + "\n";
             }
             else
             {
-                baseInvoice += "====================".Translate() + "\n";
+                baseInvoice += "RICS.HPCH.Invoice.Separator".Translate() + "\n";
             }
 
             baseInvoice += "RICS.HPCH.Invoice.Total".Translate(StoreCommandHelper.FormatCurrencyMessage(totalPrice, currencySymbol)) + "\n" +
-                "====================".Translate() + "\n" +
+                "RICS.HPCH.Invoice.Separator".Translate() + "\n" +
                 "RICS.HPCH.Invoice.ThankYouComplete".Translate() + "\n" +
                 "RICS.HPCH.Invoice.PawnFeelingBetter".Translate();
 
@@ -800,7 +749,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string CreateMultiUserHealingInvoice(string healerUsername, string targetUsername, int injuriesHealed, int price, string currencySymbol, List<string> healedItems = null)
         {
             string baseInvoice = "RICS.HPCH.Invoice.HealingTitle".Translate() + "\n" +
-                "====================".Translate() + "\n" +
+                "RICS.HPCH.Invoice.Separator".Translate() + "\n" +
                 "RICS.HPCH.Invoice.Healer".Translate(healerUsername) + "\n" +
                 "RICS.HPCH.Invoice.Patient".Translate(targetUsername) + "\n" +
                 "RICS.HPCH.Invoice.ServiceInjuryHealing".Translate() + "\n" +
@@ -808,7 +757,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (healedItems != null && healedItems.Count > 0)
             {
-                baseInvoice += "Injuries Treated:\n";
+                baseInvoice += "RICS.HPCH.Invoice.InjuriesTreatedHeader".Translate() + "\n";
                 int showCount = Math.Min(healedItems.Count, 6);
                 for (int i = 0; i < showCount; i++)
                 {
@@ -816,17 +765,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 if (healedItems.Count > showCount)
                 {
-                    baseInvoice += $"• ...and {healedItems.Count - showCount} more\n";
+                    baseInvoice += "• " + "RICS.HPCH.Invoice.AndMore".Translate(healedItems.Count - showCount) + "\n";
                 }
-                baseInvoice += "====================".Translate() + "\n";
+                baseInvoice += "RICS.HPCH.Invoice.Separator".Translate() + "\n";
             }
             else
             {
-                baseInvoice += "====================".Translate() + "\n";
+                baseInvoice += "RICS.HPCH.Invoice.Separator".Translate() + "\n";
             }
 
             baseInvoice += "RICS.HPCH.Invoice.Total".Translate(StoreCommandHelper.FormatCurrencyMessage(price, currencySymbol)) + "\n" +
-                "====================".Translate() + "\n" +
+                "RICS.HPCH.Invoice.Separator".Translate() + "\n" +
                 "RICS.HPCH.Invoice.ThankYouHealing".Translate() + "\n" +
                 "RICS.HPCH.Invoice.KindSoulHealed".Translate(targetUsername);
 
@@ -836,7 +785,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string CreateMassHealingInvoice(string healerUsername, int pawnsHealed, int totalInjuriesHealed, int totalPrice, string currencySymbol, List<string> healedItems = null)
         {
             string baseInvoice = "RICS.HPCH.Invoice.MassHealingTitle".Translate() + "\n" +
-                "====================".Translate() + "\n" +
+                "RICS.HPCH.Invoice.Separator".Translate() + "\n" +
                 "RICS.HPCH.Invoice.Healer".Translate(healerUsername) + "\n" +
                 "RICS.HPCH.Invoice.ServiceMassHealing".Translate() + "\n" +
                 "RICS.HPCH.Invoice.PawnsTreated".Translate(pawnsHealed) + "\n" +
@@ -844,7 +793,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
             if (healedItems != null && healedItems.Count > 0)
             {
-                baseInvoice += "Sample Injuries Treated:\n";
+                baseInvoice += "RICS.HPCH.Invoice.SampleInjuriesHeader".Translate() + "\n";
                 int showCount = Math.Min(healedItems.Count, 5);
                 for (int i = 0; i < showCount; i++)
                 {
@@ -852,17 +801,17 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 if (healedItems.Count > showCount)
                 {
-                    baseInvoice += $"• ...and {healedItems.Count - showCount} more across all pawns\n";
+                    baseInvoice += $"• " + "RICS.HPCH.Invoice.AndMoreAcrossPawns".Translate(healedItems.Count - showCount) + "\n";
                 }
-                baseInvoice += "====================".Translate() + "\n";
+                baseInvoice += "RICS.HPCH.Invoice.Separator".Translate() + "\n";
             }
             else
             {
-                baseInvoice += "====================".Translate() + "\n";
+                baseInvoice += "RICS.HPCH.Invoice.Separator".Translate() + "\n";
             }
 
             baseInvoice += "RICS.HPCH.Invoice.Total".Translate(StoreCommandHelper.FormatCurrencyMessage(totalPrice, currencySymbol)) + "\n" +
-                "====================".Translate() + "\n" +
+                "RICS.HPCH.Invoice.Separator".Translate() + "\n" +
                 "RICS.HPCH.Invoice.ThankYouMass".Translate() + "\n" +
                 "RICS.HPCH.Invoice.ColonyThanks".Translate(totalInjuriesHealed, pawnsHealed);
 
@@ -883,10 +832,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             float karmaEarned = totalCost * karmaPerItem / 100;
 
             if (karmaEarned > 0f)
-            {
                 viewer.GiveKarma(karmaEarned);
-                Logger.Debug($"Awarded {karmaEarned:F2} karma for {totalCost} coin {actionType}");
-            }
         }
 
         /// <summary>
@@ -932,13 +878,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 AcceptanceReport report = healComp.CanBeUsedBy(pawn);
                 if (!report.Accepted)
-                {
-                    Logger.Debug($"Healer serum heal-comp rejected: {report.Reason}");
                     return false;
-                }
 
                 healComp.DoEffect(pawn);
-                Logger.Debug($"Applied {healComp.GetType().Name} (Healer Serum) to {pawn.Name}");
 
                 if (pawn.Map != null && pawn.Spawned)
                     SoundDefOf.MechSerumUsed.PlayOneShot(new TargetInfo(pawn.Position, pawn.Map));

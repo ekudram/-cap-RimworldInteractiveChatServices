@@ -37,18 +37,32 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
     {
         public override string Name => "bal";
 
+        /// <summary>Emoji band for karma display on !bal only.</summary>
+        private static string GetKarmaEmoji(float karma)
+        {
+            if (karma >= 199) return "🦄";
+            if (karma >= 150) return "😇";
+            if (karma >= 120) return "😊";
+            if (karma >= 90) return "🙂";
+            if (karma >= 80) return "☺️";
+            if (karma >= 70) return "😐";
+            if (karma >= 50) return "😕";
+            if (karma >= 30) return "😠";
+            if (karma >= 10) return "👿";
+            return "💀";
+        }
+
         public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
         {
             var viewer = Viewers.GetViewer(messageWrapper);
             if (viewer != null)
             {
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
+                var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+                if (settings == null)
+                    return "RICS.CC.bal.line1".Translate(viewer.Coins.ToString("N0"), "¢");
+
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
-                // Format coins with commas for thousands
-                var formattedCoins = viewer.Coins.ToString("N0");
-
-                // Use the shared karma emoji method
                 string karmaEmoji = GetKarmaEmoji(viewer.Karma);
 
                 // Calculate coins earned per award cycle (every 2 minutes)
@@ -191,44 +205,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             try
             {
-                var enabledRaces = RaceUtils.GetEnabledRaces()
-                    .Where(r => r != null)
-                    .OrderBy(r => r.LabelCap.RawText)
-                    .ToList();
-
-                if (!enabledRaces.Any())
-                {
-                    return "RICS.LCH.NoRacesEnabled".Translate();  // add this key: "No races are currently enabled."
-                }
-
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-                var currency = settings.CurrencyName?.Trim() ?? "¢";
-
-                var lines = new List<string>();
-
-                foreach (var race in enabledRaces)
-                {
-                    var raceSettings = RaceSettingsManager.GetRaceSettings(race.defName);
-                    if (raceSettings == null) continue;
-
-                    string name = race.LabelCap.RawText;
-                    int cost = raceSettings.BasePrice;
-
-                    lines.Add($"{TextUtilities.StripTags(name)}: {cost} {currency}");
-                }
-
-                if (!lines.Any())
-                {
-                    return "RICS.LCH.NoRacesEnabled".Translate();
-                }
-
-                // Join with | like lookup results, or use \n for readability if many
-                // Using | to stay consistent with normal lookup output
-                string resultList = string.Join(" | ", lines);
-
-                string header = "RICS.LCH.AllRaces".Translate();   // "All available races"
-
-                return $"🔍 {header}: {resultList}";
+                return RaceUtils.FormatEnabledRacesPriceList(15, out _, out _);
             }
             catch (Exception ex)
             {
@@ -532,41 +509,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
         {
             try
             {
-                var enabledRaces = RaceUtils.GetEnabledRaces()
-                    .Where(r => r != null)
-                    .OrderBy(r => r.LabelCap.RawText)
-                    .ToList();
-
-                if (!enabledRaces.Any())
-                {
-                    return "RICS.LCH.NoRacesEnabled".Translate(); // "No races are currently enabled."
-                }
-
-                var settings = CAPChatInteractiveMod.Instance.Settings.GlobalSettings;
-                var currency = settings.CurrencyName?.Trim() ?? "¢";
-
-                var lines = new List<string>();
-
-                foreach (var race in enabledRaces)
-                {
-                    var raceSettings = RaceSettingsManager.GetRaceSettings(race.defName);
-                    if (raceSettings?.Enabled != true) continue;
-
-                    string name = race.LabelCap.RawText;
-                    int cost = raceSettings.BasePrice;
-
-                    lines.Add($"{TextUtilities.StripTags(name)}: {cost} {currency}");
-                }
-
-                if (!lines.Any())
-                {
-                    return "RICS.LCH.NoRacesEnabled".Translate();
-                }
-
-                string resultList = string.Join(" | ", lines.Take(15)); // safety limit
-                string header = "RICS.LCH.AllRaces".Translate(); // "Available races"
-
-                return $"🔍 {header}: {resultList}";
+                return RaceUtils.FormatEnabledRacesPriceList(15, out _, out _);
             }
             catch (Exception ex)
             {
