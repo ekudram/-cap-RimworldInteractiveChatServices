@@ -58,16 +58,43 @@ namespace CAP_ChatInteractive.Ownership
         {
         }
 
+        /// <summary>
+        /// Stable addon ABI (RICS Personal Storage). Do not remove; optional parameters on the
+        /// long ctor are compiled into callers and break when new optionals are added.
+        /// </summary>
+        public Dialog_RICS_AssignItemOwner(
+            string title,
+            string contextLine,
+            Pawn currentOwner,
+            Action<Pawn> onPicked,
+            bool allowClear)
+            : this(title, contextLine, currentOwner, onPicked, allowClear, false, null, null, null)
+        {
+        }
+
+        /// <summary>Binary compat for addons compiled against the 7-parameter ctor shape.</summary>
         public Dialog_RICS_AssignItemOwner(
             string title,
             string contextLine,
             Pawn currentOwner,
             Action<Pawn> onPicked,
             bool allowClear,
-            bool includeAllPawnsOption = false,
-            Action onAllPawns = null,
-            string pickButtonLabel = null,
-            string currentPawnLine = null)
+            bool includeAllPawnsOption,
+            Action onAllPawns)
+            : this(title, contextLine, currentOwner, onPicked, allowClear, includeAllPawnsOption, onAllPawns, null, null)
+        {
+        }
+
+        public Dialog_RICS_AssignItemOwner(
+            string title,
+            string contextLine,
+            Pawn currentOwner,
+            Action<Pawn> onPicked,
+            bool allowClear,
+            bool includeAllPawnsOption,
+            Action onAllPawns,
+            string pickButtonLabel,
+            string currentPawnLine)
         {
             this.title = title ?? "RICS.Ownership.Dialog.Title".Translate();
             this.contextLine = contextLine ?? "";

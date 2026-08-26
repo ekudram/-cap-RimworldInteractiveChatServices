@@ -1248,7 +1248,7 @@
         <label>Wager Limits and Scaling</label>
       </li>
       <li>
-        <type>int</type>
+        <type>NumericTextBox</type>
         <name>minPassionWager</name>
         <label>Min wager:</label>
         <defaultValue>500</defaultValue>
@@ -1257,7 +1257,7 @@
         <description>Lowest number of coins a viewer can wager on !passion (default: 500)</description>
       </li>
       <li>
-        <type>int</type>
+        <type>NumericTextBox</type>
         <name>maxPassionWager</name>
         <label>Max wager:</label>
         <defaultValue>1000</defaultValue>
