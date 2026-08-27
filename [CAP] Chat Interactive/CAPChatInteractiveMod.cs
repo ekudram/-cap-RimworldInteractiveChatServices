@@ -345,7 +345,7 @@ namespace CAP_ChatInteractive
                 _youTubeService.Connect();
             }
 
-            if (Settings.KickSettings.AutoConnect && Settings.KickSettings.CanConnect)
+            if (Settings.KickSettings.AutoConnect && KickService.HasKickConnectCredentials(Settings.KickSettings))
             {
                 Logger.Debug("Auto-connecting to Kick at startup");
                 _kickService.Connect();

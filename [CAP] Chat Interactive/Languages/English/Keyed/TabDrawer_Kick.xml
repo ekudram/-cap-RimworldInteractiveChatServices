@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
 
   <!-- Kick Tab -->
@@ -12,10 +12,10 @@
   <RICS.Kick.ChannelSlugTooltip>Your Kick channel name (the part after kick.com/)</RICS.Kick.ChannelSlugTooltip>
   <RICS.Kick.ChannelSlugFieldTooltip>Example: "mykickstream" (no @ or URL)</RICS.Kick.ChannelSlugFieldTooltip>
 
-  <RICS.Kick.OAuthCredentialsHeader>OAuth 2.1 Credentials (dev.kick.com)</RICS.Kick.OAuthCredentialsHeader>
+  <RICS.Kick.OAuthCredentialsHeader>OAuth 2.1 (kick.com/settings/developer)</RICS.Kick.OAuthCredentialsHeader>
 
   <RICS.Kick.ClientIdLabel>Client ID:</RICS.Kick.ClientIdLabel>
-  <RICS.Kick.ClientIdTooltip>Get this from your Kick Developer Portal</RICS.Kick.ClientIdTooltip>
+  <RICS.Kick.ClientIdTooltip>Create an app at kick.com/settings/developer (2FA required)</RICS.Kick.ClientIdTooltip>
 
   <RICS.Kick.ClientSecretLabel>Client Secret:</RICS.Kick.ClientSecretLabel>
   <RICS.Kick.ClientSecretTooltip>Never share this! Paste once — it is stored securely and never shown in plain text.</RICS.Kick.ClientSecretTooltip>
@@ -24,6 +24,15 @@
   <RICS.Kick.PasteSecretButton>Paste Client Secret</RICS.Kick.PasteSecretButton>
   <RICS.Kick.PasteSecretTooltip>Pastes from clipboard and masks for security</RICS.Kick.PasteSecretTooltip>
   <RICS.Kick.SecretPastedSuccess>Client Secret saved securely!</RICS.Kick.SecretPastedSuccess>
+
+  <RICS.Kick.RedirectUriLabel>Redirect URI:</RICS.Kick.RedirectUriLabel>
+  <RICS.Kick.RedirectUriTooltip>Must match the Redirect URL on your Kick developer app exactly. Default works for local RICS.</RICS.Kick.RedirectUriTooltip>
+
+  <RICS.Kick.AuthorizeButton>Authorize Kick (required to send chat)</RICS.Kick.AuthorizeButton>
+  <RICS.Kick.AuthorizeDisabledButton>Authorize Kick (need Client ID + Secret)</RICS.Kick.AuthorizeDisabledButton>
+  <RICS.Kick.AuthorizeTooltip>Opens Kick in your browser. Approve chat:write, user:read, and channel:read. Kick then returns to localhost and RICS stores a user token. App/client-credentials tokens cannot post chat.</RICS.Kick.AuthorizeTooltip>
+  <RICS.Kick.WriteReady>Chat send authorized as {0}</RICS.Kick.WriteReady>
+  <RICS.Kick.WriteNotReady>Read-only until you Authorize Kick (user login with chat:write)</RICS.Kick.WriteNotReady>
 
   <RICS.Kick.ConnectionSettingsHeader>Connection Settings</RICS.Kick.ConnectionSettingsHeader>
   <RICS.Kick.AutoConnectLabel>Auto-connect on startup</RICS.Kick.AutoConnectLabel>
@@ -41,7 +50,7 @@
   <RICS.Kick.CannotConnectButton>Cannot Connect (Missing Settings)</RICS.Kick.CannotConnectButton>
   <RICS.Kick.CannotConnectTooltip>Fill in Channel Slug, Client ID and Client Secret first</RICS.Kick.CannotConnectTooltip>
 
-  <RICS.Kick.QuickTip>💡 Get your keys at dev.kick.com — keep Client Secret private!</RICS.Kick.QuickTip>
+  <RICS.Kick.QuickTip>Register redirect http://localhost:17890/kick/callback on your Kick app. Scopes: chat:write, user:read, channel:read. Reading chat does not need Authorize; sending does.</RICS.Kick.QuickTip>
 
   <RICS.Kick.ClipboardEmpty>Clipboard is empty!</RICS.Kick.ClipboardEmpty>
 

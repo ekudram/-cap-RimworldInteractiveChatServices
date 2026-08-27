@@ -305,6 +305,7 @@ namespace CAP_ChatInteractive
                 var mod = CAPChatInteractiveMod.Instance;
                 string twitchChannel = mod?.Settings?.TwitchSettings?.ChannelName;
                 string youtubeChannel = mod?.Settings?.YouTubeSettings?.ChannelName;
+                string kickChannel = mod?.Settings?.KickSettings?.ChannelName;
 
                 if (!string.IsNullOrEmpty(twitchChannel) &&
                     user.Equals(twitchChannel, StringComparison.OrdinalIgnoreCase))
@@ -312,6 +313,10 @@ namespace CAP_ChatInteractive
 
                 if (!string.IsNullOrEmpty(youtubeChannel) &&
                     user.Equals(youtubeChannel, StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                if (!string.IsNullOrEmpty(kickChannel) &&
+                    user.Equals(kickChannel, StringComparison.OrdinalIgnoreCase))
                     return true;
             }
             catch
@@ -537,9 +542,8 @@ namespace CAP_ChatInteractive
                 case "kick":
                     if (mod.KickService?.IsConnected == true)
                     {
-                        // Public Kick replies: include username for command replies; body-only for some username sends
                         mod.KickService.SendMessage(
-                            alreadyAddressed ? cleanText : $"{username} {cleanText}");
+                            alreadyAddressed ? cleanText : $"@{username} {cleanText}");
                     }
                     break;
 

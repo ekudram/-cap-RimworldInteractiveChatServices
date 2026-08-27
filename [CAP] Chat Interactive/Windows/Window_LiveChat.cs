@@ -310,6 +310,7 @@ namespace CAP_ChatInteractive.Windows
             {
                 "twitch" => new Color(0.64f, 0.41f, 0.93f), // Twitch purple
                 "youtube" => new Color(1f, 0f, 0f),         // YouTube red
+                "kick" => new Color(0.21f, 0.91f, 0.21f),   // Kick green
                 "system" => Color.yellow,
                 _ => Color.cyan
             };
@@ -333,6 +334,12 @@ namespace CAP_ChatInteractive.Windows
                 if (mod.YouTubeService?.IsConnected == true && mod.YouTubeService.CanSendMessages)
                 {
                     mod.YouTubeService.SendMessage(message);
+                    messageSent = true;
+                }
+
+                if (mod.KickService?.IsConnected == true && mod.KickService.CanSendMessages)
+                {
+                    mod.KickService.SendMessage(message);
                     messageSent = true;
                 }
 
@@ -377,8 +384,21 @@ namespace CAP_ChatInteractive.Windows
             string channelName = settings.TwitchSettings.ChannelName;
             if (string.IsNullOrEmpty(channelName) || !settings.TwitchSettings.IsConnected)
             {
-                platform = "YouTube";
-                channelName = settings.YouTubeSettings.ChannelName;
+                if (settings.YouTubeSettings.IsConnected && !string.IsNullOrEmpty(settings.YouTubeSettings.ChannelName))
+                {
+                    platform = "YouTube";
+                    channelName = settings.YouTubeSettings.ChannelName;
+                }
+                else if (settings.KickSettings.IsConnected && !string.IsNullOrEmpty(settings.KickSettings.ChannelName))
+                {
+                    platform = "Kick";
+                    channelName = settings.KickSettings.ChannelName;
+                }
+                else
+                {
+                    platform = "YouTube";
+                    channelName = settings.YouTubeSettings.ChannelName;
+                }
             }
 
             // Get or create the broadcaster viewer (guaranteed to exist after first chat)

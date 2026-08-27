@@ -79,8 +79,9 @@ namespace CAP_ChatInteractive
         // Twitch/YouTube ignore ClientSecret/RefreshToken.
         // Kick (and future Discord/Steam) use them via KickSettings.
         // This keeps the class clean and fully extensible.
-        public string ClientSecret = "";   // Required for Kick OAuth 2.1 (dev.kick.com)
-        public string RefreshToken = "";   // Future-proof for long sessions (Kick + future services)
+        public string ClientSecret = "";   // Required for Kick OAuth 2.1 (kick.com/settings/developer)
+        public string RefreshToken = "";   // Kick user refresh token (authorization-code flow)
+        public string RedirectUri = "";    // Kick OAuth callback; default http://localhost:17890/kick/callback
 
         public void ExposeData()
         {
@@ -99,6 +100,7 @@ namespace CAP_ChatInteractive
             // Kick fields — now generic (saved for all services, unused ones stay default "")
             Scribe_Values.Look(ref ClientSecret, "clientSecret", "");
             Scribe_Values.Look(ref RefreshToken, "refreshToken", "");
+            Scribe_Values.Look(ref RedirectUri, "redirectUri", "");
         }
 
         public bool CanConnect
