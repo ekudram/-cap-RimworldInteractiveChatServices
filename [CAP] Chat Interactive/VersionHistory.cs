@@ -1256,7 +1256,7 @@ MyPawnCommandHandler.xml"
 <b>ADDED</b>
 ────────────
 - Kick: Authorize Kick (user login with chat:write) so RICS can send command replies to Kick. Tested live. Each streamer creates their own Kick developer app. Redirect URL must be exactly http://localhost:17890/kick/callback
-- RICS pawn item ownership (off by default in Mod Settings → Global). Weapons and apparel can belong to a colonist. Others cannot equip or wear that gear. Items can pass on when the owner dies. Browse owned gear from Play Settings and (when ownership is on) the RICS toolbar / main tab. Chat: !mypawn owned and !mypawn disown.
+- RICS pawn item ownership (off by default in Mod Settings → Global). Weapons and apparel can belong to a colonist. Others cannot equip or wear that gear. Items can pass on when the owner dies. Browse owned gear from Play Settings and (when ownership is on) the RICS toolbar / main tab. Chat: !mypawn owned and !mypawn disown. Viewer Hub Owned tab lists that gear with Unclaim (LocalHttp GET /extension/owned, POST /extension/owned/disown).
 - Optional companion: Personal Storage units. Assign a chest to a pawn so their extra gear has a home.
 - Bare !pawn is viewer-friendly. One enabled race (typical Human-only colony): !pawn buys that race — random age and gender inside your race settings, Baseliner or another xenotype you actually enabled. Several races: lists the first 8 with prices (same look as !races). Xenotypes stay on !xenotypes [race].
 - Reset to base on the big editors (store, events, and similar) with a confirm prompt and backup.

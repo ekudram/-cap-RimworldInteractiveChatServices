@@ -19,9 +19,22 @@ namespace CAP_ChatInteractive.Extension
             string path = NormalizePath(job.Path);
             string method = (job.Method ?? "GET").ToUpperInvariant();
 
-            // R1: ping only. Later: header, character/*, colony, store, commands…
             if (path == "ping" || path == "" || path == "health")
                 return ExtensionEnvelope.Ping();
+
+            if (path == "owned" || path == "ownership" || path == "character/owned")
+            {
+                if (method == "GET")
+                    return ExtensionOwnedHandler.HandleGet(job);
+                return ExtensionEnvelope.Fail("MethodNotAllowed", "Use GET for owned list, POST owned/disown to unclaim.");
+            }
+
+            if (path == "owned/disown" || path == "owned/unclaim" || path == "ownership/disown")
+            {
+                if (method == "POST")
+                    return ExtensionOwnedHandler.HandleDisown(job);
+                return ExtensionEnvelope.Fail("MethodNotAllowed", "POST { \"id\": thingId } to unclaim.");
+            }
 
             return ExtensionEnvelope.Fail("NotImplemented", "Path not implemented yet: " + path + " (R1 skeleton — add builders in R2+)");
         }
