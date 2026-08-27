@@ -2,14 +2,16 @@
 
 **Connect your chat. Control the colony.**
 
-Turn your Twitch or YouTube viewers into the ultimate RimWorld storyteller! This mod seamlessly integrates live chat into your game, allowing your community to buy colonists, trigger events, gift gear, and shape your colony's destiny in real-time.
+RICS is a RimWorld **mod**. It connects your colony to live chat on **Twitch**, **YouTube**, and **Kick** so viewers can send commands and get replies. It is not made by, sponsored by, or affiliated with those services — platform marks only mean the mod can talk to that chat.
+
+Turn your viewers into the colony storyteller: buy colonists, trigger events, gift gear, and shape the run in real time.
 
 ## 🚀 Key Features
 
 ### 🎙️ Live Chat Integration
 - **Twitch**: Full chat integration for reading and sending messages.
 - **YouTube**: Read chat with a simple API key; optional OAuth for sending messages.
-- **Kick Support**: Under active development!
+- **Kick**: Read chat; send replies after Authorize Kick (user login). See the wiki Kick Settings page.
 
 ### 👥 Interactive Pawn System
 - **Buy Pawns**: Viewers can purchase custom colonists to join your story.
@@ -42,8 +44,7 @@ Turn your Twitch or YouTube viewers into the ultimate RimWorld storyteller! This
 Perfect for streamers, content creators, and anyone who wants to make their RimWorld storytelling truly interactive!
 
 ## 📅 Planned Features
-1. Kick.com Support
-2. Translations
+1. Translations
 
 ## 🐛 Known Issues
 Please report issues with HugLib Log or at least the stack trace of the error.
@@ -56,7 +57,7 @@ This implementation is a complete ground-up rewrite in **.NET 4.7.2**, featuring
 
 - **Platform-Based Identification**: Uses secure platform user IDs to prevent spoofing.
 - **Queue Management**: Includes timestamps and fairness algorithms for efficient handling.
-- **Multi-Platform Extensibility**: Supports Twitch, YouTube, and future platforms like Kick.
+- **Multi-Platform Extensibility**: Supports Twitch, YouTube, and Kick.
 - **Enhanced Security**: Built-in verification to maintain integrity.
 - **Data Persistence**: Distinct storage solutions tailored for RimWorld integration.
 
