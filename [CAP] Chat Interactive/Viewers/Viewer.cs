@@ -88,6 +88,14 @@ namespace CAP_ChatInteractive
             PlatformUserIds[platform.ToLowerInvariant()] = userId;
         }
 
+        public void RemovePlatformUserId(string platform)
+        {
+            if (string.IsNullOrEmpty(platform) || PlatformUserIds == null)
+                return;
+
+            PlatformUserIds.Remove(platform.ToLowerInvariant());
+        }
+
         public string GetPlatformUserId(string platform)
         {
             if (string.IsNullOrEmpty(platform) || PlatformUserIds == null)

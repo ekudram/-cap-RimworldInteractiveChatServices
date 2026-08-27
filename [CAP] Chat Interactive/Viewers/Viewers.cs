@@ -45,7 +45,8 @@ namespace CAP_ChatInteractive
         }
 
         /// <summary>
-        /// Resolve by platform user id when present, else username (creates if missing).
+        /// Resolve by (platform, platform user id). Same display name on Kick vs Twitch is not the same wallet.
+        /// Username fallback is only used when the message has no platform id (legacy).
         /// </summary>
         public static Viewer GetViewer(ChatMessageWrapper message)
         {
@@ -54,11 +55,35 @@ namespace CAP_ChatInteractive
 
             try
             {
-                if (!string.IsNullOrEmpty(message.PlatformUserId) && !string.IsNullOrEmpty(message.Platform))
+                string platform = message.Platform?.ToLowerInvariant();
+                string userId = message.PlatformUserId;
+
+                if (!string.IsNullOrEmpty(platform) && !string.IsNullOrEmpty(userId))
                 {
-                    var byPlatform = GetViewerByPlatformId(message.Platform, message.PlatformUserId);
-                    if (byPlatform != null)
-                        return byPlatform;
+                    lock (_lock)
+                    {
+                        var byPlatform = All.Find(v =>
+                            v != null && v.GetPlatformUserId(platform) == userId);
+
+                        if (byPlatform != null)
+                        {
+                            if (HasForeignPlatform(byPlatform, platform))
+                            {
+                                byPlatform.RemovePlatformUserId(platform);
+                                var split = CreateViewerForPlatform_Locked(
+                                    message.Username, platform, userId);
+                                Logger.Warning(
+                                    $"[Viewers] Split '{message.Username}' {platform}:{userId} " +
+                                    "off a multi-platform record (same handle is not the same account).");
+                                SaveViewers();
+                                return split;
+                            }
+
+                            return byPlatform;
+                        }
+
+                        return CreateViewerForPlatform_Locked(message.Username, platform, userId);
+                    }
                 }
 
                 return GetViewer(message.Username);
@@ -68,6 +93,30 @@ namespace CAP_ChatInteractive
                 Logger.Error($"[Viewers] GetViewer(message) failed: {ex.Message}");
                 return null;
             }
+        }
+
+        private static bool HasForeignPlatform(Viewer viewer, string platform)
+        {
+            if (viewer?.PlatformUserIds == null || viewer.PlatformUserIds.Count == 0)
+                return false;
+
+            foreach (var key in viewer.PlatformUserIds.Keys)
+            {
+                if (!key.Equals(platform, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>Caller must hold <see cref="_lock"/>.</summary>
+        private static Viewer CreateViewerForPlatform_Locked(string username, string platform, string userId)
+        {
+            var viewer = new Viewer(username);
+            viewer.AddPlatformUserId(platform, userId);
+            All.Add(viewer);
+            SaveViewers();
+            return viewer;
         }
 
         /// <summary>Get or create viewer by username (stored lowercase).</summary>

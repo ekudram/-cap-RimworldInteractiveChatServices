@@ -1243,6 +1243,9 @@ MyPawnCommandHandler.xml"
 
 <b>MEMORANDUM</b>
 ─────────────────
+- RICS now with Kick
+- Kick chat send is tested and working. Reading Kick already worked; RICS can now reply in Kick chat.
+- Kick wiki was rewritten (Kick.com app first, then Authorize in RICS). Use the Wiki button on this window — Kick Settings.
 - Easier !pawn for chat, optional light item ownership, and a lot of command cleanup (less log spam, fewer odd errors).
 - RICS ownership is a lighter built-in take on pawn-owned gear. Do not use it with Possessions Plus — if that mod is loaded, RICS ownership turns itself off.
 - Turn RICS ownership on for a new game when you can. Mid-save is riskier; back up first.
@@ -1252,6 +1255,7 @@ MyPawnCommandHandler.xml"
 
 <b>ADDED</b>
 ────────────
+- Kick: Authorize Kick (user login with chat:write) so RICS can send command replies to Kick. Tested live. Each streamer creates their own Kick developer app. Redirect URL must be exactly http://localhost:17890/kick/callback
 - RICS pawn item ownership (off by default in Mod Settings → Global). Weapons and apparel can belong to a colonist. Others cannot equip or wear that gear. Items can pass on when the owner dies. Browse owned gear from Play Settings and (when ownership is on) the RICS toolbar / main tab. Chat: !mypawn owned and !mypawn disown.
 - Optional companion: Personal Storage units. Assign a chest to a pawn so their extra gear has a home.
 - Bare !pawn is viewer-friendly. One enabled race (typical Human-only colony): !pawn buys that race — random age and gender inside your race settings, Baseliner or another xenotype you actually enabled. Several races: lists the first 8 with prices (same look as !races). Xenotypes stay on !xenotypes [race].
@@ -1260,11 +1264,13 @@ MyPawnCommandHandler.xml"
 
 <b>UPDATED</b>
 ──────────────
+- Kick tab: Redirect URI, Authorize Kick button, and Chat send authorized as ... status. Connect without Authorize still reads; send needs Authorize. You must be live on Kick to connect.
 - !pawn help text matches the new behavior.
 - Ownership picker: Select when you are only choosing whose items to look at. Make owner when you are assigning a chest or an item. Viewer tag is (Twitch), not (Twitch:username).
 
 <b>FIXED</b>
 ────────────
+- Kick !bal (and every other Kick command) no longer uses your Twitch wallet just because the names match. Same handle on Kick vs Twitch is two viewers. Kick starts at starting coins. A Kick user cannot spoof a Twitch balance by sharing a username.
 - Chat could buy xenotypes you had turned off in Race Settings. Disabled types are blocked now.
 - Unique / special weapons in the store now follow research gating like their base weapon when Require Research is on.
 - Twitch connect message said Rimwold. It now says Rimworld.

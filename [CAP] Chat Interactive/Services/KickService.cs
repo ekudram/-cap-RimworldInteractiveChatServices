@@ -756,6 +756,7 @@ namespace CAP_ChatInteractive
 
                 ChatMessageLogger.AddMessage(wrapper.Username, wrapper.Message, "Kick");
                 OnMessageReceived?.Invoke(wrapper.Username, wrapper.Message);
+                Viewers.UpdateViewerActivity(wrapper);
 
                 if (!_settings.suspendFeedback)
                     ChatCommandProcessor.ProcessMessage(wrapper);
