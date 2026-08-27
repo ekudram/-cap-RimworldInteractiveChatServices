@@ -1276,6 +1276,7 @@ MyPawnCommandHandler.xml"
 - Twitch connect message said Rimwold. It now says Rimworld.
 - Failed equip/wear should not charge viewers for gear that never arrived.
 - Command handlers: less debug spam in the log, clearer errors in chat.
+- Pawn Race Settings: Reset all Prices now also resets Base Price to the race's RimWorld pawn market value (ThingDef.BaseMarketValue).
 
 <b>UNDER THE HOOD</b>
 ──────────────────
@@ -1284,6 +1285,7 @@ Skip this if you only care about play. Command pipeline, cooldowns, lootboxes, a
 <b>TRANSLATIONS</b>
 ───────────────────
 - Ownership, owned-items browser, and !pawn usage keys.
+- Dialog_PawnRaceSettings.xml — Reset all Prices now mentions Base Price; added RICS.Message.ResetAllPricesDone.
 "
             }
 

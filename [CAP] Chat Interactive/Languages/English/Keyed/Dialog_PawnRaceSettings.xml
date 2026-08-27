@@ -8,8 +8,8 @@
   <RICS.Header.Races>Races</RICS.Header.Races>
 
   <!-- Dialog Messages -->
-  <RICS.Dialog.ResetXenotypeQuestion>Reset ALL xenotype prices for {0} to gene-based values?</RICS.Dialog.ResetXenotypeQuestion>
-  <RICS.Dialog.ResetXenotypeWarning>This will overwrite any custom prices you've set.</RICS.Dialog.ResetXenotypeWarning>
+  <RICS.Dialog.ResetXenotypeQuestion>Reset Base Price and ALL xenotype prices for {0}?</RICS.Dialog.ResetXenotypeQuestion>
+  <RICS.Dialog.ResetXenotypeWarning>Base Price returns to this race's RimWorld pawn market value. Xenotype prices return to gene-based values. This will overwrite any custom prices you've set.</RICS.Dialog.ResetXenotypeWarning>
   <RICS.Label.SelectRace>Select a race to see details</RICS.Label.SelectRace>
   <RICS.Label.RaceNotFound>Race {0} not found in settings</RICS.Label.RaceNotFound>
 
@@ -18,14 +18,15 @@
   <RICS.Dialog.Button.Cancel>No, Cancel</RICS.Dialog.Button.Cancel>
 
   <!-- Dialog Title -->
-  <RICS.Dialog.Title.ResetXenotypePrices>Reset Xenotype Prices</RICS.Dialog.Title.ResetXenotypePrices>
+  <RICS.Dialog.Title.ResetXenotypePrices>Reset Prices</RICS.Dialog.Title.ResetXenotypePrices>
     
   <!-- Messages -->
   <RICS.Message.SelectRaceToReset>Select a race first to reset prices</RICS.Message.SelectRaceToReset>
   <RICS.Message.xenotypepricesfor>xenotype prices for</RICS.Message.xenotypepricesfor>
+  <RICS.Message.ResetAllPricesDone>Reset Base Price to {0} silver and {1} xenotype prices for {2}</RICS.Message.ResetAllPricesDone>
     
   <!-- Tooltips -->
-  <RICS.Tooltip.ResetAllPrices>Reset all xenotype prices for selected race to gene-based values</RICS.Tooltip.ResetAllPrices>
+  <RICS.Tooltip.ResetAllPrices>Reset Base Price to RimWorld pawn market value and all xenotype prices to gene-based values for the selected race</RICS.Tooltip.ResetAllPrices>
   <RICS.Tooltip.PawnRacesHelp>Pawn Race Settings Help</RICS.Tooltip.PawnRacesHelp>
   <RICS.Tooltip.DebugInfo>Open Race Debug Information</RICS.Tooltip.DebugInfo>
   

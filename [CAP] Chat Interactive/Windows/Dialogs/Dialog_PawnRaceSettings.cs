@@ -1019,6 +1019,9 @@ namespace CAP_ChatInteractive
             if (race == null || !raceSettings.TryGetValue(race.defName, out var settings))
                 return;
 
+            int defaultBasePrice = RaceSettingsManager.CalculateDefaultPrice(race);
+            settings.BasePrice = defaultBasePrice;
+
             int resetCount = 0;
 
             // Reset all xenotype prices for this race
@@ -1031,12 +1034,11 @@ namespace CAP_ChatInteractive
 
             SaveRaceSettings();
 
-            // Show feedback
-            string message = $"RICS.Reset".Translate() + $" {resetCount} " + "RICS.Message.xenotypepricesfor".Translate() + $" {race.LabelCap}";
-            Messages.Message(message, MessageTypeDefOf.PositiveEvent);
+            Messages.Message(
+                "RICS.Message.ResetAllPricesDone".Translate(defaultBasePrice, resetCount, race.LabelCap),
+                MessageTypeDefOf.PositiveEvent);
 
-            // Optional: Log details
-            Logger.Debug(message);
+            Logger.Debug($"Reset Base Price to {defaultBasePrice} (RimWorld BaseMarketValue={race.BaseMarketValue:F0}) and {resetCount} xenotype prices for {race.defName}");
         }
 
         private void ShowSaveAsMenu()

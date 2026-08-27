@@ -82,14 +82,14 @@ namespace CAP_ChatInteractive
             sb.AppendLine($"<b>Header Controls:</b>");
             sb.AppendLine($"• <b>Search</b> - Live filter by name/description");
             sb.AppendLine($"• <b>Sort</b> - Name, Category (mod source), Status (enabled first)");
-            sb.AppendLine($"• <b>Reset All Prices</b> - Reset xenotype prices for selected race (confirmation dialog)");
+            sb.AppendLine($"• <b>Reset All Prices</b> - Reset Base Price to RimWorld pawn market value and xenotype prices to gene-based values (confirmation dialog)");
             sb.AppendLine($"• <b>Help (?)</b> - This window");
             sb.AppendLine($"• <b>Debug Gear</b> - Technical info + rebuild settings");
             sb.AppendLine($"");
 
             sb.AppendLine($"<b>Race Settings:</b>");
             sb.AppendLine($"• <b>Enabled</b> - Toggle availability for chat purchases");
-            sb.AppendLine($"• <b>Base Price</b> - Silver cost for a baseliner of this race");
+            sb.AppendLine($"• <b>Base Price</b> - Silver cost for a baseliner of this race (default = RimWorld pawn market value)");
             sb.AppendLine($"• <b>Min / Max Age</b> - Text fields + sliders (buffered, auto-clamped)");
             sb.AppendLine($"• <b>Allow Custom Xenotypes</b> - Permit xenotypes not in the explicit list");
             sb.AppendLine($"• <b>Gender Restrictions</b> - Read-only (sourced from HAR)");
@@ -110,7 +110,8 @@ namespace CAP_ChatInteractive
 
             sb.AppendLine($"<b>Header Bulk Reset:</b>");
             sb.AppendLine($"• Only affects currently selected race");
-            sb.AppendLine($"• Confirms before resetting every xenotype price for that race");
+            sb.AppendLine($"• Confirms before resetting Base Price and every xenotype price for that race");
+            sb.AppendLine($"• Base Price default is the race ThingDef BaseMarketValue");
             sb.AppendLine($"");
 
             sb.AppendLine($"<b>Important Notes:</b>");

@@ -243,13 +243,18 @@ namespace _CAP__Chat_Interactive.Utilities
             return settings;
         }
 
-        private static int CalculateDefaultPrice(ThingDef race)
+        /// <summary>
+        /// Default race Base Price: RimWorld pawn ThingDef market value.
+        /// Fallback only when the def has no market value (0 or missing).
+        /// </summary>
+        public static int CalculateDefaultPrice(ThingDef race)
         {
-            // Simply use Rimworld's base market value for the race
+            if (race == null)
+                return 1000;
+
             if (race.BaseMarketValue > 0)
-            {
-                return (int)(race.BaseMarketValue);
-            }
+                return Math.Max(1, (int)Math.Round(race.BaseMarketValue));
+
             return race == ThingDefOf.Human ? 1000 : 1500;
         }
 
