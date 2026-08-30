@@ -1198,9 +1198,6 @@ TabDrawer_Twitch.xml
 Dialog_ViewerManager.xml
 
 MyPawnCommandHandler.xml"
-
-
-
                 },
             {"1.46",
                 @"===========================================================
@@ -1302,8 +1299,9 @@ Skip this if you only care about play. Command pipeline, cooldowns, lootboxes, a
 
 <b>FIXED</b>
 ────────────
-- Rimazon Invoice formating for total price had incorrect spacing.  Now it is properly aligned and easier to read.
+- Rimazon Invoice formating for total price had incorrect spacing.
 - Return message for !pawn now will show you price paid.
+- Fixed Scrolling issues in the Locker Contents Dialog
 
 <b>ADDED</b>
 ────────────
@@ -1311,7 +1309,6 @@ Skip this if you only care about play. Command pipeline, cooldowns, lootboxes, a
 <b>TRANSLATIONS</b>
 ───────────────────
 "
-
                 }
 
 
