@@ -1294,6 +1294,11 @@ Skip this if you only care about play. Command pipeline, cooldowns, lootboxes, a
 <b>MEMORANDUM</b>
 ─────────────────
 
+Testing has shown that you can turn on RICS Ownership mid-game, but it is safer to turn it on at the start of a new game.
+If you turn it on mid-game, you may have to manually assign ownership to gear that has been purchased previously.
+If you are unsure, please back up your save before turning it on mid-game.
+Do not turn it on if you are using Possessions Plus or any other mod that adds item ownership.  This will cause conflicts and may break your game.
+
 <b>UPDATED</b>
 ──────────────
 
@@ -1308,6 +1313,8 @@ Skip this if you only care about play. Command pipeline, cooldowns, lootboxes, a
 
 <b>TRANSLATIONS</b>
 ───────────────────
+- Changed
+<RICS.Ownership.Settings.Warning>WARNING: Do not use other mods that add item ownership if you turn this on. Can be turned on Mid-Game.</RICS.Ownership.Settings.Warning>
 "
                 }
 

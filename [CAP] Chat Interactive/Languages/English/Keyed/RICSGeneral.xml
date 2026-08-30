@@ -166,7 +166,7 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Editor.FailedSelected>Failed to load selected backup.</RICS.Editor.FailedSelected>
   <!-- RICS pawn item ownership -->
   <RICS.Ownership.Settings.Header>Pawn item ownership (RICS)</RICS.Ownership.Settings.Header>
-  <RICS.Ownership.Settings.Warning>WARNING: Do not use other mods that add item ownership if you turn this on. Use this only when starting a new game.</RICS.Ownership.Settings.Warning>
+  <RICS.Ownership.Settings.Warning>WARNING: Do not use other mods that add item ownership if you turn this on. Can be turned on Mid-Game.</RICS.Ownership.Settings.Warning>
   <RICS.Ownership.Settings.UseRics>Use RICS ownership for Pawns</RICS.Ownership.Settings.UseRics>
   <RICS.Ownership.Settings.BlockTrading>Block trading/selling of owned items</RICS.Ownership.Settings.BlockTrading>
   <RICS.Ownership.Settings.Inheritance>Enable item inheritance on death</RICS.Ownership.Settings.Inheritance>
