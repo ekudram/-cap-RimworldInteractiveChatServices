@@ -173,16 +173,16 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Ownership.Settings.Footer>Manual assign/unassign and mark-not-ownable are always available via item gizmos when ownership is on. Negative ownership-loss thoughts are suppressed. Personal storage units are not included (future addon).</RICS.Ownership.Settings.Footer>
   <RICS.Ownership.Settings.MidSaveWarn>Enabling RICS ownership mid-save can be unstable. Prefer a new game. Backup your save.</RICS.Ownership.Settings.MidSaveWarn>
   <RICS.Ownership.Conflict.PossessionsPlus>Possessions Plus is active — RICS ownership is disabled and locked. Remove Possessions Plus and start a new game to use RICS ownership. Buy/equip will still assign via Possessions Plus when present.</RICS.Ownership.Conflict.PossessionsPlus>
-  <RICS.Ownership.Inspect.OwnedBy>RICS: Owned by {0}</RICS.Ownership.Inspect.OwnedBy>
+  <RICS.Ownership.Inspect.OwnedBy>Owned by {0}</RICS.Ownership.Inspect.OwnedBy>
   <RICS.Ownership.Stat.OwnedBy>Owned by</RICS.Ownership.Stat.OwnedBy>
   <RICS.Ownership.Stat.OwnedByReport>This item is personally owned by a colonist (RICS ownership). Others cannot equip or wear it.</RICS.Ownership.Stat.OwnedByReport>
-  <RICS.Ownership.Inspect.NotOwnable>RICS: Not ownable</RICS.Ownership.Inspect.NotOwnable>
-  <RICS.Ownership.Gizmo.SetOwner>RICS: Set owner…</RICS.Ownership.Gizmo.SetOwner>
+  <RICS.Ownership.Inspect.NotOwnable>Not ownable</RICS.Ownership.Inspect.NotOwnable>
+  <RICS.Ownership.Gizmo.SetOwner>Set owner…</RICS.Ownership.Gizmo.SetOwner>
   <RICS.Ownership.Gizmo.SetOwnerDesc>Assign a colonist as owner of this item.</RICS.Ownership.Gizmo.SetOwnerDesc>
-  <RICS.Ownership.Gizmo.ClearOwner>RICS: Clear owner</RICS.Ownership.Gizmo.ClearOwner>
+  <RICS.Ownership.Gizmo.ClearOwner>Clear owner</RICS.Ownership.Gizmo.ClearOwner>
   <RICS.Ownership.Gizmo.ClearOwnerDesc>Remove ownership from this item.</RICS.Ownership.Gizmo.ClearOwnerDesc>
-  <RICS.Ownership.Gizmo.MarkNotOwnable>RICS: Mark not ownable</RICS.Ownership.Gizmo.MarkNotOwnable>
-  <RICS.Ownership.Gizmo.MarkOwnable>RICS: Mark ownable</RICS.Ownership.Gizmo.MarkOwnable>
+  <RICS.Ownership.Gizmo.MarkNotOwnable>Mark not ownable</RICS.Ownership.Gizmo.MarkNotOwnable>
+  <RICS.Ownership.Gizmo.MarkOwnable>Mark ownable</RICS.Ownership.Gizmo.MarkOwnable>
   <RICS.Ownership.Gizmo.NotOwnableDesc>Prevent this item from being owned or claimed.</RICS.Ownership.Gizmo.NotOwnableDesc>
   <RICS.Ownership.Dialog.Title>RICS — Assign item owner</RICS.Ownership.Dialog.Title>
   <RICS.Ownership.Dialog.Item>Item: {0}</RICS.Ownership.Dialog.Item>
@@ -192,8 +192,8 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Ownership.Dialog.MakeOwner>Make owner</RICS.Ownership.Dialog.MakeOwner>
   <RICS.Ownership.Dialog.Search>Search</RICS.Ownership.Dialog.Search>
   <RICS.Ownership.Dialog.NoMatches>No colonists match that search.</RICS.Ownership.Dialog.NoMatches>
-  <RICS.Ownership.Assigned>RICS: {0} assigned to {1}.</RICS.Ownership.Assigned>
-  <RICS.Ownership.Cleared>RICS: Cleared ownership of {0}.</RICS.Ownership.Cleared>
+  <RICS.Ownership.Assigned>{0} assigned to {1}.</RICS.Ownership.Assigned>
+  <RICS.Ownership.Cleared>Cleared ownership of {0}.</RICS.Ownership.Cleared>
   <RICS.Ownership.Reject.NotOwnable>This item is marked not ownable.</RICS.Ownership.Reject.NotOwnable>
   <RICS.Ownership.Block.Equip>{0} cannot equip {1} (RICS: owned by {2}).</RICS.Ownership.Block.Equip>
   <RICS.Ownership.Block.Wear>{0} cannot wear {1} (RICS: owned by {2}).</RICS.Ownership.Block.Wear>
@@ -204,7 +204,7 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Ownership.Browser.Title>RICS — Owned items</RICS.Ownership.Browser.Title>
   <RICS.Ownership.Browser.DisabledHint>RICS ownership is off.\n\nEnable "Use RICS ownership for Pawns" in Mod Settings → Global (and remove Possessions Plus if present).</RICS.Ownership.Browser.DisabledHint>
   <RICS.Ownership.Browser.AllPawns>All pawns</RICS.Ownership.Browser.AllPawns>
-  <RICS.Ownership.Browser.PickPawnTitle>RICS — View pawn items</RICS.Ownership.Browser.PickPawnTitle>
+  <RICS.Ownership.Browser.PickPawnTitle>View pawn items</RICS.Ownership.Browser.PickPawnTitle>
   <RICS.Ownership.Browser.SelectPawn>Select</RICS.Ownership.Browser.SelectPawn>
   <RICS.Ownership.Browser.CurrentlyViewing>Currently viewing: {0}</RICS.Ownership.Browser.CurrentlyViewing>
   <RICS.Ownership.Browser.Weapons>Weapons</RICS.Ownership.Browser.Weapons>
@@ -219,9 +219,9 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Ownership.Browser.Col.Owner>Owner</RICS.Ownership.Browser.Col.Owner>
   <RICS.Ownership.Browser.Col.Quality>Quality</RICS.Ownership.Browser.Col.Quality>
   <RICS.Ownership.Browser.Col.Where>Where</RICS.Ownership.Browser.Col.Where>
-  <RICS.Ownership.ITab.Label>RICS owned</RICS.Ownership.ITab.Label>
+  <RICS.Ownership.ITab.Label>Owned</RICS.Ownership.ITab.Label>
   <RICS.Ownership.ITab.Header>{0}: {1} owned item(s)</RICS.Ownership.ITab.Header>
-  <RICS.Ownership.ITab.Empty>No RICS-owned weapons or apparel.</RICS.Ownership.ITab.Empty>
+  <RICS.Ownership.ITab.Empty>No owned weapons or apparel.</RICS.Ownership.ITab.Empty>
 
   <RICS.Updates.CriticalMigration>IMPORTANT: Critical Migration Required!</RICS.Updates.CriticalMigration>
   <RICS.EditClientSecrets.OAuthWarning>⚠ WARNING: YouTube OAuth may require Google verification (days/weeks)</RICS.EditClientSecrets.OAuthWarning>
