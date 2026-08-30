@@ -1287,12 +1287,35 @@ Skip this if you only care about play. Command pipeline, cooldowns, lootboxes, a
 - Ownership, owned-items browser, and !pawn usage keys.
 - Dialog_PawnRaceSettings.xml — Reset all Prices now mentions Base Price; added RICS.Message.ResetAllPricesDone.
 "
-            }
-
-/*
+            },
+            {"1.48",
 @"===========================================================
-                         RICS version 1.47 - Changelog
-                         Released: August 5, 2026 }
+                         RICS version 1.48 - Changelog
+                         Released: September X, 2026
+===========================================================
+
+<b>MEMORANDUM</b>
+─────────────────
+
+<b>UPDATED</b>
+──────────────
+
+<b>FIXED</b>
+────────────
+- Rimazon Invoice formating for total price had incorrect spacing.  Now it is properly aligned and easier to read.
+- Return message for !pawn now will show you price paid.
+
+<b>ADDED</b>
+────────────
+
+<b>TRANSLATIONS</b>
+───────────────────
+"
+
+                }
+
+
+
 /*
             // Add more versions here as they're released
 ===========================================================
