@@ -1313,8 +1313,9 @@ Do not turn it on if you are using Possessions Plus or any other mod that adds i
 
 <b>TRANSLATIONS</b>
 ───────────────────
-- Changed
-<RICS.Ownership.Settings.Warning>WARNING: Do not use other mods that add item ownership if you turn this on. Can be turned on Mid-Game.</RICS.Ownership.Settings.Warning>
+- Changed some in RICSGeneral.xml to remove 'RICS -' from the start of some messages.
+Also changed message about Ownership and adding mid game to be more clear about the risks of turning it on mid-game.
+<RICS.Ownership.Settings.Warning>WARNING: Do not use other mods that add item ownership if you turn this on. Can be turned on Mid-Game. Save your game first.</RICS.Ownership.Settings.Warning>
 "
                 }
 
