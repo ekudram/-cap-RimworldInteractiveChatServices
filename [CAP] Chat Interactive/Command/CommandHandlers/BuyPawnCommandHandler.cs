@@ -293,7 +293,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return "RICS.BPCH.PurchaseSuccess".Translate(
                     raceName,
                     xenotypeInfo,
-                    finalPrice,
+                    finalPrice.ToString("N0"),
                     currencySymbol,
                     result.Pawn?.Name.ToStringFull ?? "your new pawn"
                 ) + ReturnDivider + locationInfo;

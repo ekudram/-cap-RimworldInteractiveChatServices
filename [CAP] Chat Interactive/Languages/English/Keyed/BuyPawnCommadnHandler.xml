@@ -23,7 +23,8 @@
   <RICS.BPCH.GameNotReady>Game not ready for pawn purchase (no colony, in menu, etc.)</RICS.BPCH.GameNotReady>
 
   <!-- Success - FIXED: Added missing parameters -->
-  <RICS.BPCH.PurchaseSuccess>Successfully purchased {0} {1} pawn for {2:N0} {3}! Welcome to the colony, {4}!</RICS.BPCH.PurchaseSuccess>
+  <!-- {1} already includes a leading space when xenotype is not Baseliner. Do not use {2:N0}: RimWorld treats :N0 as a grammar role and drops the price. -->
+  <RICS.BPCH.PurchaseSuccess>Successfully purchased {0}{1} pawn for {2} {3}! Welcome to the colony, {4}!</RICS.BPCH.PurchaseSuccess>
 
   <!-- Generation Failures -->
   <RICS.BPCH.NoHomeMap>No player home maps found.</RICS.BPCH.NoHomeMap>
@@ -87,7 +88,7 @@
     Pawn: {1}{2}, Age: {3}
     Delivery: {7}
     ====================
-    Total: {4}{5}
+    Total: {4} {5}
     ====================
     Welcome to the colony, {6}!
     Satisfaction guaranteed or your coins back!
