@@ -1288,11 +1288,13 @@ Skip this if you only care about play. Command pipeline, cooldowns, lootboxes, a
             {"1.48",
 @"===========================================================
                          RICS version 1.48 - Changelog
-                         Released: September X, 2026
+                         Released: August 30, 2026
 ===========================================================
 
 <b>MEMORANDUM</b>
 ─────────────────
+
+Note Major fix to Custom Colors that could cause a crash on save load.  If you are using Custom Colors, please update to this version.
 
 Testing has shown that you can turn on RICS Ownership mid-game, but it is safer to turn it on at the start of a new game.
 If you turn it on mid-game, you may have to manually assign ownership to gear that has been purchased previously.
@@ -1307,6 +1309,10 @@ Do not turn it on if you are using Possessions Plus or any other mod that adds i
 - Rimazon Invoice formating for total price had incorrect spacing.
 - Return message for !pawn now will show you price paid.
 - Fixed Scrolling issues in the Locker Contents Dialog
+- Fix ColorDef shortHash 0 aborting TerrainGrid.ExposeColorGrid on save load.
+Runtime favorite ColorDefs were added with default shortHash 0. 1.6 TerrainGrid.ExposeColorGrid Dictionary.Add(shortHash)
+then throws Key: 0, skips colorGridDeflate, and cascades into PathGrid NREs.
+Assign unique non-zero hashes before DefDatabase.Add and repair any live hash-0 ColorDefs during ReRegisterAll.
 
 <b>ADDED</b>
 ────────────
