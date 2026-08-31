@@ -8,6 +8,11 @@
 // Persists RICS-created favorite ColorDefs across save/load.
 // Runtime DefDatabase.Add alone is lost when the process restarts; save game
 // only stores the defName reference on the pawn, so we must re-register.
+//
+// 1.6 TerrainGrid.ExposeColorGrid builds Dictionary<ushort, ColorDef> via Add(shortHash).
+// shortHash 0 is the "no color" sentinel AND the default on a new ColorDef.
+// Two runtime ColorDefs with hash 0 abort map load (duplicate key 0) and skip
+// writing colorGridDeflate. Always GiveShortHash before DefDatabase.Add.
 
 using RimWorld;
 using System;
@@ -56,6 +61,7 @@ namespace CAP_ChatInteractive
                 customColors = new List<SavedCustomColor>();
 
             // LoadingVars: re-inject ASAP so pawn favoriteColor CrossRef (LookMode.Def) can resolve.
+            // Must have unique non-zero shortHash before any map TerrainGrid.ExposeData runs.
             // PostLoadInit: belt-and-suspenders if anything still missing.
             if (Scribe.mode == LoadSaveMode.LoadingVars || Scribe.mode == LoadSaveMode.PostLoadInit)
                 ReRegisterAll();
@@ -76,7 +82,6 @@ namespace CAP_ChatInteractive
         public override void StartedNewGame()
         {
             base.StartedNewGame();
-            // Keep list; new games start empty unless somehow prefilled
             ReRegisterAll();
         }
 
@@ -95,6 +100,82 @@ namespace CAP_ChatInteractive
         }
 
         /// <summary>
+        /// Assign a unique non-zero shortHash. TerrainGrid.ExposeColorGrid uses
+        /// Dictionary.Add(shortHash) and treats 0 as "no paint".
+        /// </summary>
+        public static void EnsureColorDefShortHash(ColorDef def)
+        {
+            if (def == null)
+                return;
+
+            bool hashTakenByOther = false;
+            if (def.shortHash != 0)
+            {
+                foreach (ColorDef other in DefDatabase<ColorDef>.AllDefs)
+                {
+                    if (other != null && !ReferenceEquals(other, def) && other.shortHash == def.shortHash)
+                    {
+                        hashTakenByOther = true;
+                        break;
+                    }
+                }
+                if (!hashTakenByOther)
+                    return;
+            }
+
+            var used = new HashSet<ushort> { 0 };
+            foreach (ColorDef other in DefDatabase<ColorDef>.AllDefs)
+            {
+                if (other != null && !ReferenceEquals(other, def))
+                    used.Add(other.shortHash);
+            }
+
+            ushort hash = (ushort)(GenText.StableStringHash(def.defName ?? string.Empty) & 0xFFFF);
+            if (hash == 0)
+                hash = 1;
+            while (used.Contains(hash))
+            {
+                hash++;
+                if (hash == 0)
+                    hash = 1;
+            }
+            def.shortHash = hash;
+        }
+
+        /// <summary>
+        /// Add to DefDatabase only if missing. Always leave the live def with a valid shortHash.
+        /// </summary>
+        public static ColorDef RegisterColorDef(ColorDef def)
+        {
+            if (def == null)
+                return null;
+
+            ColorDef existing = DefDatabase<ColorDef>.GetNamedSilentFail(def.defName);
+            if (existing != null)
+            {
+                EnsureColorDefShortHash(existing);
+                return existing;
+            }
+
+            EnsureColorDefShortHash(def);
+            try
+            {
+                DefDatabase<ColorDef>.Add(def);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[CustomColor] DefDatabase.Add failed for {def.defName}: {ex.Message}");
+                ColorDef raced = DefDatabase<ColorDef>.GetNamedSilentFail(def.defName);
+                if (raced != null)
+                {
+                    EnsureColorDefShortHash(raced);
+                    return raced;
+                }
+            }
+            return def;
+        }
+
+        /// <summary>
         /// Return existing or create+persist a ColorDef for this RGB (alpha forced to 1).
         /// </summary>
         public ColorDef GetOrCreateColorDef(Color color)
@@ -103,15 +184,14 @@ namespace CAP_ChatInteractive
             string hex = ColorUtility.ToHtmlStringRGB(safe);
             string defName = "RICS_Custom_" + hex;
 
-            // Already in DefDatabase (this session or re-registered from save)
             var existing = DefDatabase<ColorDef>.GetNamedSilentFail(defName);
             if (existing != null)
             {
+                EnsureColorDefShortHash(existing);
                 EnsureTracked(defName, existing.label, safe);
                 return existing;
             }
 
-            // Prefer official ColorDef if nearly identical (no need for custom def)
             ColorDef closest = null;
             float best = float.MaxValue;
             foreach (var d in DefDatabase<ColorDef>.AllDefs)
@@ -127,7 +207,6 @@ namespace CAP_ChatInteractive
             if (closest != null && best < 0.02f)
                 return closest;
 
-            // New custom def — register + persist
             var custom = new ColorDef
             {
                 defName = defName,
@@ -138,15 +217,7 @@ namespace CAP_ChatInteractive
                 displayOrder = 9999
             };
 
-            try
-            {
-                DefDatabase<ColorDef>.Add(custom);
-            }
-            catch (Exception ex)
-            {
-                Logger.Warning($"[CustomColor] DefDatabase.Add failed for {defName}: {ex.Message}");
-            }
-
+            RegisterColorDef(custom);
             EnsureTracked(defName, custom.label, safe);
             return custom;
         }
@@ -180,6 +251,14 @@ namespace CAP_ChatInteractive
 
         public void ReRegisterAll()
         {
+            // Repair anything already injected with hash 0 this session
+            // (LoadingVars can run before the first map ExposeData).
+            foreach (ColorDef live in DefDatabase<ColorDef>.AllDefs)
+            {
+                if (live != null && live.shortHash == 0)
+                    EnsureColorDefShortHash(live);
+            }
+
             if (customColors == null || customColors.Count == 0)
                 return;
 
@@ -189,8 +268,12 @@ namespace CAP_ChatInteractive
                 if (entry == null || string.IsNullOrEmpty(entry.defName))
                     continue;
 
-                if (DefDatabase<ColorDef>.GetNamedSilentFail(entry.defName) != null)
+                var already = DefDatabase<ColorDef>.GetNamedSilentFail(entry.defName);
+                if (already != null)
+                {
+                    EnsureColorDefShortHash(already);
                     continue;
+                }
 
                 var def = new ColorDef
                 {
@@ -202,15 +285,8 @@ namespace CAP_ChatInteractive
                     displayOrder = 9999
                 };
 
-                try
-                {
-                    DefDatabase<ColorDef>.Add(def);
-                    added++;
-                }
-                catch (Exception ex)
-                {
-                    Logger.Warning($"[CustomColor] Re-register failed for {entry.defName}: {ex.Message}");
-                }
+                RegisterColorDef(def);
+                added++;
             }
 
             if (added > 0)

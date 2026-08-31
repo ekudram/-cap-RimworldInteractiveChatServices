@@ -141,7 +141,10 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
             string defName = "RICS_Custom_" + hex;
             var existing = DefDatabase<ColorDef>.GetNamedSilentFail(defName);
             if (existing != null)
+            {
+                GameComponent_CustomColorDefs.EnsureColorDefShortHash(existing);
                 return existing;
+            }
 
             var custom = new ColorDef
             {
@@ -152,8 +155,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 colorType = ColorType.Misc,
                 displayOrder = 9999
             };
-            DefDatabase<ColorDef>.Add(custom);
-            return custom;
+            return GameComponent_CustomColorDefs.RegisterColorDef(custom);
         }
 
         private static string GetColorName(Color color)
