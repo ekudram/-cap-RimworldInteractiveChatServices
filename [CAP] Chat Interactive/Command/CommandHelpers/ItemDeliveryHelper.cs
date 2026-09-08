@@ -350,6 +350,10 @@ public static class ItemDeliveryHelper
 		}
 		try
 		{
+			// First !pawn can build Head render nodes while story.headType/bodyType are still
+			// null. Beard MeshSetFor then NREs, Head children stay null, and MapUpdate
+			// throws every frame (invisible pawn + garbage pixels on the map edge).
+			EnsureHumanlikeRenderReady(pawn);
 			if (IsSpaceMap(map))
 			{
 				EquipVacsuitIfNeeded(pawn);
@@ -395,6 +399,123 @@ public static class ItemDeliveryHelper
 			Logger.Error($"TryDeliverGeneratedPawn failed: {arg2}");
 			deliveryPosition = map?.Center ?? IntVec3.Invalid;
 			return false;
+		}
+	}
+
+	/// <summary>
+	/// Fill missing humanlike story graphics fields and rebuild the render tree
+	/// before the pawn is drawn (drop pod, letter portrait, or map).
+	/// </summary>
+	public static void EnsureHumanlikeRenderReady(Pawn pawn)
+	{
+		if (pawn == null || pawn.Destroyed)
+			return;
+		if (pawn.RaceProps == null || !pawn.RaceProps.Humanlike)
+			return;
+		if (pawn.story == null)
+		{
+			Logger.Warning("EnsureHumanlikeRenderReady: humanlike pawn has null story — cannot repair graphics");
+			return;
+		}
+
+		try
+		{
+			bool repaired = false;
+
+			if (pawn.story.bodyType == null)
+			{
+				pawn.story.bodyType = FallbackBodyTypeFor(pawn);
+				repaired = true;
+			}
+
+			if (pawn.story.headType == null)
+			{
+				IEnumerable<HeadTypeDef> randomChosen = DefDatabase<HeadTypeDef>.AllDefs.Where(h => h != null && h.randomChosen);
+				if (!pawn.story.TryGetRandomHeadFromSet(randomChosen) || pawn.story.headType == null)
+					pawn.story.TryGetRandomHeadFromSet(DefDatabase<HeadTypeDef>.AllDefs);
+				if (pawn.story.headType == null)
+					pawn.story.headType = DefDatabase<HeadTypeDef>.AllDefsListForReading.FirstOrDefault();
+				repaired = true;
+			}
+
+			if (pawn.story.hairDef == null)
+			{
+				pawn.story.hairDef = DefDatabase<HairDef>.AllDefsListForReading.RandomElementWithFallback();
+				repaired = true;
+			}
+
+			// Beard MeshSetFor requires headType; strip beard if head is still missing.
+			if (pawn.story.headType == null && pawn.style != null && pawn.style.beardDef != null && !pawn.style.beardDef.noGraphic)
+			{
+				pawn.style.beardDef = BeardDefOf.NoBeard;
+				repaired = true;
+			}
+
+			if (repaired)
+			{
+				Logger.Warning("EnsureHumanlikeRenderReady: filled missing appearance for " +
+					(pawn.Name?.ToStringShort ?? pawn.LabelCap) +
+					$" (body={pawn.story.bodyType?.defName ?? "null"}, head={pawn.story.headType?.defName ?? "null"})");
+			}
+
+			RebuildPawnRenderTree(pawn);
+		}
+		catch (Exception ex)
+		{
+			Logger.Warning("EnsureHumanlikeRenderReady failed: " + ex.Message);
+		}
+	}
+
+	private static BodyTypeDef FallbackBodyTypeFor(Pawn pawn)
+	{
+		if (pawn == null)
+			return BodyTypeDefOf.Male;
+
+		if (ModsConfig.BiotechActive)
+		{
+			DevelopmentalStage stage = pawn.DevelopmentalStage;
+			if (stage.Newborn() || stage.Baby())
+				return BodyTypeDefOf.Baby ?? BodyTypeDefOf.Male;
+			if (stage.Child())
+				return BodyTypeDefOf.Child ?? BodyTypeDefOf.Male;
+		}
+
+		if (pawn.gender == Gender.Female && BodyTypeDefOf.Female != null)
+			return BodyTypeDefOf.Female;
+		if (BodyTypeDefOf.Male != null)
+			return BodyTypeDefOf.Male;
+		return DefDatabase<BodyTypeDef>.AllDefsListForReading.FirstOrDefault();
+	}
+
+	/// <summary>
+	/// Replace the render tree so a failed Head-node init cannot leave null children
+	/// that NRE in RecacheRequested every frame.
+	/// </summary>
+	private static void RebuildPawnRenderTree(Pawn pawn)
+	{
+		PawnRenderer renderer = pawn?.Drawer?.renderer;
+		if (renderer == null)
+			return;
+
+		try
+		{
+			renderer.renderTree = new PawnRenderTree(pawn);
+			renderer.EnsureGraphicsInitialized();
+		}
+		catch (Exception ex)
+		{
+			Logger.Warning("RebuildPawnRenderTree: first EnsureGraphicsInitialized failed: " + ex.Message);
+			try
+			{
+				if (pawn.style != null && pawn.style.beardDef != null && !pawn.style.beardDef.noGraphic)
+					pawn.style.beardDef = BeardDefOf.NoBeard;
+				renderer.renderTree = new PawnRenderTree(pawn);
+				renderer.EnsureGraphicsInitialized();
+			}
+			catch (Exception ex2)
+			{
+				Logger.Warning("RebuildPawnRenderTree: retry failed: " + ex2.Message);
+			}
 		}
 	}
 
