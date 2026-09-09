@@ -1,20 +1,11 @@
-// Dialog_PawnRaceSettings.cs
+// File: Dialog_PawnRaceSettings.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-// A dialog window for configuring pawn races and xenotypes 
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
+// Pawn race & xenotype settings dialog. 
 using _CAP__Chat_Interactive.Utilities;
 using Newtonsoft.Json;
 using RimWorld;
@@ -693,12 +684,10 @@ namespace CAP_ChatInteractive
                     Text.Font = GameFont.Small;
                     y += sectionHeight;
 
-                    var allowedXenotypes = GetAllowedXenotypes(selectedRace)
-                        .OrderBy(x => x) // Ensure sorted
-                        .ToList();
-                    Logger.Debug($"HAR allows {allowedXenotypes.Count} xenotypes for {selectedRace.defName}: {string.Join(", ", allowedXenotypes)}");
+                    var xenotypeGroups = GetGroupedAllowedXenotypes(selectedRace);
+                    int allowedCount = xenotypeGroups.Sum(g => g.DefNames.Count);
 
-                    if (allowedXenotypes.Count > 0)
+                    if (allowedCount > 0)
                     {
                         // Column headers - UPDATED
                         Rect xenotypeHeaderRect = new Rect(leftPadding, y, columnWidth, sectionHeight);
@@ -712,87 +701,19 @@ namespace CAP_ChatInteractive
                         Text.Font = GameFont.Small;
                         y += sectionHeight;
 
-                        // Xenotype rows - now only allowed/spawnable ones
-                        // Xenotype rows - now only allowed/spawnable ones
-                        // Xenotype rows - now only allowed/spawnable ones
-                        foreach (var xenotype in allowedXenotypes)
+                        foreach (var group in xenotypeGroups)
                         {
-                            // Initialize if not exists
-                            if (!settings.EnabledXenotypes.ContainsKey(xenotype))
-                            {
-                                // Default enabled: true for all allowed (Baseliner special not needed since if allowed, enable)
-                                bool defaultEnabled = true; // Or keep your original: xenotype == "Baseliner" || allowedXenotypes.Contains(xenotype); but Contains always true here
-                                settings.EnabledXenotypes[xenotype] = defaultEnabled;
-                                Logger.Debug($"Default enabled for {xenotype}: {defaultEnabled}");
-                            }
-                            if (!settings.XenotypePrices.ContainsKey(xenotype))
-                            {
-                                // Get price from settings manager instead of calculating it
-                                float defaultPrice = RaceSettingsManager.GetRaceSettings(selectedRace.defName)?.BasePrice ?? settings.BasePrice;
-                                settings.XenotypePrices[xenotype] = defaultPrice;
-                            }
-
-                            // Xenotype name
-                            Rect xenotypeNameRect = new Rect(leftPadding, y, columnWidth - 10f, sectionHeight);
-                            string displayName = xenotype; // fallback
-
-                            if (ModsConfig.BiotechActive)
-                            {
-                                var xenotypeDef = DefDatabase<XenotypeDef>.GetNamedSilentFail(xenotype);
-                                if (xenotypeDef != null)
-                                {
-                                    displayName = xenotypeDef.LabelCap + " ~ " + xenotype;
-                                }
-                                else
-                                {
-                                    // Optional: log once per missing xenotype to help debugging
-                                    // Logger.WarningOnce($"Xenotype not found in DefDatabase: {xenotype}", xenotype.GetHashCode());
-                                }
-                            }
-
-                            Widgets.Label(xenotypeNameRect, displayName);
-
-                            // Enabled checkbox 
-                            Rect xenotypeEnabledRect = new Rect(leftPadding + columnWidth, y, 30f, sectionHeight);
-                            bool currentXenoEnabled = settings.EnabledXenotypes[xenotype];
-                            Widgets.Checkbox(xenotypeEnabledRect.position, ref currentXenoEnabled, 24f);
-                            if (currentXenoEnabled != settings.EnabledXenotypes[xenotype])
-                            {
-                                settings.EnabledXenotypes[xenotype] = currentXenoEnabled;
-                                SaveRaceSettings();
-                            }
-
-                            // Price input - CHANGED: from multiplier to price
-                            Rect priceRect = new Rect(leftPadding + columnWidth + 90f, y, 120f, sectionHeight);
-                            float currentPriceValue = settings.XenotypePrices[xenotype];
-                            string xenotypePriceBuffer = currentPriceValue.ToString("F0");
-                            string newPriceBuffer = Widgets.TextField(priceRect, xenotypePriceBuffer);
-
-                            if (newPriceBuffer != xenotypePriceBuffer && float.TryParse(newPriceBuffer, out float parsedPrice))
-                            {
-                                parsedPrice = Mathf.Clamp(parsedPrice, 0f, 1000000f);
-                                settings.XenotypePrices[xenotype] = parsedPrice;
-                                SaveRaceSettings();
-                            }
-
-                            // Reset button with tooltip
-                            Rect resetButtonRect = new Rect(leftPadding + columnWidth + 220f, y, 60f, sectionHeight);
-                            if (Widgets.ButtonText(resetButtonRect, "Reset"))
-                            {
-                                float geneBasedPrice = GeneUtils.CalculateXenotypeMarketValue(selectedRace, xenotype);
-                                settings.XenotypePrices[xenotype] = geneBasedPrice;
-                                SaveRaceSettings();
-                                Messages.Message($"Reset {xenotype} price to {geneBasedPrice:F0} silver", MessageTypeDefOf.NeutralEvent);
-                            }
-
-                            string resetTooltip = $"Reset {xenotype} price to gene-based value:\n" +
-                                                  $"• Race base value: {selectedRace.BaseMarketValue:F0} silver\n" +
-                                                  $"• Gene contribution: {GeneUtils.GetXenotypeGeneValueOnly(xenotype, selectedRace.BaseMarketValue):F0} silver\n" +
-                                                  $"• Total: {GeneUtils.CalculateXenotypeMarketValue(selectedRace, xenotype):F0} silver\n" +
-                                                  "\nClick to reset to Rimworld's calculated market value based on gene marketValueFactor";
-                            TooltipHandler.TipRegion(resetButtonRect, new TipSignal(resetTooltip, xenotype.GetHashCode() + 1000));
-
+                            Rect groupHeaderRect = new Rect(leftPadding, y, viewRect.width - leftPadding, sectionHeight);
+                            Text.Font = GameFont.Small;
+                            GUI.color = ColorLibrary.HeaderAccent;
+                            Widgets.Label(groupHeaderRect, group.Header);
+                            GUI.color = Color.white;
                             y += sectionHeight;
+
+                            foreach (var xenotype in group.DefNames)
+                            {
+                                y = DrawXenotypePriceRow(settings, xenotype, leftPadding, y, columnWidth, sectionHeight);
+                            }
                         }
 
                         // NEW: Bulk action button requested by community
@@ -828,55 +749,209 @@ namespace CAP_ChatInteractive
         }
 
         /// <summary>
-        /// Calculates the required scroll height for the details panel.
-        /// Now includes the bulk "Set All Xenotypes To Base Price" button (sectionHeight + 8f)
-        /// that was added after the xenotype foreach loop in DrawRaceDetailsContent.
-        /// Uses the actual filtered xenotype list (via GetAllowedXenotypes) so the UI
-        /// doesn't have massive empty space or cut-off content when HAR restricts the list.
+        /// One xenotype row: name, enabled, price, reset. Same layout as before grouping.
+        /// </summary>
+        private float DrawXenotypePriceRow(RaceSettings settings, string xenotype, float leftPadding, float y, float columnWidth, float sectionHeight)
+        {
+            if (!settings.EnabledXenotypes.ContainsKey(xenotype))
+                settings.EnabledXenotypes[xenotype] = true;
+
+            if (!settings.XenotypePrices.ContainsKey(xenotype))
+            {
+                float defaultPrice = RaceSettingsManager.GetRaceSettings(selectedRace.defName)?.BasePrice ?? settings.BasePrice;
+                settings.XenotypePrices[xenotype] = defaultPrice;
+            }
+
+            Rect xenotypeNameRect = new Rect(leftPadding, y, columnWidth - 10f, sectionHeight);
+            string displayName = xenotype;
+            if (ModsConfig.BiotechActive)
+            {
+                var xenotypeDef = DefDatabase<XenotypeDef>.GetNamedSilentFail(xenotype);
+                if (xenotypeDef != null)
+                    displayName = xenotypeDef.LabelCap + " ~ " + xenotype;
+            }
+
+            Widgets.Label(xenotypeNameRect, displayName);
+
+            Rect xenotypeEnabledRect = new Rect(leftPadding + columnWidth, y, 30f, sectionHeight);
+            bool currentXenoEnabled = settings.EnabledXenotypes[xenotype];
+            Widgets.Checkbox(xenotypeEnabledRect.position, ref currentXenoEnabled, 24f);
+            if (currentXenoEnabled != settings.EnabledXenotypes[xenotype])
+            {
+                settings.EnabledXenotypes[xenotype] = currentXenoEnabled;
+                SaveRaceSettings();
+            }
+
+            Rect priceRect = new Rect(leftPadding + columnWidth + 90f, y, 120f, sectionHeight);
+            float currentPriceValue = settings.XenotypePrices[xenotype];
+            string xenotypePriceBuffer = currentPriceValue.ToString("F0");
+            string newPriceBuffer = Widgets.TextField(priceRect, xenotypePriceBuffer);
+
+            if (newPriceBuffer != xenotypePriceBuffer && float.TryParse(newPriceBuffer, out float parsedPrice))
+            {
+                parsedPrice = Mathf.Clamp(parsedPrice, 0f, 1000000f);
+                settings.XenotypePrices[xenotype] = parsedPrice;
+                SaveRaceSettings();
+            }
+
+            Rect resetButtonRect = new Rect(leftPadding + columnWidth + 220f, y, 60f, sectionHeight);
+            if (Widgets.ButtonText(resetButtonRect, "Reset"))
+            {
+                float geneBasedPrice = GeneUtils.CalculateXenotypeMarketValue(selectedRace, xenotype);
+                settings.XenotypePrices[xenotype] = geneBasedPrice;
+                SaveRaceSettings();
+                Messages.Message($"Reset {xenotype} price to {geneBasedPrice:F0} silver", MessageTypeDefOf.NeutralEvent);
+            }
+
+            string resetTooltip = $"Reset {xenotype} price to gene-based value:\n" +
+                                  $"• Race base value: {selectedRace.BaseMarketValue:F0} silver\n" +
+                                  $"• Gene contribution: {GeneUtils.GetXenotypeGeneValueOnly(xenotype, selectedRace.BaseMarketValue):F0} silver\n" +
+                                  $"• Total: {GeneUtils.CalculateXenotypeMarketValue(selectedRace, xenotype):F0} silver\n" +
+                                  "\nClick to reset to Rimworld's calculated market value based on gene marketValueFactor";
+            TooltipHandler.TipRegion(resetButtonRect, new TipSignal(resetTooltip, xenotype.GetHashCode() + 1000));
+
+            return y + sectionHeight;
+        }
+
+        /// <summary>
+        /// Scroll height for the details panel. Must match DrawRaceDetailsContent (32f rows,
+        /// group headers, gender restriction row, bulk button) plus extra bottom padding so
+        /// long xenotype lists (50+) are not clipped at the last rows.
         /// </summary>
         private float CalculateDetailsHeight(RaceSettings settings)
         {
+            const float sectionHeight = 32f;
             float height = 0f;
 
-            // Basic Info section
-            height += 28f; // Header
-            height += 28f * 1.5f; // Description
-            height += 10f; // Spacing
+            height += sectionHeight; // Basic Info header
+            height += sectionHeight * 1.5f; // Description
+            height += 10f;
 
-            // Settings section
-            height += 32f; // Header
-            height += 32f; // Enabled + Price row
-            height += 40f; // Age settings row (now includes sliders)
-            height += 32f; // Custom xenotypes
-            height += 32f; // Gender settings row
-            height += 10f; // Spacing
+            var raceSettings = selectedRace != null
+                ? RaceSettingsManager.GetRaceSettings(selectedRace.defName)
+                : null;
+            if (raceSettings != null
+                && (!raceSettings.AllowedGenders.AllowMale
+                    || !raceSettings.AllowedGenders.AllowFemale
+                    || !raceSettings.AllowedGenders.AllowOther))
+            {
+                height += sectionHeight;
+            }
 
-            // Xenotype section
+            height += sectionHeight; // Settings header
+            height += sectionHeight; // Enabled + Price
+            height += 40f; // Age row
+            height += sectionHeight; // Custom xenotypes
+            height += 10f;
+
             if (ModsConfig.BiotechActive)
             {
-                height += 32f; // Header
+                height += sectionHeight; // Xenotype Prices header
 
-                // Use the ACTUAL filtered list instead of all xenotypes
-                var allowedXenotypes = GetAllowedXenotypes(selectedRace)
-                    .OrderBy(x => x)
-                    .ToList();
+                var xenotypeGroups = GetGroupedAllowedXenotypes(selectedRace);
+                int allowedCount = xenotypeGroups.Sum(g => g.DefNames.Count);
 
-                if (allowedXenotypes.Count > 0)
+                if (allowedCount > 0)
                 {
-                    height += 30f; // Column headers
-                    height += 30f * allowedXenotypes.Count; // One row per allowed xenotype
-
-                    // NEW: Account for the bulk "Set All Xenotypes To Base Price" button
-                    // that was added after the foreach loop + y += sectionHeight + 8f;
-                    height += 32f + 8f; // Bulk button (sectionHeight) + extra spacing
+                    height += sectionHeight; // Column headers
+                    height += sectionHeight * xenotypeGroups.Count; // Mod group headers
+                    height += sectionHeight * allowedCount; // One row per xenotype
+                    height += sectionHeight + 8f; // Bulk button + spacing
                 }
                 else
                 {
-                    height += 30f; // "No xenotypes allowed..." message
+                    height += sectionHeight;
                 }
             }
 
-            return height + 30f; // Extra padding at bottom
+            return height + 100f; // Bottom padding so last rows stay fully visible
+        }
+
+        private sealed class XenotypeModGroup
+        {
+            public string Header;
+            public List<string> DefNames = new List<string>();
+        }
+
+        private static bool IsBiotechXenotype(XenotypeDef def)
+        {
+            var pack = def?.modContentPack;
+            if (pack == null)
+                return false;
+            string id = pack.PackageId ?? "";
+            if (id.IndexOf("Ludeon.RimWorld.Biotech", StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+            return pack.IsOfficialMod && id.IndexOf("Biotech", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        /// <summary>
+        /// Biotech xenotypes first, then other mods by pack name, then unknown defs.
+        /// Within a group, sort by label.
+        /// </summary>
+        private List<XenotypeModGroup> GetGroupedAllowedXenotypes(ThingDef race)
+        {
+            var groups = new List<XenotypeModGroup>();
+            if (race == null)
+                return groups;
+
+            var allowed = GetAllowedXenotypes(race);
+            var biotech = new List<(string name, string label)>();
+            var byMod = new Dictionary<string, List<(string name, string label)>>(StringComparer.OrdinalIgnoreCase);
+            var other = new List<(string name, string label)>();
+
+            foreach (var defName in allowed)
+            {
+                var def = DefDatabase<XenotypeDef>.GetNamedSilentFail(defName);
+                if (def == null)
+                {
+                    other.Add((defName, defName));
+                    continue;
+                }
+
+                string label = def.LabelCap.ToString();
+                if (IsBiotechXenotype(def))
+                {
+                    biotech.Add((defName, label));
+                    continue;
+                }
+
+                string modName = def.modContentPack?.Name ?? "Other";
+                if (!byMod.TryGetValue(modName, out var list))
+                {
+                    list = new List<(string name, string label)>();
+                    byMod[modName] = list;
+                }
+                list.Add((defName, label));
+            }
+
+            if (biotech.Count > 0)
+            {
+                groups.Add(new XenotypeModGroup
+                {
+                    Header = "Biotech Xenotypes:",
+                    DefNames = biotech.OrderBy(x => x.label).Select(x => x.name).ToList()
+                });
+            }
+
+            foreach (var kvp in byMod.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                groups.Add(new XenotypeModGroup
+                {
+                    Header = kvp.Key + " Xenotypes:",
+                    DefNames = kvp.Value.OrderBy(x => x.label).Select(x => x.name).ToList()
+                });
+            }
+
+            if (other.Count > 0)
+            {
+                groups.Add(new XenotypeModGroup
+                {
+                    Header = "Other Xenotypes:",
+                    DefNames = other.OrderBy(x => x.name).Select(x => x.name).ToList()
+                });
+            }
+
+            return groups;
         }
 
         /// <summary>

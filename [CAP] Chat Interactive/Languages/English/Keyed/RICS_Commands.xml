@@ -49,7 +49,7 @@
   
   <!-- Pricecheck Command-->
   <RICS.CC.pricecheck.usage>
-    Usage: !pricecheck {item} [quality] [material] [quantity]
+    Please enter an item name to check the price for. Example: !pricecheck steel
   </RICS.CC.pricecheck.usage>
 
   <RICS.CC.pricecheck.notfound>

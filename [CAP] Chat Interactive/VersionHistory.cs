@@ -1323,6 +1323,35 @@ Assign unique non-zero hashes before DefDatabase.Add and repair any live hash-0 
 Also changed message about Ownership and adding mid game to be more clear about the risks of turning it on mid-game.
 <RICS.Ownership.Settings.Warning>WARNING: Do not use other mods that add item ownership if you turn this on. Can be turned on Mid-Game. Save your game first.</RICS.Ownership.Settings.Warning>
 "
+                },
+            {"1.49",
+@"===========================================================
+                         RICS version 1.49 - Changelog
+                         Released: September 2026
+===========================================================
+
+<b>MEMORANDUM</b>
+─────────────────
+- Quality-of-life for streamers with lots of xenotypes, a clearer !pricecheck hint, and a few economy defaults that were already in the last builds but not listed here.
+
+<b>UPDATED</b>
+──────────────
+- Starting coins can now go up to 100,000 (was 10,000).
+- New viewers start with karma decay at 0 by default (it no longer ticks down unless you turn it on).
+
+<b>FIXED</b>
+────────────
+- Buying a colonist (!pawn) could sometimes drop an invisible person and leave junk pixels on the edge of the map. New pawns now get a complete look (body, head, hair) before they arrive.
+- Pawn Race Settings: xenotypes are grouped with Biotech first, then by the mod they came from. Long lists (50+) can scroll all the way to the last row.
+- !pricecheck with no item name now asks you to type one, with an example (!pricecheck steel), instead of a generic command error.
+
+<b>ADDED</b>
+────────────
+
+<b>TRANSLATIONS</b>
+───────────────────
+- !pricecheck usage text.
+"
                 }
 
 

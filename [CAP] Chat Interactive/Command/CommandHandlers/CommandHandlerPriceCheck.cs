@@ -26,7 +26,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
         public static string HandlePriceCheck(ChatMessageWrapper messageWrapper, string[] args)
         {
-            if (args == null || args.Length == 0)
+            if (args == null || args.Length == 0 || args.All(a => string.IsNullOrWhiteSpace(a)))
                 return "RICS.CC.pricecheck.usage".Translate();
 
             var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
