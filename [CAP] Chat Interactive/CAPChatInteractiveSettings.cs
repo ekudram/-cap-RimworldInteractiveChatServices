@@ -148,7 +148,7 @@ namespace CAP_ChatInteractive
         // === Enhanced Karma System (more tunable + stronger punishment) ===
         public float MinKarma = 0f;
         public float MaxKarma = 200f;           // Default cap (was 999) — players were sitting at 200 forever
-        public float KarmaDecayRate = 1f;    // % of CURRENT karma lost per decay tick 
+        public float KarmaDecayRate = 0f;    // % of CURRENT karma lost per decay tick 
         public int KarmaDecayIntervalMinutes = 60; // NEW: how often decay runs (prevents permanent max karma)
         public float KarmaMinDecay = 0f;        // Minimum absolute loss per decay 
         public float KarmaPerStoreItem = 1f; // Slightly reduced gain from store spam
