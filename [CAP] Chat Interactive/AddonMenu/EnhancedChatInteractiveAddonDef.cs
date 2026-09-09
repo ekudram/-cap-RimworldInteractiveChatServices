@@ -61,6 +61,9 @@ namespace CAP_ChatInteractive
         /// <summary>For ToggleWindowButton: Window type toggled open/closed.</summary>
         public Type windowClass = null;
 
+        /// <summary>For OpenMainTab: MainButtonDef name. Empty uses CAPChatInteractive.</summary>
+        public string mainButtonDefName = "";
+
         /// <summary>Optional hotkey (toolbar / CheckHotkeys).</summary>
         public KeyBindingDef hotkey = null;
 
@@ -208,6 +211,10 @@ namespace CAP_ChatInteractive
                 case ButtonType.SubmenuButton:
                     AddonButtonActions.TryShowMenu(GetAddonMenu(), ctx);
                     break;
+
+                case ButtonType.OpenMainTab:
+                    AddonButtonActions.TryToggleMainTab(mainButtonDefName, ctx);
+                    break;
             }
         }
     }
@@ -230,7 +237,10 @@ namespace CAP_ChatInteractive
         SubmenuButton,
 
         /// <summary>Visual separator only — unique defName required; no click action.</summary>
-        Divider
+        Divider,
+
+        /// <summary>Toggles the RICS main tab (bottom bar / Quick Menu), not a FloatMenu.</summary>
+        OpenMainTab
     }
 
     /// <summary>Wraps a DirectDialogButton as a single FloatMenu option (for menus that list it).</summary>

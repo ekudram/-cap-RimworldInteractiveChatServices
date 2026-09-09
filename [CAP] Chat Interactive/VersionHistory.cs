@@ -1332,7 +1332,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
 
 <b>MEMORANDUM</b>
 ─────────────────
-- Quality-of-life for streamers with lots of xenotypes, a clearer !pricecheck hint, and a few economy defaults that were already in the last builds but not listed here.
+- Quality-of-life for streamers with xenotypes list, a clearer !pricecheck hint, and a few economy defaults that were already in the last builds but not listed here.
 
 <b>UPDATED</b>
 ──────────────
@@ -1343,11 +1343,13 @@ Also changed message about Ownership and adding mid game to be more clear about 
 ────────────
 - Buying a colonist (!pawn) could sometimes drop an invisible person and leave junk pixels on the edge of the map. New pawns now get a complete look (body, head, hair) before they arrive.
 - Pawn Race Settings: xenotypes are grouped with Biotech first, then by the mod they came from. Long lists (50+) can scroll all the way to the last row.
+- Pawn Race Settings xenotype column said Price (silver); it now says Price.
 - !pricecheck with no item name now asks you to type one, with an example (!pricecheck steel), instead of a generic command error.
 
 <b>ADDED</b>
 ────────────
 - Store editor: after the 1x / 3x / 5x stack buttons, a number box and Set applies the same max purchase count to every visible item. Typing does nothing until you click Set.
+- Top RICS quick button (Rimworld Interactive Chat Service) opens the RICS menu instead of a drop-down list.
 
 <b>TRANSLATIONS</b>
 ───────────────────

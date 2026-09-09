@@ -19,6 +19,7 @@
 // Third-party mods should not call this directly — use EnhancedChatInteractiveAddonDef
 // or ButtonUtils / XML Defs instead.
 using CAP_ChatInteractive.Interfaces;
+using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -128,6 +129,37 @@ namespace CAP_ChatInteractive
             catch (Exception ex)
             {
                 Logger.Error($"[AddonMenu] {ctx}: failed to toggle window: {ex}");
+                return false;
+            }
+        }
+
+        /// <summary>Toggle the RICS bottom-bar main tab (Quick Menu). Same as clicking the RICS MainButton.</summary>
+        public static bool TryToggleMainTab(string mainButtonDefName, string context = null)
+        {
+            string ctx = context ?? "main tab";
+            string defName = string.IsNullOrEmpty(mainButtonDefName) ? "CAPChatInteractive" : mainButtonDefName;
+
+            if (Find.MainTabsRoot == null)
+            {
+                Logger.Warning($"[AddonMenu] {ctx}: MainTabsRoot not ready");
+                return false;
+            }
+
+            var tabDef = DefDatabase<MainButtonDef>.GetNamedSilentFail(defName);
+            if (tabDef == null)
+            {
+                Logger.Error($"[AddonMenu] {ctx}: MainButtonDef '{defName}' not found");
+                return false;
+            }
+
+            try
+            {
+                Find.MainTabsRoot.ToggleTab(tabDef);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[AddonMenu] {ctx}: failed to toggle main tab: {ex}");
                 return false;
             }
         }

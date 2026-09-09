@@ -28,6 +28,7 @@
                          (returns List<FloatMenuOption>)
     DirectDialogButton — dialogClass : Verse.Window (opens immediately)
     ToggleWindowButton — windowClass : Verse.Window (open if closed, close if open)
+    OpenMainTab        — toggles the RICS bottom-bar tab (MainTabWindow_ChatInteractive)
     SubmenuButton      — same as MenuButton (legacy alias)
     Divider            — visual separator only; unique defName required; no label/icon/action
 
@@ -94,8 +95,7 @@
     <defName>CAPChatInteractive</defName>
     <label>Rimworld Interactive Chat Service</label>
     <description>Main menu for CAP Chat Interactive mod features</description>
-    <menuClass>CAP_ChatInteractive.ChatInteractiveAddonMenu</menuClass>
-    <buttonType>MenuButton</buttonType>
+    <buttonType>OpenMainTab</buttonType>
     <sourceMod>RICS</sourceMod>
     <enabled>true</enabled>
     <displayOrder>85</displayOrder>

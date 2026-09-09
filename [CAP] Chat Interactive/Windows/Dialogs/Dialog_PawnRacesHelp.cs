@@ -98,7 +98,7 @@ namespace CAP_ChatInteractive
             sb.AppendLine($"<b>Xenotype Section (Biotech required):</b>");
             sb.AppendLine($"• Only xenotypes allowed by HAR for the selected race are shown");
             sb.AppendLine($"• <b>Enabled</b> checkbox per xenotype");
-            sb.AppendLine($"• <b>Price (silver)</b> - Additional cost on top of race base");
+            sb.AppendLine($"• <b>Price</b> - Additional cost on top of race base");
             sb.AppendLine($"• <b>Reset</b> button - Calculates proper gene market value");
             sb.AppendLine($"• <b>Bulk Button</b> - \"Set All Xenotypes To Base Price\" (one-click uniform pricing)");
             sb.AppendLine($"");
