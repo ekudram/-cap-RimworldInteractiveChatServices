@@ -129,7 +129,7 @@ namespace _CAP__Chat_Interactive
                 settings.MinKarma = 0f;
                 settings.MaxKarma = 200f;
 
-                settings.KarmaDecayRate = 1f;
+                settings.KarmaDecayRate = 0f;
                 settings.KarmaDecayIntervalMinutes = 30;
                 settings.KarmaMinDecay = 0f;
                 settings.KarmaMinDecayFloor = 100f;
