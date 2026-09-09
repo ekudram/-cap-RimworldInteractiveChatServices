@@ -87,6 +87,7 @@ namespace CAP_ChatInteractive
             sb.AppendLine($"<b>Bulk Quantity Controls (top of item list):</b>");
             sb.AppendLine($"• Checkbox: Enable/disable quantity limits for all visible items");
             sb.AppendLine($"• 1× / 3× / 5× icons: Quick-set to that many stacks (based on ThingDef.stackLimit)");
+            sb.AppendLine($"• Number box + Set: same max purchase count on every visible item (not stacks). Nothing changes until you click Set.");
             sb.AppendLine($"• Mixed state (□) = some items have limits, some don't");
             sb.AppendLine($"");
 

@@ -124,6 +124,10 @@
   <RICS.SE.SetAllOneStackTooltip>Set all visible items to 1 stack limit</RICS.SE.SetAllOneStackTooltip>
   <RICS.SE.SetAllThreeStacksTooltip>Set all visible items to 3 stacks limit</RICS.SE.SetAllThreeStacksTooltip>
   <RICS.SE.SetAllFiveStacksTooltip>Set all visible items to 5 stacks limit</RICS.SE.SetAllFiveStacksTooltip>
+  <RICS.SE.SetAllQtyExactButton>Set</RICS.SE.SetAllQtyExactButton>
+  <RICS.SE.SetAllQtyExactTooltip>Type a max purchase count (1-9999) then click Set. Applies to all visible items. Not stacks — the same number as the per-item box.</RICS.SE.SetAllQtyExactTooltip>
+  <RICS.SE.SetQuantityExactMessage>Set purchase limit to {0} for {1} items</RICS.SE.SetQuantityExactMessage>
+  <RICS.SE.SetQuantityExactInvalid>Enter a whole number from 1 to 9999, then click Set.</RICS.SE.SetQuantityExactInvalid>
   
   <!-- NEW 1.22 -->
 

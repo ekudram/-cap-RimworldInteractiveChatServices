@@ -1,20 +1,11 @@
-// Dialog_StoreEditor.cs
+// File: Dialog_StoreEditor.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-// A dialog window for editing store items in the Chat Interactive mod
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
+// Store item list editor (prices, flags, quantity limits).
 
 /*
 ============================================================
@@ -68,6 +59,7 @@ namespace CAP_ChatInteractive
         private string selectedModSource = "All";
         private Dictionary<string, int> modSourceCounts = new Dictionary<string, int>();
         private StoreListViewType listViewType = StoreListViewType.Category;
+        private string bulkQtyLimitBuffer = "";
 
         public override Vector2 InitialSize => new Vector2(1200f, 755f);
 
@@ -1202,7 +1194,10 @@ namespace CAP_ChatInteractive
             Widgets.BeginGroup(rect);
 
             // Center the whole row like old method
-            float totalWidth = 70f + 24f + 10f + 40f + 24f + 10f + 40f + 24f + 10f + 50f + 24f + 10f + 50f + 24f + 10f + 100f + 24f + 10f + (24f + 6f) * 3;
+            float bulkExactBoxW = 52f;
+            float bulkSetW = 40f;
+            float totalWidth = 70f + 24f + 10f + 40f + 24f + 10f + 40f + 24f + 10f + 50f + 24f + 10f + 50f + 24f + 10f + 100f + 24f + 10f + (24f + 6f) * 3
+                + 6f + bulkExactBoxW + 6f + bulkSetW;
             float curX = (rect.width - totalWidth) / 2f;
 
             // Helper to draw a checkbox with mixed state support
@@ -1354,6 +1349,22 @@ namespace CAP_ChatInteractive
             DrawQuantityPresetIcon(curX, 0f, 3, "Stack3", "RICS.SE.SetAllThreeStacksTooltip");
             curX += 24f + 6f;
             DrawQuantityPresetIcon(curX, 0f, 5, "Stack5", "RICS.SE.SetAllFiveStacksTooltip");
+            curX += 24f + 6f;
+
+            Rect bulkExactRect = new Rect(curX, 3f, bulkExactBoxW, 24f);
+            bulkQtyLimitBuffer = Widgets.TextField(bulkExactRect, bulkQtyLimitBuffer ?? "");
+            TooltipHandler.TipRegion(bulkExactRect, "RICS.SE.SetAllQtyExactTooltip".Translate());
+            curX += bulkExactBoxW + 6f;
+
+            Rect bulkSetRect = new Rect(curX, 3f, bulkSetW, 24f);
+            if (Widgets.ButtonText(bulkSetRect, "RICS.SE.SetAllQtyExactButton".Translate()))
+            {
+                if (int.TryParse(bulkQtyLimitBuffer?.Trim(), out int exactQty) && exactQty >= 1 && exactQty <= 9999)
+                    SetAllVisibleItemsQuantityExact(exactQty);
+                else
+                    Messages.Message("RICS.SE.SetQuantityExactInvalid".Translate(), MessageTypeDefOf.RejectInput);
+            }
+            TooltipHandler.TipRegion(bulkSetRect, "RICS.SE.SetAllQtyExactTooltip".Translate());
 
             Widgets.EndGroup();
         }
@@ -1369,7 +1380,7 @@ namespace CAP_ChatInteractive
 
             if (iconTex == null)
             {
-                Log.Warning($"[CAP] Could not load quantity icon: UI/Icons/{iconName}");
+                Logger.Warning($"Could not load quantity icon: UI/Icons/{iconName}");
                 // Fallback: draw number as button text
                 if (Widgets.ButtonText(iconRect, $"{stacks}×"))
                 {
@@ -1827,6 +1838,30 @@ namespace CAP_ChatInteractive
                 SoundDefOf.Click.PlayOneShotOnCamera();
             }
         }
+        /// <summary>
+        /// Sets QuantityLimit to an exact purchase count for every filtered/visible item (not stack multiples).
+        /// </summary>
+        private void SetAllVisibleItemsQuantityExact(int amount)
+        {
+            amount = Mathf.Clamp(amount, 1, 9999);
+            int affectedCount = 0;
+            foreach (var item in filteredItems)
+            {
+                item.QuantityLimit = amount;
+                item.HasQuantityLimit = true;
+                affectedCount++;
+            }
+
+            if (affectedCount > 0)
+            {
+                StoreInventory.SaveStoreToJson();
+                Messages.Message(
+                    "RICS.SE.SetQuantityExactMessage".Translate(amount.ToString(), affectedCount.ToString()),
+                    MessageTypeDefOf.PositiveEvent);
+                SoundDefOf.Click.PlayOneShotOnCamera();
+            }
+        }
+
         // This method enables or disables the quantity limit for all visible items based on the specified boolean value.
         private void EnableQuantityLimitForAllVisible(bool enable)
         {

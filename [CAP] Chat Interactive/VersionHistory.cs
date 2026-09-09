@@ -1347,10 +1347,12 @@ Also changed message about Ownership and adding mid game to be more clear about 
 
 <b>ADDED</b>
 ────────────
+- Store editor: after the 1x / 3x / 5x stack buttons, a number box and Set applies the same max purchase count to every visible item. Typing does nothing until you click Set.
 
 <b>TRANSLATIONS</b>
 ───────────────────
 - !pricecheck usage text.
+- Store editor bulk Set quantity keys.
 "
                 }
 
