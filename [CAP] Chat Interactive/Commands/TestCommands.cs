@@ -78,11 +78,11 @@ namespace CAP_ChatInteractive.Commands.TestCommands
             // ── Personality ───────────────────────────────────────────
             "Meow!",
             "LenzaRNG is a Pretty Princess!",
-            "LenzaRNG, KillerKeo, and JennaDorDor helped test RICS — go watch them stream!",
+            "LenzaRNG, KillerKeo, and JennaDorDor helped test RICS!",
             "Good prompt engineering: speak to a superintelligent alien who takes everything literally. — Grok",
 
             // ── RimWorld flavor ───────────────────────────────────────
-            "Randy is not a weather report.",
+            "Randy is not a weather reporter.",
             "Mental break? That's just passion with extra steps.",
             "The chicken is plotting. Trust the chicken.",
             "Steel is temporary. Mountain bases are forever.",
