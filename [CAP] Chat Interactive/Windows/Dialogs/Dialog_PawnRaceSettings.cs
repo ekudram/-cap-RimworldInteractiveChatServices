@@ -580,6 +580,19 @@ namespace CAP_ChatInteractive
                 }
                 y += sectionHeight + 4f;
 
+                if (ModsConfig.BiotechActive)
+                {
+                    const float biotechNoteHeight = 52f;
+                    Rect biotechNoteRect = new Rect(leftPadding, y, viewRect.width - leftPadding, biotechNoteHeight);
+                    Text.Font = GameFont.Tiny;
+                    Color oldNoteColor = GUI.color;
+                    GUI.color = new Color(0.75f, 0.75f, 0.75f);
+                    Widgets.Label(biotechNoteRect, "RICS.PawnRaceSettings.BasePriceBiotechNote".Translate());
+                    GUI.color = oldNoteColor;
+                    Text.Font = GameFont.Small;
+                    y += biotechNoteHeight + 4f;
+                }
+
                 // Age settings - same row with sliders
                 Rect ageMinLabelRect = new Rect(leftPadding, y, 100f, sectionHeight);
                 Widgets.Label(ageMinLabelRect, $"Min Age: {settings.MinAge}  ");
@@ -840,6 +853,8 @@ namespace CAP_ChatInteractive
 
             height += sectionHeight; // Settings header
             height += sectionHeight; // Enabled + Price
+            if (ModsConfig.BiotechActive)
+                height += 52f + 4f; // Base Price xenotype note
             height += 40f; // Age row
             height += sectionHeight; // Custom xenotypes
             height += 10f;

@@ -1344,6 +1344,8 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - Buying a colonist (!pawn) could sometimes drop an invisible person and leave junk pixels on the edge of the map. New pawns now get a complete look (body, head, hair) before they arrive.
 - Pawn Race Settings: xenotypes are grouped with Biotech first, then by the mod they came from. Long lists (50+) can scroll all the way to the last row.
 - Pawn Race Settings xenotype column said Price (silver); it now says Price.
+- If Biotech is turned off, pawn purchases use Base Price only (old xenotype prices in the save are ignored).
+- Pawn Race Settings: with Biotech on, a short note under Base Price explains that chat pays the xenotype row (Human Baseliner = Human).
 - !pricecheck with no item name now asks you to type one, with an example (!pricecheck steel), instead of a generic command error.
 
 <b>ADDED</b>

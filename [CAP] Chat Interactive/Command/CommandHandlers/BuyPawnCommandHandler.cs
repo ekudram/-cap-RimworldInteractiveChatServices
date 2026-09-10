@@ -240,8 +240,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 // else: no Biotech → Baseliner only (ignore user xenotype arg)
 
                 int finalPrice = raceSettings.BasePrice;
-                if (raceSettings.XenotypePrices.TryGetValue(finalXenotypeName, out float price))
+
+                // Xenotype prices only exist as a real concept with Biotech.
+                // Without it, BasePrice is the only price. Also ignores leftover
+                // XenotypePrices if the DLC was disabled after a prior save.
+                if (ModsConfig.BiotechActive
+                    && raceSettings.XenotypePrices != null
+                    && raceSettings.XenotypePrices.TryGetValue(finalXenotypeName, out float price))
+                {
                     finalPrice = (int)price;
+                }
 
                 if (viewer.Coins < finalPrice)
                 {

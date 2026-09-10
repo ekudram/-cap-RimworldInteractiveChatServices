@@ -38,6 +38,7 @@
   <RICS.PawnRaceSettings.BasicInfo>Basic Information</RICS.PawnRaceSettings.BasicInfo>
   <RICS.PawnRaceSettings.Settings>Settings</RICS.PawnRaceSettings.Settings>
   <RICS.PawnRaceSettings.BasePrice>Base Price:</RICS.PawnRaceSettings.BasePrice>
+  <RICS.PawnRaceSettings.BasePriceBiotechNote>With Biotech, viewers pay the xenotype price below — not this Base Price. Human Baseliner is a Human pawn; other rows are that race plus a xenotype.</RICS.PawnRaceSettings.BasePriceBiotechNote>
   <RICS.PawnRaceSettings.XenotypePrices>Xenotype Prices</RICS.PawnRaceSettings.XenotypePrices>
   <RICS.PawnRaceSettings.Xenotype>Xenotype</RICS.PawnRaceSettings.Xenotype>
   <RICS.PawnRaceSettings.Enabled>Enabled</RICS.PawnRaceSettings.Enabled>
