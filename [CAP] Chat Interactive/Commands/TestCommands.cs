@@ -97,6 +97,7 @@ namespace CAP_ChatInteractive.Commands.TestCommands
             "My furniture has feelings. It's a mood-link thing.",
             "Why don't raiders play cards in a siege? Too many cheats and too little cover.",
             "I asked Randy for mercy. He sent a trade caravan. With a siege.",
+            "One can't get through the morning without Coffee. One can't get through the night without a raid.",
         };
     }
 }
