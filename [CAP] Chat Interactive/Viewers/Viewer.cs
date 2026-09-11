@@ -37,6 +37,9 @@ namespace CAP_ChatInteractive
         public bool IsBroadcaster { get; set; }
         public bool IsBanned { get; set; }
 
+        /// <summary>UTC wall-clock end of a RICS-only timeout. Null = not timed out. Independent of <see cref="IsBanned"/>.</summary>
+        public DateTime? TimeoutUntil { get; set; }
+
         public DateTime LastSeen { get; set; }
         public DateTime FirstSeen { get; set; }
         public int MessageCount { get; set; }
@@ -209,6 +212,47 @@ namespace CAP_ChatInteractive
         public bool IsActive(int maxMinutesInactive = 30)
         {
             return GetTimeSinceLastActivity().TotalMinutes <= maxMinutesInactive;
+        }
+
+        /// <summary>
+        /// RICS-only silence: permanent ban or unexpired wall-clock timeout.
+        /// Expired timeouts are cleared in memory; caller should <see cref="Viewers.SaveViewers"/> if the field changed.
+        /// </summary>
+        public bool IsSilenced(out string reason)
+        {
+            reason = null;
+            if (IsBanned)
+            {
+                reason = "ban";
+                return true;
+            }
+
+            if (!TimeoutUntil.HasValue)
+                return false;
+
+            if (DateTime.UtcNow >= TimeoutUntil.Value)
+            {
+                TimeoutUntil = null;
+                return false;
+            }
+
+            reason = "timeout";
+            return true;
+        }
+
+        /// <summary>True if a timeout is stored and has not yet expired (does not expire the field).</summary>
+        public bool HasActiveTimeout()
+        {
+            return TimeoutUntil.HasValue && DateTime.UtcNow < TimeoutUntil.Value;
+        }
+
+        /// <summary>Remaining wall-clock time on an active timeout, or TimeSpan.Zero.</summary>
+        public TimeSpan TimeoutRemaining()
+        {
+            if (!TimeoutUntil.HasValue)
+                return TimeSpan.Zero;
+            var remaining = TimeoutUntil.Value - DateTime.UtcNow;
+            return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
         }
 
         /// <summary>

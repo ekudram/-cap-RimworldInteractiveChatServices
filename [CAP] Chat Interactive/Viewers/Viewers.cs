@@ -166,6 +166,37 @@ namespace CAP_ChatInteractive
             }
         }
 
+        /// <summary>True if username matches a configured Twitch / YouTube / Kick channel name.</summary>
+        public static bool IsChannelOwnerName(string username)
+        {
+            if (string.IsNullOrEmpty(username))
+                return false;
+
+            try
+            {
+                var mod = CAPChatInteractiveMod.Instance;
+                string twitchChannel = mod?.Settings?.TwitchSettings?.ChannelName;
+                string youtubeChannel = mod?.Settings?.YouTubeSettings?.ChannelName;
+                string kickChannel = mod?.Settings?.KickSettings?.ChannelName;
+
+                if (!string.IsNullOrEmpty(twitchChannel) &&
+                    username.Equals(twitchChannel, StringComparison.OrdinalIgnoreCase))
+                    return true;
+                if (!string.IsNullOrEmpty(youtubeChannel) &&
+                    username.Equals(youtubeChannel, StringComparison.OrdinalIgnoreCase))
+                    return true;
+                if (!string.IsNullOrEmpty(kickChannel) &&
+                    username.Equals(kickChannel, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[Viewers] IsChannelOwnerName failed: {ex.Message}");
+            }
+
+            return false;
+        }
+
         public static Viewer GetViewerNoAdd(string username)
         {
             if (string.IsNullOrEmpty(username))
@@ -247,7 +278,7 @@ namespace CAP_ChatInteractive
                 {
                     foreach (var viewer in activeViewers)
                     {
-                        if (viewer == null || viewer.IsBanned)
+                        if (viewer == null || viewer.IsSilenced(out _))
                             continue;
 
                         int coinsToAward;
@@ -575,7 +606,7 @@ namespace CAP_ChatInteractive
 
                 foreach (var viewer in All)
                 {
-                    if (viewer == null || viewer.IsBanned)
+                    if (viewer == null || viewer.IsSilenced(out _))
                         continue;
 
                     if (viewer.Karma <= settings.KarmaMinDecayFloor)

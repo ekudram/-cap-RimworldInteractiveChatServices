@@ -1357,6 +1357,28 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - !pricecheck usage text.
 - Store editor bulk Set quantity keys.
 "
+                },
+            {"1.50",
+@"===========================================================
+                         RICS version 1.50 - Changelog
+                         Released: September 2026
+===========================================================
+
+<b>MEMORANDUM</b>
+─────────────────
+- Chat moderators can silence a viewer inside RICS without touching Twitch, Kick, or YouTube. The person can still talk on the platform; RICS just ignores their commands.
+
+<b>ADDED</b>
+────────────
+- !rban user — permanent RICS-only ban (aliases: !ricsban).
+- !runban user — clear RICS ban and timeout (aliases: !ricsunban).
+- !rto user [duration] — timed RICS-only silence, wall clock not game ticks (aliases: !ricstimout, !rtimeout). Default 5 minutes. Examples: !rto bob 10, !rto bob 10m.
+- Viewer Manager: timed-out viewers show amber and remaining time; Unban also clears timeout.
+
+<b>TRANSLATIONS</b>
+───────────────────
+- Keys for !rban / !runban / !rto and Viewer Manager timeout labels.
+"
                 }
 
 

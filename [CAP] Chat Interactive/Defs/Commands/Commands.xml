@@ -94,6 +94,45 @@
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>RBan</defName>
+    <commandText>rban</commandText>
+    <label>RICS ban</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ModCommands.RBan</commandClass>
+    <requiresMod>true</requiresMod>
+    <commandDescription>RICS-only ban: ignore this viewer's commands. Does not ban them on Twitch/Kick/YouTube. Usage: !rban user</commandDescription>
+    <permissionLevel>moderator</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>RUnban</defName>
+    <commandText>runban</commandText>
+    <label>RICS unban</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ModCommands.RUnban</commandClass>
+    <requiresMod>true</requiresMod>
+    <commandDescription>Clear a RICS-only ban and timeout. Does not unban on Twitch/Kick/YouTube. Usage: !runban user</commandDescription>
+    <permissionLevel>moderator</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>RTo</defName>
+    <commandText>rto</commandText>
+    <label>RICS timeout</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ModCommands.RTo</commandClass>
+    <requiresMod>true</requiresMod>
+    <commandDescription>RICS-only timeout: ignore commands for a wall-clock duration (default 5 minutes). Not a Twitch timeout. Usage: !rto user [duration] e.g. !rto bob 10m</commandDescription>
+    <permissionLevel>moderator</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
   <!-- Viewer Commands -->
   
   <CAP_ChatInteractive.ChatCommandDef>

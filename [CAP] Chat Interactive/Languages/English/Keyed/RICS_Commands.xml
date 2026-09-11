@@ -442,4 +442,19 @@
 
   <RICS.CC.storyteller.unknown>Unknown</RICS.CC.storyteller.unknown>
 
+  <!-- RICS-only moderation (!rban / !runban / !rto) — not Twitch/Kick/YouTube bans -->
+  <RICS.CC.rban.usage>Usage: !rban user  (RICS-only; they can still talk on Twitch)</RICS.CC.rban.usage>
+  <RICS.CC.rban.notfound>Viewer '{0}' not found.</RICS.CC.rban.notfound>
+  <RICS.CC.rban.self>You cannot RICS-ban yourself.</RICS.CC.rban.self>
+  <RICS.CC.rban.owner>You cannot RICS-ban the channel owner.</RICS.CC.rban.owner>
+  <RICS.CC.rban.already>{0} is already RICS-banned.</RICS.CC.rban.already>
+  <RICS.CC.rban.ok>RICS banned {0}. Commands ignored until !runban.</RICS.CC.rban.ok>
+  <RICS.CC.runban.usage>Usage: !runban user</RICS.CC.runban.usage>
+  <RICS.CC.runban.notbanned>{0} is not RICS-banned.</RICS.CC.runban.notbanned>
+  <RICS.CC.runban.ok>RICS unbanned {0}.</RICS.CC.runban.ok>
+  <RICS.CC.rto.usage>!rto user [duration]  e.g. !rto bob 10m</RICS.CC.rto.usage>
+  <RICS.CC.rto.alreadybanned>{0} is already RICS-banned. Use !runban first.</RICS.CC.rto.alreadybanned>
+  <RICS.CC.rto.range>Duration must be between {0} seconds and {1} hours.</RICS.CC.rto.range>
+  <RICS.CC.rto.ok>RICS timeout {0} for {1}. Silent until {2}.</RICS.CC.rto.ok>
+
 </LanguageData>

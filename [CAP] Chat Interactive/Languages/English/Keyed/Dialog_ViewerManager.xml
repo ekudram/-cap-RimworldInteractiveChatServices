@@ -28,6 +28,9 @@
 
   <!-- User management -->
   <RICS.ViewerManager.Banned>🚫 THIS VIEWER IS BANNED</RICS.ViewerManager.Banned>
+  <RICS.ViewerManager.TimedOut>⏳ RICS timeout remaining: {0}</RICS.ViewerManager.TimedOut>
+  <RICS.ViewerManager.ClearTimeout>CLEAR TIMEOUT</RICS.ViewerManager.ClearTimeout>
+  <RICS.ViewerManager.TimeoutCleared>{0} timeout cleared</RICS.ViewerManager.TimeoutCleared>
   <RICS.ViewerManager.Unban>UNBAN VIEWER</RICS.ViewerManager.Unban>
   <RICS.ViewerManager.RemoveUser>REMOVE USER</RICS.ViewerManager.RemoveUser>
   <RICS.ViewerManager.Ban>BAN VIEWER</RICS.ViewerManager.Ban>

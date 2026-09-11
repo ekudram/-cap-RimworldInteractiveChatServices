@@ -293,7 +293,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 }
 
                 // Ensure target can receive coins (not banned, etc.)
-                if (target.IsBanned)
+                if (target.IsSilenced(out _))
                 {
                     return "RICS.CC.giftcoins.targetBanned".Translate(target.DisplayName);
                 }

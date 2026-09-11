@@ -18,7 +18,9 @@
 // Defines moderator commands for giving coins, setting karma, and toggling coin earning.
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Verse;
 
 namespace CAP_ChatInteractive.Commands.ModCommands
@@ -427,6 +429,203 @@ namespace CAP_ChatInteractive.Commands.ModCommands
             }
 
             return "No viewers matching cleanup criteria found.";
+        }
+    }
+
+    /// <summary>Permanent RICS-only silence. Does not call Twitch / Kick / YouTube ban APIs.</summary>
+    public class RBan : ChatCommand
+    {
+        public override string Name => "rban";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            if (args == null || args.Length == 0)
+                return "RICS.CC.rban.usage".Translate();
+
+            if (!RicsModerationHelper.TryResolveTarget(messageWrapper, args[0], out Viewer target, out string error))
+                return error;
+
+            if (target.IsBanned)
+                return "RICS.CC.rban.already".Translate(target.DisplayName);
+
+            target.IsBanned = true;
+            target.TimeoutUntil = null;
+            Viewers.SaveViewers();
+            Logger.Message($"{messageWrapper.Username} RICS-banned {target.Username}");
+            return "RICS.CC.rban.ok".Translate(target.DisplayName);
+        }
+    }
+
+    /// <summary>Clear RICS ban and timeout.</summary>
+    public class RUnban : ChatCommand
+    {
+        public override string Name => "runban";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            if (args == null || args.Length == 0)
+                return "RICS.CC.runban.usage".Translate();
+
+            if (!RicsModerationHelper.TryResolveTarget(messageWrapper, args[0], out Viewer target, out string error, allowSelf: true, allowOwner: true))
+                return error;
+
+            bool wasBanned = target.IsBanned;
+            bool wasTimedOut = target.HasActiveTimeout();
+            if (!wasBanned && !wasTimedOut && !target.TimeoutUntil.HasValue)
+                return "RICS.CC.runban.notbanned".Translate(target.DisplayName);
+
+            target.IsBanned = false;
+            target.TimeoutUntil = null;
+            Viewers.SaveViewers();
+            Logger.Message($"{messageWrapper.Username} RICS-unbanned {target.Username}");
+            return "RICS.CC.runban.ok".Translate(target.DisplayName);
+        }
+    }
+
+    /// <summary>Timed RICS-only silence using wall-clock UTC (not game ticks).</summary>
+    public class RTo : ChatCommand
+    {
+        public override string Name => "rto";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            if (args == null || args.Length == 0)
+                return "RICS.CC.rto.usage".Translate();
+
+            if (!RicsModerationHelper.TryResolveTarget(messageWrapper, args[0], out Viewer target, out string error))
+                return error;
+
+            if (target.IsBanned)
+                return "RICS.CC.rto.alreadybanned".Translate(target.DisplayName);
+
+            string durationRaw = args.Length > 1 ? string.Join(" ", args.Skip(1)) : null;
+            if (!RicsModerationHelper.TryParseDurationSeconds(durationRaw, out int seconds, out string durationError))
+                return durationError;
+
+            target.TimeoutUntil = DateTime.UtcNow.AddSeconds(seconds);
+            Viewers.SaveViewers();
+
+            string pretty = RicsModerationHelper.FormatPrettyDuration(seconds);
+            string localEnd = target.TimeoutUntil.Value.ToLocalTime().ToString("HH:mm:ss", CultureInfo.CurrentCulture);
+            Logger.Message($"{messageWrapper.Username} RICS-timeout {target.Username} for {seconds}s until {target.TimeoutUntil:o}");
+            return "RICS.CC.rto.ok".Translate(target.DisplayName, pretty, localEnd);
+        }
+    }
+
+    /// <summary>Shared parse/guards for !rban / !runban / !rto.</summary>
+    internal static class RicsModerationHelper
+    {
+        public const int DefaultTimeoutSeconds = 300;
+        public const int MinTimeoutSeconds = 10;
+        public const int MaxTimeoutSeconds = 24 * 60 * 60;
+
+        public static bool TryResolveTarget(
+            ChatMessageWrapper issuer,
+            string rawName,
+            out Viewer target,
+            out string error,
+            bool allowSelf = false,
+            bool allowOwner = false)
+        {
+            target = null;
+            error = null;
+
+            string name = (rawName ?? string.Empty).Trim().TrimStart('@');
+            if (string.IsNullOrEmpty(name))
+            {
+                error = "RICS.CC.rban.usage".Translate();
+                return false;
+            }
+
+            if (!allowSelf &&
+                issuer != null &&
+                !string.IsNullOrEmpty(issuer.Username) &&
+                name.Equals(issuer.Username, StringComparison.OrdinalIgnoreCase))
+            {
+                error = "RICS.CC.rban.self".Translate();
+                return false;
+            }
+
+            if (!allowOwner && Viewers.IsChannelOwnerName(name))
+            {
+                error = "RICS.CC.rban.owner".Translate();
+                return false;
+            }
+
+            target = Viewers.GetViewerNoAdd(name);
+            if (target == null)
+            {
+                error = "RICS.CC.rban.notfound".Translate(name);
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Bare number = seconds. Accepts 30s / 10m / 2h with optional spaces and long unit names.
+        /// Default when omitted: 300 seconds.
+        /// </summary>
+        public static bool TryParseDurationSeconds(string raw, out int seconds, out string error)
+        {
+            seconds = DefaultTimeoutSeconds;
+            error = null;
+
+            if (string.IsNullOrWhiteSpace(raw))
+                return true;
+
+            string compact = Regex.Replace(raw.Trim(), @"\s+", string.Empty);
+            var match = Regex.Match(
+                compact,
+                @"^(?<n>\d+(?:\.\d+)?)(?<u>s|sec|secs|seconds|m|min|mins|minutes|h|hr|hrs|hours)?$",
+                RegexOptions.IgnoreCase);
+
+            if (!match.Success)
+            {
+                error = "RICS.CC.rto.usage".Translate();
+                seconds = 0;
+                return false;
+            }
+
+            if (!double.TryParse(match.Groups["n"].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double amount))
+            {
+                error = "RICS.CC.rto.usage".Translate();
+                seconds = 0;
+                return false;
+            }
+
+            string unit = match.Groups["u"].Value.ToLowerInvariant();
+            double multiplier = 1d;
+            if (unit.StartsWith("m"))
+                multiplier = 60d;
+            else if (unit.StartsWith("h"))
+                multiplier = 3600d;
+
+            int parsed = (int)Math.Round(amount * multiplier);
+            if (parsed < MinTimeoutSeconds || parsed > MaxTimeoutSeconds)
+            {
+                error = "RICS.CC.rto.range".Translate(MinTimeoutSeconds.ToString(), "24");
+                seconds = 0;
+                return false;
+            }
+
+            seconds = parsed;
+            return true;
+        }
+
+        public static string FormatPrettyDuration(int seconds)
+        {
+            if (seconds >= 3600 && seconds % 3600 == 0)
+            {
+                int h = seconds / 3600;
+                return h == 1 ? "1 hour" : h + " hours";
+            }
+            if (seconds >= 60 && seconds % 60 == 0)
+            {
+                int m = seconds / 60;
+                return m == 1 ? "1 minute" : m + " minutes";
+            }
+            return seconds == 1 ? "1 second" : seconds + " seconds";
         }
     }
 }

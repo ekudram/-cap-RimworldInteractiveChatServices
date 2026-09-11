@@ -389,9 +389,19 @@ namespace CAP_ChatInteractive
             return char.ToUpper(text[0]) + (text.Length > 1 ? text.Substring(1) : "");
         }
 
+        private static string FormatTimeoutRemaining(TimeSpan remaining)
+        {
+            if (remaining.TotalHours >= 1)
+                return $"{(int)remaining.TotalHours}h {remaining.Minutes}m";
+            if (remaining.TotalMinutes >= 1)
+                return $"{(int)remaining.TotalMinutes}m {remaining.Seconds}s";
+            return $"{Math.Max(0, (int)remaining.TotalSeconds)}s";
+        }
+
         private Color GetViewerRoleColor(Viewer viewer)
         {
             if (viewer.IsBanned) return Color.red;
+            if (viewer.HasActiveTimeout()) return new Color(1f, 0.65f, 0.2f);
             if (viewer.IsBroadcaster) return new Color(0.9f, 0.3f, 0.3f);
             if (viewer.IsModerator) return new Color(0.2f, 0.8f, 0.2f);
             if (viewer.IsVip) return new Color(0.8f, 0.6f, 0.2f);
@@ -421,6 +431,11 @@ namespace CAP_ChatInteractive
 
             string headerText = CapitalizeFirst(selectedViewer.Username);
             if (selectedViewer.IsBanned) headerText += " 🚫 BANNED";
+            else if (selectedViewer.HasActiveTimeout())
+            {
+                var remain = selectedViewer.TimeoutRemaining();
+                headerText += " ⏳ TIMED OUT " + FormatTimeoutRemaining(remain);
+            }
             else if (selectedViewer.IsBroadcaster) headerText += " ⭐ BROADCASTER";
             else if (selectedViewer.IsModerator) headerText += " 🛡️ MODERATOR";
             else if (selectedViewer.IsVip) headerText += " 💎 VIP";
@@ -834,9 +849,32 @@ namespace CAP_ChatInteractive
                 if (Widgets.ButtonText(unbanButtonRect, "RICS.ViewerManager.Unban".Translate()))
                 {
                     selectedViewer.IsBanned = false;
+                    selectedViewer.TimeoutUntil = null;
                     Viewers.SaveViewers();
                     Messages.Message(
                         "RICS.ViewerManager.Unbanned".Translate(selectedViewer.Username),
+                        MessageTypeDefOf.PositiveEvent);
+                }
+
+                if (Widgets.ButtonText(removeButtonRect, "RICS.ViewerManager.RemoveUser".Translate()))
+                {
+                    showRemoveConfirmation = true;
+                }
+            }
+            else if (selectedViewer.HasActiveTimeout())
+            {
+                Widgets.Label(innerRect.TopHalf(),
+                    "RICS.ViewerManager.TimedOut".Translate(FormatTimeoutRemaining(selectedViewer.TimeoutRemaining())));
+
+                Rect clearButtonRect = new Rect(innerRect.x, innerRect.y + innerRect.height / 2, innerRect.width / 2 - 5f, innerRect.height / 2);
+                Rect removeButtonRect = new Rect(innerRect.x + innerRect.width / 2 + 5f, innerRect.y + innerRect.height / 2, innerRect.width / 2 - 5f, innerRect.height / 2);
+
+                if (Widgets.ButtonText(clearButtonRect, "RICS.ViewerManager.ClearTimeout".Translate()))
+                {
+                    selectedViewer.TimeoutUntil = null;
+                    Viewers.SaveViewers();
+                    Messages.Message(
+                        "RICS.ViewerManager.TimeoutCleared".Translate(selectedViewer.Username),
                         MessageTypeDefOf.PositiveEvent);
                 }
 
@@ -877,6 +915,7 @@ namespace CAP_ChatInteractive
                     banConfirmationMessage,
                     () => {
                         selectedViewer.IsBanned = true;
+                        selectedViewer.TimeoutUntil = null;
 
                         // Remove pawn assignments when banning
                         UnassignPawn(selectedViewer);

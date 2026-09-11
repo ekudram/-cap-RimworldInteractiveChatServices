@@ -93,6 +93,9 @@ namespace CAP_ChatInteractive
                 if (!_commands.TryGetValue(commandText, out var command) || command == null)
                     return $"Error: Unknown command '{commandText}'";
 
+                if (IsRicsModerationCommand(command.Name) || IsRicsModerationCommand(commandText))
+                    return "Error: Moderator-only RICS command; AI cannot use !rban / !runban / !rto";
+
                 var viewer = Viewers.GetViewer(message);
                 if (viewer == null)
                     return "Error: Could not create viewer";
@@ -233,14 +236,18 @@ namespace CAP_ChatInteractive
             if (viewer == null)
                 return;
 
-            // Streamer bypass: channel owner is never blocked by ban
+            // Streamer bypass: channel owner is never blocked by RICS ban/timeout
             bool isStreamer = IsChannelOwner(message, globalSettings);
-            if (viewer.IsBanned && !isStreamer)
+            bool hadTimeout = viewer.TimeoutUntil.HasValue;
+            if (!isStreamer && viewer.IsSilenced(out string silenceReason))
             {
+                string tag = silenceReason == "timeout" ? "TimedOut" : "Banned";
                 Logger.Warning(
-                    $"[ChatCommandProcessor] Banned viewer {message.Username} attempted: {commandText}");
+                    $"[ChatCommandProcessor] {tag} viewer {message.Username} attempted: {commandText}");
                 return;
             }
+            if (hadTimeout && !viewer.TimeoutUntil.HasValue)
+                Viewers.SaveViewers();
 
             // Dev Twitch ID: may run disabled commands for testing
             bool isDevBypass = message.Username == "captolamia" &&
@@ -590,6 +597,48 @@ namespace CAP_ChatInteractive
 
             if (!string.IsNullOrEmpty(command.Alias))
                 _commands[command.Alias] = command;
+
+            RegisterBuiltInExtraAliases(command);
+        }
+
+        /// <summary>Hard-coded extra names for RICS moderation (Command Editor only stores one alias).</summary>
+        private static void RegisterBuiltInExtraAliases(ChatCommand command)
+        {
+            if (command == null || string.IsNullOrEmpty(command.Name))
+                return;
+
+            string[] extras = command.Name.ToLowerInvariant() switch
+            {
+                "rban" => new[] { "ricsban" },
+                "runban" => new[] { "ricsunban" },
+                "rto" => new[] { "ricstimout", "rtimeout" },
+                _ => Array.Empty<string>()
+            };
+
+            foreach (string extra in extras)
+            {
+                if (!_commands.ContainsKey(extra))
+                    _commands[extra] = command;
+            }
+        }
+
+        private static bool IsRicsModerationCommand(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return false;
+            switch (name.ToLowerInvariant())
+            {
+                case "rban":
+                case "ricsban":
+                case "runban":
+                case "ricsunban":
+                case "rto":
+                case "ricstimout":
+                case "rtimeout":
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         public static IEnumerable<ChatCommand> GetAvailableCommands(ChatMessageWrapper user)
