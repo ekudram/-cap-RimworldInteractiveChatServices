@@ -730,8 +730,12 @@ namespace CAP_ChatInteractive
                         if (viewer != null)
                         {
                             viewer.GiveCoins(coins);
+                            var currencySymbol = globalSettings.CurrencyName?.Trim() ?? "¢";
                             SendMessageToUser(message,
-                                $"Thank you for redeeming '{reward.RewardName}'! You received {coins} coins.");
+                                "RICS.CCP.RedeemThanks".Translate(
+                                    reward.RewardName,
+                                    coins.ToString("N0"),
+                                    currencySymbol));
                         }
                     }
                 }

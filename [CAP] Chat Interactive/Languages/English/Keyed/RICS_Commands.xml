@@ -457,4 +457,7 @@
   <RICS.CC.rto.range>Duration must be between {0} seconds and {1} hours.</RICS.CC.rto.range>
   <RICS.CC.rto.ok>RICS timeout {0} for {1}. Silent until {2}.</RICS.CC.rto.ok>
 
+  <!-- Channel points redeem thank-you ({0} reward name, {1} amount, {2} currency name) -->
+  <RICS.CCP.RedeemThanks>Thank you for redeeming '{0}'! You received {1}{2}.</RICS.CCP.RedeemThanks>
+
 </LanguageData>

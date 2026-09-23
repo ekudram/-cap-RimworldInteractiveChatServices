@@ -427,6 +427,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - Store editor bulk Set quantity keys.
 "
                 },
+
             {"1.50",
 @"===========================================================
                          RICS version 1.50 - Changelog
@@ -467,6 +468,27 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - Keys for !rban / !runban / !rto and Viewer Manager timeout labels.
 - Keys for JSON settings load option and mismatch dialog.
 - Keys for !use skill neurotrainer blocked when the pawn cannot use that skill.
+"
+                },
+                        {"1.51",
+@"===========================================================
+                         RICS version 1.51 - Changelog
+                         Pre-Release
+===========================================================
+
+<b>FIXED</b>
+───────────
+- Channel-point redeem thank-you uses the custom coin name from settings instead of the word coins.
+- Bought pawns with no gender chosen now roll male or female. They no longer arrive as Other.
+
+<b>UPDATED</b>
+──────────────
+- !mypawn story shows race and xenotype (when Biotech is active).
+
+<b>TRANSLATIONS</b>
+───────────────────
+- Redeem thank-you keyed string.
+- !mypawn story race and xenotype keys.
 "
                 }
 

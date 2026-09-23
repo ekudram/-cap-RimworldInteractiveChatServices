@@ -988,6 +988,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var report = new StringBuilder();
             // report.Append($"Age:🧬{pawn.ageTracker.AgeBiologicalYears}/⏳{pawn.ageTracker.AgeChronologicalYears} | ");
             report.Append("RICS.MPCH.BackstoriesAge".Translate(pawn.ageTracker.AgeBiologicalYears, pawn.ageTracker.AgeChronologicalYears));
+
+            string raceLabel = pawn.def?.LabelCap.ToString();
+            if (!string.IsNullOrEmpty(raceLabel))
+                report.Append("RICS.MPCH.StoryRace".Translate(raceLabel));
+
+            if (ModsConfig.BiotechActive && pawn.genes != null)
+            {
+                string xenotypeLabel = pawn.genes.XenotypeLabelCap;
+                if (string.IsNullOrEmpty(xenotypeLabel))
+                    xenotypeLabel = pawn.genes.xenotypeName;
+                if (!string.IsNullOrEmpty(xenotypeLabel))
+                    report.Append("RICS.MPCH.StoryXenotype".Translate(xenotypeLabel));
+            }
+
             // report.AppendLine($"👤 Backstories:");  // for {pawn.Name}:
             report.AppendLine("RICS.MPCH.BackstoriesHeader".Translate());
 

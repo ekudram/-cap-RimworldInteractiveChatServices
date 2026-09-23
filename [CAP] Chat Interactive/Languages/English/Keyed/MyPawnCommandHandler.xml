@@ -100,6 +100,8 @@
 
   <!-- Backstories -->
   <RICS.MPCH.BackstoriesAge>Age:🧬{0}/⏳{1} | </RICS.MPCH.BackstoriesAge>
+  <RICS.MPCH.StoryRace>Race: {0} | </RICS.MPCH.StoryRace>
+  <RICS.MPCH.StoryXenotype>Xenotype: {0} | </RICS.MPCH.StoryXenotype>
   <RICS.MPCH.BackstoriesHeader>👤 Backstories:</RICS.MPCH.BackstoriesHeader>
   <RICS.MPCH.Childhood>🎒 Childhood: {0}</RICS.MPCH.Childhood>
   <RICS.MPCH.ChildhoodNone>🎒 Childhood: No childhood backstory</RICS.MPCH.ChildhoodNone>

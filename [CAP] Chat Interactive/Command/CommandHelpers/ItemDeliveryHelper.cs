@@ -1667,8 +1667,23 @@ public static class ItemDeliveryHelper
 			List<Pawn> list3 = new List<Pawn>();
 			for (int i = 0; i < quantity; i++)
 			{
-				PawnGenerationRequest request = new PawnGenerationRequest(pawnDef.race.AnyPawnKind, null, PawnGenerationContext.NonPlayer, -1, forceGenerateNewPawn: true, allowDead: false, allowDowned: false, canGeneratePawnRelations: false, mustBeCapableOfViolence: false, 0f, forceAddFreeWarmLayerIfNeeded: false, allowGay: true, allowPregnant: false, allowFood: true, allowAddictions: true, inhabitant: false, certainlyBeenInCryptosleep: false, forceRedressWorldPawnIfFormerColonist: false, worldPawnFactionDoesntMatter: false, 0f, 0f, null, 1f, null, null, null, null, 0f);
+				// Humanlikes with no gender show as Other. Roll male or female; leave animals and mechs alone.
+				Gender? fixedGender = null;
+				if (pawnDef.race != null && pawnDef.race.Humanlike)
+				{
+					Gender forced = pawnDef.race.forceGender;
+					fixedGender = forced == Gender.Male || forced == Gender.Female
+						? forced
+						: (Rand.Bool ? Gender.Male : Gender.Female);
+				}
+				PawnGenerationRequest request = new PawnGenerationRequest(pawnDef.race.AnyPawnKind, null, PawnGenerationContext.NonPlayer, -1, forceGenerateNewPawn: true, allowDead: false, allowDowned: false, canGeneratePawnRelations: false, mustBeCapableOfViolence: false, 0f, forceAddFreeWarmLayerIfNeeded: false, allowGay: true, allowPregnant: false, allowFood: true, allowAddictions: true, inhabitant: false, certainlyBeenInCryptosleep: false, forceRedressWorldPawnIfFormerColonist: false, worldPawnFactionDoesntMatter: false, 0f, 0f, null, 1f, null, null, null, null, 0f, fixedGender: fixedGender);
 				Pawn pawn = PawnGenerator.GeneratePawn(request);
+				if (pawn.RaceProps.Humanlike && pawn.gender == Gender.None && fixedGender.HasValue)
+				{
+					pawn.gender = fixedGender.Value;
+					if (pawn.story != null)
+						pawn.story.bodyType = PawnGenerator.GetBodyTypeFor(pawn);
+				}
 				if (pawn.RaceProps.IsMechanoid || pawn.RaceProps.Animal)
 				{
 					pawn.SetFaction(Faction.OfPlayer);

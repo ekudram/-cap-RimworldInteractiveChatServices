@@ -419,7 +419,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
                 else
                 {
-                    fixedGender = PickRandomAllowedGender(raceSettings?.AllowedGenders);
+                    // Unspecified gender must not roll Gender.None (shown as Other).
+                    fixedGender = PickRandomAllowedGender(raceSettings?.AllowedGenders, raceDef);
                 }
 
                 // forceNoGear=false: normal starting clothes; dontGiveWeapon=true: clean delivery
@@ -471,10 +472,20 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     return new BuyPawnResult(false, "RICS.BPCH.GenerationError".Translate("PawnGenerator returned null"));
                 }
 
+                if (pawn.gender == Gender.None)
+                {
+                    Gender rolled = PickRandomAllowedGender(raceSettings?.AllowedGenders, raceDef);
+                    pawn.gender = rolled;
+                    if (pawn.RaceProps.Humanlike && pawn.story != null)
+                        pawn.story.bodyType = PawnGenerator.GetBodyTypeFor(pawn);
+                    Logger.Warning($"[BuyPawn] Pawn generated with no gender; assigned {rolled}.");
+                }
+
                 string actualXeno = pawn.genes?.Xenotype?.defName ?? "null";
                 string actualXenoName = pawn.genes?.xenotypeName ?? "";
                 Logger.Warning(
                     $"[BuyPawn] Generated pawn def={pawn.def?.defName} kind={pawn.kindDef?.defName} " +
+                    $"gender={pawn.gender} " +
                     $"xenotype={actualXeno} xenotypeName='{actualXenoName}' " +
                     $"head={pawn.story?.headType?.defName ?? "null"} " +
                     $"body={pawn.story?.bodyType?.defName ?? "null"} " +
@@ -880,21 +891,34 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             };
         }
 
-        private static Gender? PickRandomAllowedGender(AllowedGenders allowed)
+        /// <summary>
+        /// Rolls Male or Female. Gender.None is shown as Other and breaks colonist bodies, so it is never a random result.
+        /// A race that forces one gender, or that only allows one, keeps that gender.
+        /// </summary>
+        private static Gender PickRandomAllowedGender(AllowedGenders allowed, ThingDef raceDef = null)
         {
-            if (allowed == null)
-                return null;
+            Gender? forced = null;
+            if (raceDef?.race != null && raceDef.race.forceGender != Gender.None)
+                forced = raceDef.race.forceGender;
+
+            if (forced == Gender.Male || forced == Gender.Female)
+            {
+                if (allowed == null || IsGenderAllowed(allowed, forced.Value))
+                    return forced.Value;
+            }
 
             var options = new List<Gender>();
-            if (allowed.AllowMale)
+            if (allowed == null || allowed.AllowMale)
                 options.Add(Gender.Male);
-            if (allowed.AllowFemale)
+            if (allowed == null || allowed.AllowFemale)
                 options.Add(Gender.Female);
-            if (allowed.AllowOther)
-                options.Add(Gender.None);
 
             if (options.Count == 0)
-                return null;
+            {
+                options.Add(Gender.Male);
+                options.Add(Gender.Female);
+            }
+
             return options.RandomElement();
         }
 
