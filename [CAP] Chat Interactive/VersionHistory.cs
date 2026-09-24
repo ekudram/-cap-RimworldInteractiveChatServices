@@ -473,7 +473,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
                         {"1.51",
 @"===========================================================
                          RICS version 1.51 - Changelog
-                         Pre-Release
+                         
 ===========================================================
 
 <b>FIXED</b>
@@ -495,10 +495,10 @@ Also changed message about Ownership and adding mid game to be more clear about 
 
 
 /*
-            // Add more versions here as they're released
+            // Add more versions here as they're released Keep oldest 10,  Changelog.txt keeps all changlogs.
 ===========================================================
                          RICS version - Changelog
-                         Released: Month Day, Year
+                         Pre-Release (for pre release testing) For Release Use:  Released: Month Day, Year  
 ===========================================================
 
 <b>MEMORANDUM</b>
