@@ -104,14 +104,9 @@ namespace CAP_ChatInteractive.Extension
                         body = await reader.ReadToEndAsync().ConfigureAwait(false);
                 }
 
-                string devViewer = null;
-                var settings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
-                if (settings != null && settings.TwitchExtensionAllowDevIdentity)
-                {
-                    devViewer = ctx.Request.Headers["X-RICS-Dev-Viewer"];
-                    if (string.IsNullOrEmpty(devViewer))
-                        devViewer = ctx.Request.QueryString["viewer"];
-                }
+                // Loopback-only listener. Mono's HttpListener often leaves QueryString
+                // and custom headers empty — parse RawUrl as well.
+                string devViewer = ReadDevViewer(ctx.Request);
 
                 var job = new ExtensionJob
                 {
@@ -133,6 +128,84 @@ namespace CAP_ChatInteractive.Extension
                 }
                 catch { /* ignore */ }
             }
+        }
+
+        private static string ReadDevViewer(HttpListenerRequest req)
+        {
+            if (req == null)
+                return null;
+
+            string v = HeaderValue(req, "X-RICS-Dev-Viewer")
+                ?? HeaderValue(req, "X-Rics-Dev-Viewer")
+                ?? HeaderValue(req, "x-rics-dev-viewer");
+            if (!string.IsNullOrWhiteSpace(v))
+                return v.Trim();
+
+            try
+            {
+                v = req.QueryString?["viewer"];
+                if (!string.IsNullOrWhiteSpace(v))
+                    return v.Trim();
+            }
+            catch { /* Mono QueryString can throw / be empty */ }
+
+            v = ParseQueryParam(req.Url?.Query, "viewer");
+            if (!string.IsNullOrWhiteSpace(v))
+                return v.Trim();
+
+            string raw = req.RawUrl;
+            if (!string.IsNullOrEmpty(raw))
+            {
+                int q = raw.IndexOf('?');
+                if (q >= 0)
+                {
+                    v = ParseQueryParam(raw.Substring(q), "viewer");
+                    if (!string.IsNullOrWhiteSpace(v))
+                        return v.Trim();
+                }
+            }
+
+            return null;
+        }
+
+        private static string HeaderValue(HttpListenerRequest req, string name)
+        {
+            try
+            {
+                string v = req.Headers?[name];
+                return string.IsNullOrWhiteSpace(v) ? null : v;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string ParseQueryParam(string query, string key)
+        {
+            if (string.IsNullOrEmpty(query) || string.IsNullOrEmpty(key))
+                return null;
+            if (query[0] == '?')
+                query = query.Substring(1);
+            string[] parts = query.Split('&');
+            for (int i = 0; i < parts.Length; i++)
+            {
+                string part = parts[i];
+                if (string.IsNullOrEmpty(part))
+                    continue;
+                int eq = part.IndexOf('=');
+                string k = eq >= 0 ? part.Substring(0, eq) : part;
+                string val = eq >= 0 ? part.Substring(eq + 1) : "";
+                try
+                {
+                    k = Uri.UnescapeDataString(k);
+                    val = Uri.UnescapeDataString(val.Replace('+', ' '));
+                }
+                catch { /* keep raw */ }
+                if (string.Equals(k, key, StringComparison.OrdinalIgnoreCase))
+                    return val;
+            }
+            return null;
         }
 
         private static void AddCors(HttpListenerResponse res)
