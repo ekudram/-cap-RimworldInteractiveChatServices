@@ -115,6 +115,196 @@ namespace CAP_ChatInteractive
             }
         }
 
+        /// <summary>
+        /// Viewer Hub path: run a command and return the result string (no public chat).
+        /// Still applies enable/disable, permissions, bans/timeouts, and cooldowns.
+        /// </summary>
+        public static ExtensionCommandOutcome ProcessExtensionCommand(string viewerName, string commandId, string argsText)
+        {
+            var fail = new ExtensionCommandOutcome();
+            if (string.IsNullOrWhiteSpace(viewerName))
+            {
+                fail.ErrorCode = "Unauthorized";
+                fail.Message = "No viewer identity. For LocalHttp send X-RICS-Dev-Viewer or ?viewer=";
+                return fail;
+            }
+
+            if (!IsGameReady())
+            {
+                fail.ErrorCode = "NoGame";
+                fail.Message = "Load a colony first.";
+                return fail;
+            }
+
+            string commandText = (commandId ?? "").Trim().TrimStart('!', '$').ToLowerInvariant();
+            if (string.IsNullOrEmpty(commandText))
+            {
+                fail.ErrorCode = "BadRequest";
+                fail.Message = "Select a command first.";
+                return fail;
+            }
+
+            commandText = ResolveCommandFromAlias(commandText);
+            if (!_commands.TryGetValue(commandText, out var command) || command == null)
+            {
+                fail.ErrorCode = "UnknownCommand";
+                fail.Message = "Unknown command '" + commandText + "'.";
+                return fail;
+            }
+
+            if (IsHiddenFromExtension(command.Name))
+            {
+                fail.ErrorCode = "NotAllowed";
+                fail.Message = "That command is not available in the panel.";
+                return fail;
+            }
+
+            var settings = CommandSettingsManager.GetSettings(command.Name);
+            if (settings != null && settings.ExcludeFromPricelist)
+            {
+                fail.ErrorCode = "NotAllowed";
+                fail.Message = "That command is not available in the panel.";
+                return fail;
+            }
+
+            string[] args = string.IsNullOrWhiteSpace(argsText)
+                ? Array.Empty<string>()
+                : argsText.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+            string prefix = GetCommandPrefix();
+            string raw = prefix + command.Name + (args.Length > 0 ? " " + string.Join(" ", args) : "");
+            var message = new ChatMessageWrapper(
+                username: viewerName,
+                message: raw,
+                platform: "extension");
+
+            var viewer = Viewers.GetViewer(message);
+            if (viewer == null)
+            {
+                fail.ErrorCode = "Unauthorized";
+                fail.Message = "Could not resolve viewer.";
+                return fail;
+            }
+
+            var globalSettings = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings;
+            bool isStreamer = IsChannelOwner(message, globalSettings);
+
+            if (!isStreamer && viewer.IsSilenced(out string silenceReason))
+            {
+                fail.ErrorCode = silenceReason == "timeout" ? "TimedOut" : "Banned";
+                fail.Message = silenceReason == "timeout"
+                    ? "You are timed out and cannot run commands."
+                    : "You are banned from RICS commands.";
+                return fail;
+            }
+
+            if (settings != null && !settings.Enabled)
+            {
+                fail.ErrorCode = "Disabled";
+                fail.Message = "Command " + command.Name + " is currently disabled.";
+                return fail;
+            }
+
+            if (IsOnCooldown(message.Username, command))
+            {
+                fail.ErrorCode = "Cooldown";
+                fail.Message = CooldownMessage(message, command);
+                return fail;
+            }
+
+            if (!command.CanExecute(message))
+            {
+                fail.ErrorCode = "Forbidden";
+                fail.Message = "You don't have permission to use " + prefix + command.Name
+                    + ". Required: " + command.PermissionLevel;
+                return fail;
+            }
+
+            try
+            {
+                string result = command.Execute(message, args);
+                if (string.IsNullOrWhiteSpace(result))
+                    result = "Command executed.";
+                result = RemoveMarkupTags(result);
+
+                if (!result.StartsWith("Error", StringComparison.OrdinalIgnoreCase))
+                    GetCooldownManager()?.RecordCommandUse(command.Name);
+                UpdateCooldown(message.Username, command);
+
+                return new ExtensionCommandOutcome
+                {
+                    Success = true,
+                    Message = result.Trim()
+                };
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[ChatCommandProcessor] Extension command '{command.Name}': {ex.Message}");
+                fail.ErrorCode = "HandlerError";
+                fail.Message = "Error executing command: " + ex.Message;
+                return fail;
+            }
+        }
+
+        public static IEnumerable<ChatCommand> EnumerateDistinctCommands()
+        {
+            return _commands.Values
+                .Where(c => c != null && !string.IsNullOrEmpty(c.Name))
+                .GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First());
+        }
+
+        public static bool IsHiddenFromExtension(string commandName)
+        {
+            if (string.IsNullOrEmpty(commandName))
+                return true;
+            string name = commandName.Trim().ToLowerInvariant();
+            if (name == "ricsaichatbot")
+                return true;
+
+            try
+            {
+                foreach (ChatCommandDef def in DefDatabase<ChatCommandDef>.AllDefs)
+                {
+                    if (def == null || def.commandClass == null)
+                        continue;
+                    if (!string.Equals(def.commandText, commandName, StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(def.defName, commandName, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (typeof(Commands.AICommands.AIChatBotCommand).IsAssignableFrom(def.commandClass)
+                        || def.commandClass.Name.IndexOf("AIChatBot", StringComparison.OrdinalIgnoreCase) >= 0)
+                        return true;
+                }
+            }
+            catch
+            {
+                /* defs not ready */
+            }
+
+            return false;
+        }
+
+        private static string CooldownMessage(ChatMessageWrapper message, ChatCommand command)
+        {
+            if (message == null || command == null)
+                return "Command is on cooldown.";
+
+            var key = $"{message.Username}_{command.Name}";
+            if (!_userCooldowns.TryGetValue(key, out var lastUsed))
+                return "Command is on cooldown.";
+
+            var remaining = TimeSpan.FromSeconds(command.CooldownSeconds) - (DateTime.Now - lastUsed);
+            int secs = Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
+            return $"Command is on cooldown. Try again in {secs} seconds.";
+        }
+
+        public struct ExtensionCommandOutcome
+        {
+            public bool Success;
+            public string ErrorCode;
+            public string Message;
+        }
+
         public static bool IsGameReady()
         {
             try

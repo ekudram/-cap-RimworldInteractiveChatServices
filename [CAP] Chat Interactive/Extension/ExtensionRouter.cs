@@ -46,6 +46,20 @@ namespace CAP_ChatInteractive.Extension
                 return ExtensionEnvelope.Fail("MethodNotAllowed", "Use GET for colony.");
             }
 
+            if (path == "commands" || path == "commands/list")
+            {
+                if (method == "GET")
+                    return ExtensionCommandsHandler.HandleList(job);
+                return ExtensionEnvelope.Fail("MethodNotAllowed", "Use GET for commands/list.");
+            }
+
+            if (path == "commands/run")
+            {
+                if (method == "POST")
+                    return ExtensionCommandsHandler.HandleRun(job);
+                return ExtensionEnvelope.Fail("MethodNotAllowed", "POST { \"commandId\", \"args\" } to run a command.");
+            }
+
             if (path == "owned" || path == "ownership" || path == "character/owned")
             {
                 if (method == "GET")
