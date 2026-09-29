@@ -22,6 +22,23 @@ namespace CAP_ChatInteractive.Extension
             if (path == "ping" || path == "" || path == "health")
                 return ExtensionEnvelope.Ping();
 
+            if (path == "header" || path == "character" || path == "character/header")
+                return ExtensionCharacterHandler.HandleHeader(job);
+            if (path == "character/body-health" || path == "body-health")
+                return ExtensionCharacterHandler.HandleBodyHealth(job);
+            if (path == "character/gear" || path == "gear")
+                return ExtensionCharacterHandler.HandleGear(job);
+            if (path == "character/implants" || path == "implants")
+                return ExtensionCharacterHandler.HandleImplants(job);
+            if (path == "character/needs" || path == "needs")
+                return ExtensionCharacterHandler.HandleNeeds(job);
+            if (path == "character/backstories-traits" || path == "backstories-traits" || path == "story")
+                return ExtensionCharacterHandler.HandleBackstoriesTraits(job);
+            if (path == "character/stats" || path == "stats")
+                return ExtensionCharacterHandler.HandleStats(job);
+            if (path == "character/relations" || path == "relations")
+                return ExtensionCharacterHandler.HandleRelations(job);
+
             if (path == "owned" || path == "ownership" || path == "character/owned")
             {
                 if (method == "GET")

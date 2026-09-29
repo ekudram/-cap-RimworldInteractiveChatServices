@@ -504,6 +504,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
 <b>ADDED</b>
 ────────────
 - Twitch, YouTube, and Kick each show a right-side warning while that service is turned on and disconnected. Each service's settings tab can hide its own warning.
+- Twitch Extension LocalHttp character sheet: live header, body/health, gear, implants, needs, backstories/traits, stats, and relations for the viewer's pawn (not the chat command processor).
 
 <b>TRANSLATIONS</b>
 ───────────────────
