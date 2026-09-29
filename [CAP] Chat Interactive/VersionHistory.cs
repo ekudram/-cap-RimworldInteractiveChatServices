@@ -507,6 +507,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - Twitch Extension LocalHttp character sheet: live header, body/health, gear, implants, needs, backstories/traits, stats, and relations for the viewer's pawn (not the chat command processor).
 - LocalHttp reads ?viewer= from the raw request URL. Unity's HTTP listener was dropping QueryString and the dev identity header, so the panel got No viewer identity even with viewer=captolamia.
 - Extension character sheet strips quality color tags from apparel/weapon labels (same idea as chat StripTags). Trait descriptions resolve {PAWN_nameDef} to the viewer name and pronouns from pawn gender.
+- Twitch Extension LocalHttp colony tab: live settlement name, date, snapshot (storyteller, difficulty, days, wealth, threat points), population (viewer vs non-viewer, top animals, player mechanoids), current research, and active threats. Structured JSON, not the chat command processor.
 
 <b>TRANSLATIONS</b>
 ───────────────────

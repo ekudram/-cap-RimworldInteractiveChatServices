@@ -39,6 +39,13 @@ namespace CAP_ChatInteractive.Extension
             if (path == "character/relations" || path == "relations")
                 return ExtensionCharacterHandler.HandleRelations(job);
 
+            if (path == "colony")
+            {
+                if (method == "GET")
+                    return ExtensionColonyHandler.HandleGet(job);
+                return ExtensionEnvelope.Fail("MethodNotAllowed", "Use GET for colony.");
+            }
+
             if (path == "owned" || path == "ownership" || path == "character/owned")
             {
                 if (method == "GET")
