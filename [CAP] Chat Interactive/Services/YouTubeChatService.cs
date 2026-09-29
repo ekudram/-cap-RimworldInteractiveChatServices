@@ -43,8 +43,12 @@ namespace CAP_ChatInteractive
         private readonly object _quotaLock = new object();
         private int _failedConnectionAttempts = 0;
         private const int MAX_FAILED_ATTEMPTS = 5;
+        private bool _isConnecting;
 
         public bool IsConnected => _pollingActive && !string.IsNullOrEmpty(_liveChatId);
+
+        /// <summary>True while <see cref="Connect"/> is running. The disconnect alert stays hidden until this clears.</summary>
+        public bool IsConnecting => _isConnecting;
         public int QuotaUsedToday => _quotaUsedToday;
         public int QuotaLimit => 10000; // YouTube's daily limit
         public float QuotaPercentage => (float)_quotaUsedToday / QuotaLimit * 100;
@@ -67,6 +71,10 @@ namespace CAP_ChatInteractive
 
         public void Connect()
         {
+            if (_isConnecting)
+                return;
+
+            _isConnecting = true;
             try
             {
                 // YouTube only needs API key (AccessToken) and ChannelName
@@ -185,6 +193,10 @@ namespace CAP_ChatInteractive
                 _settings.IsConnected = false;
                 _pollingActive = false;
                 OnDisconnected?.Invoke($"Connection error: {ex.Message}");
+            }
+            finally
+            {
+                _isConnecting = false;
             }
         }
 

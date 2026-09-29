@@ -225,5 +225,12 @@ Changes take effect immediately for new purchases.]]>
 
   <RICS.Updates.CriticalMigration>IMPORTANT: Critical Migration Required!</RICS.Updates.CriticalMigration>
   <RICS.EditClientSecrets.OAuthWarning>⚠ WARNING: YouTube OAuth may require Google verification (days/weeks)</RICS.EditClientSecrets.OAuthWarning>
-  
+
+  <RICS.Alert.SuppressDisconnect>Hide disconnect alert</RICS.Alert.SuppressDisconnect>
+  <RICS.Alert.SuppressDisconnectTooltip>When on, the right-side warning stays hidden while this service is disconnected.</RICS.Alert.SuppressDisconnectTooltip>
+  <RICS.Alert.TwitchDisconnected>Twitch disconnected</RICS.Alert.TwitchDisconnected>
+  <RICS.Alert.YouTubeDisconnected>YouTube disconnected</RICS.Alert.YouTubeDisconnected>
+  <RICS.Alert.KickDisconnected>Kick disconnected</RICS.Alert.KickDisconnected>
+  <RICS.Alert.ServiceDisconnectedExplain>Chat from this service is not coming in. Connect it from RICS settings, or hide this warning on that service's tab.</RICS.Alert.ServiceDisconnectedExplain>
+
 </LanguageData>

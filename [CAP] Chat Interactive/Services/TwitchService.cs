@@ -95,6 +95,9 @@ namespace CAP_ChatInteractive
 
         public bool IsConnected => _client?.IsConnected == true;
 
+        /// <summary>True while a connect attempt is in progress. The disconnect alert stays hidden until this clears.</summary>
+        public bool IsConnecting => _isConnecting;
+
         // Events for other parts of your mod to subscribe to
         public event Action<string, string> OnWhisperReceived; // username, message 1.0.17
         public event Action<string, string> OnMessageReceived; // username, message

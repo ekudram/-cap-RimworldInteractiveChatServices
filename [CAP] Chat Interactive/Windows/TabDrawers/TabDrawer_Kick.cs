@@ -33,7 +33,7 @@ namespace _CAP__Chat_Interactive
         {
             var settings = CAPChatInteractiveMod.Instance.Settings.KickSettings;
             var kick = CAPChatInteractiveMod.Instance.KickService;
-            var view = new Rect(0f, 0f, region.width - 16f, 860f);
+            var view = new Rect(0f, 0f, region.width - 16f, 902f);
 
             Widgets.BeginScrollView(region, ref _scrollPosition, view);
             var listing = new Listing_Standard();
@@ -170,6 +170,12 @@ namespace _CAP__Chat_Interactive
 
             listing.CheckboxLabeled("RICS.Kick.AutoConnectLabel".Translate(), ref settings.AutoConnect);
             TooltipHandler.TipRegion(listing.GetRect(0f), "RICS.Kick.AutoConnectTooltip".Translate());
+
+            listing.Gap(6f);
+            listing.CheckboxLabeled(
+                "RICS.Alert.SuppressDisconnect".Translate(),
+                ref settings.SuppressDisconnectAlert,
+                "RICS.Alert.SuppressDisconnectTooltip".Translate());
 
             listing.Gap(12f);
 

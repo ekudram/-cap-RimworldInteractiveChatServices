@@ -75,6 +75,9 @@ namespace CAP_ChatInteractive
 
         public bool IsConnected => _webSocket?.State == WebSocketState.Open;
 
+        /// <summary>True while a connect attempt is in progress. The disconnect alert stays hidden until this clears.</summary>
+        public bool IsConnecting => _isConnecting;
+
         /// <summary>True when a Kick user token with chat:write is available (send will be attempted).</summary>
         public bool CanSendMessages =>
             IsConnected &&

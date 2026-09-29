@@ -80,6 +80,8 @@ namespace CAP_ChatInteractive
         public bool AutoConnect = false;
         public bool IsConnected = false;
         public bool suspendFeedback = false;
+        /// <summary>When true, the right-side disconnect warning for this service stays hidden.</summary>
+        public bool SuppressDisconnectAlert = false;
         public bool useWhisperForCommands = true;  // 1.0.17 addition
         public bool forceUseWhisper = false;  // 1.0.17 addition
         public int forceUseWhisperMessageTimer = 300; // 1.0.17 addition  if 0 do not use timer
@@ -103,6 +105,7 @@ namespace CAP_ChatInteractive
             Scribe_Values.Look(ref AutoConnect, "autoConnect", false);
             Scribe_Values.Look(ref IsConnected, "isConnected", false);
             Scribe_Values.Look(ref suspendFeedback, "suspendFeedback", false);
+            Scribe_Values.Look(ref SuppressDisconnectAlert, "suppressDisconnectAlert", false);
             Scribe_Values.Look(ref useWhisperForCommands, "useWhisperForCommands", true);  // 1.0.17 addition
             Scribe_Values.Look(ref forceUseWhisper, "forceUseWhisper", false);  // 1.0.17 addition (fixed typo)
             Scribe_Values.Look(ref forceUseWhisperMessageTimer, "forceUseWhisperMessageTimer", 300); // 1.0.17 addition
@@ -128,6 +131,7 @@ namespace CAP_ChatInteractive
             ClientId = other.ClientId ?? "";
             AutoConnect = other.AutoConnect;
             suspendFeedback = other.suspendFeedback;
+            SuppressDisconnectAlert = other.SuppressDisconnectAlert;
             useWhisperForCommands = other.useWhisperForCommands;
             forceUseWhisper = other.forceUseWhisper;
             forceUseWhisperMessageTimer = other.forceUseWhisperMessageTimer;

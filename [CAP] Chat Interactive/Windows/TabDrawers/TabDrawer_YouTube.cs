@@ -31,7 +31,7 @@ namespace _CAP__Chat_Interactive
         public static void Draw(Rect region)
         {
             var settings = CAPChatInteractiveMod.Instance.Settings.YouTubeSettings;
-            var view = new Rect(0f, 0f, region.width - 16f, 800f);
+            var view = new Rect(0f, 0f, region.width - 16f, 842f);
 
             Widgets.BeginScrollView(region, ref _scrollPosition, view);
             var listing = new Listing_Standard();
@@ -57,6 +57,11 @@ namespace _CAP__Chat_Interactive
             listing.Gap(12f);
 
             listing.CheckboxLabeled("TabDrawer_YouTube.EnableYouTubeIntegration".Translate(), ref settings.Enabled);
+            listing.Gap(6f);
+            listing.CheckboxLabeled(
+                "RICS.Alert.SuppressDisconnect".Translate(),
+                ref settings.SuppressDisconnectAlert,
+                "RICS.Alert.SuppressDisconnectTooltip".Translate());
             listing.Gap(12f);
 
             // Basic Settings Section

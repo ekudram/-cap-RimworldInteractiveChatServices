@@ -376,6 +376,11 @@ namespace _CAP__Chat_Interactive
             TooltipHandler.TipRegion(autoConnectRect, "RICS.Twitch.AutoConnectTooltip".Translate()
             );
 
+            listing.Gap(6f);
+            Rect hideAlertRect = listing.GetRect(30f);
+            Widgets.CheckboxLabeled(hideAlertRect, "RICS.Alert.SuppressDisconnect".Translate(), ref settings.SuppressDisconnectAlert);
+            TooltipHandler.TipRegion(hideAlertRect, "RICS.Alert.SuppressDisconnectTooltip".Translate());
+
             // Connection status and controls
             listing.Gap(12f);
 
@@ -752,8 +757,8 @@ namespace _CAP__Chat_Interactive
             // Authentication: Header 30 + gap 6 + gap 4 + label 24 + field 30 + buttons 35 + gap 8 + status 20 + type 18 + gap 20 = 195
             height += 195f;
 
-            // Connection Settings: Header 30 + gap 6 + gap 4 + checkbox 30 + gap 12 + status 24 + button 30 + gap 24 = 136
-            height += 136f;
+            // Connection Settings: header + auto-connect + hide-alert + status + button
+            height += 178f;
 
             // Whisper Settings: Header 30 + gap 6 + gap 4 + checkbox 30 + gap 12 + checkbox 30 + gap 12 + label 24 + field 30 + helper 20 + gap 12 + note 40 + gap 24 = 254
             height += 254f;
