@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+
+  <!-- ============================================== -->
+  <!--  Add new subcategory for clothing under Apparel -->
+  <!-- ============================================== -->
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs</xpath>
+    <value>
+      <ThingCategoryDef>
+        <defName>ApparelClothing</defName>
+        <label>clothing</label>
+        <parent>Apparel</parent>
+      </ThingCategoryDef>
+    </value>
+  </Operation>
+
+  <!-- ============================================== -->
+  <!--  Move apparel that was in ApparelMisc to ApparelClothing -->
+  <!-- ============================================== -->
+
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="Apparel_TribalA"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelClothing</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="Apparel_Parka"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelClothing</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="Apparel_Pants"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelClothing</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="Apparel_BasicShirt"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelClothing</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="Apparel_CollarShirt"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelClothing</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="Apparel_Duster"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelClothing</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="Apparel_Jacket"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelClothing</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="Apparel_Robe"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelClothing</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <!-- Move lab coat out of Misc. Def is Anomaly content. -->
+  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Anomaly">
+    <xpath>Defs/ThingDef[defName="Apparel_LabCoat"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelClothing</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <!-- ============================================== -->
+  <!--  Move Biotech apparel from ApparelMisc to ApparelUtility -->
+  <!-- ============================================== -->
+
+  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Biotech">
+    <xpath>Defs/ThingDef[defName="Apparel_Bandolier"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelUtility</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Biotech">
+    <xpath>Defs/ThingDef[defName="Apparel_Sash"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelUtility</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <!-- ============================================== -->
+  <!--  Move Ideology apparel from ApparelMisc to proper categories -->
+  <!-- ============================================== -->
+
+  <!-- Slave body strap → ApparelUtility -->
+  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Ideology">
+    <xpath>Defs/ThingDef[defName="Apparel_BodyStrap"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelUtility</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <!-- Burka → ApparelClothing -->
+  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Ideology">
+    <xpath>Defs/ThingDef[defName="Apparel_Burka"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelClothing</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <!-- ============================================== -->
+  <!--  Move Royalty psychic apparel from ApparelMisc to ApparelClothing -->
+  <!-- ============================================== -->
+
+  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_PsyfocusShirt"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelClothing</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_PsyfocusVest"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelClothing</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_PsyfocusRobe"]/thingCategories</xpath>
+    <value>
+      <thingCategories>
+        <li>ApparelClothing</li>
+      </thingCategories>
+    </value>
+  </Operation>
+
+</Patch>

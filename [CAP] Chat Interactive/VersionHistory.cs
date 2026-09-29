@@ -485,14 +485,28 @@ Also changed message about Ownership and adding mid game to be more clear about 
 ──────────────
 - !mypawn story shows race and xenotype (when Biotech is active).
 
+<b>TRANSLATIONS</b>
+───────────────────
+- Redeem thank-you keyed string.
+- !mypawn story race and xenotype keys.
+"
+                },
+                        {"1.52",
+@"===========================================================
+                         RICS version 1.52 - Changelog
+                         Pre-Release
+===========================================================
+
+<b>FIXED</b>
+───────────
+- Lab coat category patch now requires Anomaly. Games with Biotech but not Anomaly no longer error on load, because that apparel def is not present.
+
 <b>ADDED</b>
 ────────────
 - Twitch, YouTube, and Kick each show a right-side warning while that service is turned on and disconnected. Each service's settings tab can hide its own warning.
 
 <b>TRANSLATIONS</b>
 ───────────────────
-- Redeem thank-you keyed string.
-- !mypawn story race and xenotype keys.
 - Disconnect-alert labels and the hide-warning checkbox.
 "
                 }
