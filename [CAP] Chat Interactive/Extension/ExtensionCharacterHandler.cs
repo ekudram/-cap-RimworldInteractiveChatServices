@@ -11,6 +11,7 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using Verse;
 
@@ -195,6 +196,7 @@ namespace CAP_ChatInteractive.Extension
                     };
                 }
 
+                string viewerName = ViewerDisplayName(job);
                 var traits = new List<object>();
                 if (pawn.story?.traits?.allTraits != null)
                 {
@@ -203,11 +205,12 @@ namespace CAP_ChatInteractive.Extension
                         if (trait?.def == null)
                             continue;
                         bool geneLocked = ModsConfig.BiotechActive && trait.sourceGene != null;
+                        string rawDesc = trait.CurrentData?.description ?? trait.def.description;
                         traits.Add(new
                         {
                             label = Plain(trait.LabelCap),
                             geneLocked,
-                            description = Plain(trait.CurrentData?.description ?? trait.def.description)
+                            description = ResolvePawnTokens(Plain(rawDesc), viewerName, pawn)
                         });
                     }
                 }
@@ -569,7 +572,7 @@ namespace CAP_ChatInteractive.Extension
 
             return new
             {
-                label = Plain(weapon.LabelCap),
+                label = ItemLabel(weapon, quality),
                 quality,
                 wornPercent = (int?)null,
                 damage,
@@ -607,10 +610,10 @@ namespace CAP_ChatInteractive.Extension
 
                 list.Add(new
                 {
-                    label = Plain(item.LabelCap),
+                    label = ItemLabel(item, quality),
                     quality,
                     wornPercent = wornPct,
-                    bodyPartsCovered = covered,
+                    bodyPartsCovered = Plain(covered),
                     traits = Array.Empty<object>()
                 });
             }
@@ -672,11 +675,93 @@ namespace CAP_ChatInteractive.Extension
             return pawn.records.GetAsInt(def);
         }
 
+        private static string ViewerDisplayName(ExtensionJob job)
+        {
+            string name = ExtensionViewerContext.ResolveViewerName(job);
+            if (string.IsNullOrEmpty(name))
+                return name;
+            try
+            {
+                Viewer v = Viewers.GetViewerNoAdd(name);
+                if (!string.IsNullOrWhiteSpace(v?.DisplayName))
+                    return v.DisplayName;
+            }
+            catch { /* username is enough */ }
+            return name;
+        }
+
+        /// <summary>
+        /// Grammar tokens in trait XML. Name uses the Twitch viewer (fun), pronouns follow pawn gender.
+        /// Same token set as the store / traits editor.
+        /// </summary>
+        private static string ResolvePawnTokens(string text, string viewerName, Pawn pawn)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            string name = string.IsNullOrWhiteSpace(viewerName)
+                ? (pawn?.LabelShort ?? "they")
+                : viewerName.Trim();
+
+            bool female = pawn != null && pawn.gender == Gender.Female;
+            bool male = pawn != null && pawn.gender == Gender.Male;
+            string pronoun = female ? "she" : male ? "he" : "they";
+            string possessive = female ? "her" : male ? "his" : "their";
+            string objective = female ? "her" : male ? "him" : "them";
+
+            string[] keys =
+            {
+                "PAWN_nameDef", "PAWN_name", "PAWN_label", "PAWN_def",
+                "PAWN_pronoun", "PAWN_possessive", "PAWN_objective",
+                "PANN_nameDef", "PANN_pronoun", "PANN_possessive", "PANN_objective"
+            };
+            string[] vals =
+            {
+                name, name, name, name,
+                pronoun, possessive, objective,
+                name, pronoun, possessive, objective
+            };
+
+            for (int i = 0; i < keys.Length; i++)
+            {
+                text = text.Replace("{" + keys[i] + "}", vals[i]);
+                text = text.Replace("[" + keys[i] + "]", vals[i]);
+            }
+            return text;
+        }
+
+        private static string ItemLabel(Thing thing, string quality)
+        {
+            if (thing == null)
+                return "";
+            string label = Plain(thing.LabelCap);
+            if (string.IsNullOrEmpty(label))
+                label = Plain(thing.LabelNoCount);
+            if (!string.IsNullOrEmpty(quality) && !string.IsNullOrEmpty(label))
+            {
+                label = Regex.Replace(
+                    label,
+                    @"\s*\(" + Regex.Escape(quality) + @"\)\s*$",
+                    "",
+                    RegexOptions.IgnoreCase);
+                label = Regex.Replace(
+                    label,
+                    @"\s+" + Regex.Escape(quality) + @"\s*$",
+                    "",
+                    RegexOptions.IgnoreCase);
+            }
+            return (label ?? "").Trim();
+        }
+
         private static string Plain(string text)
         {
             if (string.IsNullOrEmpty(text))
                 return text;
-            return text.StripTags();
+            string s = text;
+            try { s = s.StripTags(); } catch { /* keep */ }
+            // Quality-color mods and chat-style tags: <color=#FFFFFF>Normal</color>
+            s = Regex.Replace(s, @"<[^>]+>", string.Empty);
+            return s.Trim();
         }
     }
 }
