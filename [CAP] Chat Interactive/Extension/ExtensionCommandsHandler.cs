@@ -36,7 +36,7 @@ namespace CAP_ChatInteractive.Extension
             try
             {
                 string prefix = ChatCommandProcessor.GetCommandPrefix();
-                var message = new ChatMessageWrapper(viewer, prefix + "help", "extension");
+                var message = ExtensionViewerContext.CreateCommandMessage(viewer, prefix + "help");
                 var visible = new List<object>();
                 var byId = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 

@@ -509,6 +509,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - Extension character sheet strips quality color tags from apparel/weapon labels (same idea as chat StripTags). Trait descriptions resolve {PAWN_nameDef} to the viewer name and pronouns from pawn gender.
 - Twitch Extension LocalHttp colony tab: live settlement name, date, snapshot (storyteller, difficulty, days, wealth, threat points), population (viewer vs non-viewer, top animals, player mechanoids), current research, and active threats. Structured JSON, not the chat command processor.
 - Twitch Extension LocalHttp commands tab: lists enabled commands the viewer can use and runs them with panel-only results (no public chat). AI bot commands stay hidden.
+- Extension command runs reuse the viewer's stored Twitch/YouTube/Kick id so pawn assignment still finds the pawn.
 
 <b>TRANSLATIONS</b>
 ───────────────────

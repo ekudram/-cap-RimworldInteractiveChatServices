@@ -134,7 +134,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                     return null;
 
                 if (string.IsNullOrEmpty(messageWrapper.PlatformUserId))
-                    return null;
+                    return manager.GetAssignedPawn(messageWrapper.Username);
 
                 string plat = messageWrapper.Platform?.ToLowerInvariant() ?? "unknown";
                 string key = $"{plat}:{messageWrapper.PlatformUserId}";
@@ -142,7 +142,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
                 if (manager.viewerPawnAssignments.TryGetValue(key, out string thingId))
                     return GameComponent_PawnAssignmentManager.FindPawnByThingId(thingId);
 
-                // Fallback: assignment manager full lookup (legacy keys)
+                // Fallback: assignment manager full lookup (legacy keys / username)
                 return manager.GetAssignedPawn(messageWrapper);
             }
             catch (Exception ex)

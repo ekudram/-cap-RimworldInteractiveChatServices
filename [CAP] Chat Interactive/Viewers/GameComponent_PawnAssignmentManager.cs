@@ -150,7 +150,8 @@ namespace CAP_ChatInteractive
             if (message == null)
                 return null;
 
-            return GetAssignedPawnIdentifier(GetViewerIdentifier(message));
+            string identifier = FindViewerIdentifier(message.Username, message);
+            return GetAssignedPawnIdentifier(identifier);
         }
 
         public Pawn GetAssignedPawn(string username)

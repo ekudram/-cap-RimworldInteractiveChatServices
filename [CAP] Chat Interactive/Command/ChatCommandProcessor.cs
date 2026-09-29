@@ -173,12 +173,9 @@ namespace CAP_ChatInteractive
 
             string prefix = GetCommandPrefix();
             string raw = prefix + command.Name + (args.Length > 0 ? " " + string.Join(" ", args) : "");
-            var message = new ChatMessageWrapper(
-                username: viewerName,
-                message: raw,
-                platform: "extension");
+            var message = Extension.ExtensionViewerContext.CreateCommandMessage(viewerName, raw);
 
-            var viewer = Viewers.GetViewer(message);
+            var viewer = Viewers.GetViewerNoAdd(message.Username) ?? Viewers.GetViewer(message.Username);
             if (viewer == null)
             {
                 fail.ErrorCode = "Unauthorized";
