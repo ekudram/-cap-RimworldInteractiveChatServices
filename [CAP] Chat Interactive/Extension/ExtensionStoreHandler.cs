@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using RimWorld;
 using Verse;
 
 namespace CAP_ChatInteractive.Extension
@@ -48,7 +49,7 @@ namespace CAP_ChatInteractive.Extension
             Pawn pawn = null;
             if (!string.IsNullOrEmpty(viewerName))
                 pawn = CAPChatInteractiveMod.GetPawnAssignmentManager()?.GetAssignedPawn(viewerName);
-            if (pawn != null && pawn.Destroyed)
+            if (pawn != null && (pawn.Destroyed || pawn.Dead))
                 pawn = null;
 
             string pawnName = pawn != null
@@ -57,23 +58,26 @@ namespace CAP_ChatInteractive.Extension
             if (string.IsNullOrWhiteSpace(pawnName))
                 pawnName = "Timmy";
 
+            int maxTraits = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.MaxTraits ?? 4;
+            int traitCount = EffectiveTraitCount(pawn);
+            bool hasPawn = pawn != null;
+
             var items = TraitsManager.AllBuyableTraits?.Values
                 .Where(t => t != null && t.modactive && (t.CanAdd || t.CanRemove))
                 .OrderBy(t => t.Name ?? t.DefName, StringComparer.OrdinalIgnoreCase)
-                .Select(t => (object)new
-                {
-                    id = t.DefName,
-                    name = Plain(t.Name) ?? t.DefName,
-                    price = t.AddPrice,
-                    addPrice = t.AddPrice,
-                    removePrice = t.RemovePrice,
-                    canAdd = t.CanAdd,
-                    canRemove = t.CanRemove,
-                    max = 1,
-                    description = ResolveTraitTokens(Plain(t.Description), pawnName, pawn)
-                })
+                .Select(t => TraitRow(t, pawn, pawnName, hasPawn, traitCount, maxTraits))
                 .ToList() ?? new List<object>();
-            return EnvelopeList("traits", items, pawnName);
+
+            return ExtensionEnvelope.Ok(new
+            {
+                category = "traits",
+                storeCommandsEnabled = CommandUtility.AreStoreCommandsEnabled(),
+                pawnName,
+                hasPawn,
+                traitCount,
+                maxTraits,
+                items
+            });
         });
 
         public static string HandleEvents(ExtensionJob job) => ListOrFail(() =>
@@ -276,6 +280,80 @@ namespace CAP_ChatInteractive.Extension
             {
                 /* keep defaults */
             }
+        }
+
+        private static object TraitRow(BuyableTrait t, Pawn pawn, string pawnName, bool hasPawn, int traitCount, int maxTraits)
+        {
+            bool owned = PawnHasTrait(pawn, t);
+            string addWhy = null;
+            bool addEnabled = false;
+            if (!t.CanAdd)
+                addWhy = "This trait cannot be added.";
+            else if (!hasPawn)
+                addWhy = "Need an assigned pawn.";
+            else if (owned)
+                addWhy = "Pawn already has this trait.";
+            else if (traitCount >= maxTraits && !t.BypassLimit)
+                addWhy = "At max traits (" + maxTraits + ").";
+            else
+                addEnabled = true;
+
+            string removeWhy = null;
+            bool removeEnabled = false;
+            if (!t.CanRemove)
+                removeWhy = "This trait cannot be removed.";
+            else if (!hasPawn)
+                removeWhy = "Need an assigned pawn.";
+            else if (!owned)
+                removeWhy = "Pawn does not have this trait.";
+            else
+                removeEnabled = true;
+
+            return new
+            {
+                id = t.DefName,
+                name = Plain(t.Name) ?? t.DefName,
+                price = t.AddPrice,
+                addPrice = t.AddPrice,
+                removePrice = t.RemovePrice,
+                canAdd = t.CanAdd,
+                canRemove = t.CanRemove,
+                bypassLimit = t.BypassLimit,
+                owned,
+                addEnabled,
+                removeEnabled,
+                addDisabledReason = addWhy,
+                removeDisabledReason = removeWhy,
+                max = 1,
+                description = ResolveTraitTokens(Plain(t.Description), pawnName, pawn)
+            };
+        }
+
+        private static bool PawnHasTrait(Pawn pawn, BuyableTrait t)
+        {
+            if (pawn?.story?.traits?.allTraits == null || t == null)
+                return false;
+            return pawn.story.traits.allTraits.Any(x =>
+                x != null && x.def != null
+                && x.def.defName == t.DefName
+                && x.Degree == t.Degree);
+        }
+
+        private static int EffectiveTraitCount(Pawn pawn)
+        {
+            if (pawn?.story?.traits?.allTraits == null)
+                return 0;
+            int counted = 0;
+            foreach (var trait in pawn.story.traits.allTraits)
+            {
+                if (trait?.def == null)
+                    continue;
+                var buyable = TraitsManager.AllBuyableTraits.Values
+                    .FirstOrDefault(bt => bt.DefName == trait.def.defName && bt.Degree == trait.Degree);
+                if (buyable == null || !buyable.BypassLimit)
+                    counted++;
+            }
+            return counted;
         }
 
         private static string ResolveTraitTokens(string text, string pawnName, Pawn pawn)
