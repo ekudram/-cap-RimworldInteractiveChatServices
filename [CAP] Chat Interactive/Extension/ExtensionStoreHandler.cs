@@ -44,19 +44,36 @@ namespace CAP_ChatInteractive.Extension
 
         public static string HandleTraits(ExtensionJob job) => ListOrFail(() =>
         {
+            string viewerName = ExtensionViewerContext.ResolveViewerName(job);
+            Pawn pawn = null;
+            if (!string.IsNullOrEmpty(viewerName))
+                pawn = CAPChatInteractiveMod.GetPawnAssignmentManager()?.GetAssignedPawn(viewerName);
+            if (pawn != null && pawn.Destroyed)
+                pawn = null;
+
+            string pawnName = pawn != null
+                ? (pawn.LabelShortCap ?? pawn.LabelShort)
+                : "Timmy";
+            if (string.IsNullOrWhiteSpace(pawnName))
+                pawnName = "Timmy";
+
             var items = TraitsManager.AllBuyableTraits?.Values
-                .Where(t => t != null && t.modactive && t.CanAdd && t.AddPrice > 0)
+                .Where(t => t != null && t.modactive && (t.CanAdd || t.CanRemove))
                 .OrderBy(t => t.Name ?? t.DefName, StringComparer.OrdinalIgnoreCase)
                 .Select(t => (object)new
                 {
                     id = t.DefName,
                     name = Plain(t.Name) ?? t.DefName,
                     price = t.AddPrice,
+                    addPrice = t.AddPrice,
+                    removePrice = t.RemovePrice,
+                    canAdd = t.CanAdd,
+                    canRemove = t.CanRemove,
                     max = 1,
-                    description = Plain(t.Description)
+                    description = ResolveTraitTokens(Plain(t.Description), pawnName, pawn)
                 })
                 .ToList() ?? new List<object>();
-            return EnvelopeList("traits", items);
+            return EnvelopeList("traits", items, pawnName);
         });
 
         public static string HandleEvents(ExtensionJob job) => ListOrFail(() =>
@@ -154,13 +171,14 @@ namespace CAP_ChatInteractive.Extension
                     "No viewer identity. For LocalHttp send X-RICS-Dev-Viewer or ?viewer=");
             }
 
-            ParseBuy(job?.Body, out string category, out string name, out string id, out int qty, out string xenotype);
+            ParseBuy(job?.Body, out string category, out string name, out string id, out int qty, out string xenotype, out string action);
             category = (category ?? "").Trim().ToLowerInvariant();
             string target = string.IsNullOrWhiteSpace(id) ? name : id;
             if (string.IsNullOrWhiteSpace(target))
                 return ExtensionEnvelope.Fail("BadRequest", "Missing item name.");
             if (qty < 1)
                 qty = 1;
+            action = (action ?? "").Trim().ToLowerInvariant();
 
             bool storeOn = CommandUtility.AreStoreCommandsEnabled();
             if (!storeOn && category != "items")
@@ -175,7 +193,7 @@ namespace CAP_ChatInteractive.Extension
                     args = qty > 1 ? target + " " + qty : target;
                     break;
                 case "traits":
-                    commandId = "addtrait";
+                    commandId = action == "remove" || action == "removetrait" ? "removetrait" : "addtrait";
                     args = string.IsNullOrWhiteSpace(name) ? target : name;
                     break;
                 case "events":
@@ -223,23 +241,25 @@ namespace CAP_ChatInteractive.Extension
             }
         }
 
-        private static string EnvelopeList(string category, List<object> items)
+        private static string EnvelopeList(string category, List<object> items, string pawnName = null)
         {
             return ExtensionEnvelope.Ok(new
             {
                 category,
                 storeCommandsEnabled = CommandUtility.AreStoreCommandsEnabled(),
+                pawnName,
                 items
             });
         }
 
-        private static void ParseBuy(string body, out string category, out string name, out string id, out int qty, out string xenotype)
+        private static void ParseBuy(string body, out string category, out string name, out string id, out int qty, out string xenotype, out string action)
         {
             category = "";
             name = "";
             id = "";
             qty = 1;
             xenotype = "";
+            action = "";
             if (string.IsNullOrWhiteSpace(body))
                 return;
             try
@@ -249,12 +269,46 @@ namespace CAP_ChatInteractive.Extension
                 name = jo.Value<string>("name") ?? "";
                 id = jo.Value<string>("id") ?? jo.Value<string>("defName") ?? "";
                 xenotype = jo.Value<string>("xenotype") ?? "";
+                action = jo.Value<string>("action") ?? "";
                 qty = jo.Value<int?>("qty") ?? jo.Value<int?>("quantity") ?? 1;
             }
             catch
             {
                 /* keep defaults */
             }
+        }
+
+        private static string ResolveTraitTokens(string text, string pawnName, Pawn pawn)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            string name = string.IsNullOrWhiteSpace(pawnName) ? "Timmy" : pawnName.Trim();
+            bool female = pawn != null && pawn.gender == Gender.Female;
+            bool male = pawn != null && pawn.gender == Gender.Male;
+            string pronoun = pawn == null ? "he" : (female ? "she" : male ? "he" : "they");
+            string possessive = pawn == null ? "his" : (female ? "her" : male ? "his" : "their");
+            string objective = pawn == null ? "him" : (female ? "her" : male ? "him" : "them");
+
+            string[] keys =
+            {
+                "PAWN_nameDef", "PAWN_name", "PAWN_label", "PAWN_def",
+                "PAWN_pronoun", "PAWN_possessive", "PAWN_objective",
+                "PANN_nameDef", "PANN_pronoun", "PANN_possessive", "PANN_objective"
+            };
+            string[] vals =
+            {
+                name, name, name, name,
+                pronoun, possessive, objective,
+                name, pronoun, possessive, objective
+            };
+
+            for (int i = 0; i < keys.Length; i++)
+            {
+                text = text.Replace("{" + keys[i] + "}", vals[i]);
+                text = text.Replace("[" + keys[i] + "]", vals[i]);
+            }
+            return text;
         }
 
         private static string Plain(string text)

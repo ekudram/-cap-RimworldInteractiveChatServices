@@ -512,6 +512,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - Extension command runs reuse the viewer's stored Twitch/YouTube/Kick id so pawn assignment still finds the pawn.
 - Twitch Extension LocalHttp still answers while the game is paused (job queue drains on Update, same as chat commands).
 - Twitch Extension LocalHttp store tab: filtered items/traits/events/weather/races lists and panel-only buy (enabled, active-mod, researched only — not the full store JSON).
+- Store traits tab uses Add / Remove (!addtrait / !removetrait). Trait {PAWN_nameDef} uses the assigned pawn’s name, or Timmy if they have no pawn.
 
 <b>TRANSLATIONS</b>
 ───────────────────
