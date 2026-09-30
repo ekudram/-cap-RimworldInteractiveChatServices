@@ -74,6 +74,43 @@ namespace CAP_ChatInteractive.Extension
                 return ExtensionEnvelope.Fail("MethodNotAllowed", "POST { \"id\": thingId } to unclaim.");
             }
 
+            if (path == "store/items")
+            {
+                if (method == "GET")
+                    return ExtensionStoreHandler.HandleItems(job);
+                return ExtensionEnvelope.Fail("MethodNotAllowed", "Use GET for store/items.");
+            }
+            if (path == "store/traits")
+            {
+                if (method == "GET")
+                    return ExtensionStoreHandler.HandleTraits(job);
+                return ExtensionEnvelope.Fail("MethodNotAllowed", "Use GET for store/traits.");
+            }
+            if (path == "store/events")
+            {
+                if (method == "GET")
+                    return ExtensionStoreHandler.HandleEvents(job);
+                return ExtensionEnvelope.Fail("MethodNotAllowed", "Use GET for store/events.");
+            }
+            if (path == "store/weather")
+            {
+                if (method == "GET")
+                    return ExtensionStoreHandler.HandleWeather(job);
+                return ExtensionEnvelope.Fail("MethodNotAllowed", "Use GET for store/weather.");
+            }
+            if (path == "store/races")
+            {
+                if (method == "GET")
+                    return ExtensionStoreHandler.HandleRaces(job);
+                return ExtensionEnvelope.Fail("MethodNotAllowed", "Use GET for store/races.");
+            }
+            if (path == "store/buy")
+            {
+                if (method == "POST")
+                    return ExtensionStoreHandler.HandleBuy(job);
+                return ExtensionEnvelope.Fail("MethodNotAllowed", "POST { \"category\", \"name\" } to buy.");
+            }
+
             return ExtensionEnvelope.Fail("NotImplemented", "Path not implemented yet: " + path + " (R1 skeleton — add builders in R2+)");
         }
 

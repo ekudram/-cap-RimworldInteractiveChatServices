@@ -510,6 +510,8 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - Twitch Extension LocalHttp colony tab: live settlement name, date, snapshot (storyteller, difficulty, days, wealth, threat points), population (viewer vs non-viewer, top animals, player mechanoids), current research, and active threats. Structured JSON, not the chat command processor.
 - Twitch Extension LocalHttp commands tab: lists enabled commands the viewer can use and runs them with panel-only results (no public chat). AI bot commands stay hidden.
 - Extension command runs reuse the viewer's stored Twitch/YouTube/Kick id so pawn assignment still finds the pawn.
+- Twitch Extension LocalHttp still answers while the game is paused (job queue drains on Update, same as chat commands).
+- Twitch Extension LocalHttp store tab: filtered items/traits/events/weather/races lists and panel-only buy (enabled, active-mod, researched only — not the full store JSON).
 
 <b>TRANSLATIONS</b>
 ───────────────────

@@ -464,6 +464,11 @@ namespace CAP_ChatInteractive
                     _aiChatBotService.ProcessFileBasedAICommands();
                 }
             }
+
+            // Twitch Extension jobs wait on the main thread. GameComponentTick does not run
+            // while paused; drain here so LocalHttp still answers (same idea as chat commands).
+            if (_extensionService != null)
+                _extensionService.Tick();
         }
     }
 }

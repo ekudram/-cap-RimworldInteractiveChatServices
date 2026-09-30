@@ -67,7 +67,7 @@ namespace CAP_ChatInteractive.Extension
                 var done = await Task.WhenAny(job.Completion.Task, delay).ConfigureAwait(false);
                 if (done == job.Completion.Task)
                     return await job.Completion.Task.ConfigureAwait(false);
-                return ExtensionEnvelope.Fail("Timeout", "RICS did not process the request in time (main thread busy or paused).");
+                return ExtensionEnvelope.Fail("Timeout", "RICS did not process the request in time (main thread busy).");
             }
         }
     }

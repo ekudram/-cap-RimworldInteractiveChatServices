@@ -38,7 +38,7 @@ namespace CAP_ChatInteractive.Extension
                 ok = true,
                 service = "RICS.TwitchExtension",
                 transport = "localHttp",
-                version = "r4"
+                version = "r5"
             });
         }
     }
