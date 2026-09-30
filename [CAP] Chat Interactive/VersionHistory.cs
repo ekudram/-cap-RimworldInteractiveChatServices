@@ -500,6 +500,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
 <b>FIXED</b>
 ───────────
 - Lab coat category patch now requires Anomaly. Games with Biotech but not Anomaly no longer error on load, because that apparel def is not present.
+- Human race settings list male and female only. Other was being saved because a both-genders result was treated as including no gender. Genderless races still allow Other. The file updates the next time race settings load.
 
 <b>ADDED</b>
 ────────────

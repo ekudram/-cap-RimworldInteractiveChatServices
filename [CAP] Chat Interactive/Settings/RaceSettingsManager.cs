@@ -1,19 +1,10 @@
-﻿// RaceSettingsManager.cs
+﻿// File: RaceSettingsManager.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
 
 using CAP_ChatInteractive;
 using RimWorld;
@@ -46,7 +37,8 @@ namespace _CAP__Chat_Interactive.Utilities
     {
         public bool AllowMale { get; set; } = true;
         public bool AllowFemale { get; set; } = true;
-        public bool AllowOther { get; set; } = true;
+        // Gender.None. Core humans are male/female; only a genderless race turns this on.
+        public bool AllowOther { get; set; } = false;
     }
 
     public enum PawnSortMethod
@@ -106,13 +98,17 @@ namespace _CAP__Chat_Interactive.Utilities
                 }
                 else
                 {
-                    // Existing race - mark as active
-                    _raceSettings[race.defName].ModActive = true;
+                    // Existing race - mark as active and re-derive genders.
+                    // Saved JSON is not a player toggle for this; the old Either path
+                    // stored AllowOther true for Core Human and would never correct itself.
+                    var existing = _raceSettings[race.defName];
+                    existing.ModActive = true;
+                    existing.AllowedGenders = GetAllowedGendersFromRace(race);
 
                     // SPECIAL CLEANUP: For Human only, remove any xenotypes that are no longer in the game
                     if (race.defName == "Human")
                     {
-                        CleanInactiveXenotypesForHuman(_raceSettings[race.defName]);
+                        CleanInactiveXenotypesForHuman(existing);
                     }
                 }
             }
@@ -302,14 +298,55 @@ namespace _CAP__Chat_Interactive.Utilities
             return new List<string>();
         }
 
+        /// <summary>
+        /// Male/female come from Core <see cref="RaceProperties"/> first.
+        /// Human has <c>hasGenders</c> and no <c>forceGender</c>, so vanilla only rolls Male or Female.
+        /// HAR <see cref="GenderPossibility.Either"/> means both of those, including for non-alien races.
+        /// It does not mean <see cref="Gender.None"/>.
+        /// </summary>
         private static AllowedGenders GetAllowedGendersFromRace(ThingDef race)
         {
-            var allowedGenders = new AllowedGenders();
-            //Logger.Debug("=== START GENDER CHECK ===");
+            var allowedGenders = new AllowedGenders
+            {
+                AllowMale = false,
+                AllowFemale = false,
+                AllowOther = false
+            };
 
+            RaceProperties props = race?.race;
+            if (props == null)
+            {
+                allowedGenders.AllowMale = true;
+                allowedGenders.AllowFemale = true;
+                return allowedGenders;
+            }
+
+            // PawnGenerator assigns Gender.None only when the race has no genders.
+            if (!props.hasGenders)
+            {
+                allowedGenders.AllowOther = true;
+                Logger.Debug($"Genderless race {race.defName}: Other only");
+                return allowedGenders;
+            }
+
+            if (props.forceGender == Gender.Male)
+            {
+                allowedGenders.AllowMale = true;
+            }
+            else if (props.forceGender == Gender.Female)
+            {
+                allowedGenders.AllowFemale = true;
+            }
+            else
+            {
+                allowedGenders.AllowMale = true;
+                allowedGenders.AllowFemale = true;
+            }
+
+            // HAR can narrow a gendered race to male-only or female-only.
+            // Core Human is not a ThingDef_AlienRace, so the provider returns Either.
             if (CAPChatInteractiveMod.Instance?.AlienProvider != null)
             {
-                Logger.Debug("=== Reached AlienProvider Gender Check");
                 var alienProvider = CAPChatInteractiveMod.Instance.AlienProvider;
 
                 try
@@ -320,7 +357,6 @@ namespace _CAP__Chat_Interactive.Utilities
                     Logger.Debug($"HAR gender info for {race.defName}: " +
                                  $"Inherent={inherentGenders}, MaleProb={probabilities.maleProbability}, FemaleProb={probabilities.femaleProbability}");
 
-                    // Set allowed genders based on HAR restrictions
                     switch (inherentGenders)
                     {
                         case GenderPossibility.Male:
@@ -335,9 +371,6 @@ namespace _CAP__Chat_Interactive.Utilities
                             break;
                         case GenderPossibility.Either:
                         default:
-                            allowedGenders.AllowMale = true;
-                            allowedGenders.AllowFemale = true;
-                            allowedGenders.AllowOther = true;
                             break;
                     }
                 }
@@ -348,12 +381,11 @@ namespace _CAP__Chat_Interactive.Utilities
             }
             else
             {
-                Logger.Debug($"No alien provider available for {race.defName}, using default gender settings");
+                Logger.Debug($"No alien provider for {race.defName}; using Core race gender");
             }
 
             Logger.Debug($"Final gender settings for {race.defName}: " +
                          $"Male={allowedGenders.AllowMale}, Female={allowedGenders.AllowFemale}, Other={allowedGenders.AllowOther}");
-            Logger.Debug("=== END GENDER CHECK ===");
             return allowedGenders;
         }
 
