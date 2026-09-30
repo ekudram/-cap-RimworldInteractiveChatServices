@@ -472,8 +472,8 @@ Also changed message about Ownership and adding mid game to be more clear about 
                 },
                         {"1.51",
 @"===========================================================
-                         RICS version 1.51 - Changelog
-                         
+                         RICS version 1.51 HotFix - Changelog
+                         September 24, 2026
 ===========================================================
 
 <b>FIXED</b>
@@ -496,6 +496,12 @@ Also changed message about Ownership and adding mid game to be more clear about 
                          RICS version 1.52 - Changelog
                          Pre-Release
 ===========================================================
+
+<b>MEMORANDUM</b>
+─────────────────
+
+- Twitch extension is still not ready.  So please keep the settings off.
+- The settings you see for the Twitch extension are for testing.  They will change.
 
 <b>FIXED</b>
 ───────────
