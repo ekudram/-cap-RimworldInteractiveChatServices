@@ -133,6 +133,20 @@
     <useCommandCooldown>true</useCommandCooldown>
   </CAP_ChatInteractive.ChatCommandDef>
 
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>SetAlias</defName>
+    <commandText>setalias</commandText>
+    <label>set alias</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ModCommands.SetAlias</commandClass>
+    <requiresMod>true</requiresMod>
+    <commandDescription>Change a command alias. Usage: !setalias command alias, !setalias command to show it, !setalias command clear to remove it. Does not rename the command.</commandDescription>
+    <permissionLevel>moderator</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+    <excludeFromPricelist>true</excludeFromPricelist>
+  </CAP_ChatInteractive.ChatCommandDef>
+
   <!-- Viewer Commands -->
   
   <CAP_ChatInteractive.ChatCommandDef>

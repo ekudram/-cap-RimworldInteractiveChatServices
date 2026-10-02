@@ -457,6 +457,18 @@
   <RICS.CC.rto.range>Duration must be between {0} seconds and {1} hours.</RICS.CC.rto.range>
   <RICS.CC.rto.ok>RICS timeout {0} for {1}. Silent until {2}.</RICS.CC.rto.ok>
 
+  <!-- !setalias (moderator) — writes Command Editor alias -->
+  <RICS.CC.setalias.usage>Usage: !setalias command [alias|clear]. Example: !setalias raid r</RICS.CC.setalias.usage>
+  <RICS.CC.setalias.notfound>No command named '{0}'.</RICS.CC.setalias.notfound>
+  <RICS.CC.setalias.badalias>Alias must be 2-16 letters or numbers, no prefix.</RICS.CC.setalias.badalias>
+  <RICS.CC.setalias.samename>'{0}' is already that command's name. Pick a different alias.</RICS.CC.setalias.samename>
+  <RICS.CC.setalias.taken>'{0}' is already used by another command.</RICS.CC.setalias.taken>
+  <RICS.CC.setalias.none>{0} has no alias.</RICS.CC.setalias.none>
+  <RICS.CC.setalias.current>{0} alias is {1}.</RICS.CC.setalias.current>
+  <RICS.CC.setalias.ok>Alias for {0} set to {1}. !{1} now runs {0}.</RICS.CC.setalias.ok>
+  <RICS.CC.setalias.cleared>Alias cleared for {0}.</RICS.CC.setalias.cleared>
+  <RICS.CC.setalias.savefail>Could not save alias for {0}.</RICS.CC.setalias.savefail>
+
   <!-- Channel points redeem thank-you ({0} reward name, {1} amount, {2} currency name) -->
   <RICS.CCP.RedeemThanks>Thank you for redeeming '{0}'! You received {1}{2}.</RICS.CCP.RedeemThanks>
 

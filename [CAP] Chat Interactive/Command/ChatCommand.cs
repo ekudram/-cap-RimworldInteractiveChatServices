@@ -125,6 +125,56 @@ namespace CAP_ChatInteractive
             }
         }
 
+        /// <summary>
+        /// Mutate one command's settings and write CommandSettings.json.
+        /// Also updates an open Command Manager so a later editor save cannot clobber the chat change.
+        /// </summary>
+        public static bool UpdateAndSave(string commandName, Action<CommandSettings> mutate)
+        {
+            if (string.IsNullOrEmpty(commandName) || mutate == null)
+                return false;
+
+            try
+            {
+                string json = JsonFileManager.LoadFile("CommandSettings.json");
+                var allSettings = string.IsNullOrEmpty(json)
+                    ? new Dictionary<string, CommandSettings>(StringComparer.OrdinalIgnoreCase)
+                    : JsonConvert.DeserializeObject<Dictionary<string, CommandSettings>>(json)
+                      ?? new Dictionary<string, CommandSettings>(StringComparer.OrdinalIgnoreCase);
+
+                string key = allSettings.Keys.FirstOrDefault(k =>
+                    k != null && k.Equals(commandName, StringComparison.OrdinalIgnoreCase)) ?? commandName;
+
+                if (!allSettings.TryGetValue(key, out var settings) || settings == null)
+                {
+                    settings = new CommandSettings();
+                    allSettings[key] = settings;
+                }
+
+                mutate(settings);
+
+                var dialog = Find.WindowStack?.WindowOfType<Dialog_CommandManager>();
+                if (dialog?.commandSettings != null)
+                {
+                    string dialogKey = dialog.commandSettings.Keys.FirstOrDefault(k =>
+                        k != null && k.Equals(commandName, StringComparison.OrdinalIgnoreCase));
+                    if (dialogKey != null)
+                        dialog.commandSettings[dialogKey] = settings;
+                    else
+                        dialog.commandSettings[commandName] = settings;
+                }
+
+                string newJson = JsonConvert.SerializeObject(allSettings, Formatting.Indented);
+                JsonFileManager.SaveFile("CommandSettings.json", newJson);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[ChatCommand] Failed to update settings for {commandName}: {ex.Message}");
+                return false;
+            }
+        }
+
         private static CommandSettings LoadSettingsFromJson(string commandName)
         {
             string json = JsonFileManager.LoadFile("CommandSettings.json");

@@ -817,19 +817,123 @@ namespace CAP_ChatInteractive
             if (command == null || string.IsNullOrEmpty(command.Name))
                 return;
 
-            string[] extras = command.Name.ToLowerInvariant() switch
-            {
-                "rban" => new[] { "ricsban" },
-                "runban" => new[] { "ricsunban" },
-                "rto" => new[] { "ricstimout", "rtimeout" },
-                _ => Array.Empty<string>()
-            };
-
-            foreach (string extra in extras)
+            foreach (string extra in BuiltInExtraAliases(command.Name))
             {
                 if (!_commands.ContainsKey(extra))
                     _commands[extra] = command;
             }
+        }
+
+        private static string[] BuiltInExtraAliases(string commandName)
+        {
+            if (string.IsNullOrEmpty(commandName))
+                return Array.Empty<string>();
+
+            switch (commandName.ToLowerInvariant())
+            {
+                case "rban":
+                    return new[] { "ricsban" };
+                case "runban":
+                    return new[] { "ricsunban" };
+                case "rto":
+                    return new[] { "ricstimout", "rtimeout" };
+                default:
+                    return Array.Empty<string>();
+            }
+        }
+
+        private static bool IsBuiltInExtraAlias(string alias)
+        {
+            if (string.IsNullOrEmpty(alias))
+                return false;
+            switch (alias.ToLowerInvariant())
+            {
+                case "ricsban":
+                case "ricsunban":
+                case "ricstimout":
+                case "rtimeout":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>Resolve a chat token to a registered command (primary name, editor alias, or built-in extra).</summary>
+        public static bool TryGetCommand(string text, out ChatCommand command)
+        {
+            command = null;
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+
+            text = text.Trim().TrimStart('!', '$').ToLowerInvariant();
+            if (_commands.TryGetValue(text, out command) && command != null)
+                return true;
+
+            foreach (var candidate in _commands.Values.Distinct())
+            {
+                if (candidate == null)
+                    continue;
+                if (string.Equals(candidate.Name, text, StringComparison.OrdinalIgnoreCase)
+                    || (!string.IsNullOrEmpty(candidate.Alias)
+                        && candidate.Alias.Equals(text, StringComparison.OrdinalIgnoreCase)))
+                {
+                    command = candidate;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>True if alias is another command's name, editor alias, or a hard-coded moderation extra.</summary>
+        public static bool IsAliasTaken(string alias, ChatCommand except)
+        {
+            if (string.IsNullOrWhiteSpace(alias))
+                return false;
+
+            alias = alias.Trim().TrimStart('!', '$').ToLowerInvariant();
+            if (IsBuiltInExtraAlias(alias))
+                return true;
+
+            if (_commands.TryGetValue(alias, out var mapped) && mapped != null && !ReferenceEquals(mapped, except))
+                return true;
+
+            foreach (var candidate in _commands.Values.Distinct())
+            {
+                if (candidate == null || ReferenceEquals(candidate, except))
+                    continue;
+                if (string.Equals(candidate.Name, alias, StringComparison.OrdinalIgnoreCase))
+                    return true;
+                if (!string.IsNullOrEmpty(candidate.Alias)
+                    && candidate.Alias.Equals(alias, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Swap the live alias key after !setalias. Does not touch the primary name or built-in extras.
+        /// </summary>
+        public static void RefreshAlias(ChatCommand command, string oldAlias, string newAlias)
+        {
+            if (command == null || string.IsNullOrEmpty(command.Name))
+                return;
+
+            if (!string.IsNullOrWhiteSpace(oldAlias))
+            {
+                string oldKey = oldAlias.Trim().TrimStart('!', '$').ToLowerInvariant();
+                if (!string.Equals(oldKey, command.Name, StringComparison.OrdinalIgnoreCase)
+                    && !IsBuiltInExtraAlias(oldKey)
+                    && _commands.TryGetValue(oldKey, out var mapped)
+                    && ReferenceEquals(mapped, command))
+                {
+                    _commands.Remove(oldKey);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(newAlias))
+                _commands[newAlias.Trim().TrimStart('!', '$').ToLowerInvariant()] = command;
         }
 
         private static bool IsRicsModerationCommand(string name)

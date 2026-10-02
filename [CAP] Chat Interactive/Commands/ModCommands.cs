@@ -628,4 +628,86 @@ namespace CAP_ChatInteractive.Commands.ModCommands
             return seconds == 1 ? "1 second" : seconds + " seconds";
         }
     }
+
+    /// <summary>Set or clear the Command Editor alias for a command. Moderator only.</summary>
+    public class SetAlias : ChatCommand
+    {
+        public override string Name => "setalias";
+
+        private static readonly Regex AliasPattern = new Regex("^[a-z0-9]{2,16}$", RegexOptions.Compiled);
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            if (args == null || args.Length == 0)
+                return "RICS.CC.setalias.usage".Translate();
+
+            string targetKey = NormalizeToken(args[0]);
+            if (!ChatCommandProcessor.TryGetCommand(targetKey, out ChatCommand command) || command == null)
+                return "RICS.CC.setalias.notfound".Translate(targetKey);
+
+            string oldAlias = command.Alias;
+
+            if (args.Length == 1)
+            {
+                if (string.IsNullOrEmpty(oldAlias))
+                    return "RICS.CC.setalias.none".Translate(command.Name);
+                return "RICS.CC.setalias.current".Translate(command.Name, oldAlias);
+            }
+
+            string raw = args[1] ?? "";
+            bool clear = IsClearToken(raw);
+            string newAlias = clear ? "" : NormalizeToken(raw);
+
+            if (!clear)
+            {
+                if (!AliasPattern.IsMatch(newAlias))
+                    return "RICS.CC.setalias.badalias".Translate();
+                if (string.Equals(newAlias, command.Name, StringComparison.OrdinalIgnoreCase))
+                    return "RICS.CC.setalias.samename".Translate(command.Name);
+                if (ChatCommandProcessor.IsAliasTaken(newAlias, command))
+                    return "RICS.CC.setalias.taken".Translate(newAlias);
+            }
+            else if (string.IsNullOrEmpty(oldAlias))
+            {
+                return "RICS.CC.setalias.none".Translate(command.Name);
+            }
+
+            bool saved = CommandSettingsManager.UpdateAndSave(command.Name, settings =>
+            {
+                settings.CommandAlias = newAlias;
+            });
+            if (!saved)
+                return "RICS.CC.setalias.savefail".Translate(command.Name);
+
+            ChatCommandProcessor.RefreshAlias(command, oldAlias, newAlias);
+            Logger.Message($"{messageWrapper.Username} set alias for {command.Name} to '{newAlias}'");
+
+            if (clear)
+                return "RICS.CC.setalias.cleared".Translate(command.Name);
+            return "RICS.CC.setalias.ok".Translate(command.Name, newAlias);
+        }
+
+        private static bool IsClearToken(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return false;
+            switch (raw.Trim().ToLowerInvariant())
+            {
+                case "clear":
+                case "none":
+                case "remove":
+                case "-":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static string NormalizeToken(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return "";
+            return raw.Trim().TrimStart('!', '$').ToLowerInvariant();
+        }
+    }
 }
