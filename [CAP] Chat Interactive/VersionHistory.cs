@@ -500,8 +500,15 @@ Also changed message about Ownership and adding mid game to be more clear about 
 <b>MEMORANDUM</b>
 ─────────────────
 
+- New moderator commmand: !setalias <command> <alias> — lets a moderator set a custom alias for a command.  Example: !setalias !bal !bald.
 - Twitch extension is still not ready.  So please keep the settings off.
 - The settings you see for the Twitch extension are for testing.  They will change.
+- You may have to reset or edit the RaceSettings.json for humans.  This should be at the top of the file.
+    ""AllowedGenders"": {
+      ""AllowMale"": true,
+      ""AllowFemale"": true,
+      ""AllowOther"": false < set this to false if it is true, so all your new pawns have heads and a gender.
+    },
 
 <b>FIXED</b>
 ───────────
