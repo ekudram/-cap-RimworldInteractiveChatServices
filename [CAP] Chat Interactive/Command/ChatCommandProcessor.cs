@@ -964,16 +964,16 @@ namespace CAP_ChatInteractive
         /// Look up a registered command by name (case-insensitive).
         /// Useful for UI (e.g. CustomData buttons) that need the live command object.
         /// </summary>
-        public static bool TryGetCommand(string name, out ChatCommand command)
-        {
-            if (string.IsNullOrEmpty(name))
-            {
-                command = null;
-                return false;
-            }
+        //public static bool TryGetCommand(string name, out ChatCommand command)
+        //{
+        //    if (string.IsNullOrEmpty(name))
+        //    {
+        //        command = null;
+        //        return false;
+        //    }
 
-            return _commands.TryGetValue(name, out command);
-        }
+        //    return _commands.TryGetValue(name, out command);
+        //}
 
         public static bool UsesPrefix(string message, string prefix)
         {
