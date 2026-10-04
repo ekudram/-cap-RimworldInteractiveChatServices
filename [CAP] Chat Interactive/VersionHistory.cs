@@ -514,9 +514,11 @@ Also changed message about Ownership and adding mid game to be more clear about 
 ───────────
 - Lab coat category patch now requires Anomaly. Games with Biotech but not Anomaly no longer error on load, because that apparel def is not present.
 - Human race settings list male and female only. Other was being saved because a both-genders result was treated as including no gender. Genderless races still allow Other. The file updates the next time race settings load.
+- Quick Menu scrolls when the button list is taller than the screen, so buttons stay reachable.
 
 <b>ADDED</b>
 ────────────
+- Quick Menu has a RICS - Settings button under the title. It opens RICS settings.
 - Twitch, YouTube, and Kick each show a right-side warning while that service is turned on and disconnected. Each service's settings tab can hide its own warning.
 - Twitch Extension LocalHttp character sheet: live header, body/health, gear, implants, needs, backstories/traits, stats, and relations for the viewer's pawn (not the chat command processor).
 - LocalHttp reads ?viewer= from the raw request URL. Unity's HTTP listener was dropping QueryString and the dev identity header, so the panel got No viewer identity even with viewer=captolamia.
@@ -527,6 +529,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - Twitch Extension LocalHttp still answers while the game is paused (job queue drains on Update, same as chat commands).
 - Twitch Extension LocalHttp store tab: filtered items/traits/events/weather/races lists and panel-only buy (enabled, active-mod, researched only — not the full store JSON).
 - Store traits tab uses Add / Remove (!addtrait / !removetrait). Trait {PAWN_nameDef} uses the assigned pawn’s name, or Timmy if they have no pawn.
+- When a research project finishes, Masie gets a short note: the project name, who finished it, a short description, and whether the bench is empty or already on the next project.
 
 <b>TRANSLATIONS</b>
 ───────────────────
