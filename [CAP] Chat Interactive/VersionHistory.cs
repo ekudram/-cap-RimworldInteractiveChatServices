@@ -494,21 +494,21 @@ Also changed message about Ownership and adding mid game to be more clear about 
                         {"1.52",
 @"===========================================================
                          RICS version 1.52 - Changelog
-                         Pre-Release
+                         October 4, 2026
 ===========================================================
 
 <b>MEMORANDUM</b>
 ─────────────────
 
 - New moderator commmand: !setalias <command> <alias> — lets a moderator set a custom alias for a command.  Example: !setalias !bal !bald.
-- Twitch extension is still not ready.  So please keep the settings off.
-- The settings you see for the Twitch extension are for testing.  They will change.
+
 - You may have to reset or edit the RaceSettings.json for humans.  This should be at the top of the file.
     ""AllowedGenders"": {
       ""AllowMale"": true,
       ""AllowFemale"": true,
-      ""AllowOther"": false < set this to false if it is true, so all your new pawns have heads and a gender.
+      ""AllowOther"": false <-- set this to false if it is true, so all your new pawns have heads and a gender. --
     },
+- Twitch extension is still not ready.  So please keep the settings off.
 
 <b>FIXED</b>
 ───────────
@@ -520,16 +520,8 @@ Also changed message about Ownership and adding mid game to be more clear about 
 ────────────
 - Quick Menu has a RICS - Settings button under the title. It opens RICS settings.
 - Twitch, YouTube, and Kick each show a right-side warning while that service is turned on and disconnected. Each service's settings tab can hide its own warning.
-- Twitch Extension LocalHttp character sheet: live header, body/health, gear, implants, needs, backstories/traits, stats, and relations for the viewer's pawn (not the chat command processor).
-- LocalHttp reads ?viewer= from the raw request URL. Unity's HTTP listener was dropping QueryString and the dev identity header, so the panel got No viewer identity even with viewer=captolamia.
-- Extension character sheet strips quality color tags from apparel/weapon labels (same idea as chat StripTags). Trait descriptions resolve {PAWN_nameDef} to the viewer name and pronouns from pawn gender.
-- Twitch Extension LocalHttp colony tab: live settlement name, date, snapshot (storyteller, difficulty, days, wealth, threat points), population (viewer vs non-viewer, top animals, player mechanoids), current research, and active threats. Structured JSON, not the chat command processor.
-- Twitch Extension LocalHttp commands tab: lists enabled commands the viewer can use and runs them with panel-only results (no public chat). AI bot commands stay hidden.
-- Extension command runs reuse the viewer's stored Twitch/YouTube/Kick id so pawn assignment still finds the pawn.
-- Twitch Extension LocalHttp still answers while the game is paused (job queue drains on Update, same as chat commands).
-- Twitch Extension LocalHttp store tab: filtered items/traits/events/weather/races lists and panel-only buy (enabled, active-mod, researched only — not the full store JSON).
-- Store traits tab uses Add / Remove (!addtrait / !removetrait). Trait {PAWN_nameDef} uses the assigned pawn’s name, or Timmy if they have no pawn.
-- When a research project finishes, Masie gets a short note: the project name, who finished it, a short description, and whether the bench is empty or already on the next project.
+- Ai bot code now sends info on research.
+- Twitch Extension Code Updated.  Note it is still not ready for use.  Keep the settings off until it is ready.
 
 <b>TRANSLATIONS</b>
 ───────────────────
