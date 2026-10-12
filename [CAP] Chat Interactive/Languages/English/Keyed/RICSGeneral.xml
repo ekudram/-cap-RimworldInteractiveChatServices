@@ -170,6 +170,8 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Ownership.Settings.UseRics>Use RICS ownership for Pawns</RICS.Ownership.Settings.UseRics>
   <RICS.Ownership.Settings.BlockTrading>Block trading/selling of owned items</RICS.Ownership.Settings.BlockTrading>
   <RICS.Ownership.Settings.Inheritance>Enable item inheritance on death</RICS.Ownership.Settings.Inheritance>
+  <RICS.Ownership.Bill.CountOwned>Count owned</RICS.Ownership.Bill.CountOwned>
+  <RICS.Ownership.Bill.CountOwnedTip>When off, weapons and clothes that already have an owner are not counted for this bill. Turn on to count them too.</RICS.Ownership.Bill.CountOwnedTip>
   <RICS.Ownership.Settings.Footer>Manual assign/unassign and mark-not-ownable are always available via item gizmos when ownership is on. Negative ownership-loss thoughts are suppressed. Personal storage units are not included (future addon).</RICS.Ownership.Settings.Footer>
   <RICS.Ownership.Settings.MidSaveWarn>Enabling RICS ownership mid-save can be unstable. Prefer a new game. Backup your save.</RICS.Ownership.Settings.MidSaveWarn>
   <RICS.Ownership.Conflict.PossessionsPlus>Possessions Plus is active — RICS ownership is disabled and locked. Remove Possessions Plus and start a new game to use RICS ownership. Buy/equip will still assign via Possessions Plus when present.</RICS.Ownership.Conflict.PossessionsPlus>

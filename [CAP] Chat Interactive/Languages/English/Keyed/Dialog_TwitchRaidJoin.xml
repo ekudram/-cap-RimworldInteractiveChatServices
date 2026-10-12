@@ -8,7 +8,7 @@
   <RICS.TwitchRaidJoin.Note> Note: Twitch JOIN events can lag 2+ minutes (or never fire). Chat and !joinraid still count.</RICS.TwitchRaidJoin.Note>
   <RICS.TwitchRaidJoin.RaidersSoFar>Raiders so far ({0}):</RICS.TwitchRaidJoin.RaidersSoFar>
   <RICS.TwitchRaidJoin.RaiderInfo>@{0} raided with ~{1} viewers</RICS.TwitchRaidJoin.RaiderInfo>
-  <RICS.TwitchRaidJoin.TimeLeft>{0:F0} seconds left to join!</RICS.TwitchRaidJoin.TimeLeft>
+  <RICS.TwitchRaidJoin.TimeLeft>{0} seconds left to join!</RICS.TwitchRaidJoin.TimeLeft>
   <RICS.TwitchRaidJoin.Expand>Expand</RICS.TwitchRaidJoin.Expand>
   
 </LanguageData>

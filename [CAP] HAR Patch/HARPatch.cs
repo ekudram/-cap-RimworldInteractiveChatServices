@@ -1,19 +1,11 @@
+// File: HARPatch.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-// Provides compatibility with the Human and Alien Races (HAR) mod for trait and xenotype restrictions.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
+// Provides compatibility with the Humanoid Alien Races (HAR) mod for trait and xenotype restrictions.
 using _CAP__Chat_Interactive.Interfaces;
 using AlienRace;
 using JetBrains.Annotations;
@@ -160,9 +152,11 @@ namespace CAP_ChatInteractive.Patch.HAR
         /// Retrieves a list of xenotype definition names that are allowed for the Human race, excluding those that are
         /// exclusive to other alien races.
         /// </summary>
-        /// <remarks>If an error occurs during filtering, the method returns all xenotype definition names
-        /// without applying race-based restrictions. The returned list is case-insensitive and does not include null or
-        /// empty definition names.</remarks>
+        /// <remarks>HAR <c>xenotypeList</c> names xenotypes only that alien race can have, so those leave the Human
+        /// list. <c>whiteXenotypeList</c> is shared (Nyaron lists Baseliner and Sanguophage there) and
+        /// <c>onlyUseRaceRestrictedXenotypes</c> only limits the alien. If an error occurs during filtering, the
+        /// method returns all xenotype definition names. The returned list is case-insensitive and does not include
+        /// null or empty definition names.</remarks>
         /// <returns>A list of strings containing the definition names of xenotypes available to the Human race. The list is
         /// sorted alphabetically and excludes xenotypes restricted to other races.</returns>
         private List<string> GetAllowedXenotypesForHuman()
@@ -183,26 +177,17 @@ namespace CAP_ChatInteractive.Patch.HAR
                     .Where(d => d is ThingDef_AlienRace && d != ThingDefOf.Human))
                 {
                     var restriction = GetRaceRestriction(alienDef);
-                    if (restriction == null) continue;
+                    if (restriction?.xenotypeList == null)
+                        continue;
 
-                    // 1. Exclusive xenotypes (onlyUseRaceRestrictedXenotypes = true)
-                    //    These belong ONLY to the alien race → remove them from Human list
-                    if (restriction.onlyUseRaceRestrictedXenotypes)
+                    // xenotypeList is exclusive to that race. whiteXenotypeList is shared and stays on Human.
+                    foreach (var xeno in restriction.xenotypeList)
                     {
-                        var raceExclusive = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        if (xeno == null || string.IsNullOrEmpty(xeno.defName))
+                            continue;
 
-                        if (restriction.xenotypeList != null)
-                            raceExclusive.UnionWith(restriction.xenotypeList.Select(x => x.defName));
-
-                        if (restriction.whiteXenotypeList != null)
-                            raceExclusive.UnionWith(restriction.whiteXenotypeList.Select(x => x.defName));
-
-                        // Remove ONLY the ones that are exclusive to this alien race
-                        foreach (var xeno in raceExclusive)
-                        {
-                            if (allowed.Remove(xeno))
-                                removedCount++;
-                        }
+                        if (allowed.Remove(xeno.defName))
+                            removedCount++;
                     }
                 }
 

@@ -1,19 +1,9 @@
-// TwitchService.cs
+// File: TwitchService.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
 // Service to manage Twitch chat connection and messaging
 
@@ -844,18 +834,50 @@ namespace CAP_ChatInteractive
 
             if (success)
             {
-                Find.LetterStack.ReceiveLetter(
-                    "RICS.TwitchRaid.LetterLabel".Translate(raiderName, raiderCount),
-                    "RICS.TwitchRaid.LetterText".Translate(raiderName, raiderCount),
-                    LetterDefOf.ThreatBig
-                );
+                TaggedString letterLabel = "RICS.TwitchRaid.LetterLabel".Translate(raiderName, raiderCount);
+                TaggedString letterText = "RICS.TwitchRaid.LetterText".Translate(raiderName, raiderCount);
+                LookTargets lookTargets = BuildTwitchRaidLookTargets(map, parms);
+                if (lookTargets != null)
+                {
+                    Find.LetterStack.ReceiveLetter(
+                        letterLabel,
+                        letterText,
+                        LetterDefOf.ThreatBig,
+                        lookTargets);
+                }
+                else
+                {
+                    Find.LetterStack.ReceiveLetter(letterLabel, letterText, LetterDefOf.ThreatBig);
+                }
             }
+
+            IncidentWorker_TwitchRaid.ClearLastSpawnedRaiders();
 
             Logger.Twitch($"Custom faction raid completed. Faction: {raidFaction.Name} | Success: {success}");
         }
 
         // Per-streamer runtime FactionDefs removed — use TwitchRaidGearTier.GetOrCreateFaction
         // (static XML defs survive save/load; streamer name stays on the letter/chat only).
+
+        /// <summary>
+        /// Jump target for the Twitch raid letter.
+        /// Raiders already on the map are preferred. Drop pods have not landed yet, so use the arrival cell.
+        /// </summary>
+        private static LookTargets BuildTwitchRaidLookTargets(Map map, IncidentParms parms)
+        {
+            List<Pawn> spawned = IncidentWorker_TwitchRaid.LastSpawnedRaiders;
+            if (spawned != null)
+            {
+                List<Pawn> onMap = spawned.Where(p => p != null && p.Spawned && p.Map != null).ToList();
+                if (onMap.Count > 0)
+                    return new LookTargets(onMap);
+            }
+
+            if (map != null && parms != null && parms.spawnCenter.IsValid)
+                return new LookTargets(parms.spawnCenter, map);
+
+            return null;
+        }
 
         /// <summary>
         /// Simple check if EdgeWalkIn is likely to work on this map.

@@ -1,19 +1,10 @@
-// VersionHistory.cs 
+// File: VersionHistory.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
 
 // File contains version history notes for RICS (RimWorld Interactive Chat Services) mod, including version numbers, release dates, and detailed changelogs of features, fixes, and updates. Each entry is structured to provide clear information about the changes made in each version.
 
@@ -489,6 +480,23 @@ Also changed message about Ownership and adding mid game to be more clear about 
 ───────────────────
 - Redeem thank-you keyed string.
 - !mypawn story race and xenotype keys.
+"
+                },
+                        {"1.53",
+@"===========================================================
+                         RICS version 1.53 - Changelog
+                         Pre-Release
+===========================================================
+
+<b>FIXED</b>
+───────────
+- Twitch raid compact view shows how many seconds are left to join.
+- Twitch raid letter has a jump-to button so you can see where the raiders are.
+- Human race settings hid Sanguophage because a shared xenotype on another race's whitelist was treated as exclusive to that race.
+
+<b>ADDED</b>
+────────────
+- Crafting bill details has a Count owned box for weapons and clothes. It starts off, so items that already have an owner are not counted toward the bill.
 "
                 },
                         {"1.52",
