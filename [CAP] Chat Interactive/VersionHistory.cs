@@ -492,6 +492,9 @@ Also changed message about Ownership and adding mid game to be more clear about 
 ─────────────────
 - This is the RimWorld 1.7 test build.
 - The RimWorld 1.6 build stays on RICS 1.53.
+- First unstable test loaded with no errors. Research Vote, Storyteller, and the chatbot addon started with it.
+- RimWorld 1.7 reads its own mod files. A large mod-list test is next.
+- More 1.7 changes are expected before release.
 
 "
                 },
