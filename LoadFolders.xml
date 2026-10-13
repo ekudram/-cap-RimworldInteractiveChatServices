@@ -9,4 +9,11 @@
     <li IfModActive="erdelf.HumanoidAlienRaces">Patches/1.6/HAR</li>
     <li IfModActiveAll="VanillaExpanded.VPsycastsE,OskarPotocki.VanillaFactionsExpanded.Core">Patches/1.6/VPE</li>
   </v1.6>
+  <v1.7>
+    <li>/</li>
+    <li>Languages</li>
+    <li>1.7</li>
+    <li IfModActive="erdelf.HumanoidAlienRaces">Patches/1.7/HAR</li>
+    <li IfModActiveAll="VanillaExpanded.VPsycastsE,OskarPotocki.VanillaFactionsExpanded.Core">Patches/1.7/VPE</li>
+  </v1.7>
 </loadFolders>

@@ -4,7 +4,7 @@
     <TargetFramework>net48</TargetFramework>
     <RootNamespace>CAP_ChatInteractive.Patch.VPE</RootNamespace>
     <!-- Isolated folder so LoadFolders can load VPE only when VPE is active (not shared with HAR). -->
-    <OutputPath>C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\[CAP] Chat Interactive\Patches\1.6\VPE\Assemblies</OutputPath>
+    <OutputPath>C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\[CAP] Chat Interactive\Patches\1.7\VPE\Assemblies</OutputPath>
     <DebugType>none</DebugType>
     <CopyLocal>False</CopyLocal>
     <LangVersion>12</LangVersion>
