@@ -10,13 +10,18 @@ namespace CAP_ChatInteractive
     /// </summary>
     public static class KickIntegrationResearch
     {
-        public const string PusherKey = "32cbd69e4b950bf97679";
-        public const string PusherUrl = "wss://ws-us2.pusher.com/app/" + PusherKey;
+        /// <summary>Fallback public Pusher app key. Kick rotates this. Prefer the realtime lookup.</summary>
+        public const string PusherKey = "34bf7a0ff419a2a775b9";
+        public const string PusherCluster = "us2";
+        public const string PusherUrl = "wss://ws-" + PusherCluster + ".pusher.com/app/" + PusherKey + "?protocol=7&client=js&version=8.4.0&flash=false";
 
         // Read:
-        // 1. GET https://kick.com/api/v1/channels/{slug} → chatroom.id (public, unofficial, used for Pusher)
-        // 2. ClientWebSocket subscribe chatrooms.{id}.v2
-        // 3. ChatMessageEvent → ChatCommandProcessor
+        // 1. GET https://kick.com/api/v1/channels/{slug} → id (channel) and chatroom.id
+        // 2. POST https://web.kick.com/api/v1/realtime/channels/{channelId}/chat/connection
+        //    body accepts only provider "pusher" → credentials.app_key + cluster
+        //    (Kick revoked 32cbd69e4b950bf97679 on 13 Oct 2026. Fallback key above.)
+        // 3. ClientWebSocket subscribe chatrooms.{chatroomId}.v2
+        // 4. ChatMessageEvent → ChatCommandProcessor
         //
         // Write (official, docs.kick.com/apis/chat):
         // 1. OAuth 2.1 authorization code + PKCE (NOT client_credentials)

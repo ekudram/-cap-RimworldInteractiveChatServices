@@ -20,6 +20,8 @@
 
   <RICS.CC.Buy.StoreDisabled>Store commands are currently disabled.</RICS.CC.Buy.StoreDisabled>
 
+  <RICS.CC.Buy.SubCommandDisabled>Sub-command '{0}' is currently disabled.</RICS.CC.Buy.SubCommandDisabled>
+
   <RICS.CC.Buy.PurchaseLimit>Store purchase limit reached ({0} per {1} days)</RICS.CC.Buy.PurchaseLimit>
   
   <!-- Use Command-->

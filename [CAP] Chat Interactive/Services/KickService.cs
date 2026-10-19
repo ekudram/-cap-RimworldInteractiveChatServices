@@ -59,6 +59,7 @@ namespace CAP_ChatInteractive
         private ClientWebSocket _webSocket;
         private HttpClient _httpClient;
         private string _chatroomId;
+        private string _channelId;
         private long _broadcasterUserId;
         private string _userAccessToken;
         private string _tokenType;
@@ -172,7 +173,11 @@ namespace CAP_ChatInteractive
                 }
 
                 TryResolveBroadcasterUserIdSynchronous();
-                ConnectPusherSynchronous();
+                if (!ConnectPusherSynchronous())
+                {
+                    _settings.IsConnected = false;
+                    return;
+                }
 
                 _settings.IsConnected = true;
                 bool canWrite = CanSendMessages && _broadcasterUserId > 0;
@@ -616,10 +621,13 @@ namespace CAP_ChatInteractive
                 Logger.Debug($"Kick v1 success — Body length: {jsonText.Length}");
 
                 var channelData = JsonConvert.DeserializeObject<KickV1ChannelResponse>(jsonText);
+                if (channelData?.id > 0)
+                    _channelId = channelData.id.ToString();
+
                 if (channelData?.chatroom?.id > 0)
                 {
                     string id = channelData.chatroom.id.ToString();
-                    Logger.Debug($"Kick chatroom ID resolved: {id}");
+                    Logger.Debug($"Kick chatroom ID resolved: {id} (channel {_channelId ?? "unknown"})");
                     return id;
                 }
 
@@ -643,6 +651,7 @@ namespace CAP_ChatInteractive
 
         private class KickV1ChannelResponse
         {
+            public long id { get; set; }
             public KickV1Chatroom chatroom { get; set; }
         }
 
@@ -651,14 +660,92 @@ namespace CAP_ChatInteractive
             public long id { get; set; }
         }
 
-        private void ConnectPusherSynchronous()
+        /// <summary>
+        /// Asks Kick for the current public Pusher key. The old hardcoded key was revoked on 13 Oct 2026.
+        /// Falls back to <see cref="KickIntegrationResearch.PusherKey"/> when the lookup fails.
+        /// </summary>
+        private void ResolvePusherConfigSynchronous(out string appKey, out string cluster)
+        {
+            appKey = KickIntegrationResearch.PusherKey;
+            cluster = KickIntegrationResearch.PusherCluster;
+
+            if (string.IsNullOrEmpty(_channelId))
+            {
+                Logger.Warning("Kick: no channel id for Pusher lookup; using fallback key");
+                return;
+            }
+
+            try
+            {
+                string url = $"https://web.kick.com/api/v1/realtime/channels/{_channelId}/chat/connection";
+                const string payload = "{\"client\":{\"id\":\"rics\",\"type\":\"web\"},\"capabilities\":{\"accepted_providers\":[{\"provider\":\"pusher\"}]}}";
+                using var request = new HttpRequestMessage(HttpMethod.Post, url);
+                request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+
+                var response = _httpClient.SendAsync(request).Result;
+                string body = response.Content.ReadAsStringAsync().Result;
+                Logger.Debug($"Kick realtime — Status: {response.StatusCode} | Body length: {body.Length}");
+                if (!response.IsSuccessStatusCode)
+                {
+                    Logger.Warning($"Kick realtime lookup failed: {response.StatusCode} - {TrimForLog(body, 300)}. Using fallback Pusher key.");
+                    return;
+                }
+
+                var obj = JObject.Parse(body);
+                var connections = obj["data"]?["connections"] as JArray;
+                if (connections == null)
+                {
+                    Logger.Warning("Kick realtime response had no connections. Using fallback Pusher key.");
+                    return;
+                }
+
+                foreach (var token in connections)
+                {
+                    var connection = token as JObject;
+                    if (connection == null)
+                        continue;
+                    if (!string.Equals((string)connection["provider"], "pusher", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    string key = (string)connection["credentials"]?["app_key"];
+                    string foundCluster = (string)connection["credentials"]?["cluster"];
+                    if (string.IsNullOrEmpty(key))
+                        continue;
+
+                    appKey = key;
+                    if (!string.IsNullOrEmpty(foundCluster))
+                        cluster = foundCluster;
+                    Logger.Debug($"Kick Pusher config from realtime API: cluster={cluster}");
+                    return;
+                }
+
+                Logger.Warning("Kick realtime response had no pusher app key. Using fallback.");
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Kick Pusher key lookup failed, using fallback: {ex.Message}");
+            }
+        }
+
+        private bool ConnectPusherSynchronous()
         {
             try
             {
+                ResolvePusherConfigSynchronous(out string appKey, out string cluster);
+                string wsUrl = $"wss://ws-{cluster}.pusher.com/app/{appKey}?protocol=7&client=js&version=8.4.0&flash=false";
+
                 _webSocket = new ClientWebSocket();
-                Logger.Debug("Kick: Starting WebSocket connection to Pusher...");
-                _webSocket.ConnectAsync(new Uri("wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679"), CancellationToken.None).Wait();
+                Logger.Debug($"Kick: Starting WebSocket connection to Pusher ({cluster})...");
+                _webSocket.ConnectAsync(new Uri(wsUrl), CancellationToken.None).Wait();
                 Logger.Debug("Kick: WebSocket connected");
+
+                if (!TryReadPusherText(out string handshake) || !AcceptPusherHandshake(handshake))
+                {
+                    ClosePusherSocket();
+                    LongEventHandler.ExecuteWhenFinished(() =>
+                        Messages.Message("Kick: Pusher rejected the chat key — check Player.log", MessageTypeDefOf.NegativeEvent));
+                    return false;
+                }
 
                 var subscribe = $@"{{""event"":""pusher:subscribe"",""data"":{{""channel"":""chatrooms.{_chatroomId}.v2""}}}}";
                 Logger.Debug($"Kick: Sending subscribe for channel chatrooms.{_chatroomId}.v2");
@@ -668,20 +755,93 @@ namespace CAP_ChatInteractive
                 Logger.Debug("Kick: Starting background listen task...");
                 _ = Task.Run(() => PusherListenLoopAsync(CancellationToken.None));
                 Logger.Debug("Pusher WebSocket connected and subscribed - listen task launched");
+                return true;
             }
             catch (AggregateException aex)
             {
                 aex = aex.Flatten();
                 Logger.Error($"Pusher connect AggregateException: {aex.InnerException?.Message ?? aex.Message}");
+                ClosePusherSocket();
                 LongEventHandler.ExecuteWhenFinished(() =>
                     Messages.Message("Kick: Pusher WebSocket failed — check Player.log", MessageTypeDefOf.NegativeEvent));
+                return false;
             }
             catch (Exception ex)
             {
                 Logger.Error($"Pusher connect failed: {ex.Message}\n{ex.StackTrace}");
+                ClosePusherSocket();
                 LongEventHandler.ExecuteWhenFinished(() =>
                     Messages.Message("Kick: Chatroom connected but Pusher failed — check Player.log", MessageTypeDefOf.NegativeEvent));
+                return false;
             }
+        }
+
+        private bool TryReadPusherText(out string json)
+        {
+            json = null;
+            var buffer = new byte[8192];
+            var receive = _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            if (!receive.Wait(TimeSpan.FromSeconds(8)))
+            {
+                Logger.Error("Kick Pusher handshake timed out");
+                return false;
+            }
+
+            WebSocketReceiveResult result = receive.Result;
+            if (result.MessageType == WebSocketMessageType.Close || result.Count <= 0)
+            {
+                Logger.Error("Kick Pusher closed during handshake");
+                return false;
+            }
+
+            json = Encoding.UTF8.GetString(buffer, 0, result.Count).Trim();
+            return !string.IsNullOrEmpty(json);
+        }
+
+        private static bool AcceptPusherHandshake(string json)
+        {
+            try
+            {
+                var obj = JObject.Parse(json);
+                string eventName = (string)obj["event"] ?? "";
+                Logger.Debug($"Kick Pusher handshake: {eventName}");
+                if (eventName.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    Logger.Error($"Kick Pusher rejected the connection: {TrimForLog(json, 300)}");
+                    return false;
+                }
+
+                return eventName == "pusher:connection_established";
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Kick Pusher handshake was not JSON: {ex.Message}");
+                return false;
+            }
+        }
+
+        private void ClosePusherSocket()
+        {
+            try
+            {
+                if (_webSocket != null && (_webSocket.State == WebSocketState.Open || _webSocket.State == WebSocketState.CloseReceived))
+                    _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "rics", CancellationToken.None).Wait(2000);
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Kick Pusher close: {ex.Message}");
+            }
+
+            try
+            {
+                _webSocket?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Kick Pusher dispose: {ex.Message}");
+            }
+
+            _webSocket = null;
         }
 
         private async Task PusherListenLoopAsync(CancellationToken token)
