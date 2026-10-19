@@ -482,6 +482,28 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - !mypawn story race and xenotype keys.
 "
                 },
+                        {"1.54",
+@"===========================================================
+                         RICS version 1.54 - Changelog
+                         Pre-Release
+===========================================================
+
+<b>MEMORANDUM</b>
+─────────────────
+- This RimWorld 1.6 build is RICS 1.54.
+- RimWorld 1.7 has the same Kick chat fix.
+
+<b>FIXED</b>
+───────────
+- Kick chat connects again. Kick replaced the public chat key on 13 October 2026. RICS asks Kick for the current key when it connects.
+- Turning off pawn, event, weather, use, equip, or wear now tells chat that the sub-command is disabled.
+
+<b>TRANSLATIONS</b>
+───────────────────
+- Added the missing store sub-command disabled line.
+
+"
+                },
                         {"1.53",
 @"===========================================================
                          RICS version 1.53 - Changelog
