@@ -485,7 +485,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
                         {"1.54",
 @"===========================================================
                          RICS version 1.54 - Changelog
-                         Pre-Release
+                         October 21, 2026
 ===========================================================
 
 <b>MEMORANDUM</b>
@@ -493,13 +493,12 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - This is the RimWorld 1.7 test build.
 - The RimWorld 1.6 build is also RICS 1.54 for the Kick chat fix.
 - First unstable test loaded with no errors. Research Vote, Storyteller, and the chatbot addon started with it.
-- RimWorld 1.7 reads its own mod files. A large mod-list test is next.
-- More 1.7 changes are expected before release.
 
 <b>FIXED</b>
 ───────────
 - Kick chat connects again. Kick replaced the public chat key on 13 October 2026. RICS asks Kick for the current key when it connects.
 - Turning off pawn, event, weather, use, equip, or wear now tells chat that the sub-command is disabled.
+- Bill details keeps Any worker and the allowed crafting skill. The Count owned row had made that window too short.
 
 <b>TRANSLATIONS</b>
 ───────────────────
