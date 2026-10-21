@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using UnityEngine;
 using Verse;
 
 namespace CAP_ChatInteractive.Ownership.Harmony
@@ -182,8 +183,8 @@ namespace CAP_ChatInteractive.Ownership.Harmony
     [HarmonyPatch(typeof(Dialog_BillConfig), nameof(Dialog_BillConfig.DoWindowContents))]
     public static class Patch_RICS_BillConfig_CountOwned
     {
-        /// <summary>One checkbox row. The details section is a fixed height and would otherwise cover the next box.</summary>
-        private const int ExtraSectionHeight = 30;
+        /// <summary>One checkbox row. The details section and the window both grow by this, or the worker row is pushed into a hidden column.</summary>
+        internal const int ExtraSectionHeight = 30;
 
         static Patch_RICS_BillConfig_CountOwned()
         {
@@ -270,6 +271,20 @@ namespace CAP_ChatInteractive.Ownership.Harmony
             return op == OpCodes.Ldloc || op == OpCodes.Ldloc_S
                 || op == OpCodes.Ldloc_0 || op == OpCodes.Ldloc_1
                 || op == OpCodes.Ldloc_2 || op == OpCodes.Ldloc_3;
+        }
+    }
+
+    /// <summary>
+    /// The details box is 30 pixels taller. The bill window must grow by the same amount.
+    /// Otherwise the middle column overflows and Any worker is drawn off screen.
+    /// </summary>
+    [HarmonyPatch(typeof(Dialog_BillConfig), nameof(Dialog_BillConfig.InitialSize), MethodType.Getter)]
+    public static class Patch_RICS_BillConfig_CountOwned_Size
+    {
+        [HarmonyPostfix]
+        public static void Postfix(ref Vector2 __result)
+        {
+            __result.y += Patch_RICS_BillConfig_CountOwned.ExtraSectionHeight;
         }
     }
 }

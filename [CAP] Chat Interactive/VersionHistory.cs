@@ -485,7 +485,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
                         {"1.54",
 @"===========================================================
                          RICS version 1.54 - Changelog
-                         Pre-Release
+                         October 21, 2026
 ===========================================================
 
 <b>MEMORANDUM</b>
@@ -497,6 +497,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
 ───────────
 - Kick chat connects again. Kick replaced the public chat key on 13 October 2026. RICS asks Kick for the current key when it connects.
 - Turning off pawn, event, weather, use, equip, or wear now tells chat that the sub-command is disabled.
+- Bill details keeps Any worker and the allowed crafting skill. The Count owned row had made that window too short.
 
 <b>TRANSLATIONS</b>
 ───────────────────
