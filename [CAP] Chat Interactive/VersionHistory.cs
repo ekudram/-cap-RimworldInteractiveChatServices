@@ -494,6 +494,10 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - The RimWorld 1.6 build is also RICS 1.54 for the Kick chat fix.
 - First unstable test loaded with no errors. Research Vote, Storyteller, and the chatbot addon started with it.
 
+<b>UPDATED</b>
+───────────
+- !captolamia tells the developer which RimWorld version and build is running.
+
 <b>FIXED</b>
 ───────────
 - Kick chat connects again. Kick replaced the public chat key on 13 October 2026. RICS asks Kick for the current key when it connects.

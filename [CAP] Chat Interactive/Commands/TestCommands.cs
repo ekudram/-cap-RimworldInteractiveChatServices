@@ -5,6 +5,7 @@
 // See LICENSE.txt in the project root for full license text.
 //
 // Hello + CaptoLamia tip / presence commands (random RICS & RimWorld quotes).
+using RimWorld;
 using Verse;
 
 namespace CAP_ChatInteractive.Commands.TestCommands
@@ -31,10 +32,13 @@ namespace CAP_ChatInteractive.Commands.TestCommands
             if (ChatCommandProcessor.IsVerifiedCaptolamia(messageWrapper))
             {
                 string version = CAPChatInteractiveMod.Instance?.Settings?.GlobalSettings?.modVersion ?? "?";
+                string gameVersion = VersionControl.CurrentVersionStringWithRev;
+                if (string.IsNullOrEmpty(gameVersion))
+                    gameVersion = "?";
                 string display = !string.IsNullOrEmpty(messageWrapper.DisplayName)
                     ? messageWrapper.DisplayName
                     : messageWrapper.Username;
-                return $"😸 Hello {display}! RICS {version}. The mod developer is present in chat!";
+                return $"😸 Hello {display}! RICS {version}. RimWorld {gameVersion}. The mod developer is present in chat!";
             }
 
             string tip = Tips[Rand.Range(0, Tips.Length)];
