@@ -1,0 +1,10 @@
+<Project>
+  <!-- Windows Details tab. File version must be four numbers. Product version matches chat (modVersion 1.54). -->
+  <PropertyGroup>
+    <Version>1.54.0</Version>
+    <AssemblyVersion>1.54.0.0</AssemblyVersion>
+    <FileVersion>1.54.0.0</FileVersion>
+    <InformationalVersion>1.54</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+</Project>
