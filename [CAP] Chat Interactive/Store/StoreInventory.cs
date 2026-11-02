@@ -1,19 +1,10 @@
-// StoreInventory.cs
+// File: StoreInventory.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
 
 /*
 ============================================================
@@ -592,6 +583,50 @@ namespace CAP_ChatInteractive.Store
             {
                 SaveStoreToJsonImmediate();
             }, null, false, null, showExtraUIInfo: false, forceHideUI: true);
+        }
+
+        /// <summary>
+        /// Merge a Store Editor backup into the live store.
+        /// A saved row is applied only when its def is loaded now.
+        /// Items already in the store that the file does not mention stay.
+        /// Rows for mods that are not loaded are not added to the live list or to the saved file.
+        /// </summary>
+        /// <returns>How many saved rows were skipped because their def is not loaded.</returns>
+        public static int ApplyEditorPreset(Dictionary<string, StoreItem> loaded)
+        {
+            if (loaded == null)
+                return 0;
+
+            lock (lockObject)
+            {
+                var activeDefNames = new HashSet<string>(
+                    GetDefaultTradeableItems().Select(t => t.defName));
+
+                int applied = 0;
+                int skipped = 0;
+
+                foreach (var kvp in loaded)
+                {
+                    if (kvp.Value == null || string.IsNullOrEmpty(kvp.Key) || !activeDefNames.Contains(kvp.Key))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    _completeStoreData[kvp.Key] = kvp.Value;
+                    applied++;
+                }
+
+                // Drop live rows whose defs are not loaded before validate marks modactive.
+                var staleKeys = AllStoreItems.Keys.Where(k => !activeDefNames.Contains(k)).ToList();
+                foreach (var key in staleKeys)
+                    AllStoreItems.Remove(key);
+
+                ValidateAndUpdateStore();
+
+                Logger.Message($"Store list loaded. Applied {applied} saved items. Skipped {skipped} items from mods that are not loaded.");
+                return skipped;
+            }
         }
 
         public static StoreItem GetStoreItem(string defName)

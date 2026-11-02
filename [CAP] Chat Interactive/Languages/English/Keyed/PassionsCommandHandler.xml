@@ -30,11 +30,10 @@
   <RICS.PASSION.TargetedCritFailRandomLose>💥 CRITICAL FAILURE! {0} lost {1} passion for {2} instead!</RICS.PASSION.TargetedCritFailRandomLose>
   <RICS.PASSION.TargetedCritFailRandomBackfire>💥 CRITICAL FAILURE! Your {0} coin wager backfired!</RICS.PASSION.TargetedCritFailRandomBackfire>
   <RICS.PASSION.TargetedCritSuccessAlreadyMajor>🎉 CRITICAL SUCCESS! Your pawn already has major passion in {0}. Coins refunded!</RICS.PASSION.TargetedCritSuccessAlreadyMajor>
-  <RICS.PASSION.TargetedCritSuccessUpgrade>🎉 CRITICAL SUCCESS! {0}'s {1} passion upgraded to {2}!</RICS.PASSION.TargetedCritSuccessUpgrade>
   <RICS.PASSION.GeneralFailure>💔 You wagered {0} coins but failed to improve any passions. Better luck next time!</RICS.PASSION.GeneralFailure>
-  <RICS.PASSION.CritSuccessAlreadyMajor>🎉 CRITICAL SUCCESS! Your pawn already has 🔥🔥 passion in {0}. Coins refunded!</RICS.PASSION.CritSuccessAlreadyMajor>
-  <RICS.PASSION.CritSuccessUpgrade>🎉 CRITICAL SUCCESS! {0}'s {1} passion upgraded to {2}!</RICS.PASSION.CritSuccessUpgrade>
-  <RICS.PASSION.CritSuccessGainNew>🎉 CRITICAL SUCCESS! {0} gained 🔥 passion for {1}!</RICS.PASSION.CritSuccessGainNew>
+  <RICS.PASSION.CritSuccessAllMajor>🎉 CRITICAL SUCCESS! Every skill already has 🔥🔥 passion. Coins refunded!</RICS.PASSION.CritSuccessAllMajor>
+  <RICS.PASSION.CritSuccessGainNew>🎉 CRITICAL SUCCESS! {0} gained 🔥🔥 passion for {1}!</RICS.PASSION.CritSuccessGainNew>
+  <RICS.PASSION.CritSuccessHadFlame>🎉 CRITICAL SUCCESS! {0} rolled really well. {1} already had 🔥, so now it is 🔥🔥!</RICS.PASSION.CritSuccessHadFlame>
   <RICS.PASSION.CritFailLose>💥 CRITICAL FAILURE! {0} lost {1} passion for {2}!</RICS.PASSION.CritFailLose>
   <RICS.PASSION.CritFailGainUseless>💥 CRITICAL FAILURE! {0} gained 🔥 passion for useless skill {1}!</RICS.PASSION.CritFailGainUseless>
   <RICS.PASSION.CritFailLaugh>💥 CRITICAL FAILURE! The passion gods laughed at your wager of {0} coins! 😂</RICS.PASSION.CritFailLaugh>

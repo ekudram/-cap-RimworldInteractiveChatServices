@@ -482,6 +482,19 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - !mypawn story race and xenotype keys.
 "
                 },
+                        {"1.55",
+@"===========================================================
+                         RICS version 1.55 - Changelog
+                         Pre-Release
+===========================================================
+
+<b>FIXED</b>
+───────────
+- Loading a saved store list only shows items from mods that are turned on.
+- !passion critical success now gives two flames. A skill with no passion jumps to two, and one flame becomes two. It no longer turns two flames back into one.
+
+"
+                },
                         {"1.54",
 @"===========================================================
                          RICS version 1.54 - Changelog
@@ -493,10 +506,12 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - This is the RimWorld 1.7 test build.
 - The RimWorld 1.6 build is also RICS 1.54 for the Kick chat fix.
 - First unstable test loaded with no errors. Research Vote, Storyteller, and the chatbot addon started with it.
+- Hotfix released October 22, 2026 after testing.
 
 <b>UPDATED</b>
 ───────────
 - !captolamia tells the developer which RimWorld version and build is running.
+- Lab coat category patch is skipped when Anomaly is not installed. The old requirement line did not stop the patch from running.
 
 <b>FIXED</b>
 ───────────

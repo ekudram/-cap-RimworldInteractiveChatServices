@@ -1,19 +1,9 @@
-﻿// PassionSystem.cs
+﻿// File: PassionSystem.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
 // Handles passion gambling mechanics
 using System;
@@ -230,14 +220,19 @@ namespace CAP_ChatInteractive
                 return result;
             }
 
-            skill.passion = skill.passion == Passion.Minor ? Passion.Major : Passion.Minor;
-            var newPassionLevel = skill.passion == Passion.Major ? "major" : "minor";
+            return ApplyCriticalTwoFlames(pawn, wager, viewer, skill, skill.passion == Passion.Minor);
+        }
 
-            result.message = "RICS.PASSION.TargetedCritSuccessUpgrade".Translate(
-                pawn.Name.ToString(),
-                skill.def.LabelCap,
-                newPassionLevel
-            );
+        /// <summary>
+        /// Critical success always lands on two flames. A skill with one flame is told it already had one.
+        /// </summary>
+        private static PassionResult ApplyCriticalTwoFlames(Pawn pawn, int wager, Viewer viewer, SkillRecord skill, bool hadOneFlame)
+        {
+            var result = new PassionResult();
+            skill.passion = Passion.Major;
+            result.message = hadOneFlame
+                ? "RICS.PASSION.CritSuccessHadFlame".Translate(pawn.Name.ToString(), skill.def.LabelCap)
+                : "RICS.PASSION.CritSuccessGainNew".Translate(pawn.Name.ToString(), skill.def.LabelCap);
             result.success = true;
             result.alreadyCharged = true;
             viewer.TakeCoins(wager);
@@ -260,37 +255,34 @@ namespace CAP_ChatInteractive
             var rand = new Random();
             var ps = GetPassionSettings();
 
-            if (currentPassions.Count > 0 && rand.NextDouble() < ps.GetCustom<float>("critSuccessUpgradeVsNewChance", 0.5f))
+            var minorPassions = currentPassions.Where(p => p.passion == Passion.Minor).ToList();
+            var emptySkills = availableSkills.Where(def =>
             {
-                var skillToUpgrade = currentPassions[rand.Next(currentPassions.Count)];
-                var oldPassion = skillToUpgrade.passion;
+                var record = pawn.skills.GetSkill(def);
+                return record != null && record.passion == Passion.None;
+            }).ToList();
 
-                if (oldPassion == Passion.Major)
-                {
-                    result.message = "RICS.PASSION.CritSuccessAlreadyMajor".Translate(skillToUpgrade.def.LabelCap);
-                    result.success = true;
-                    result.alreadyCharged = true;
-                    return result;
-                }
+            // Upgrade an existing flame, or grant two flames on an empty skill. Never touch a skill already at two.
+            bool preferUpgrade = minorPassions.Count > 0 && emptySkills.Count > 0
+                ? rand.NextDouble() < ps.GetCustom<float>("critSuccessUpgradeVsNewChance", 0.5f)
+                : minorPassions.Count > 0;
 
-                skillToUpgrade.passion = oldPassion == Passion.Minor ? Passion.Major : Passion.Minor;
-                var newPassionLevel = skillToUpgrade.passion == Passion.Major ? "🔥🔥" : "🔥";
-
-                result.message = "RICS.PASSION.CritSuccessUpgrade".Translate(pawn.Name.ToString(), skillToUpgrade.def.LabelCap, newPassionLevel);
-                result.success = true;
+            if (preferUpgrade && minorPassions.Count > 0)
+            {
+                var skillToUpgrade = minorPassions[rand.Next(minorPassions.Count)];
+                return ApplyCriticalTwoFlames(pawn, wager, viewer, skillToUpgrade, hadOneFlame: true);
             }
-            else
+
+            if (emptySkills.Count > 0)
             {
-                var newSkillDef = availableSkills[rand.Next(availableSkills.Count)];
+                var newSkillDef = emptySkills[rand.Next(emptySkills.Count)];
                 var newSkill = pawn.skills.GetSkill(newSkillDef);
-                newSkill.passion = Passion.Minor;
-
-                result.message = "RICS.PASSION.CritSuccessGainNew".Translate(pawn.Name.ToString(), newSkillDef.LabelCap);
-                result.success = true;
+                return ApplyCriticalTwoFlames(pawn, wager, viewer, newSkill, hadOneFlame: false);
             }
 
+            result.message = "RICS.PASSION.CritSuccessAllMajor".Translate();
+            result.success = true;
             result.alreadyCharged = true;
-            viewer.TakeCoins(wager);
             return result;
         }
 
