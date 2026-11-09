@@ -130,16 +130,14 @@ namespace CAP_ChatInteractive
                         var loaded = JsonConvert.DeserializeObject<Dictionary<string, StoreItem>>(json);
                         if (loaded != null)
                         {
-                            StoreInventory.AllStoreItems.Clear();
-                            foreach (var kvp in loaded)
-                                StoreInventory.AllStoreItems[kvp.Key] = kvp.Value;
-
-                            StoreInventory.SaveStoreToJson();
+                            int skipped = StoreInventory.ApplyEditorPreset(loaded);
                             BuildCategoryCounts();
                             BuildModSourceCounts();
                             FilterItems();
 
                             Messages.Message("Store loaded from latest backup.", MessageTypeDefOf.NeutralEvent);
+                            if (skipped > 0)
+                                Messages.Message("RICS.Editor.StorePresetSkipped".Translate(skipped), MessageTypeDefOf.NeutralEvent);
                         }
                     }
                     catch (Exception ex)
@@ -1957,16 +1955,14 @@ namespace CAP_ChatInteractive
                             var loaded = JsonConvert.DeserializeObject<Dictionary<string, StoreItem>>(json);
                             if (loaded != null)
                             {
-                                StoreInventory.AllStoreItems.Clear();
-                                foreach (var kvp in loaded)
-                                    StoreInventory.AllStoreItems[kvp.Key] = kvp.Value;
-
-                                StoreInventory.SaveStoreToJson();
+                                int skipped = StoreInventory.ApplyEditorPreset(loaded);
                                 BuildCategoryCounts();
                                 BuildModSourceCounts();
                                 FilterItems();
 
                                 Messages.Message($"Loaded backup: {file}", MessageTypeDefOf.NeutralEvent);
+                                if (skipped > 0)
+                                    Messages.Message("RICS.Editor.StorePresetSkipped".Translate(skipped), MessageTypeDefOf.NeutralEvent);
                             }
                         }
                         catch (Exception ex)

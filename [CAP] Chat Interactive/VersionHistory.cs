@@ -482,6 +482,19 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - !mypawn story race and xenotype keys.
 "
                 },
+                        {"1.55",
+@"===========================================================
+                         RICS version 1.55 - Changelog
+                         Pre-Release
+===========================================================
+
+<b>FIXED</b>
+───────────
+- Loading a saved store list only shows items from mods that are turned on.
+- When our caravan arrives, Masie is told who the trader is.
+
+"
+                },
                         {"1.54",
 @"===========================================================
                          RICS version 1.54 - Changelog

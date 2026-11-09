@@ -4,6 +4,7 @@
 
 using HarmonyLib;
 using RimWorld;
+using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -111,6 +112,13 @@ namespace CAP_ChatInteractive.AI
                     notification += $" {forceNote}";
                 if (!string.IsNullOrWhiteSpace(body))
                     notification += $" {body}";
+
+                // Our arrival letter is sent before the caravan enters, and its look targets
+                // are often the threat. Name only the trader, after the body, never in Who/Hurt.
+                string caravanTraderNote = BuildCaravanTraderNote(title, body, relevantMap);
+                if (!string.IsNullOrWhiteSpace(caravanTraderNote))
+                    notification += $" {caravanTraderNote}";
+
                 if (!string.IsNullOrWhiteSpace(mapSlice?.summary))
                     notification += $" [Area: {mapSlice.summary}]";
 
@@ -121,6 +129,192 @@ namespace CAP_ChatInteractive.AI
             {
                 Logger.Warning($"[RICS AI] Letter notification postfix failed (non-fatal): {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// For our own "caravan arrived" letter, tell Masie who the trader is.
+        /// One short line: "Caravan: Name." Omit it when no negotiator is found.
+        /// </summary>
+        private static string BuildCaravanTraderNote(string title, string body, Map letterMap)
+        {
+            try
+            {
+                if (!IsOurCaravanArrivalLetter(title, body))
+                    return null;
+
+                string site = TryParseArrivalSite(title, body);
+                Caravan caravan = FindArrivingPlayerCaravan(site, letterMap);
+                Pawn trader = caravan != null
+                    ? BestCaravanPawnUtility.FindBestNegotiator(caravan)
+                    : FindBestTraderOnArrivalMap(letterMap);
+
+                if (trader == null || trader.Dead)
+                    return null;
+
+                string name = trader.LabelShortCap;
+                if (string.IsNullOrWhiteSpace(name))
+                    name = trader.Name?.ToStringShort;
+                if (string.IsNullOrWhiteSpace(name))
+                    return null;
+
+                name = name.Trim().TrimEnd('.');
+                return "Caravan: " + name + ".";
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static bool IsOurCaravanArrivalLetter(string title, string body)
+        {
+            string text = ((title ?? "") + " " + (body ?? "")).ToLowerInvariant();
+            return text.Contains("caravan arrived") || text.Contains("caravan has arrived");
+        }
+
+        /// <summary>
+        /// Site phrase from "arrived at …". Body text may be "the place" or "place and is ready…".
+        /// </summary>
+        private static string TryParseArrivalSite(string title, string body)
+        {
+            string fromTitle = TextAfterMarker(title, "arrived at ");
+            if (!string.IsNullOrEmpty(fromTitle))
+                return NormalizeSiteLabel(fromTitle);
+
+            string fromBody = TextAfterMarker(body, "has arrived at ");
+            if (string.IsNullOrEmpty(fromBody))
+                return null;
+
+            int and = fromBody.IndexOf(" and ", StringComparison.OrdinalIgnoreCase);
+            if (and > 0)
+                fromBody = fromBody.Substring(0, and);
+
+            return NormalizeSiteLabel(fromBody);
+        }
+
+        private static string TextAfterMarker(string text, string marker)
+        {
+            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(marker))
+                return null;
+
+            int index = text.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (index < 0)
+                return null;
+
+            string rest = text.Substring(index + marker.Length).Trim();
+            int sentence = rest.IndexOfAny(new[] { '.', '\n', '\r' });
+            if (sentence >= 0)
+                rest = rest.Substring(0, sentence);
+
+            rest = rest.Trim();
+            return string.IsNullOrWhiteSpace(rest) ? null : rest;
+        }
+
+        private static string NormalizeSiteLabel(string label)
+        {
+            if (string.IsNullOrWhiteSpace(label))
+                return null;
+
+            label = label.Trim().Trim('"', '\'');
+            if (label.StartsWith("the ", StringComparison.OrdinalIgnoreCase))
+                label = label.Substring(4).Trim();
+
+            return string.IsNullOrWhiteSpace(label) ? null : label;
+        }
+
+        private static bool SiteLabelsMatch(string label, string site)
+        {
+            string a = NormalizeSiteLabel(label);
+            string b = NormalizeSiteLabel(site);
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b))
+                return false;
+
+            return string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// The caravan is still a world object when the letter is received.
+        /// Match the site label, or the letter map when that map is not home.
+        /// </summary>
+        private static Caravan FindArrivingPlayerCaravan(string site, Map letterMap)
+        {
+            List<Caravan> caravans = Find.WorldObjects?.Caravans;
+            if (caravans == null || caravans.Count == 0)
+                return null;
+
+            bool letterMapIsAway = letterMap != null && !letterMap.IsPlayerHome && letterMap.Tile.Valid;
+            Caravan best = null;
+            int bestScore = 0;
+
+            for (int i = 0; i < caravans.Count; i++)
+            {
+                Caravan caravan = caravans[i];
+                if (caravan == null || caravan.Destroyed || !caravan.IsPlayerControlled)
+                    continue;
+
+                int score = 0;
+                if (caravan.Tile.Valid && SiteLabelsMatch(MapParentLabelAt(caravan.Tile), site))
+                    score += 5;
+
+                if (letterMapIsAway && caravan.Tile.Valid && caravan.Tile == letterMap.Tile)
+                    score += 4;
+
+                PlanetTile destination = caravan.pather != null ? caravan.pather.Destination : PlanetTile.Invalid;
+                if (destination.Valid && destination != caravan.Tile && SiteLabelsMatch(MapParentLabelAt(destination), site))
+                    score += 3;
+
+                if (score > bestScore)
+                {
+                    best = caravan;
+                    bestScore = score;
+                }
+            }
+
+            return best;
+        }
+
+        private static string MapParentLabelAt(PlanetTile tile)
+        {
+            if (!tile.Valid || Find.WorldObjects == null)
+                return null;
+
+            MapParent parent = Find.WorldObjects.MapParentAt(tile);
+            return parent?.Label;
+        }
+
+        /// <summary>
+        /// Used only when the world caravan is already gone. Never scan the home colony.
+        /// Same pawn RimWorld would pick: conscious owner, best Trade Price Improvement.
+        /// </summary>
+        private static Pawn FindBestTraderOnArrivalMap(Map map)
+        {
+            if (map == null || map.IsPlayerHome || map.mapPawns == null)
+                return null;
+
+            StatDef stat = StatDefOf.TradePriceImprovement;
+            Pawn best = null;
+            float bestValue = -1f;
+
+            foreach (Pawn pawn in map.mapPawns.AllPawnsSpawned)
+            {
+                if (pawn == null || pawn.Dead || pawn.Downed || pawn.InMentalState)
+                    continue;
+                if (pawn.NonHumanlikeOrWildMan())
+                    continue;
+                if (pawn.Faction != Faction.OfPlayer || pawn.HostFaction != null || pawn.IsSlave)
+                    continue;
+                if (stat?.Worker == null || stat.Worker.IsDisabledFor(pawn))
+                    continue;
+
+                float value = pawn.GetStatValue(stat);
+                if (best == null || value > bestValue)
+                {
+                    best = pawn;
+                    bestValue = value;
+                }
+            }
+
+            return best;
         }
 
         /// <summary>

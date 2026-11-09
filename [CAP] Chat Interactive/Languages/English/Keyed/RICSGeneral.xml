@@ -163,6 +163,7 @@ Changes take effect immediately for new purchases.]]>
   <RICS.Editor.NamedBackupSaved>Named backup saved as {0}.json</RICS.Editor.NamedBackupSaved>
   <RICS.Editor.NoBackupFiles>No backup files found for Events Editor.</RICS.Editor.NoBackupFiles>
   <RICS.Editor.LoadedBackup>Loaded backup: {0}</RICS.Editor.LoadedBackup>
+  <RICS.Editor.StorePresetSkipped>Skipped {0} items from mods that are not loaded.</RICS.Editor.StorePresetSkipped>
   <RICS.Editor.FailedSelected>Failed to load selected backup.</RICS.Editor.FailedSelected>
   <!-- RICS pawn item ownership -->
   <RICS.Ownership.Settings.Header>Pawn item ownership (RICS)</RICS.Ownership.Settings.Header>
