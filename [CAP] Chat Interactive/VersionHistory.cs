@@ -493,6 +493,11 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - Loading a saved store list only shows items from mods that are turned on.
 - !passion critical success now gives two flames. A skill with no passion jumps to two, and one flame becomes two. It no longer turns two flames back into one.
 
+<b>ADDED</b>
+────────────
+- Moderators can turn one command on or off from chat. !enable raid turns it on. !disable raid turns it off.
+- Chat cannot turn !enable or !disable on or off. The streamer can still change those two in the command settings.
+
 "
                 },
                         {"1.54",

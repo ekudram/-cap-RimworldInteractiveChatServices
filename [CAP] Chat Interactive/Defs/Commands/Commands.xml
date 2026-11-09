@@ -147,6 +147,34 @@
     <excludeFromPricelist>true</excludeFromPricelist>
   </CAP_ChatInteractive.ChatCommandDef>
 
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>EnableCommand</defName>
+    <commandText>enable</commandText>
+    <label>enable command</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ModCommands.Enable</commandClass>
+    <requiresMod>true</requiresMod>
+    <commandDescription>Turn a command on. Usage: !enable command. Chat cannot turn !enable or !disable on or off. Use command settings for those.</commandDescription>
+    <permissionLevel>moderator</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+    <excludeFromPricelist>true</excludeFromPricelist>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
+    <defName>DisableCommand</defName>
+    <commandText>disable</commandText>
+    <label>disable command</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ModCommands.Disable</commandClass>
+    <requiresMod>true</requiresMod>
+    <commandDescription>Turn a command off. Usage: !disable command. Chat cannot turn !enable or !disable on or off. Use command settings for those.</commandDescription>
+    <permissionLevel>moderator</permissionLevel>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+    <excludeFromPricelist>true</excludeFromPricelist>
+  </CAP_ChatInteractive.ChatCommandDef>
+
   <!-- Viewer Commands -->
   
   <CAP_ChatInteractive.ChatCommandDef>
