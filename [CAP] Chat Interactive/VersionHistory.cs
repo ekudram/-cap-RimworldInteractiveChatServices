@@ -485,15 +485,15 @@ Also changed message about Ownership and adding mid game to be more clear about 
                         {"1.55",
 @"===========================================================
                          RICS version 1.55 - Changelog
-                         Pre-Release
+                         November 12, 2026
 ===========================================================
 
 <b>MEMORANDUM</b>
 ─────────────────
 Happy birthday to RICS!
 RICS is officially 1 year old!
-Thank you to Streamers and thier communities for being a part of the RICS community.
-Your reports , suggestions, and bug reports have helped make RICS a better mod for everyone.
+Thank you to Streamers and their communities for being a part of the RICS community.
+Your reports, suggestions, and bug reports have helped make RICS a better mod for everyone.
 We have come a long way since the first release and we look forward to continuing to improve RICS in the future.
 We look forward to another year of RimWorld Interactive Chat Services!
 
