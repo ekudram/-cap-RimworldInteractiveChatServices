@@ -21,12 +21,19 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
         public Dictionary<string, BuyUsageRecord> BuyUsage;
         public Dictionary<string, IncidentUsageRecord> IncidentUsage;
 
+        /// <summary>
+        /// Real-time unix seconds when each command last started its shared cooldown.
+        /// One entry per command, shared by every viewer.
+        /// </summary>
+        public Dictionary<string, int> CommandLastUsedUnix;
+
         public GlobalCooldownData()
         {
             EventUsage = new Dictionary<string, EventUsageRecord>();
             CommandUsage = new Dictionary<string, CommandUsageRecord>();
             BuyUsage = new Dictionary<string, BuyUsageRecord>();
             IncidentUsage = new Dictionary<string, IncidentUsageRecord>();
+            CommandLastUsedUnix = new Dictionary<string, int>();
         }
 
         public void ExposeData()
@@ -35,11 +42,13 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             Scribe_Collections.Look(ref CommandUsage, "commandUsage", LookMode.Value, LookMode.Deep);
             Scribe_Collections.Look(ref BuyUsage, "buyUsage", LookMode.Value, LookMode.Deep);
             Scribe_Collections.Look(ref IncidentUsage, "incidentUsage", LookMode.Value, LookMode.Deep);
+            Scribe_Collections.Look(ref CommandLastUsedUnix, "commandLastUsedUnix", LookMode.Value, LookMode.Value);
 
             EventUsage ??= new Dictionary<string, EventUsageRecord>();
             CommandUsage ??= new Dictionary<string, CommandUsageRecord>();
             BuyUsage ??= new Dictionary<string, BuyUsageRecord>();
             IncidentUsage ??= new Dictionary<string, IncidentUsageRecord>();
+            CommandLastUsedUnix ??= new Dictionary<string, int>();
         }
     }
 

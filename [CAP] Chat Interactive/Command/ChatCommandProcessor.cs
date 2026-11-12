@@ -22,7 +22,11 @@ namespace CAP_ChatInteractive
         public static readonly Dictionary<string, ChatCommand> _commands =
             new Dictionary<string, ChatCommand>(StringComparer.OrdinalIgnoreCase);
 
-        private static readonly Dictionary<string, DateTime> _userCooldowns = new Dictionary<string, DateTime>();
+        /// <summary>
+        /// Set false by a command that was rejected, so a failed try does not start the shared timer.
+        /// Reset immediately before each Execute.
+        /// </summary>
+        private static bool _armCommandCooldown = true;
 
         public static event Action<ChatMessageWrapper> OnMessageProcessed;
         public static event Action<ChatMessageWrapper, string> OnCommandExecuted;
@@ -202,7 +206,7 @@ namespace CAP_ChatInteractive
                 return fail;
             }
 
-            if (IsOnCooldown(message.Username, command))
+            if (IsOnCooldown(command, out _))
             {
                 fail.ErrorCode = "Cooldown";
                 fail.Message = CooldownMessage(message, command);
@@ -219,6 +223,7 @@ namespace CAP_ChatInteractive
 
             try
             {
+                _armCommandCooldown = true;
                 string result = command.Execute(message, args);
                 if (string.IsNullOrWhiteSpace(result))
                     result = "Command executed.";
@@ -226,7 +231,7 @@ namespace CAP_ChatInteractive
 
                 if (!result.StartsWith("Error", StringComparison.OrdinalIgnoreCase))
                     GetCooldownManager()?.RecordCommandUse(command.Name);
-                UpdateCooldown(message.Username, command);
+                UpdateCooldown(command);
 
                 return new ExtensionCommandOutcome
                 {
@@ -286,12 +291,9 @@ namespace CAP_ChatInteractive
             if (message == null || command == null)
                 return "Command is on cooldown.";
 
-            var key = $"{message.Username}_{command.Name}";
-            if (!_userCooldowns.TryGetValue(key, out var lastUsed))
+            if (!IsOnCooldown(command, out int secs))
                 return "Command is on cooldown.";
 
-            var remaining = TimeSpan.FromSeconds(command.CooldownSeconds) - (DateTime.Now - lastUsed);
-            int secs = Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
             return $"Command is on cooldown. Try again in {secs} seconds.";
         }
 
@@ -455,7 +457,7 @@ namespace CAP_ChatInteractive
                 }
             }
 
-            if (!allowCaptolamiaIdentity && IsOnCooldown(message.Username, command))
+            if (!allowCaptolamiaIdentity && IsOnCooldown(command, out _))
             {
                 SendCooldownMessage(message, command);
                 return;
@@ -469,6 +471,7 @@ namespace CAP_ChatInteractive
 
             try
             {
+                _armCommandCooldown = true;
                 string result = command.Execute(message, args);
                 if (!string.IsNullOrEmpty(result))
                     SendMessageToUser(message, result);
@@ -478,7 +481,7 @@ namespace CAP_ChatInteractive
                 if (!string.IsNullOrEmpty(result) && !result.StartsWith("Error"))
                     GetCooldownManager()?.RecordCommandUse(command.Name);
 
-                UpdateCooldown(message.Username, command);
+                UpdateCooldown(command);
             }
             catch (Exception ex)
             {
@@ -582,14 +585,32 @@ namespace CAP_ChatInteractive
             }
         }
 
-        private static bool IsOnCooldown(string username, ChatCommand command)
+        /// <summary>
+        /// The command asked not to start the shared timer (rejected before anything happened).
+        /// </summary>
+        public static void SkipCommandCooldown()
         {
-            if (command == null || command.CooldownSeconds <= 0 || string.IsNullOrEmpty(username))
+            _armCommandCooldown = false;
+        }
+
+        /// <summary>
+        /// The command succeeded, so the shared timer should start.
+        /// </summary>
+        public static void ArmCommandCooldown()
+        {
+            _armCommandCooldown = true;
+        }
+
+        /// <summary>
+        /// One timer per command, shared by every viewer. Saved with the colony.
+        /// </summary>
+        private static bool IsOnCooldown(ChatCommand command, out int secondsLeft)
+        {
+            secondsLeft = 0;
+            if (command == null || command.CooldownSeconds <= 0 || string.IsNullOrEmpty(command.Name))
                 return false;
 
-            var key = $"{username}_{command.Name}";
-            return _userCooldowns.TryGetValue(key, out var lastUsed) &&
-                   DateTime.Now - lastUsed < TimeSpan.FromSeconds(command.CooldownSeconds);
+            return GetCooldownManager()?.IsCommandCoolingDown(command.Name, command.CooldownSeconds, out secondsLeft) == true;
         }
 
         public static GlobalCooldownManager GetCooldownManager()
@@ -607,12 +628,12 @@ namespace CAP_ChatInteractive
             return manager;
         }
 
-        private static void UpdateCooldown(string username, ChatCommand command)
+        private static void UpdateCooldown(ChatCommand command)
         {
-            if (command == null || command.CooldownSeconds <= 0 || string.IsNullOrEmpty(username))
+            if (!_armCommandCooldown || command == null || command.CooldownSeconds <= 0 || string.IsNullOrEmpty(command.Name))
                 return;
 
-            _userCooldowns[$"{username}_{command.Name}"] = DateTime.Now;
+            GetCooldownManager()?.MarkCommandCooldown(command.Name);
         }
 
         private static void SendCooldownMessage(ChatMessageWrapper message, ChatCommand command)
@@ -620,15 +641,12 @@ namespace CAP_ChatInteractive
             if (message == null || command == null)
                 return;
 
-            var key = $"{message.Username}_{command.Name}";
-            if (!_userCooldowns.TryGetValue(key, out var lastUsed))
+            if (!IsOnCooldown(command, out int secs))
             {
                 SendMessageToUser(message, "Command is on cooldown.");
                 return;
             }
 
-            var remaining = TimeSpan.FromSeconds(command.CooldownSeconds) - (DateTime.Now - lastUsed);
-            int secs = Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
             SendMessageToUser(message, $"Command is on cooldown. Try again in {secs} seconds.");
         }
 

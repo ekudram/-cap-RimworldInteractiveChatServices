@@ -95,6 +95,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     reinforcementInfo);
 
                 MessageHandler.SendGreenLetter(letterTitle, letterText);
+                ChatCommandProcessor.ArmCommandCooldown();
                 return result.Message;
             }
             catch (Exception ex)

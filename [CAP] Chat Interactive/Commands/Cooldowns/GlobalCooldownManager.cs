@@ -48,6 +48,45 @@ namespace CAP_ChatInteractive.Commands.Cooldowns
             data.CommandUsage ??= new Dictionary<string, CommandUsageRecord>();
             data.BuyUsage ??= new Dictionary<string, BuyUsageRecord>();
             data.IncidentUsage ??= new Dictionary<string, IncidentUsageRecord>();
+            data.CommandLastUsedUnix ??= new Dictionary<string, int>();
+        }
+
+        /// <summary>
+        /// Shared real-time cooldown for a command. Every viewer shares one timer.
+        /// </summary>
+        public bool IsCommandCoolingDown(string commandName, int cooldownSeconds, out int secondsLeft)
+        {
+            secondsLeft = 0;
+            if (cooldownSeconds <= 0 || string.IsNullOrEmpty(commandName))
+                return false;
+
+            EnsureData();
+            string key = commandName.Trim().ToLowerInvariant();
+            if (!data.CommandLastUsedUnix.TryGetValue(key, out int lastUsed) || lastUsed <= 0)
+                return false;
+
+            int elapsed = NowUnix() - lastUsed;
+            if (elapsed < 0)
+                elapsed = 0;
+            if (elapsed >= cooldownSeconds)
+                return false;
+
+            secondsLeft = cooldownSeconds - elapsed;
+            return true;
+        }
+
+        public void MarkCommandCooldown(string commandName)
+        {
+            if (string.IsNullOrEmpty(commandName))
+                return;
+
+            EnsureData();
+            data.CommandLastUsedUnix[commandName.Trim().ToLowerInvariant()] = NowUnix();
+        }
+
+        private static int NowUnix()
+        {
+            return (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         }
 
         /// <summary>

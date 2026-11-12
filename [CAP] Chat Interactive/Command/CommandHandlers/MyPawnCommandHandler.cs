@@ -815,45 +815,64 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var foundDefs = new HashSet<string>(); // dedup by defName (handles "psychic" + "sensitivity" both matching same stat)
             var notFoundStats = new List<string>();
             int statsShown = 0;
+            int index = 0;
 
-            foreach (var statName in args)
+            // Names may contain spaces ("move speed", "kills (entities)").
+            // Walk the tokens and take the longest name that matches, same idea as the
+            // skill and item parsers. Several names can still be asked in one message.
+            while (index < args.Length && statsShown < MAX_STATS_TO_SHOW)
             {
-                if (statsShown >= MAX_STATS_TO_SHOW) break;
+                if (!TryResolveStatQuery(pawn, args, index, out var statDef, out var recordDef, out int used, out string phrase))
+                {
+                    notFoundStats.Add(args[index]);
+                    index++;
+                    continue;
+                }
 
-                var statDef = FindStatDef(statName, pawn);
+                string defName = statDef != null ? statDef.defName : recordDef.defName;
+                if (!foundDefs.Add(defName))
+                {
+                    index += used;
+                    continue;
+                }
+
+                string formattedValue;
+                string description;
+                string label;
                 if (statDef != null)
                 {
-                    if (!foundDefs.Add(statDef.defName)) continue; // already shown - skip duplicate
-
-                    float value = pawn.GetStatValue(statDef);
-                    string formattedValue = FormatStatValue(statDef, value);
-                    string description = StripTags(statDef.description) ?? "";
-
-                    // Aggressive truncation for chat (keeps total message <500 chars)
-                    if (description.Length > 60)
-                    {
-                        description = description.Substring(0, 57) + "...";
-                    }
-
-                    // Include defName when label is ambiguous (e.g. "beauty" = PawnBeauty vs thing Beauty)
-                    string label = StripTags(statDef.LabelCap);
-                    report.AppendLine($"• {label} ({statDef.defName}): {formattedValue}");
-                    if (!string.IsNullOrEmpty(description))
-                    {
-                        report.AppendLine($"  {description}");
-                    }
-
-                    statsShown++;
+                    formattedValue = FormatStatValue(statDef, pawn.GetStatValue(statDef));
+                    description = StripTags(statDef.description) ?? "";
+                    label = StripTags(statDef.LabelCap);
                 }
                 else
                 {
-                    notFoundStats.Add(statName);
+                    float raw = pawn.records != null ? pawn.records.GetValue(recordDef) : 0f;
+                    formattedValue = FormatRecordValue(recordDef, raw);
+                    description = StripTags(recordDef.description) ?? "";
+                    label = StripTags(recordDef.LabelCap);
                 }
+
+                // Aggressive truncation for chat (keeps total message <500 chars)
+                if (description.Length > 60)
+                {
+                    description = description.Substring(0, 57) + "...";
+                }
+
+                // Include defName when label is ambiguous (e.g. "beauty" = PawnBeauty vs thing Beauty)
+                report.AppendLine($"• {label} ({defName}): {formattedValue}");
+                if (!string.IsNullOrEmpty(description))
+                {
+                    report.AppendLine($"  {description}");
+                }
+
+                statsShown++;
+                index += used;
             }
 
-            if (args.Length > MAX_STATS_TO_SHOW)
+            if (index < args.Length)
             {
-                report.AppendLine($"... and {args.Length - MAX_STATS_TO_SHOW} more (max {MAX_STATS_TO_SHOW} shown per message)");
+                report.AppendLine($"... and {args.Length - index} more (max {MAX_STATS_TO_SHOW} shown per message)");
             }
 
             // Add not found stats at the end
@@ -865,6 +884,52 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             return report.ToString();
+        }
+
+        /// <summary>
+        /// Take the longest run of tokens from <paramref name="index"/> that names a stat or a record.
+        /// One-word fuzzy matches stay available, so "!mypawn stats movespeed shootingaccuracy" still works.
+        /// A name that is exactly a record ("kills", "kills (entities)") wins over a stat that only contains those letters.
+        /// </summary>
+        private static bool TryResolveStatQuery(Pawn pawn, string[] args, int index, out StatDef statDef, out RecordDef recordDef, out int consumed, out string phrase)
+        {
+            statDef = null;
+            recordDef = null;
+            consumed = 1;
+            phrase = args[index];
+
+            int maxLen = Math.Min(4, args.Length - index);
+            for (int len = maxLen; len >= 1; len--)
+            {
+                string candidate = string.Join(" ", args.Skip(index).Take(len));
+                string search = NormalizeStatKey(candidate);
+                if (string.IsNullOrEmpty(search))
+                    continue;
+
+                StatDef stat = FindStatDef(candidate, pawn);
+                RecordDef record = FindRecordDef(candidate);
+                int statText = stat == null ? 0 : TextMatchRank(NormalizeStatKey(stat.defName), NormalizeStatKey(stat.label), search);
+                int recordText = record == null ? 0 : TextMatchRank(NormalizeStatKey(record.defName), NormalizeStatKey(record.label), search);
+
+                // Multi-word chunks must be a real name, not a loose "contains" hit.
+                if (len > 1 && statText < 500)
+                    stat = null;
+                if (len > 1 && recordText < 500)
+                    record = null;
+                if (stat == null && record == null)
+                    continue;
+
+                if (record != null && (stat == null || recordText > statText))
+                    recordDef = record;
+                else
+                    statDef = stat;
+
+                consumed = len;
+                phrase = candidate;
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -911,7 +976,55 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static string NormalizeStatKey(string s)
         {
             if (string.IsNullOrWhiteSpace(s)) return "";
-            return s.ToLowerInvariant().Trim().Replace("_", "").Replace(" ", "").Replace("-", "");
+            return s.ToLowerInvariant().Trim()
+                .Replace("_", "")
+                .Replace(" ", "")
+                .Replace("-", "")
+                .Replace("(", "")
+                .Replace(")", "");
+        }
+
+        /// <summary>
+        /// How well a def name or label matches the search, ignoring pawn display rules.
+        /// 1000 exact def, 900 exact label, 500 starts-with, 200 contains, 0 none.
+        /// </summary>
+        private static int TextMatchRank(string defClean, string labelClean, string search)
+        {
+            if (string.IsNullOrEmpty(search)) return 0;
+            if (defClean == search) return 1000;
+            if (labelClean == search) return 900;
+            if ((!string.IsNullOrEmpty(defClean) && defClean.StartsWith(search)) ||
+                (!string.IsNullOrEmpty(labelClean) && labelClean.StartsWith(search)))
+                return 500;
+            if ((!string.IsNullOrEmpty(defClean) && defClean.Contains(search)) ||
+                (!string.IsNullOrEmpty(labelClean) && labelClean.Contains(search)))
+                return 200;
+            return 0;
+        }
+
+        /// <summary>
+        /// Records use the same names players see on the Records tab, including "kills (entities)".
+        /// </summary>
+        private static RecordDef FindRecordDef(string query)
+        {
+            string search = NormalizeStatKey(query);
+            if (string.IsNullOrEmpty(search)) return null;
+
+            RecordDef best = null;
+            int bestRank = 0;
+            foreach (var rec in DefDatabase<RecordDef>.AllDefsListForReading)
+            {
+                if (rec == null || string.IsNullOrEmpty(rec.defName)) continue;
+                int rank = TextMatchRank(NormalizeStatKey(rec.defName), NormalizeStatKey(rec.label), search);
+                if (rank == 0) continue;
+                if (rank > bestRank || (rank == bestRank && best != null && rec.defName.Length < best.defName.Length))
+                {
+                    best = rec;
+                    bestRank = rank;
+                }
+            }
+
+            return best;
         }
 
         /// <summary>
@@ -919,13 +1032,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         /// </summary>
         private static int RankStatMatch(StatDef stat, string defClean, string labelClean, string search, Pawn forPawn)
         {
-            int rank = 0;
-
-            // Text match quality
-            if (defClean == search) rank += 1000;
-            else if (labelClean == search) rank += 900;
-            else if (defClean.StartsWith(search) || labelClean.StartsWith(search)) rank += 500;
-            else if (defClean.Contains(search) || labelClean.Contains(search)) rank += 200;
+            int rank = TextMatchRank(defClean, labelClean, search);
+            if (rank == 0) return int.MinValue;
 
             // Prefer the "main" stat over Offset/Factor variants
             if ((defClean.EndsWith("offset") || defClean.EndsWith("factor")) &&
@@ -980,6 +1088,16 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 Logger.Warning($"Error formatting stat {statDef.defName}: {ex.Message}");
                 return value.ToString("F1"); // Simple fallback
             }
+        }
+
+        private static string FormatRecordValue(RecordDef record, float value)
+        {
+            if (record == null) return "N/A";
+            if (record.type == RecordType.Time)
+                return ((int)value).ToStringTicksToPeriod();
+            if (record.type == RecordType.Int)
+                return ((int)value).ToString();
+            return value.ToString("0.##");
         }
 
         // === Story & Traits ===

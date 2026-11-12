@@ -644,7 +644,7 @@ namespace CAP_ChatInteractive
                 Rect cooldownLabelRect = new Rect(leftPadding + 10f, y, 250f, sectionHeight);
                 Widgets.Label(cooldownLabelRect, "CAP.CommandManager.Cooldown".Translate());
 
-                Rect cooldownInputRect = new Rect(viewRect.width - 90f, y, 80f, sectionHeight);
+                Rect cooldownInputRect = new Rect(viewRect.width - 110f, y, 100f, sectionHeight);
 
                 // Create a unique key for this setting
                 string cooldownKey = $"cooldown_{settings.GetHashCode()}";
@@ -656,7 +656,7 @@ namespace CAP_ChatInteractive
                 }
 
                 string cooldownBuffer = numericBuffers[cooldownKey];
-                Widgets.TextFieldNumeric(cooldownInputRect, ref settings.CooldownSeconds, ref cooldownBuffer, 0f, 300f);
+                Widgets.TextFieldNumeric(cooldownInputRect, ref settings.CooldownSeconds, ref cooldownBuffer, 0f, 999999f);
                 numericBuffers[cooldownKey] = cooldownBuffer;
 
                 // Description for cooldown — wider + height for wrapping (fixes cutoff) ver 1.37
