@@ -493,7 +493,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
 Happy birthday to RICS!
 RICS is officially 1 year old!
 Thank you to Streamers and their communities for being a part of the RICS community.
-Your reports , suggestions, and bug reports have helped make RICS a better mod for everyone.
+Your reports, suggestions, and bug reports have helped make RICS a better mod for everyone.
 We have come a long way since the first release and we look forward to continuing to improve RICS in the future.
 We look forward to another year of RimWorld Interactive Chat Services!
 
