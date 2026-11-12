@@ -30,6 +30,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
+            // A rejected call must not start the shared timer. The handler arms it only on success.
+            ChatCommandProcessor.SkipCommandCooldown();
             //Logger.Debug($"MilitaryAid command executed by {user.Username} with args: [{string.Join(", ", args)}]");
 
             // Get command settings
@@ -55,6 +57,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
         public override string Execute(ChatMessageWrapper user, string[] args)
         {
+            // A rejected call must not start the shared timer. The handler arms it only on success.
+            ChatCommandProcessor.SkipCommandCooldown();
             //Logger.Debug($"Raid command executed by {user.Username} with args: [{string.Join(", ", args)}]");
 
             // Get command settings

@@ -456,10 +456,18 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             var report = new StringBuilder();
             report.AppendLine("RICS.MPCH.KillHeader".Translate());
 
-            int humanlikeKills = (int)pawn.records.GetValue(RecordDefOf.KillsHumanlikes);
-            int animalKills = (int)pawn.records.GetValue(RecordDefOf.KillsAnimals);
-            int mechanoidKills = (int)pawn.records.GetValue(RecordDefOf.KillsMechanoids);
-            int totalKills = humanlikeKills + animalKills + mechanoidKills;
+            int humanlikeKills = ReadKillRecord(pawn, RecordDefOf.KillsHumanlikes);
+            int animalKills = ReadKillRecord(pawn, RecordDefOf.KillsAnimals);
+            int mechanoidKills = ReadKillRecord(pawn, RecordDefOf.KillsMechanoids);
+            // Anomaly entities are not human, animal, or mechanoid. The record is absent when Anomaly is off.
+            int entityKills = ReadKillRecord(pawn, DefDatabase<RecordDef>.GetNamedSilentFail("KillsEntities"));
+            int otherKills = CountOtherKillRecords(pawn, out var otherLines);
+            // One tick per creature. An entity that is also an animal is listed on both lines,
+            // so the lines are not added together.
+            int recordedTotal = ReadKillRecord(pawn, RecordDefOf.Kills);
+            int totalKills = recordedTotal > 0
+                ? recordedTotal
+                : humanlikeKills + animalKills + mechanoidKills + entityKills + otherKills;
 
             report.AppendLine("RICS.MPCH.TotalKills".Translate(totalKills));
 
@@ -469,6 +477,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 report.AppendLine("RICS.MPCH.KillsAnimals".Translate(animalKills));
             if (mechanoidKills > 0)
                 report.AppendLine("RICS.MPCH.KillsMechanoids".Translate(mechanoidKills));
+            if (entityKills > 0)
+                report.AppendLine("RICS.MPCH.KillsEntities".Translate(entityKills));
+            foreach (string line in otherLines)
+                report.AppendLine(line);
 
             if (totalKills > 0)
             {
@@ -491,6 +503,53 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             return report.ToString();
+        }
+
+        private static int ReadKillRecord(Pawn pawn, RecordDef def)
+        {
+            if (pawn?.records == null || def == null)
+                return 0;
+            return (int)pawn.records.GetValue(def);
+        }
+
+        /// <summary>
+        /// Extra kill records from mods, besides the vanilla human, animal, mechanoid, and entity counts.
+        /// </summary>
+        private static int CountOtherKillRecords(Pawn pawn, out List<string> lines)
+        {
+            lines = new List<string>();
+            if (pawn?.records == null)
+                return 0;
+
+            var skip = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "Kills",
+                "KillsHumanlikes",
+                "KillsAnimals",
+                "KillsMechanoids",
+                "KillsEntities"
+            };
+
+            int total = 0;
+            foreach (var rec in DefDatabase<RecordDef>.AllDefsListForReading)
+            {
+                if (rec == null || string.IsNullOrEmpty(rec.defName))
+                    continue;
+                if (!rec.defName.StartsWith("Kills", StringComparison.Ordinal))
+                    continue;
+                if (skip.Contains(rec.defName))
+                    continue;
+
+                int count = ReadKillRecord(pawn, rec);
+                if (count <= 0)
+                    continue;
+
+                total += count;
+                string label = rec.LabelCap.NullOrEmpty() ? rec.defName : rec.LabelCap.ToString();
+                lines.Add("RICS.MPCH.KillsOther".Translate(label, count).ToString());
+            }
+
+            return total;
         }
     }
 }

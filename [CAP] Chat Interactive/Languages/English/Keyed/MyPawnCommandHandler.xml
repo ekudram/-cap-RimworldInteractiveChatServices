@@ -53,6 +53,8 @@
   <RICS.MPCH.KillsHumans>• Humans: {0}</RICS.MPCH.KillsHumans>
   <RICS.MPCH.KillsAnimals>• Animals: {0}</RICS.MPCH.KillsAnimals>
   <RICS.MPCH.KillsMechanoids>• Mechanoids: {0}</RICS.MPCH.KillsMechanoids>
+  <RICS.MPCH.KillsEntities>• Entities: {0}</RICS.MPCH.KillsEntities>
+  <RICS.MPCH.KillsOther>• {0}: {1}</RICS.MPCH.KillsOther>
   <RICS.MPCH.DamageDealt>Damage Dealt: {0}</RICS.MPCH.DamageDealt>
   <RICS.MPCH.LegendarySlayer>🏆 Legendary Slayer!</RICS.MPCH.LegendarySlayer>
   <RICS.MPCH.VeteranWarrior>⚔️ Veteran Warrior</RICS.MPCH.VeteranWarrior>

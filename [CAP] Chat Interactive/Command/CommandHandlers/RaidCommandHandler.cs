@@ -137,6 +137,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         "RICS.Raid.LetterText".Translate(user.Username, raidType, wager, currencySymbol, raidDetails)
                     );
 
+                    ChatCommandProcessor.ArmCommandCooldown();
                     return "RICS.Raid.SuccessMessage".Translate(user.Username, wager, currencySymbol, raidType);
                 }
                 else

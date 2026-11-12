@@ -41,7 +41,7 @@
   <CAP.CommandManager.BasicSettings>Basic Settings:</CAP.CommandManager.BasicSettings>
   <CAP.CommandManager.Enabled>Enabled:</CAP.CommandManager.Enabled>
   <CAP.CommandManager.Cooldown>Command Cooldown (seconds):</CAP.CommandManager.Cooldown>
-  <CAP.CommandManager.CooldownDesc>Prevents command spamming - reminds users to be respectful</CAP.CommandManager.CooldownDesc>
+  <CAP.CommandManager.CooldownDesc>One timer for this command. After a successful use, no viewer can use it until the seconds run out. Other commands are not affected. 0 = off. Up to 999999.</CAP.CommandManager.CooldownDesc>
   <CAP.CommandManager.NoDescription>No description available</CAP.CommandManager.NoDescription>
   <CAP.CommandManager.Cost>Cost ({0}):</CAP.CommandManager.Cost>
   
