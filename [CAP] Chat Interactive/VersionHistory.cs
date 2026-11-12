@@ -488,8 +488,21 @@ Also changed message about Ownership and adding mid game to be more clear about 
                          Pre-Release
 ===========================================================
 
+<b>MEMORANDUM</b>
+─────────────────
+Happy birthday to RICS!
+RICS is officially 1 year old!
+Thank you to Streamers and thier communities for being a part of the RICS community.
+Your reports , suggestions, and bug reports have helped make RICS a better mod for everyone.
+We have come a long way since the first release and we look forward to continuing to improve RICS in the future.
+We look forward to another year of RimWorld Interactive Chat Services!
+
 <b>FIXED</b>
 ───────────
+- Each command has its own cooldown. After !militaryaid is used, no viewer can use !militaryaid until that timer ends. !raid keeps a separate timer. The timers are saved with the colony.
+- The command cooldown box accepts up to 999999 seconds.
+- !mypawn stats understands names with spaces, such as move speed or kills (entities).
+- !mypawn kills counts Anomaly entity kills. The total is no longer stuck at 0 when those are the only kills.
 - Loading a saved store list only shows items from mods that are turned on.
 - When our caravan arrives, Masie is told who the trader is.
 
