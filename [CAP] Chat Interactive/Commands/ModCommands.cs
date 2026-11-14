@@ -1,21 +1,11 @@
-// ModCommands.cs
-// Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// File: ModCommands.cs
 //
-// Defines moderator commands for giving coins, setting karma, and toggling coin earning.
+// Copyright (c) Captolamia
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
+// Moderator chat commands: coins, karma, store toggle, bans, alias, enable/disable.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -708,6 +698,87 @@ namespace CAP_ChatInteractive.Commands.ModCommands
             if (string.IsNullOrWhiteSpace(raw))
                 return "";
             return raw.Trim().TrimStart('!', '$').ToLowerInvariant();
+        }
+    }
+
+    /// <summary>Turn a command on from chat. Cannot change !enable or !disable.</summary>
+    public class Enable : ChatCommand
+    {
+        public override string Name => "enable";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            return CommandToggle.SetEnabled(messageWrapper, args, true);
+        }
+    }
+
+    /// <summary>Turn a command off from chat. Cannot change !enable or !disable.</summary>
+    public class Disable : ChatCommand
+    {
+        public override string Name => "disable";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            return CommandToggle.SetEnabled(messageWrapper, args, false);
+        }
+    }
+
+    /// <summary>
+    /// Shared !enable / !disable path.
+    /// Those two commands stay locked here so chat cannot turn off the only way back.
+    /// The Command Manager still saves their Enabled flag.
+    /// </summary>
+    internal static class CommandToggle
+    {
+        internal static string SetEnabled(ChatMessageWrapper user, string[] args, bool enabled)
+        {
+            if (args == null || args.Length != 1 || string.IsNullOrWhiteSpace(args[0]))
+            {
+                return enabled
+                    ? "RICS.CC.enable.usage".Translate()
+                    : "RICS.CC.disable.usage".Translate();
+            }
+
+            if (!ChatCommandProcessor.TryGetCommand(args[0], out ChatCommand command) || command == null)
+                return "RICS.CC.enable.notfound".Translate(args[0].Trim().TrimStart('!', '$'));
+
+            if (IsLocked(command.Name))
+                return "RICS.CC.enable.locked".Translate();
+
+            bool currently = CommandSettingsManager.GetSettings(command.Name)?.Enabled ?? true;
+            if (currently == enabled)
+            {
+                return enabled
+                    ? "RICS.CC.enable.already".Translate(command.Name)
+                    : "RICS.CC.disable.already".Translate(command.Name);
+            }
+
+            bool saved = CommandSettingsManager.UpdateAndSave(command.Name, settings =>
+            {
+                settings.Enabled = enabled;
+            });
+            if (!saved)
+                return "RICS.CC.enable.savefail".Translate(command.Name);
+
+            Logger.Message($"{user?.Username} {(enabled ? "enabled" : "disabled")} !{command.Name}");
+            return enabled
+                ? "RICS.CC.enable.ok".Translate(command.Name)
+                : "RICS.CC.disable.ok".Translate(command.Name);
+        }
+
+        private static bool IsLocked(string commandName)
+        {
+            if (string.IsNullOrEmpty(commandName))
+                return false;
+
+            switch (commandName.ToLowerInvariant())
+            {
+                case "enable":
+                case "disable":
+                    return true;
+                default:
+                    return false;
+            }
         }
     }
 }
