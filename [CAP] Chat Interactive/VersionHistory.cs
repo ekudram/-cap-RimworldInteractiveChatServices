@@ -482,6 +482,24 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - !mypawn story race and xenotype keys.
 "
                 },
+                        {"1.56",
+@"===========================================================
+                         RICS version 1.56 - Changelog
+                         Pre-Release
+===========================================================
+
+<b>ADDED</b>
+────────────
+- The command list is grouped by the mod that adds each command. RICS is first, then Storyteller, then each other mod. Click a header to hide or show that mod's commands.
+- Long names on those buttons are shortened so they stay inside the button. Hover any button to see the full name.
+- Sort by Permission replaces Sort by Category. Inside each mod it orders everyone, subscriber, VIP, moderator, then broadcaster.
+
+<b>FIXED</b>
+───────────
+- Blood rain and other Anomaly weather start off. Modded weather stays off until you turn it on. Lists that already had those on get them turned off once. You can turn one back on in the weather list.
+
+"
+                },
                         {"1.55",
 @"===========================================================
                          RICS version 1.55 - Changelog
