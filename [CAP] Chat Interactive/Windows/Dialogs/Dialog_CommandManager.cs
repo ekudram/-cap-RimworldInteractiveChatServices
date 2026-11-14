@@ -39,6 +39,8 @@ namespace CAP_ChatInteractive
         private const float GroupHeaderHeight = 28f;
         private const string RicsGroupKey = "rics";
         private const string StorytellerGroupKey = "storyteller";
+        private const string ResearchVoteGroupKey = "researchvote";
+        private const string AiChatBotGroupKey = "aichatbot";
         private const string OtherGroupKey = "other";
 
         /// <summary>Package groups collapsed for this play session. Not saved.</summary>
@@ -461,7 +463,8 @@ namespace CAP_ChatInteractive
                     Rect headerRectRow = new Rect(5f, y, viewRect.width - 10f, GroupHeaderHeight - 2f);
                     string marker = expanded ? "[-]" : "[+]";
                     string headerLabel = marker + " " + group.Label + " (" + group.Commands.Count + ")";
-                    if (Widgets.ButtonText(headerRectRow, headerLabel))
+                    string headerTip = group.FullName + " (" + group.Commands.Count + ")";
+                    if (UIUtilities.ButtonWithTruncation(headerRectRow, headerLabel, headerTip))
                     {
                         if (CollapsedModGroups.Contains(group.Key))
                             CollapsedModGroups.Remove(group.Key);
@@ -481,9 +484,19 @@ namespace CAP_ChatInteractive
 
                         Rect buttonRect = new Rect(5f, y, viewRect.width - 10f, CommandRowHeight - 2f);
 
-                        string displayName = $"!{command.commandText}";
-                        if (!settings.Enabled)
-                            displayName += " " + "CAP.CommandManager.Disabled".Translate().Colorize(Color.red);
+                        string commandLabel = "!" + (command.commandText ?? "");
+                        string disabledLabel = settings.Enabled
+                            ? null
+                            : "CAP.CommandManager.Disabled".Translate().ToString();
+                        string plainName = disabledLabel == null
+                            ? commandLabel
+                            : commandLabel + " " + disabledLabel;
+                        string displayName = UIUtilities.Truncate(plainName, buttonRect.width - 10f);
+                        if (disabledLabel != null && displayName.EndsWith(disabledLabel))
+                        {
+                            displayName = displayName.Substring(0, displayName.Length - disabledLabel.Length)
+                                + disabledLabel.Colorize(Color.red);
+                        }
 
                         Color buttonColor = GetCommandColor(command);
                         bool isSelected = selectedCommand == command;
@@ -492,6 +505,7 @@ namespace CAP_ChatInteractive
                         if (Widgets.ButtonText(buttonRect, displayName))
                             selectedCommand = command;
 
+                        TooltipHandler.TipRegion(buttonRect, plainName);
                         GUI.color = Color.white;
                         y += CommandRowHeight;
                     }
@@ -522,6 +536,7 @@ namespace CAP_ChatInteractive
                         {
                             Key = key,
                             Label = GetModGroupLabel(command, key),
+                            FullName = GetModFullName(command, key),
                             Order = GetModGroupOrder(key)
                         };
                         map[key] = group;
@@ -544,7 +559,9 @@ namespace CAP_ChatInteractive
 
         /// <summary>
         /// The def's modContentPack is the mod whose XML defined the command.
-        /// Core and the beta package share one RICS header. Storyteller is its own header.
+        /// Core and the beta package share one RICS header.
+        /// Storyteller, Research Vote, and the chatbot addon each have a short header.
+        /// A header exists only when that mod defined at least one command in the list.
         /// </summary>
         private static string GetModGroupKey(ChatCommandDef command)
         {
@@ -560,6 +577,12 @@ namespace CAP_ChatInteractive
             if (id.Equals("Captolamia.RICS.VoteStoryteller", StringComparison.OrdinalIgnoreCase))
                 return StorytellerGroupKey;
 
+            if (id.Equals("Captolamia.RICS.ResearchVote", StringComparison.OrdinalIgnoreCase))
+                return ResearchVoteGroupKey;
+
+            if (id.Equals("Captolamia.RICS.ChatbotAddon", StringComparison.OrdinalIgnoreCase))
+                return AiChatBotGroupKey;
+
             return id;
         }
 
@@ -569,9 +592,13 @@ namespace CAP_ChatInteractive
                 return 0;
             if (key == StorytellerGroupKey)
                 return 1;
-            if (key == OtherGroupKey)
+            if (key == ResearchVoteGroupKey)
+                return 2;
+            if (key == AiChatBotGroupKey)
                 return 3;
-            return 2;
+            if (key == OtherGroupKey)
+                return 5;
+            return 4;
         }
 
         private static string GetModGroupLabel(ChatCommandDef command, string key)
@@ -580,11 +607,27 @@ namespace CAP_ChatInteractive
                 return "CAP.CommandManager.Group.RICS".Translate();
             if (key == StorytellerGroupKey)
                 return "CAP.CommandManager.Group.Storyteller".Translate();
+            if (key == ResearchVoteGroupKey)
+                return "CAP.CommandManager.Group.ResearchVote".Translate();
+            if (key == AiChatBotGroupKey)
+                return "CAP.CommandManager.Group.AiChatBot".Translate();
             if (key == OtherGroupKey)
                 return "CAP.CommandManager.Group.Other".Translate();
 
             string name = command?.modContentPack?.Name;
             return string.IsNullOrEmpty(name) ? key : name;
+        }
+
+        /// <summary>
+        /// About.xml name for the tooltip. RICS, Storyteller, Research Vote, and Ai Chat Bot keep a short button label.
+        /// </summary>
+        private static string GetModFullName(ChatCommandDef command, string key)
+        {
+            string name = command?.modContentPack?.Name;
+            if (!string.IsNullOrEmpty(name))
+                return name;
+
+            return GetModGroupLabel(command, key);
         }
 
         private List<ChatCommandDef> SortCommandList(List<ChatCommandDef> commands)
@@ -648,6 +691,7 @@ namespace CAP_ChatInteractive
         {
             public string Key;
             public string Label;
+            public string FullName;
             public int Order;
             public List<ChatCommandDef> Commands = new List<ChatCommandDef>();
         }

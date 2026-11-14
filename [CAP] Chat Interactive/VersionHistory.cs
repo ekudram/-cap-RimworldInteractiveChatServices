@@ -490,7 +490,8 @@ Also changed message about Ownership and adding mid game to be more clear about 
 
 <b>ADDED</b>
 ────────────
-- The command list is grouped by the mod that adds each command. RICS is first, then Storyteller, then each other mod. Click a header to hide or show that mod's commands.
+- The command list is grouped by the mod that adds each command. RICS is first, then Storyteller, Research Vote, and Ai Chat Bot when those mods are on, then each other mod. Click a header to hide or show that mod's commands.
+- Long names on those buttons are shortened so they stay inside the button. Hover any button to see the full name.
 - Sort by Permission replaces Sort by Category. Inside each mod it orders everyone, subscriber, VIP, moderator, then broadcaster.
 
 <b>FIXED</b>
