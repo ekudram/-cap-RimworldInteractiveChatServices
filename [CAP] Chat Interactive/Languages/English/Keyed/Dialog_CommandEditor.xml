@@ -25,6 +25,8 @@
   <CAP.CommandManager.Sort.Status>Status</CAP.CommandManager.Sort.Status>
   <CAP.CommandManager.Group.RICS>RICS</CAP.CommandManager.Group.RICS>
   <CAP.CommandManager.Group.Storyteller>Storyteller</CAP.CommandManager.Group.Storyteller>
+  <CAP.CommandManager.Group.ResearchVote>Research Vote</CAP.CommandManager.Group.ResearchVote>
+  <CAP.CommandManager.Group.AiChatBot>Ai Chat Bot</CAP.CommandManager.Group.AiChatBot>
   <CAP.CommandManager.Group.Other>Other</CAP.CommandManager.Group.Other>
   
   <!-- Column Headers -->

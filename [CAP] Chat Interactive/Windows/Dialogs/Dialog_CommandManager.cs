@@ -39,6 +39,8 @@ namespace CAP_ChatInteractive
         private const float GroupHeaderHeight = 28f;
         private const string RicsGroupKey = "rics";
         private const string StorytellerGroupKey = "storyteller";
+        private const string ResearchVoteGroupKey = "researchvote";
+        private const string AiChatBotGroupKey = "aichatbot";
         private const string OtherGroupKey = "other";
 
         /// <summary>Package groups collapsed for this play session. Not saved.</summary>
@@ -557,7 +559,9 @@ namespace CAP_ChatInteractive
 
         /// <summary>
         /// The def's modContentPack is the mod whose XML defined the command.
-        /// Core and the beta package share one RICS header. Storyteller is its own header.
+        /// Core and the beta package share one RICS header.
+        /// Storyteller, Research Vote, and the chatbot addon each have a short header.
+        /// A header exists only when that mod defined at least one command in the list.
         /// </summary>
         private static string GetModGroupKey(ChatCommandDef command)
         {
@@ -573,6 +577,12 @@ namespace CAP_ChatInteractive
             if (id.Equals("Captolamia.RICS.VoteStoryteller", StringComparison.OrdinalIgnoreCase))
                 return StorytellerGroupKey;
 
+            if (id.Equals("Captolamia.RICS.ResearchVote", StringComparison.OrdinalIgnoreCase))
+                return ResearchVoteGroupKey;
+
+            if (id.Equals("Captolamia.RICS.ChatbotAddon", StringComparison.OrdinalIgnoreCase))
+                return AiChatBotGroupKey;
+
             return id;
         }
 
@@ -582,9 +592,13 @@ namespace CAP_ChatInteractive
                 return 0;
             if (key == StorytellerGroupKey)
                 return 1;
-            if (key == OtherGroupKey)
+            if (key == ResearchVoteGroupKey)
+                return 2;
+            if (key == AiChatBotGroupKey)
                 return 3;
-            return 2;
+            if (key == OtherGroupKey)
+                return 5;
+            return 4;
         }
 
         private static string GetModGroupLabel(ChatCommandDef command, string key)
@@ -593,6 +607,10 @@ namespace CAP_ChatInteractive
                 return "CAP.CommandManager.Group.RICS".Translate();
             if (key == StorytellerGroupKey)
                 return "CAP.CommandManager.Group.Storyteller".Translate();
+            if (key == ResearchVoteGroupKey)
+                return "CAP.CommandManager.Group.ResearchVote".Translate();
+            if (key == AiChatBotGroupKey)
+                return "CAP.CommandManager.Group.AiChatBot".Translate();
             if (key == OtherGroupKey)
                 return "CAP.CommandManager.Group.Other".Translate();
 
@@ -601,7 +619,7 @@ namespace CAP_ChatInteractive
         }
 
         /// <summary>
-        /// About.xml name for the tooltip. RICS and Storyteller keep a short button label.
+        /// About.xml name for the tooltip. RICS, Storyteller, Research Vote, and Ai Chat Bot keep a short button label.
         /// </summary>
         private static string GetModFullName(ChatCommandDef command, string key)
         {
