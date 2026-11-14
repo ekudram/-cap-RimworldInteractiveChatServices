@@ -451,11 +451,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         /// <param name="pawn">The pawn whose kill information is being retrieved.</param>
         /// <param name="args">Additional arguments for the command (not used).</param>
         /// <returns>A string containing the pawn's combat history summary.</returns>
-        public static string HandleKillInfo(Pawn pawn, string[] args)
+        public static string HandleKillInfo(Pawn pawn, string[] args, Viewer viewer = null)
         {
-            var report = new StringBuilder();
-            report.AppendLine("RICS.MPCH.KillHeader".Translate());
-
             int humanlikeKills = ReadKillRecord(pawn, RecordDefOf.KillsHumanlikes);
             int animalKills = ReadKillRecord(pawn, RecordDefOf.KillsAnimals);
             int mechanoidKills = ReadKillRecord(pawn, RecordDefOf.KillsMechanoids);
@@ -468,6 +465,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             int totalKills = recordedTotal > 0
                 ? recordedTotal
                 : humanlikeKills + animalKills + mechanoidKills + entityKills + otherKills;
+
+            string special = TrySpecialKillReply(pawn, viewer, totalKills);
+            if (special != null)
+                return special;
+
+            var report = new StringBuilder();
+            report.AppendLine("RICS.MPCH.KillHeader".Translate());
 
             report.AppendLine("RICS.MPCH.TotalKills".Translate(totalKills));
 
@@ -503,6 +507,52 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             }
 
             return report.ToString();
+        }
+
+        /// <summary>
+        /// One stored Twitch account id. Matched by id, not by name.
+        /// </summary>
+        private const string SpecialTwitchUserId = "97321737";
+
+        private static readonly string[] NonViolentKillKeys =
+        {
+            "RICS.MyPawn.Kills.NonViolent.1",
+            "RICS.MyPawn.Kills.NonViolent.2",
+            "RICS.MyPawn.Kills.NonViolent.3",
+            "RICS.MyPawn.Kills.NonViolent.4",
+            "RICS.MyPawn.Kills.NonViolent.5",
+            "RICS.MyPawn.Kills.NonViolent.6",
+            "RICS.MyPawn.Kills.NonViolent.7",
+            "RICS.MyPawn.Kills.NonViolent.8",
+            "RICS.MyPawn.Kills.NonViolent.9",
+            "RICS.MyPawn.Kills.NonViolent.10"
+        };
+
+        /// <summary>
+        /// Princess line for one Twitch account, then a random line when the pawn cannot do violence.
+        /// Returns null so the normal kill report still runs.
+        /// </summary>
+        private static string TrySpecialKillReply(Pawn pawn, Viewer viewer, int totalKills)
+        {
+            string twitchId = viewer?.GetPlatformUserId("Twitch");
+            if (string.Equals(twitchId, SpecialTwitchUserId, StringComparison.Ordinal))
+            {
+                string line = "RICS.MyPawn.Kills.Lenarng".Translate();
+                string totals = "RICS.MyPawn.Kills.LenarngTotals".Translate(totalKills.ToString());
+                return line + " " + totals;
+            }
+
+            if (pawn != null && pawn.WorkTagIsDisabled(WorkTags.Violent))
+            {
+                int index = Rand.RangeInclusive(0, NonViolentKillKeys.Length - 1);
+                string pawnName = pawn.LabelShort ?? "";
+                string line = NonViolentKillKeys[index].Translate(pawnName).ToString();
+                if (totalKills > 0)
+                    line += " " + "RICS.MyPawn.Kills.NonViolent.CountSuffix".Translate(totalKills.ToString());
+                return line;
+            }
+
+            return null;
         }
 
         private static int ReadKillRecord(Pawn pawn, RecordDef def)
