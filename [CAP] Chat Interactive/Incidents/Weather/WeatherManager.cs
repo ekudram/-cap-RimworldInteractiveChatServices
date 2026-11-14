@@ -1,21 +1,10 @@
-// WeatherManager.cs
-// Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// File: WeatherManager.cs
 //
-// Manages buyable weather types, including loading, saving, and validation.
+// Copyright (c) Captolamia
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
 using LudeonTK;
 using RimWorld;
 using System;
@@ -323,6 +312,8 @@ namespace CAP_ChatInteractive.Incidents.Weather
                 removedWeather++;
             }
 
+            ApplySavedWeatherDefaultsOnce();
+
             // Log changes
             if (addedWeather > 0 || removedWeather > 0)
             {
@@ -330,6 +321,41 @@ namespace CAP_ChatInteractive.Incidents.Weather
             }
 
             SaveWeatherToJson(); // Save changes (now includes correct modactive flags)
+        }
+
+        /// <summary>
+        /// Older lists saved Anomaly and some mod weather as on. Turn those off once.
+        /// Entries already at <see cref="BuyableWeather.DefaultPolicyVersion"/> keep the streamer's choice.
+        /// Weather whose def is not loaded this session stays at the old version and is checked when that mod is active.
+        /// </summary>
+        private static void ApplySavedWeatherDefaultsOnce()
+        {
+            int turnedOff = 0;
+
+            foreach (var weather in _completeWeatherData.Values)
+            {
+                if (weather == null || weather.Version >= BuyableWeather.DefaultPolicyVersion)
+                    continue;
+
+                var weatherDef = DefDatabase<WeatherDef>.GetNamedSilentFail(weather.DefName);
+                if (weatherDef == null)
+                    continue;
+
+                if (weather.Enabled && BuyableWeather.ShouldAutoDisableModWeather(weatherDef))
+                {
+                    weather.Enabled = false;
+                    turnedOff++;
+                }
+
+                weather.Version = BuyableWeather.DefaultPolicyVersion;
+            }
+
+            if (turnedOff > 0)
+            {
+                Logger.Message(
+                    $"[Weather] Turned off {turnedOff} Anomaly or modded weather types that used to start on. " +
+                    "Turn one back on in the weather list if you want it.");
+            }
         }
 
         public static void SaveWeatherToJson()

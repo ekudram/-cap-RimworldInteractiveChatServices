@@ -1,21 +1,10 @@
-// BuyableWeather.cs
-// Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// File: BuyableWeather.cs
 //
-// Represents a weather event that can be purchased and triggered in the game.
+// Copyright (c) Captolamia
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
 using System;
 using System.Linq;
 using RimWorld;
@@ -46,6 +35,13 @@ namespace CAP_ChatInteractive.Incidents
         /// </summary>
         public bool modactive { get; set; } = false;
 
+        /// <summary>
+        /// 1 = saved before Anomaly and modded weather were forced off once.
+        /// 2 = that one-time pass has run, so a later manual enable stays on.
+        /// The parameterless constructor stays at 1 so old JSON that omitted this field still gets the pass.
+        /// </summary>
+        public const int DefaultPolicyVersion = 2;
+
         public int Version { get; set; } = 1;
 
         public BuyableWeather() { }
@@ -64,17 +60,21 @@ namespace CAP_ChatInteractive.Incidents
 
             SetDefaultPricing(weatherDef);
 
-            // Match events store: Core + official DLC weather on; third-party mod weather off until enabled manually.
+            // Match events store: Core + official DLC weather on; Anomaly and third-party mod weather off.
             // Unknown / null modContentPack is treated as third-party (disabled) — never assume Core.
             if (ShouldAutoDisableModWeather(weatherDef))
                 Enabled = false;
             else
                 Enabled = true;
+
+            // New discoveries are already on the current default. Do not turn them off again if the streamer enables them.
+            Version = DefaultPolicyVersion;
         }
 
         /// <summary>
         /// Same policy as BuyableIncident.ShouldAutoDisableModEvent:
-        /// Core/RimWorld and official DLC stay available; third-party mod weather defaults off on first discovery.
+        /// Core and Royalty, Ideology, Biotech, and Odyssey stay available.
+        /// Anomaly (blood rain) and third-party mod weather default off.
         /// </summary>
         public static bool ShouldAutoDisableModWeather(WeatherDef weatherDef)
         {
@@ -85,6 +85,13 @@ namespace CAP_ChatInteractive.Incidents
                 return true;
 
             string packageId = pack.PackageId ?? string.Empty;
+            string modSource = pack.Name ?? string.Empty;
+
+            // Anomaly is Ludeon.RimWorld.Anomaly. Check it before the Ludeon allow or blood rain starts on.
+            if (packageId.IndexOf("Anomaly", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                modSource.IndexOf("Anomaly", StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
             if (packageId.StartsWith("Ludeon.", StringComparison.OrdinalIgnoreCase))
                 return false;
 
@@ -97,7 +104,6 @@ namespace CAP_ChatInteractive.Incidents
                 return false;
             }
 
-            string modSource = pack.Name ?? string.Empty;
             if (modSource == "RimWorld" || modSource == "Core")
                 return false;
 
