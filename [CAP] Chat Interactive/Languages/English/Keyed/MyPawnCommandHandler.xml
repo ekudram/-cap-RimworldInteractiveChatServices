@@ -61,6 +61,19 @@
   <RICS.MPCH.ExperiencedFighter>🔪 Experienced Fighter</RICS.MPCH.ExperiencedFighter>
   <RICS.MPCH.GettingStarted>🎯 Getting Started</RICS.MPCH.GettingStarted>
   <RICS.MPCH.NoKills>No kills recorded yet. Go get 'em!</RICS.MPCH.NoKills>
+  <RICS.MyPawn.Kills.Lenarng>Your a princess you don't kill people!  You order them to do that!</RICS.MyPawn.Kills.Lenarng>
+  <RICS.MyPawn.Kills.LenarngTotals>Kills: {0}</RICS.MyPawn.Kills.LenarngTotals>
+  <RICS.MyPawn.Kills.NonViolent.1>{0} is incapable of violence. Their kill count is a perfect zero and a clear conscience.</RICS.MyPawn.Kills.NonViolent.1>
+  <RICS.MyPawn.Kills.NonViolent.2>{0} has never hurt a fly. Literally. They refuse.</RICS.MyPawn.Kills.NonViolent.2>
+  <RICS.MyPawn.Kills.NonViolent.3>Kills: 0. Hugs given: too many to count.</RICS.MyPawn.Kills.NonViolent.3>
+  <RICS.MyPawn.Kills.NonViolent.4>{0} doesn't do violence. They do moral support, loudly, from a safe distance.</RICS.MyPawn.Kills.NonViolent.4>
+  <RICS.MyPawn.Kills.NonViolent.5>{0}'s weapon of choice is a strongly worded opinion.</RICS.MyPawn.Kills.NonViolent.5>
+  <RICS.MyPawn.Kills.NonViolent.6>Pacifist on record. {0} would rather haul a thousand steel than throw one punch.</RICS.MyPawn.Kills.NonViolent.6>
+  <RICS.MyPawn.Kills.NonViolent.7>{0} has a long list of enemies and zero intention of doing anything about it.</RICS.MyPawn.Kills.NonViolent.7>
+  <RICS.MyPawn.Kills.NonViolent.8>{0} is the colony's designated "please don't make me fight" pawn.</RICS.MyPawn.Kills.NonViolent.8>
+  <RICS.MyPawn.Kills.NonViolent.9>No kills here. {0} is too busy keeping everyone else alive.</RICS.MyPawn.Kills.NonViolent.9>
+  <RICS.MyPawn.Kills.NonViolent.10>{0} once saw a raider and politely went the other way.</RICS.MyPawn.Kills.NonViolent.10>
+  <RICS.MyPawn.Kills.NonViolent.CountSuffix>(Kills on record: {0})</RICS.MyPawn.Kills.NonViolent.CountSuffix>
 
   <!-- Needs -->
   <RICS.MPCH.NeedsHeader>😊 Needs Report:</RICS.MPCH.NeedsHeader>
