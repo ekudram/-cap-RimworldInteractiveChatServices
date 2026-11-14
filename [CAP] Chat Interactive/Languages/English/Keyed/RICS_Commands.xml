@@ -471,6 +471,17 @@
   <RICS.CC.setalias.cleared>Alias cleared for {0}.</RICS.CC.setalias.cleared>
   <RICS.CC.setalias.savefail>Could not save alias for {0}.</RICS.CC.setalias.savefail>
 
+  <!-- !enable / !disable (moderator). These two cannot be changed from chat. -->
+  <RICS.CC.enable.usage>Usage: !enable command. Example: !enable raid</RICS.CC.enable.usage>
+  <RICS.CC.disable.usage>Usage: !disable command. Example: !disable raid</RICS.CC.disable.usage>
+  <RICS.CC.enable.notfound>No command named '{0}'.</RICS.CC.enable.notfound>
+  <RICS.CC.enable.locked>Chat cannot turn !enable or !disable on or off. Change those in the command settings.</RICS.CC.enable.locked>
+  <RICS.CC.enable.already>!{0} is already on.</RICS.CC.enable.already>
+  <RICS.CC.disable.already>!{0} is already off.</RICS.CC.disable.already>
+  <RICS.CC.enable.ok>!{0} is now on.</RICS.CC.enable.ok>
+  <RICS.CC.disable.ok>!{0} is now off.</RICS.CC.disable.ok>
+  <RICS.CC.enable.savefail>Could not save !{0}.</RICS.CC.enable.savefail>
+
   <!-- Channel points redeem thank-you ({0} reward name, {1} amount, {2} currency name) -->
   <RICS.CCP.RedeemThanks>Thank you for redeeming '{0}'! You received {1}{2}.</RICS.CCP.RedeemThanks>
 

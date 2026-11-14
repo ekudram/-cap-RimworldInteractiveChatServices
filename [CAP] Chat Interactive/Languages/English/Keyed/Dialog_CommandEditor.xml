@@ -21,7 +21,11 @@
   <!-- Sort Buttons -->
   <CAP.CommandManager.Sort.Name>Name</CAP.CommandManager.Sort.Name>
   <CAP.CommandManager.Sort.Category>Category</CAP.CommandManager.Sort.Category>
+  <CAP.CommandManager.Sort.Permission>Permission</CAP.CommandManager.Sort.Permission>
   <CAP.CommandManager.Sort.Status>Status</CAP.CommandManager.Sort.Status>
+  <CAP.CommandManager.Group.RICS>RICS</CAP.CommandManager.Group.RICS>
+  <CAP.CommandManager.Group.Storyteller>Storyteller</CAP.CommandManager.Group.Storyteller>
+  <CAP.CommandManager.Group.Other>Other</CAP.CommandManager.Group.Other>
   
   <!-- Column Headers -->
   <CAP.CommandManager.Commands>Commands</CAP.CommandManager.Commands>

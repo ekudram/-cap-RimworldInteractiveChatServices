@@ -482,6 +482,23 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - !mypawn story race and xenotype keys.
 "
                 },
+                        {"1.56",
+@"===========================================================
+                         RICS version 1.56 - Changelog
+                         Pre-Release
+===========================================================
+
+<b>ADDED</b>
+────────────
+- The command list is grouped by the mod that adds each command. RICS is first, then Storyteller, then each other mod. Click a header to hide or show that mod's commands.
+- Sort by Permission replaces Sort by Category. Inside each mod it orders everyone, subscriber, VIP, moderator, then broadcaster.
+
+<b>FIXED</b>
+───────────
+- Blood rain and other Anomaly weather start off. Modded weather stays off until you turn it on. Lists that already had those on get them turned off once. You can turn one back on in the weather list.
+
+"
+                },
                         {"1.55",
 @"===========================================================
                          RICS version 1.55 - Changelog
@@ -505,6 +522,11 @@ We look forward to another year of RimWorld Interactive Chat Services!
 - !mypawn kills counts Anomaly entity kills. The total is no longer stuck at 0 when those are the only kills.
 - Loading a saved store list only shows items from mods that are turned on.
 - When our caravan arrives, Masie is told who the trader is.
+
+<b>ADDED</b>
+────────────
+- Moderators can turn one command on or off from chat. !enable raid turns it on. !disable raid turns it off.
+- Chat cannot turn !enable or !disable on or off. The streamer can still change those two in the command settings.
 
 "
                 },

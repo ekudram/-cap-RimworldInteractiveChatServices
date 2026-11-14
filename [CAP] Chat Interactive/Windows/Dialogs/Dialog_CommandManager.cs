@@ -1,20 +1,11 @@
-﻿// Dialog_CommandManager.cs
+﻿// File: Dialog_CommandManager.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
-// A dialog window for managing chat commands and their settings
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
+// A dialog window for managing chat commands and their settings.
 using LudeonTK;
 using Newtonsoft.Json;
 using RimWorld;
@@ -43,6 +34,15 @@ namespace CAP_ChatInteractive
         private Dictionary<string, string> numericBuffers = new Dictionary<string, string>();
         private Dictionary<CommandSettings, Dictionary<string, string>> commandSpecificBuffers = new Dictionary<CommandSettings, Dictionary<string, string>>();
         private CAPGlobalChatSettings settingsGlobalChat;
+
+        private const float CommandRowHeight = 35f;
+        private const float GroupHeaderHeight = 28f;
+        private const string RicsGroupKey = "rics";
+        private const string StorytellerGroupKey = "storyteller";
+        private const string OtherGroupKey = "other";
+
+        /// <summary>Package groups collapsed for this play session. Not saved.</summary>
+        private static readonly HashSet<string> CollapsedModGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Purchase / store-style commands that spend coins or deliver goods/events.
@@ -387,16 +387,16 @@ namespace CAP_ChatInteractive
             }
             x += buttonWidth + spacing;
 
-            // Sort by Category
-            if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "CAP.CommandManager.Sort.Category".Translate()))
+            // Sort by Permission (replaces the old Category sort, which only looked at class names).
+            if (Widgets.ButtonText(new Rect(x, 0f, 110f, 30f), "CAP.CommandManager.Sort.Permission".Translate()))
             {
-                if (sortMethod == CommandSortMethod.Category)
+                if (sortMethod == CommandSortMethod.Permission)
                     sortAscending = !sortAscending;
                 else
-                    sortMethod = CommandSortMethod.Category;
+                    sortMethod = CommandSortMethod.Permission;
                 SortCommands();
             }
-            x += buttonWidth + spacing;
+            x += 110f + spacing;
 
             // Sort by Status
             if (Widgets.ButtonText(new Rect(x, 0f, buttonWidth, 30f), "CAP.CommandManager.Sort.Status".Translate()))
@@ -437,50 +437,219 @@ namespace CAP_ChatInteractive
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
 
-            // Command list
+            // Command list, grouped by the mod that defined each command.
             Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f - 4);
-            float rowHeight = 35f;
-            Rect viewRect = new Rect(0f, 0f, listRect.width - 20f, (filteredCommands.Count * rowHeight - 4f) ); // -4f to pull the bottom up se we are not covering the box.
+            var groups = BuildModGroups(filteredCommands);
+            bool searching = !string.IsNullOrEmpty(searchQuery);
+            float contentHeight = 0f;
+            for (int i = 0; i < groups.Count; i++)
+            {
+                contentHeight += GroupHeaderHeight;
+                if (searching || !CollapsedModGroups.Contains(groups[i].Key))
+                    contentHeight += groups[i].Commands.Count * CommandRowHeight;
+            }
+
+            Rect viewRect = new Rect(0f, 0f, listRect.width - 20f, Mathf.Max(1f, contentHeight));
 
             Widgets.BeginScrollView(listRect, ref commandScrollPosition, viewRect);
             {
                 float y = 0f;
-                for (int i = 0; i < filteredCommands.Count; i++)
+                for (int i = 0; i < groups.Count; i++)
                 {
-                    var command = filteredCommands[i];
-                    string commandKey = command.commandText?.ToLowerInvariant() ?? command.defName.ToLowerInvariant();
-                    var settings = commandSettings.ContainsKey(commandKey) ? commandSettings[commandKey] : new CommandSettings();
-
-                    Rect buttonRect = new Rect(5f, y, viewRect.width - 10f, rowHeight - 2f);
-
-                    // Command name with status indicator
-                    string displayName = $"!{command.commandText}";
-                    if (!settings.Enabled)
-                        displayName += " " + "CAP.CommandManager.Disabled".Translate().Colorize(Color.red);
-
-                    // Color coding based on permission level
-                    Color buttonColor = GetCommandColor(command);
-                    bool isSelected = selectedCommand == command;
-
-                    if (isSelected)
+                    var group = groups[i];
+                    bool expanded = searching || !CollapsedModGroups.Contains(group.Key);
+                    Rect headerRectRow = new Rect(5f, y, viewRect.width - 10f, GroupHeaderHeight - 2f);
+                    string marker = expanded ? "[-]" : "[+]";
+                    string headerLabel = marker + " " + group.Label + " (" + group.Commands.Count + ")";
+                    if (Widgets.ButtonText(headerRectRow, headerLabel))
                     {
-                        GUI.color = buttonColor * 1.3f;
-                    }
-                    else
-                    {
-                        GUI.color = buttonColor;
+                        if (CollapsedModGroups.Contains(group.Key))
+                            CollapsedModGroups.Remove(group.Key);
+                        else
+                            CollapsedModGroups.Add(group.Key);
                     }
 
-                    if (Widgets.ButtonText(buttonRect, displayName))
-                    {
-                        selectedCommand = command;
-                    }
-                    GUI.color = Color.white;
+                    y += GroupHeaderHeight;
+                    if (!expanded)
+                        continue;
 
-                    y += rowHeight;
+                    for (int c = 0; c < group.Commands.Count; c++)
+                    {
+                        var command = group.Commands[c];
+                        string commandKey = command.commandText?.ToLowerInvariant() ?? command.defName.ToLowerInvariant();
+                        var settings = commandSettings.ContainsKey(commandKey) ? commandSettings[commandKey] : new CommandSettings();
+
+                        Rect buttonRect = new Rect(5f, y, viewRect.width - 10f, CommandRowHeight - 2f);
+
+                        string displayName = $"!{command.commandText}";
+                        if (!settings.Enabled)
+                            displayName += " " + "CAP.CommandManager.Disabled".Translate().Colorize(Color.red);
+
+                        Color buttonColor = GetCommandColor(command);
+                        bool isSelected = selectedCommand == command;
+                        GUI.color = isSelected ? buttonColor * 1.3f : buttonColor;
+
+                        if (Widgets.ButtonText(buttonRect, displayName))
+                            selectedCommand = command;
+
+                        GUI.color = Color.white;
+                        y += CommandRowHeight;
+                    }
                 }
             }
             Widgets.EndScrollView();
+        }
+
+        /// <summary>
+        /// One header per defining mod. RICS, then Storyteller, then other mods by name, then Other.
+        /// Commands inside a header follow the current sort.
+        /// </summary>
+        private List<CommandModGroup> BuildModGroups(List<ChatCommandDef> commands)
+        {
+            var map = new Dictionary<string, CommandModGroup>(StringComparer.OrdinalIgnoreCase);
+            if (commands != null)
+            {
+                for (int i = 0; i < commands.Count; i++)
+                {
+                    var command = commands[i];
+                    if (command == null)
+                        continue;
+
+                    string key = GetModGroupKey(command);
+                    if (!map.TryGetValue(key, out var group))
+                    {
+                        group = new CommandModGroup
+                        {
+                            Key = key,
+                            Label = GetModGroupLabel(command, key),
+                            Order = GetModGroupOrder(key)
+                        };
+                        map[key] = group;
+                    }
+
+                    group.Commands.Add(command);
+                }
+            }
+
+            var groups = map.Values
+                .OrderBy(g => g.Order)
+                .ThenBy(g => g.Label ?? "", StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            for (int i = 0; i < groups.Count; i++)
+                groups[i].Commands = SortCommandList(groups[i].Commands);
+
+            return groups;
+        }
+
+        /// <summary>
+        /// The def's modContentPack is the mod whose XML defined the command.
+        /// Core and the beta package share one RICS header. Storyteller is its own header.
+        /// </summary>
+        private static string GetModGroupKey(ChatCommandDef command)
+        {
+            var pack = command?.modContentPack;
+            if (pack == null || string.IsNullOrEmpty(pack.PackageId))
+                return OtherGroupKey;
+
+            string id = pack.PackageId;
+            if (id.Equals("Captolamia.RICS", StringComparison.OrdinalIgnoreCase)
+                || id.Equals("Captolamia.RICS.Beta", StringComparison.OrdinalIgnoreCase))
+                return RicsGroupKey;
+
+            if (id.Equals("Captolamia.RICS.VoteStoryteller", StringComparison.OrdinalIgnoreCase))
+                return StorytellerGroupKey;
+
+            return id;
+        }
+
+        private static int GetModGroupOrder(string key)
+        {
+            if (key == RicsGroupKey)
+                return 0;
+            if (key == StorytellerGroupKey)
+                return 1;
+            if (key == OtherGroupKey)
+                return 3;
+            return 2;
+        }
+
+        private static string GetModGroupLabel(ChatCommandDef command, string key)
+        {
+            if (key == RicsGroupKey)
+                return "CAP.CommandManager.Group.RICS".Translate();
+            if (key == StorytellerGroupKey)
+                return "CAP.CommandManager.Group.Storyteller".Translate();
+            if (key == OtherGroupKey)
+                return "CAP.CommandManager.Group.Other".Translate();
+
+            string name = command?.modContentPack?.Name;
+            return string.IsNullOrEmpty(name) ? key : name;
+        }
+
+        private List<ChatCommandDef> SortCommandList(List<ChatCommandDef> commands)
+        {
+            if (commands == null || commands.Count == 0)
+                return commands ?? new List<ChatCommandDef>();
+
+            switch (sortMethod)
+            {
+                case CommandSortMethod.Permission:
+                    return sortAscending
+                        ? commands.OrderBy(PermissionRank).ThenBy(c => c.commandText ?? "").ToList()
+                        : commands.OrderByDescending(PermissionRank).ThenBy(c => c.commandText ?? "").ToList();
+                case CommandSortMethod.Status:
+                    return sortAscending
+                        ? commands.OrderBy(c => IsCommandEnabled(c)).ThenBy(c => c.commandText ?? "").ToList()
+                        : commands.OrderByDescending(c => IsCommandEnabled(c)).ThenBy(c => c.commandText ?? "").ToList();
+                default:
+                    return sortAscending
+                        ? commands.OrderBy(c => c.commandText ?? "").ToList()
+                        : commands.OrderByDescending(c => c.commandText ?? "").ToList();
+            }
+        }
+
+        /// <summary>Saved permission, then the def default. Unknown levels sort last.</summary>
+        private int PermissionRank(ChatCommandDef command)
+        {
+            switch (GetEffectivePermission(command))
+            {
+                case "everyone": return 0;
+                case "subscriber": return 1;
+                case "vip": return 2;
+                case "moderator": return 3;
+                case "broadcaster": return 4;
+                default: return 5;
+            }
+        }
+
+        private string GetEffectivePermission(ChatCommandDef command)
+        {
+            string key = command.commandText?.ToLowerInvariant() ?? command.defName?.ToLowerInvariant();
+            if (!string.IsNullOrEmpty(key)
+                && commandSettings.TryGetValue(key, out var settings)
+                && !string.IsNullOrEmpty(settings.PermissionLevel))
+            {
+                return settings.PermissionLevel.ToLowerInvariant();
+            }
+
+            return (command.permissionLevel ?? "everyone").ToLowerInvariant();
+        }
+
+        private bool IsCommandEnabled(ChatCommandDef command)
+        {
+            string key = command.commandText?.ToLowerInvariant() ?? command.defName?.ToLowerInvariant();
+            if (!string.IsNullOrEmpty(key) && commandSettings.TryGetValue(key, out var settings))
+                return settings.Enabled;
+            return command.enabled;
+        }
+
+        private sealed class CommandModGroup
+        {
+            public string Key;
+            public string Label;
+            public int Order;
+            public List<ChatCommandDef> Commands = new List<ChatCommandDef>();
         }
 
         private Color GetCommandColor(ChatCommandDef command)
@@ -1347,33 +1516,9 @@ namespace CAP_ChatInteractive
 
         private void SortCommands()
         {
-            switch (sortMethod)
-            {
-                case CommandSortMethod.Name:
-                    filteredCommands = sortAscending ?
-                        filteredCommands.OrderBy(c => c.commandText).ToList() :
-                        filteredCommands.OrderByDescending(c => c.commandText).ToList();
-                    break;
-                case CommandSortMethod.Category:
-                    filteredCommands = sortAscending ?
-                        filteredCommands.OrderBy(c => GetCommandCategory(c)).ToList() :
-                        filteredCommands.OrderByDescending(c => GetCommandCategory(c)).ToList();
-                    break;
-                case CommandSortMethod.Status:
-                    filteredCommands = sortAscending ?
-                        filteredCommands.OrderBy(c => commandSettings[c.defName].Enabled).ToList() :
-                        filteredCommands.OrderByDescending(c => commandSettings[c.defName].Enabled).ToList();
-                    break;
-            }
-        }
-
-        private string GetCommandCategory(ChatCommandDef command)
-        {
-            // Categorize based on namespace or other criteria
-            if (command.commandClass.FullName.Contains("ModCommands")) return "Moderator";
-            if (command.commandClass.FullName.Contains("ViewerCommands")) return "Viewer";
-            if (command.commandClass.FullName.Contains("TestCommands")) return "Test";
-            return "Other";
+            // Draw groups and sorts inside each header. This keeps the flat list in the same order
+            // for anything that still reads filteredCommands.
+            filteredCommands = SortCommandList(filteredCommands);
         }
 
         public CommandSettings GetCommandSettings(string commandName)
@@ -1711,7 +1856,7 @@ namespace CAP_ChatInteractive
     public enum CommandSortMethod
     {
         Name,
-        Category,
+        Permission,
         Status
     }
 
