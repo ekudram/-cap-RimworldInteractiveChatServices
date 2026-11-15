@@ -276,7 +276,7 @@ namespace CAP_ChatInteractive.Incidents.Weather
 
             string label = !string.IsNullOrWhiteSpace(weatherDef?.label) ? weatherDef.label : saved?.Label ?? "";
             string mod = weatherDef?.modContentPack?.Name ?? saved?.ModSource ?? "Unknown";
-            Logger.Error($"Skipped weather '{defName}' ({label}) from '{mod}'. It has no name or description, so it is not for sale.");
+            Logger.Warning($"Skipped weather '{defName}' ({label}) from '{mod}'. It has no name or description, so it is not for sale.");
         }
 
         private static void CopyDisplayText(BuyableWeather weather, WeatherDef weatherDef)
