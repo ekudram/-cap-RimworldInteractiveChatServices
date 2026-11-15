@@ -3,7 +3,7 @@
 
   <RICS.Anomaly.Blocked.Disabled>{0} is Anomaly content and Anomaly is disabled in this game.</RICS.Anomaly.Blocked.Disabled>
   <RICS.Anomaly.Blocked.NoDlc>{0} needs the Anomaly DLC.</RICS.Anomaly.Blocked.NoDlc>
-  <RICS.Anomaly.Blocked.Stage>{0} is still sealed. It unlocks at {1}. The monolith is {2}. Type !anomaly to check.</RICS.Anomaly.Blocked.Stage>
+  <RICS.Anomaly.Blocked.Stage>{0} is still sealed until the monolith reaches {1}. It is {2} now. Type !anomaly to check.</RICS.Anomaly.Blocked.Stage>
 
   <RICS.Anomaly.Stage.NoDlc>❌ Anomaly DLC is not active.</RICS.Anomaly.Stage.NoDlc>
   <RICS.Anomaly.Stage.Disabled>🚫 Anomaly incidents are disabled in this game.</RICS.Anomaly.Stage.Disabled>

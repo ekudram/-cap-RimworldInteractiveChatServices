@@ -196,7 +196,7 @@ namespace CAP_ChatInteractive.Incidents
             if (UnlockedTier() >= requiredTier)
                 return true;
 
-            reason = "RICS.Anomaly.Blocked.Stage".Translate(label, StageLabelForTier(requiredTier), CurrentMonolithLabel());
+            reason = BlockedStageLine(label, requiredTier);
             return false;
         }
 
@@ -215,7 +215,7 @@ namespace CAP_ChatInteractive.Incidents
             if (UnlockedTier() >= requiredTier)
                 return true;
 
-            reason = "RICS.Anomaly.Blocked.Stage".Translate(label, StageLabelForTier(requiredTier), CurrentMonolithLabel());
+            reason = BlockedStageLine(label, requiredTier);
             return false;
         }
 
@@ -378,19 +378,47 @@ namespace CAP_ChatInteractive.Incidents
             if (best == null)
                 return requiredTier.ToString();
 
-            return best.LabelCap.ToString();
+            return MonolithStageName(best);
+        }
+
+        /// <summary>
+        /// Monolith levels have no def label. The names players know are the def names.
+        /// </summary>
+        private static string MonolithStageName(MonolithLevelDef level)
+        {
+            if (level == null)
+                return "Inactive";
+
+            switch (level.defName)
+            {
+                case "Inactive":
+                case "Stirring":
+                case "Waking":
+                case "Gleaming":
+                case "Embraced":
+                case "Disrupted":
+                    return level.defName;
+                case "VoidAwakened":
+                    return "Void awakened";
+                default:
+                    string label = level.LabelCap.ToString();
+                    return string.IsNullOrEmpty(label) ? level.defName : label;
+            }
+        }
+
+        private static string BlockedStageLine(string label, int requiredTier)
+        {
+            return "RICS.Anomaly.Blocked.Stage".Translate(
+                label,
+                StageLabelForTier(requiredTier),
+                CurrentMonolithLabel());
         }
 
         private static string CurrentMonolithLabel()
         {
             try
             {
-                MonolithLevelDef level = Find.Anomaly?.LevelDef;
-                if (level == null)
-                    return "Inactive";
-
-                string label = level.LabelCap.ToString();
-                return string.IsNullOrEmpty(label) ? level.defName : label;
+                return MonolithStageName(Find.Anomaly?.LevelDef);
             }
             catch (Exception ex)
             {
@@ -422,7 +450,11 @@ namespace CAP_ChatInteractive.Incidents
 
         private static string LabelOf(string label, string fallback)
         {
-            return string.IsNullOrEmpty(label) ? fallback : label;
+            string name = string.IsNullOrEmpty(label) ? fallback : label;
+            if (string.IsNullOrEmpty(name))
+                return "That";
+
+            return name.CapitalizeFirst();
         }
     }
 }
