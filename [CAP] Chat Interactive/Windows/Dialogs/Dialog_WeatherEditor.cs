@@ -489,7 +489,7 @@ namespace CAP_ChatInteractive
                         string defName = filteredWeather[i]?.DefName ?? "(unknown)";
                         if (loggedRowErrors.Add(defName))
                         {
-                            Logger.Error($"Weather editor skipped '{defName}' from '{filteredWeather[i]?.ModSource}'. {ex.Message}");
+                            Logger.Warning($"Weather editor skipped '{defName}' from '{filteredWeather[i]?.ModSource}'. {ex.Message}");
                         }
                     }
                     y += rowHeight;
