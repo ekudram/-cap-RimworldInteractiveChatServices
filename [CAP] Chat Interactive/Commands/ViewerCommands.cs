@@ -22,6 +22,7 @@
 using _CAP__Chat_Interactive.Utilities;
 using CAP_ChatInteractive;
 using CAP_ChatInteractive.Commands.CommandHandlers;
+using CAP_ChatInteractive.Incidents;
 using CAP_ChatInteractive.Utilities;
 
 using RimWorld;
@@ -365,6 +366,18 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 // return "Requires anomaly DLC";
             }
             return ResearchCommandHandler.HandleStudyCommand(messageWrapper, args);
+        }
+    }
+
+    public class Anomaly : ChatCommand
+    {
+        public override string Name => "anomaly";
+
+        public override string Execute(ChatMessageWrapper messageWrapper, string[] args)
+        {
+            return AnomalyStaging.StageLine()
+                + " | "
+                + AnomalyStaging.StagingSettingLine();
         }
     }
 

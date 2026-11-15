@@ -952,6 +952,18 @@
   </CAP_ChatInteractive.ChatCommandDef>
 
   <CAP_ChatInteractive.ChatCommandDef>
+    <defName>Anomaly</defName>
+    <commandText>anomaly</commandText>
+    <label>anomaly</label>
+    <enabled>true</enabled>
+    <commandClass>CAP_ChatInteractive.Commands.ViewerCommands.Anomaly</commandClass>
+    <requiresMod>false</requiresMod>
+    <commandDescription>Shows the Anomaly monolith stage and whether Anomaly staging is on</commandDescription>
+    <cooldownSeconds>0</cooldownSeconds>
+    <useCommandCooldown>true</useCommandCooldown>
+  </CAP_ChatInteractive.ChatCommandDef>
+
+  <CAP_ChatInteractive.ChatCommandDef>
     <defName>ModInfo</defName>
     <commandText>modinfo</commandText>
     <label>mod info</label>

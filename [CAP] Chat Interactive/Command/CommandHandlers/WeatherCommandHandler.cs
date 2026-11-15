@@ -64,6 +64,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!buyableWeather.Enabled)
                     return "RICS.WCH.WeatherDisabled".Translate(buyableWeather.Label);
 
+                if (!AnomalyStaging.CanPurchase(buyableWeather, out string anomalyReason))
+                    return anomalyReason;
+
                 var cooldownManager = Current.Game?.GetComponent<GlobalCooldownManager>();
                 if (cooldownManager != null)
                 {
@@ -222,7 +225,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
         private static IEnumerable<BuyableWeather> GetEnabledWeather()
         {
             return BuyableWeatherManager.AllBuyableWeather.Values
-                .Where(w => w != null && w.Enabled);
+                .Where(w => w != null && w.Enabled && AnomalyStaging.CanPurchase(w, out _));
         }
 
         private static bool IsGameConditionWeather(string defName)

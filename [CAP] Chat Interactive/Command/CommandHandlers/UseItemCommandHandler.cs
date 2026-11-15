@@ -8,6 +8,7 @@
 // !use — immediately consume/apply store items (food, serums, trainers, implants)
 using _CAP__Chat_Interactive.Command.CommandHelpers;
 using CAP_ChatInteractive.Commands.Cooldowns;
+using CAP_ChatInteractive.Incidents;
 using CAP_ChatInteractive.Store;
 using CAP_ChatInteractive.Utilities;
 using RimWorld;
@@ -61,6 +62,10 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
 
                 if (!storeItem.IsUsable)
                     return "RICS.UICH.NotUsable".Translate(itemName);
+
+                var anomalyDef = DefDatabase<ThingDef>.GetNamedSilentFail(storeItem.DefName);
+                if (anomalyDef != null && !AnomalyStaging.CanPurchaseItem(anomalyDef, itemName, out string anomalyReason))
+                    return anomalyReason;
 
                 var researchResult = StoreCommandHelper.HasRequiredResearch(storeItem);
                 if (!researchResult.Allowed)

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <RICS.Anomaly.Blocked.Disabled>{0} is Anomaly content and Anomaly is disabled in this game.</RICS.Anomaly.Blocked.Disabled>
+  <RICS.Anomaly.Blocked.NoDlc>{0} needs the Anomaly DLC.</RICS.Anomaly.Blocked.NoDlc>
+  <RICS.Anomaly.Blocked.Stage>{0} is still sealed. It unlocks at {1}. The monolith is {2}. Type !anomaly to check.</RICS.Anomaly.Blocked.Stage>
+
+  <RICS.Anomaly.Stage.NoDlc>❌ Anomaly DLC is not active.</RICS.Anomaly.Stage.NoDlc>
+  <RICS.Anomaly.Stage.Disabled>🚫 Anomaly incidents are disabled in this game.</RICS.Anomaly.Stage.Disabled>
+  <RICS.Anomaly.Stage.AmbientHorror>🕯️ Ambient horror, no monolith. Everything is unlocked.</RICS.Anomaly.Stage.AmbientHorror>
+  <RICS.Anomaly.Stage.Inactive>🌑 Inactive, nothing has woken yet.</RICS.Anomaly.Stage.Inactive>
+  <RICS.Anomaly.Stage.Stirring>👁️ Stirring, the first horrors are unlocked.</RICS.Anomaly.Stage.Stirring>
+  <RICS.Anomaly.Stage.Waking>🩸 Waking, everything is unlocked.</RICS.Anomaly.Stage.Waking>
+  <RICS.Anomaly.Stage.VoidAwakened>🌀 Void awakened, the void is breaking through. Everything is unlocked.</RICS.Anomaly.Stage.VoidAwakened>
+  <RICS.Anomaly.Stage.Gleaming>✨ Gleaming, the monolith is ready. Everything is unlocked.</RICS.Anomaly.Stage.Gleaming>
+  <RICS.Anomaly.Stage.Embraced>🖤 Embraced, the void has won. Everything stays unlocked.</RICS.Anomaly.Stage.Embraced>
+  <RICS.Anomaly.Stage.Disrupted>💀 Disrupted, the monolith is broken.</RICS.Anomaly.Stage.Disrupted>
+  <RICS.Anomaly.Stage.Unknown>❔ The monolith is {0}.</RICS.Anomaly.Stage.Unknown>
+
+  <RICS.Anomaly.StagingOn>Anomaly staging: ON</RICS.Anomaly.StagingOn>
+  <RICS.Anomaly.StagingOff>Anomaly staging: OFF</RICS.Anomaly.StagingOff>
+
+</LanguageData>

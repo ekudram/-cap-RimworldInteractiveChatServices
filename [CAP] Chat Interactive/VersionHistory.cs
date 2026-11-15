@@ -488,12 +488,22 @@ Also changed message about Ownership and adding mid game to be more clear about 
                          Pre-Release
 ===========================================================
 
+<b>MEMORANDUM</b>
+─────────────────
+
+Long awaited feature for Anomaly events, weather, and store items to wait for the monolith stage.
+
+Many people have asked for this so you have two new options in settings.
+They are in the Game Events Tab, under the Anomaly section.  Both new options start on.
+One follows the monolith.  The other blocks Anomaly events and weather when Anomaly is turned off, and leaves store items such as the hellcat on the store list.
+
 <b>ADDED</b>
 ────────────
 - The command list is grouped by the mod that adds each command. RICS is first, then Storyteller, Research Vote, and Ai Chat Bot when those mods are on, then each other mod. Click a header to hide or show that mod's commands.
 - Long names on those buttons are shortened so they stay inside the button. Hover any button to see the full name.
 - Sort by Permission replaces Sort by Category. Inside each mod it orders everyone, subscriber, VIP, moderator, then broadcaster.
 - A pawn who cannot fight gets a special reply from !mypawn kills. If they still have kills on record, that count is shown after the line.
+- Anomaly events, weather, and store items can wait for the monolith stage. Both new options start on. One follows the monolith. The other blocks Anomaly events and weather when Anomaly incidents are turned off, and leaves store items such as the hellcat on the store list. !anomaly shows the stage.
 
 <b>FIXED</b>
 ───────────
