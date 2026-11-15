@@ -1,19 +1,10 @@
-// Dialog_EventsEditor.cs
+// File: Dialog_EventsEditor.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
 // A dialog window for editing and managing chat-interactive events
 using _CAP__Chat_Interactive.Windows.Dialogs;
 using CAP_ChatInteractive.Incidents;
@@ -861,7 +852,8 @@ namespace CAP_ChatInteractive
             {
                 int d = incident.CooldownDays;
                 string buf = numericBuffers[daysKey];
-                Widgets.TextFieldNumeric(daysRect, ref d, ref buf, 1f, 365f);
+                // 0 is no cooldown. A minimum of 1 makes TextFieldNumeric clamp a typed 0 with no log.
+                Widgets.TextFieldNumeric(daysRect, ref d, ref buf, 0f, 365f);
                 numericBuffers[daysKey] = buf;
 
                 if (d != incident.CooldownDays)
@@ -1112,20 +1104,7 @@ namespace CAP_ChatInteractive
 
         private int CalculateDefaultCooldown(BuyableIncident incident)
         {
-            // This should match the logic in BuyableIncident.SetDefaultCooldown
-            // Since we don't have that method yet, let's create a simple default
-
-            // You can adjust these defaults based on your preferences
-            if (incident.IsRaidIncident)
-                return 7;
-            else if (incident.IsDiseaseIncident)
-                return 5;
-            else if (incident.IsWeatherIncident)
-                return 3;
-            else if (incident.IsQuestIncident)
-                return 10;
-            else
-                return 1;
+            return incident == null ? 1 : incident.GetDefaultCooldownDays();
         }
 
         private void ShowEnableByModSourceMenu()
@@ -1411,7 +1390,7 @@ namespace CAP_ChatInteractive
                 incident.BaseCost = fresh.BaseCost;
                 incident.KarmaType = fresh.KarmaType;
                 incident.EventCap = fresh.EventCap;
-                incident.CooldownDays = CalculateDefaultCooldown(incident); // or fresh.CooldownDays if you add it later
+                incident.CooldownDays = CalculateDefaultCooldown(incident);
                 incident.UsesPerCooldownPeriod = 1;
                 incident.ShouldBeInStore = fresh.ShouldBeInStore;
                 incident.IsAvailableForCommands = fresh.IsAvailableForCommands;

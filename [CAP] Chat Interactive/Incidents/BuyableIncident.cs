@@ -1,19 +1,9 @@
-// BuyableIncident.cs
+// File: BuyableIncident.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
 // Represents a buyable incident with properties for pricing, availability, and type analysis.
 using RimWorld;
@@ -102,6 +92,7 @@ namespace CAP_ChatInteractive.Incidents
             MaxThreatPoints = incidentDef.maxThreatPoints;
             EarliestDay = incidentDef.earliestDay;
             AnalyzeIncidentType(incidentDef);
+            CooldownDays = GetDefaultCooldownDays();
             KarmaType = DetermineKarmaType(incidentDef);
             SetDefaultPricing(incidentDef);
 
@@ -420,6 +411,23 @@ namespace CAP_ChatInteractive.Incidents
                 return false;
             
             return true;
+        }
+
+        /// <summary>
+        /// Cooldown used for a new event and for the editor reset. First match wins.
+        /// A saved 0 stays no cooldown and is not rewritten here.
+        /// </summary>
+        public int GetDefaultCooldownDays()
+        {
+            if (IsRaidIncident)
+                return 7;
+            if (IsDiseaseIncident)
+                return 5;
+            if (IsWeatherIncident)
+                return 3;
+            if (IsQuestIncident)
+                return 10;
+            return 1;
         }
 
         private void SetDefaultPricing(IncidentDef incidentDef)
