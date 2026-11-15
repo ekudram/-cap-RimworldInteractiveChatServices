@@ -512,6 +512,7 @@ One follows the monolith.  The other blocks Anomaly events and weather when Anom
 - In the events list, you can set one event's cooldown to 0. That means no cooldown.
 - New events added to the list start with a cooldown for their type. Events already in your list are left alone.
 - A weather type with no name or description is left off the list. One broken mod cannot close the weather editor, and chat cannot buy that weather.
+- Underground map lighting, such as the ancient silo and ancient complex skies, stays off the weather list.
 
 "
                 },
