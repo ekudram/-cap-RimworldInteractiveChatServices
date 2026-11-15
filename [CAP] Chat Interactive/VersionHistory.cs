@@ -494,6 +494,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - Long names on those buttons are shortened so they stay inside the button. Hover any button to see the full name.
 - Sort by Permission replaces Sort by Category. Inside each mod it orders everyone, subscriber, VIP, moderator, then broadcaster.
 - A pawn who cannot fight gets a special reply from !mypawn kills. If they still have kills on record, that count is shown after the line.
+- Anomaly events, weather, and store items can wait for the monolith stage. Both new options start on. One follows the monolith. The other blocks Anomaly events and weather when Anomaly incidents are turned off, and leaves store items such as the hellcat on the store list. !anomaly shows the stage.
 
 <b>FIXED</b>
 ───────────

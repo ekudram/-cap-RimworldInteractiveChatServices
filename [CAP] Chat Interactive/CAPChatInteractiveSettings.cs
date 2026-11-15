@@ -226,6 +226,12 @@ namespace CAP_ChatInteractive
 
         // Global event settings
         public bool EventCooldownsEnabled = true;
+
+        /// <summary>When true, Anomaly events, weather, and store items wait for the monolith stage.</summary>
+        public bool AnomalyStagingEnabled = true;
+
+        /// <summary>When true, Anomaly events and weather are blocked if this save turned Anomaly incidents off. Store items are not affected.</summary>
+        public bool AnomalyBlockEventsWhenDisabled = true;
         public int EventCooldownDays = 5;
         public int EventsperCooldown = 25; // # of events per Cooldowndays 
         public bool KarmaTypeLimitsEnabled = false;
@@ -462,6 +468,8 @@ namespace CAP_ChatInteractive
 
             // Cooldown settings
             Scribe_Values.Look(ref EventCooldownsEnabled, "eventCooldownsEnabled", true);
+            Scribe_Values.Look(ref AnomalyStagingEnabled, "anomalyStagingEnabled", true);
+            Scribe_Values.Look(ref AnomalyBlockEventsWhenDisabled, "anomalyBlockEventsWhenDisabled", true);
             Scribe_Values.Look(ref EventCooldownDays, "eventCooldownDays", 5);
             Scribe_Values.Look(ref EventsperCooldown, "eventsperCooldown", 25);
             Scribe_Values.Look(ref KarmaTypeLimitsEnabled, "karmaTypeLimitsEnabled", false);

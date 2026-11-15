@@ -66,6 +66,10 @@ namespace CAP_ChatInteractive
 
             listing.Gap(24f);
 
+            DrawAnomalySettings(listing, settings);
+
+            listing.Gap(24f);
+
             // OTHER SETTINGS SECTION
             DrawOtherSettings(listing, settings);
 
@@ -84,11 +88,12 @@ namespace CAP_ChatInteractive
             float headerHeight = 60f; // Header + description
             float cooldownHeight = CalculateCooldownSectionHeight(settings);
             float resetButtonHeight = 50f; // Button + gap
+            float anomalySettingsHeight = 340f; // Header, two checkboxes, two paragraphs
             float otherSettingsHeight = 40f; // Max traits section
             float statisticsHeight = CalculateStatisticsSectionHeight();
 
             // Total height with gaps
-            return headerHeight + cooldownHeight + resetButtonHeight + otherSettingsHeight + statisticsHeight + 200f; // Extra padding
+            return headerHeight + cooldownHeight + resetButtonHeight + anomalySettingsHeight + otherSettingsHeight + statisticsHeight + 200f; // Extra padding
         }
 
         private static float CalculateCooldownSectionHeight(CAPGlobalChatSettings settings)
@@ -212,6 +217,45 @@ namespace CAP_ChatInteractive
                 GUI.color = ColorLibrary.LightText;
                 // OLD (error): listing.Label("RICS.GameEvents.EventCooldownDaysDesc".Translate());
                 listing.Label("RICS.GameEvents.CooldownsDisabledMessage".Translate());  // ← FIXED
+                GUI.color = Color.white;
+            }
+        }
+
+        private static void DrawAnomalySettings(Listing_Standard listing, CAPGlobalChatSettings settings)
+        {
+            Text.Font = GameFont.Medium;
+            GUI.color = ColorLibrary.HeaderAccent;
+            listing.Label("RICS.GameEvents.AnomalyHeader".Translate());
+            Text.Font = GameFont.Small;
+            GUI.color = Color.white;
+            listing.GapLine(6f);
+
+            listing.CheckboxLabeled(
+                "RICS.GameEvents.AnomalyStaging".Translate(),
+                ref settings.AnomalyStagingEnabled,
+                "RICS.GameEvents.AnomalyStagingDesc".Translate());
+            Text.Font = GameFont.Small;
+            GUI.color = ColorLibrary.LightText;
+            listing.Label("RICS.GameEvents.AnomalyStagingDesc".Translate());
+            Text.Font = GameFont.Small;
+            GUI.color = Color.white;
+            listing.Gap(8f);
+
+            listing.CheckboxLabeled(
+                "RICS.GameEvents.AnomalyBlockWhenDisabled".Translate(),
+                ref settings.AnomalyBlockEventsWhenDisabled,
+                "RICS.GameEvents.AnomalyBlockWhenDisabledDesc".Translate());
+            Text.Font = GameFont.Small;
+            GUI.color = ColorLibrary.LightText;
+            listing.Label("RICS.GameEvents.AnomalyBlockWhenDisabledDesc".Translate());
+            Text.Font = GameFont.Small;
+            GUI.color = Color.white;
+
+            if (!ModsConfig.AnomalyActive)
+            {
+                listing.Gap(6f);
+                GUI.color = ColorLibrary.LightText;
+                listing.Label("RICS.GameEvents.AnomalyNotActive".Translate());
                 GUI.color = Color.white;
             }
         }

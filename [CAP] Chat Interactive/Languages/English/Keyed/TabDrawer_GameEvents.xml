@@ -5,6 +5,12 @@
   <RICS.GameEvents.Header>Game Events and Cooldowns</RICS.GameEvents.Header>
   <RICS.GameEvents.GlobalCooldownSettings>Global Cooldown Settings</RICS.GameEvents.GlobalCooldownSettings>
   <RICS.GameEvents.OtherSettings>Other Settings</RICS.GameEvents.OtherSettings>
+  <RICS.GameEvents.AnomalyHeader>Anomaly</RICS.GameEvents.AnomalyHeader>
+  <RICS.GameEvents.AnomalyStaging>Anomaly staging</RICS.GameEvents.AnomalyStaging>
+  <RICS.GameEvents.AnomalyStagingDesc>When this is on, Anomaly events, weather, and store items unlock as the monolith wakes. Stirring opens the first tier. Waking opens the rest, including the golden cube. Unlocks stay after the monolith is disrupted. When this is off, anything enabled in the editor can be bought at any stage.</RICS.GameEvents.AnomalyStagingDesc>
+  <RICS.GameEvents.AnomalyBlockWhenDisabled>Block events when Anomaly is off</RICS.GameEvents.AnomalyBlockWhenDisabled>
+  <RICS.GameEvents.AnomalyBlockWhenDisabledDesc>When this is on, and this save has Anomaly installed but Anomaly incidents turned off, chat cannot buy Anomaly events or weather. Store items such as the hellcat rifle stay on the store editor. When this is off, those events and weather can still be bought in a save that turned Anomaly incidents off.</RICS.GameEvents.AnomalyBlockWhenDisabledDesc>
+  <RICS.GameEvents.AnomalyNotActive>Anomaly DLC not active.</RICS.GameEvents.AnomalyNotActive>
   <RICS.GameEvents.EventManagement>Event Management</RICS.GameEvents.EventManagement>
   <RICS.GameEvents.CurrentStatistics>Current Statistics:</RICS.GameEvents.CurrentStatistics>
 

@@ -30,6 +30,11 @@ namespace CAP_ChatInteractive.Extension
             var items = StoreInventory.AllStoreItems?.Values
                 .Where(i => i != null && i.Enabled && i.modactive && i.BasePrice > 0)
                 .Where(i => StoreCommandHelper.HasRequiredResearch(i).Allowed)
+                .Where(i =>
+                {
+                    ThingDef def = DefDatabase<ThingDef>.GetNamedSilentFail(i.DefName);
+                    return def == null || AnomalyStaging.CanPurchaseItem(def, i.CustomName ?? i.DefName, out _);
+                })
                 .OrderBy(i => i.CustomName ?? i.DefName, StringComparer.OrdinalIgnoreCase)
                 .Select(i => (object)new
                 {
@@ -84,6 +89,7 @@ namespace CAP_ChatInteractive.Extension
         {
             var items = IncidentsManager.AllBuyableIncidents?.Values
                 .Where(e => e != null && e.Enabled && e.modactive && e.ShouldBeInStore && e.IsAvailableForCommands && e.BaseCost > 0)
+                .Where(e => AnomalyStaging.CanPurchase(e, out _))
                 .OrderBy(e => e.Label ?? e.DefName, StringComparer.OrdinalIgnoreCase)
                 .Select(e => (object)new
                 {
@@ -102,6 +108,7 @@ namespace CAP_ChatInteractive.Extension
         {
             var items = BuyableWeatherManager.AllBuyableWeather?.Values
                 .Where(w => w != null && w.Enabled && w.modactive && w.BaseCost > 0)
+                .Where(w => AnomalyStaging.CanPurchase(w, out _))
                 .OrderBy(w => w.Label ?? w.DefName, StringComparer.OrdinalIgnoreCase)
                 .Select(w => (object)new
                 {

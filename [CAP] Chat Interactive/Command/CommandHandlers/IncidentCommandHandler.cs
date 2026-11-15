@@ -42,6 +42,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 if (!buyableIncident.Enabled)
                     return "RICS.ICH.RETURN.IncidentDisabled".Translate(buyableIncident.Label);
 
+                if (!AnomalyStaging.CanPurchase(buyableIncident, out string anomalyReason))
+                    return anomalyReason;
+
                 var cooldownManager = Current.Game?.GetComponent<GlobalCooldownManager>();
                 if (cooldownManager != null && settings.EventCooldownsEnabled)
                 {
@@ -224,7 +227,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 return null;
 
             string inputLower = input.ToLowerInvariant();
-            var allIncidents = GetAvailableIncidents();
+            var allIncidents = GetLookupIncidents();
 
             if (allIncidents.TryGetValue(inputLower, out var incident))
                 return incident;
@@ -244,11 +247,19 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 i.Label.IndexOf(input, StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
-        public static Dictionary<string, BuyableIncident> GetAvailableIncidents()
+        /// <summary>Enabled incidents, including ones Anomaly staging still seals. Used so a locked buy can say why.</summary>
+        private static Dictionary<string, BuyableIncident> GetLookupIncidents()
         {
             return IncidentsManager.AllBuyableIncidents
                 .Where(kvp => IsIncidentSuitableForCommand(kvp.Value))
                 .ToDictionary(kvp => kvp.Key.ToLowerInvariant(), kvp => kvp.Value);
+        }
+
+        public static Dictionary<string, BuyableIncident> GetAvailableIncidents()
+        {
+            return GetLookupIncidents()
+                .Where(kvp => AnomalyStaging.CanPurchase(kvp.Value, out _))
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
         private static bool IsIncidentSuitableForCommand(BuyableIncident incident)
