@@ -510,6 +510,8 @@ One follows the monolith.  The other blocks Anomaly events and weather when Anom
 ───────────
 - Blood rain and other Anomaly weather start off. Modded weather stays off until you turn it on. Lists that already had those on get them turned off once. You can turn one back on in the weather list.
 - A sealed Anomaly buy now names the monolith stage that opens it. Blood rain while the monolith is Stirring says it waits for Waking.
+- In the events list, you can set one event's cooldown to 0. That means no cooldown.
+- New events added to the list start with a cooldown for their type. Events already in your list are left alone.
 
 "
                 },
