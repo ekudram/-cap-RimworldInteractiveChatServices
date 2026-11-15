@@ -511,6 +511,7 @@ One follows the monolith.  The other blocks Anomaly events and weather when Anom
 - A sealed Anomaly buy now names the monolith stage that opens it. Blood rain while the monolith is Stirring says it waits for Waking.
 - In the events list, you can set one event's cooldown to 0. That means no cooldown.
 - New events added to the list start with a cooldown for their type. Events already in your list are left alone.
+- A weather type with no name or description is left off the list. One broken mod cannot close the weather editor, and chat cannot buy that weather.
 
 "
                 },

@@ -1,19 +1,10 @@
-// Dialog_WeatherEditor.cs
+// File: Dialog_WeatherEditor.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
+//
 // A dialog window for editing buyable weather settings in the game
 using CAP_ChatInteractive.Incidents;
 using CAP_ChatInteractive.Incidents.Weather;
@@ -39,6 +30,7 @@ namespace CAP_ChatInteractive
         private Dictionary<string, int> modSourceCounts = new Dictionary<string, int>();
         private List<BuyableWeather> filteredWeather = new List<BuyableWeather>();
         private Dictionary<string, (int baseCost, string karmaType)> originalSettings = new Dictionary<string, (int, string)>();
+        private readonly HashSet<string> loggedRowErrors = new HashSet<string>();
 
         public override Vector2 InitialSize => new Vector2(1200f, 700f);
 
@@ -488,7 +480,18 @@ namespace CAP_ChatInteractive
                         Widgets.DrawLightHighlight(weatherRect);
                     }
 
-                    DrawWeatherRow(weatherRect, filteredWeather[i]);
+                    try
+                    {
+                        DrawWeatherRow(weatherRect, filteredWeather[i]);
+                    }
+                    catch (Exception ex)
+                    {
+                        string defName = filteredWeather[i]?.DefName ?? "(unknown)";
+                        if (loggedRowErrors.Add(defName))
+                        {
+                            Logger.Error($"Weather editor skipped '{defName}' from '{filteredWeather[i]?.ModSource}'. {ex.Message}");
+                        }
+                    }
                     y += rowHeight;
                 }
             }
@@ -530,7 +533,7 @@ namespace CAP_ChatInteractive
             Text.Font = GameFont.Medium;
 
             // Capitalize first letter of the label
-            string displayLabel = weather.Label;
+            string displayLabel = weather?.Label ?? "";
             if (!string.IsNullOrEmpty(displayLabel))
             {
                 displayLabel = char.ToUpper(displayLabel[0]) + (displayLabel.Length > 1 ? displayLabel.Substring(1) : "");
@@ -540,9 +543,9 @@ namespace CAP_ChatInteractive
             Widgets.Label(nameRect, displayLabel);
             Text.Font = GameFont.Small;
 
-            // Description
+            // Description. A missing description used to throw here and skip EndScrollView.
             Rect descRect = new Rect(0f, 28f, rect.width, 40f); // Adjusted Y position due to increased name height
-            string description = weather.Description;
+            string description = weather?.Description ?? "";
             if (description.Length > 160)
             {
                 description = description.Substring(0, 157) + "...";
@@ -760,8 +763,16 @@ namespace CAP_ChatInteractive
             }
         }
 
+        private static bool ContainsText(string value, string searchLower)
+        {
+            return !string.IsNullOrEmpty(value) && value.ToLower().Contains(searchLower);
+        }
+
         private string GetDisplayModName(string modSource)
         {
+            if (string.IsNullOrEmpty(modSource))
+                return "";
+
             if (modSource == "Core")
                 return "RimWorld";
 
@@ -789,10 +800,10 @@ namespace CAP_ChatInteractive
             {
                 string searchLower = searchQuery.ToLower();
                 allWeather = allWeather.Where(weather =>
-                    weather.Label.ToLower().Contains(searchLower) ||
-                    weather.Description.ToLower().Contains(searchLower) ||
-                    weather.DefName.ToLower().Contains(searchLower) ||
-                    weather.ModSource.ToLower().Contains(searchLower)
+                    ContainsText(weather.Label, searchLower) ||
+                    ContainsText(weather.Description, searchLower) ||
+                    ContainsText(weather.DefName, searchLower) ||
+                    ContainsText(weather.ModSource, searchLower)
                 );
             }
 
