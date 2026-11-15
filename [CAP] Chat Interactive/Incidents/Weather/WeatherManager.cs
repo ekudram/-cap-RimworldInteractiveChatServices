@@ -23,6 +23,7 @@ namespace CAP_ChatInteractive.Incidents.Weather
         public static IReadOnlyDictionary<string, BuyableWeather> CompleteWeatherData => _completeWeatherData;
         private static bool isInitialized = false;
         private static readonly object lockObject = new object();
+        private static readonly HashSet<string> loggedIncompleteWeather = new HashSet<string>();
 
         //        private static List<TemperatureVariant> temperatureVariants = new List<TemperatureVariant>
         //{
@@ -145,6 +146,12 @@ namespace CAP_ChatInteractive.Incidents.Weather
             {
                 try
                 {
+                    if (!BuyableWeather.HasRequiredText(weatherDef))
+                    {
+                        NoteIncompleteWeather(weatherDef, null);
+                        continue;
+                    }
+
                     if (!IsWeatherSuitableForStore(weatherDef))
                         continue;
 
@@ -171,26 +178,45 @@ namespace CAP_ChatInteractive.Incidents.Weather
             var allWeatherDefs = DefDatabase<WeatherDef>.AllDefs.ToList();
             var activeDefNames = new HashSet<string>(allWeatherDefs.Select(d => d.defName));
 
-            // First, add all existing weather from complete data (JSON settings)
+            // Saved rows stay in JSON. Incomplete defs stay off the buyable list.
             foreach (var kvp in _completeWeatherData)
             {
-                if (activeDefNames.Contains(kvp.Key))
+                if (!activeDefNames.Contains(kvp.Key))
+                    continue;
+
+                var weatherDef = allWeatherDefs.FirstOrDefault(d => d.defName == kvp.Key);
+                if (!BuyableWeather.HasRequiredText(weatherDef))
                 {
-                    // Weather is from an active mod - use JSON settings exactly as saved
-                    AllBuyableWeather[kvp.Key] = kvp.Value;
+                    NoteIncompleteWeather(weatherDef, kvp.Value);
+                    continue;
                 }
+
+                if (!IsWeatherSuitableForStore(weatherDef))
+                    continue;
+
+                CopyDisplayText(kvp.Value, weatherDef);
+                AllBuyableWeather[kvp.Key] = kvp.Value;
             }
 
             // Now check for NEW weather that aren't in JSON (first discovery)
             foreach (var weatherDef in allWeatherDefs)
             {
                 string key = GetWeatherKey(weatherDef);
-                if (!_completeWeatherData.ContainsKey(key) && IsWeatherSuitableForStore(weatherDef))
+                if (_completeWeatherData.ContainsKey(key))
+                    continue;
+
+                if (!BuyableWeather.HasRequiredText(weatherDef))
                 {
-                    var buyableWeather = CreateNewBuyableWeather(weatherDef);
-                    _completeWeatherData[key] = buyableWeather;
-                    AllBuyableWeather[key] = buyableWeather;
+                    NoteIncompleteWeather(weatherDef, null);
+                    continue;
                 }
+
+                if (!IsWeatherSuitableForStore(weatherDef))
+                    continue;
+
+                var buyableWeather = CreateNewBuyableWeather(weatherDef);
+                _completeWeatherData[key] = buyableWeather;
+                AllBuyableWeather[key] = buyableWeather;
             }
         }
 
@@ -233,7 +259,33 @@ namespace CAP_ChatInteractive.Incidents.Weather
                 return false;
             }
 
+            if (!BuyableWeather.HasRequiredText(weatherDef))
+                return false;
+
             return true;
+        }
+
+        /// <summary>
+        /// One log line per def for the session. The saved row is kept.
+        /// </summary>
+        private static void NoteIncompleteWeather(WeatherDef weatherDef, BuyableWeather saved)
+        {
+            string defName = weatherDef?.defName ?? saved?.DefName ?? "(unknown)";
+            if (!loggedIncompleteWeather.Add(defName))
+                return;
+
+            string label = !string.IsNullOrWhiteSpace(weatherDef?.label) ? weatherDef.label : saved?.Label ?? "";
+            string mod = weatherDef?.modContentPack?.Name ?? saved?.ModSource ?? "Unknown";
+            Logger.Error($"Skipped weather '{defName}' ({label}) from '{mod}'. It has no name or description, so it is not for sale.");
+        }
+
+        private static void CopyDisplayText(BuyableWeather weather, WeatherDef weatherDef)
+        {
+            if (weather == null || weatherDef == null)
+                return;
+
+            weather.Label = weatherDef.label;
+            weather.Description = weatherDef.description;
         }
 
         private static string GetWeatherKey(WeatherDef weatherDef)
@@ -254,12 +306,19 @@ namespace CAP_ChatInteractive.Incidents.Weather
             {
                 string key = GetWeatherKey(weatherDef);
 
-                if (!_completeWeatherData.ContainsKey(key) && IsWeatherSuitableForStore(weatherDef))
+                if (!_completeWeatherData.ContainsKey(key))
                 {
-                    var newWeather = CreateNewBuyableWeather(weatherDef);
-                    _completeWeatherData[key] = newWeather;
-                    AllBuyableWeather[key] = newWeather;
-                    addedWeather++;
+                    if (!BuyableWeather.HasRequiredText(weatherDef))
+                    {
+                        NoteIncompleteWeather(weatherDef, null);
+                    }
+                    else if (IsWeatherSuitableForStore(weatherDef))
+                    {
+                        var newWeather = CreateNewBuyableWeather(weatherDef);
+                        _completeWeatherData[key] = newWeather;
+                        AllBuyableWeather[key] = newWeather;
+                        addedWeather++;
+                    }
                 }
                 else if (_completeWeatherData.ContainsKey(key))
                 {
@@ -279,9 +338,13 @@ namespace CAP_ChatInteractive.Incidents.Weather
                     existingWeather.BaseCost = userPrice;
                     existingWeather.KarmaType = userKarma;
 
-                    // Ensure it's in the active runtime dictionary
-                    if (IsWeatherSuitableForStore(weatherDef))
+                    if (!BuyableWeather.HasRequiredText(weatherDef))
                     {
+                        NoteIncompleteWeather(weatherDef, existingWeather);
+                    }
+                    else if (IsWeatherSuitableForStore(weatherDef))
+                    {
+                        CopyDisplayText(existingWeather, weatherDef);
                         AllBuyableWeather[key] = existingWeather;
                     }
                 }

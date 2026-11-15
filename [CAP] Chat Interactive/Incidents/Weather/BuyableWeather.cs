@@ -116,6 +116,17 @@ namespace CAP_ChatInteractive.Incidents
             return true;
         }
 
+        /// <summary>
+        /// A weather can be listed and sold only when the live def has a name, a label, and a description.
+        /// </summary>
+        public static bool HasRequiredText(WeatherDef weatherDef)
+        {
+            return weatherDef != null
+                && !string.IsNullOrWhiteSpace(weatherDef.defName)
+                && !string.IsNullOrWhiteSpace(weatherDef.label)
+                && !string.IsNullOrWhiteSpace(weatherDef.description);
+        }
+
         private void SetDefaultPricing(WeatherDef weatherDef)
         {
             string defName = weatherDef.defName?.ToLowerInvariant() ?? string.Empty;
