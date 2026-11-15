@@ -36,4 +36,4 @@ The public Deadlife GitHub tree does not have a file named Weather. The weather 
 
 ## What RICS does now
 
-A weather with no def name, label, or description is not added to the buyable list. A row already saved is left in the weather JSON, including price and enabled, and is left off the list until the def has all three. The log names the def, the label, and the mod. The editor also treats a null description as blank and catches one bad row so the scroll view can finish.
+A weather with no def name, label, or description is not added to the buyable list. A weather is also left off when a game condition uses it, allows underground, and hides that condition from the UI. That is the ancient silo and ancient complex pattern. `allowUnderground` defaults to true, so that flag alone is not enough. Blood rain, the palls, and the Royalty weather controller stay. A saved row keeps its price and enabled setting. The log is a warning and names the def, the label, and the mod. The editor also treats a null description as blank and catches one bad row so the scroll view can finish.

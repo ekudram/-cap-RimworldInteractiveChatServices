@@ -243,6 +243,14 @@ namespace CAP_ChatInteractive.Incidents.Weather
             if (weatherDef == null)
                 return false;
 
+            // Underground quest maps force this sky and hide the condition. allowUnderground defaults to true,
+            // so the hidden-UI flag is required or Fog and other real weather would leave the store.
+            if (IsUndergroundMapLighting(weatherDef))
+            {
+                NoteUndergroundMapLighting(weatherDef);
+                return false;
+            }
+
             string defName = weatherDef.defName?.ToLowerInvariant() ?? string.Empty;
 
             // Exclude space / underground / scenario-only weather (e.g. Save Our Ship "orbit")
@@ -270,6 +278,12 @@ namespace CAP_ChatInteractive.Incidents.Weather
         /// </summary>
         private static void NoteIncompleteWeather(WeatherDef weatherDef, BuyableWeather saved)
         {
+            if (IsUndergroundMapLighting(weatherDef))
+            {
+                NoteUndergroundMapLighting(weatherDef);
+                return;
+            }
+
             string defName = weatherDef?.defName ?? saved?.DefName ?? "(unknown)";
             if (!loggedIncompleteWeather.Add(defName))
                 return;
@@ -277,6 +291,37 @@ namespace CAP_ChatInteractive.Incidents.Weather
             string label = !string.IsNullOrWhiteSpace(weatherDef?.label) ? weatherDef.label : saved?.Label ?? "";
             string mod = weatherDef?.modContentPack?.Name ?? saved?.ModSource ?? "Unknown";
             Logger.Warning($"Skipped weather '{defName}' ({label}) from '{mod}'. It has no name or description, so it is not for sale.");
+        }
+
+        /// <summary>
+        /// True when a game condition uses this weather as underground map lighting and does not show that condition on the UI.
+        /// </summary>
+        private static bool IsUndergroundMapLighting(WeatherDef weatherDef)
+        {
+            if (weatherDef == null)
+                return false;
+
+            foreach (GameConditionDef condition in DefDatabase<GameConditionDef>.AllDefs)
+            {
+                if (condition?.weatherDef != weatherDef)
+                    continue;
+
+                if (condition.allowUnderground && !condition.displayOnUI)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static void NoteUndergroundMapLighting(WeatherDef weatherDef)
+        {
+            string defName = weatherDef?.defName ?? "(unknown)";
+            if (!loggedIncompleteWeather.Add(defName))
+                return;
+
+            string label = weatherDef?.label ?? "";
+            string mod = weatherDef?.modContentPack?.Name ?? "Unknown";
+            Logger.Warning($"Skipped weather '{defName}' ({label}) from '{mod}'. It is underground map lighting, not colony weather, so it is not for sale.");
         }
 
         private static void CopyDisplayText(BuyableWeather weather, WeatherDef weatherDef)
