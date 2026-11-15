@@ -488,6 +488,16 @@ Also changed message about Ownership and adding mid game to be more clear about 
                          Pre-Release
 ===========================================================
 
+<b>MEMORANDUM</b>
+─────────────────
+
+Long awaited feature for Anomaly events, weather, and store items to wait for the monolith stage.
+
+Many people have asked for this so you have two new options in settings.
+They are in the Game Events Tab, under the Anomaly section.  Both new options start on.
+One follows the monolith.  The other blocks Anomaly events and weather when Anomaly is turned off, and leaves store items such as the hellcat on the store list.
+
+
 <b>ADDED</b>
 ────────────
 - The command list is grouped by the mod that adds each command. RICS is first, then Storyteller, Research Vote, and Ai Chat Bot when those mods are on, then each other mod. Click a header to hide or show that mod's commands.
