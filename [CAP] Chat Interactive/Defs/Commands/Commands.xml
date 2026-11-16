@@ -1057,6 +1057,12 @@
       </li>
       <li>
         <type>CheckBox</type>
+        <name>enableArmor</name>
+        <label>Armor</label>
+        <defaultValue>true</defaultValue>
+      </li>
+      <li>
+        <type>CheckBox</type>
         <name>enableWeapon</name>
         <label>Weapon</label>
         <defaultValue>true</defaultValue>

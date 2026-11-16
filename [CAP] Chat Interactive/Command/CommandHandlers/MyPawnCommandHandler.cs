@@ -59,6 +59,8 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     case "health": settingKey = "enableHealth"; break;
                     case "implants": settingKey = "enableImplants"; break;
                     case "gear": settingKey = "enableGear"; break;
+                    case "armor":
+                    case "armour": settingKey = "enableArmor"; break;
                     case "weapon":
                     case "weapons": settingKey = "enableWeapon"; break;
                     case "kills":
@@ -111,6 +113,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                         return MyPawnCommandHandler_Body.HandleImplantsInfo(pawn, args);
                     case "gear":
                         return MyPawnCommandHandler_Combat.HandleGearInfo(pawn, args);
+                    case "armor":
+                    case "armour":
+                        return MyPawnCommandHandler_Combat.HandleArmorInfo(pawn);
                     case "weapon":
                     case "weapons":
                         return MyPawnCommandHandler_Combat.HandleWeaponInfo(pawn);

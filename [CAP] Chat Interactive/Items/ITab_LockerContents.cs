@@ -160,7 +160,7 @@ namespace CAP_ChatInteractive
             }
             catch (Exception ex)
             {
-                Log.Error($"[DEBUG] ITab_ContainerStorage.FillTab error: {ex}");
+                Logger.Error($"[DEBUG] ITab_ContainerStorage.FillTab error: {ex}");
             }
         }
     }
