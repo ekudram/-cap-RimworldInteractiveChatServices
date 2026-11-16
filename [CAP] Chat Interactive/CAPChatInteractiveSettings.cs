@@ -9,6 +9,7 @@
 // JSON overlay/recovery is SettingsJsonPersistence.
 
 
+using Newtonsoft.Json;
 using RimWorld;
 using System.Collections.Generic;
 using System.Reflection;
@@ -159,8 +160,11 @@ namespace CAP_ChatInteractive
 
     public class CAPGlobalChatSettings : IExposable
     {
-        // Existing properties...
-        public string modVersion = "1.57";  // Current mod version WE DONT SAVE THIS! Used in history control
+        // Chat and the version-history subtitle read modVersion. XML does not scribe it.
+        // JSON backups must not either: an old file was pasting "1.50" over this DLL.
+        public const string CompiledModVersion = "1.57";
+        [JsonIgnore]
+        public string modVersion = CompiledModVersion;
         public string modVersionSaved = "";
         public string priceListUrl = "https://github.com/ekudram/RICS-Pricelist";
         public bool EnableDebugLogging = false;
@@ -650,7 +654,7 @@ namespace CAP_ChatInteractive
 
             foreach (var field in typeof(CAPGlobalChatSettings).GetFields(BindingFlags.Instance | BindingFlags.Public))
             {
-                if (field.IsLiteral)
+                if (field.IsLiteral || field.Name == nameof(modVersion))
                     continue;
 
                 if (field.FieldType == typeof(List<ChannelPoints_RewardSettings>))
