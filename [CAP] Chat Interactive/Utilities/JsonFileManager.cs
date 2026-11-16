@@ -870,7 +870,11 @@ namespace CAP_ChatInteractive
                 bool preferJson = current.GlobalSettings?.PreferJsonOnLoad ?? false;
                 current.CopyFrom(backup);
                 if (current.GlobalSettings != null)
+                {
                     current.GlobalSettings.PreferJsonOnLoad = preferJson;
+                    // Backup files from 1.50 still contain modVersion. Chat uses the DLL string.
+                    current.GlobalSettings.modVersion = CAPGlobalChatSettings.CompiledModVersion;
+                }
                 Logger.Message("[Backup] Applied JSON backup to live mod settings (in-place).");
             }
             catch (Exception ex)
