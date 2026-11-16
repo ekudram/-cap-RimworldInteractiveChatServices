@@ -482,6 +482,18 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - !mypawn story race and xenotype keys.
 "
                 },
+                        {"1.57",
+@"===========================================================
+                         RICS version 1.57 - Changelog
+                         Pre-Release
+===========================================================
+
+<b>UPDATED</b>
+──────────────
+- An error from RICS now also names the RICS version, the RimWorld version, and any mods that require RICS.
+
+"
+                },
                         {"1.56",
 @"===========================================================
                          RICS version 1.56 - Changelog
