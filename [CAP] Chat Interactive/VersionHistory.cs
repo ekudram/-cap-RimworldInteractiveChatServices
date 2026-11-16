@@ -492,6 +492,10 @@ Also changed message about Ownership and adding mid game to be more clear about 
 ──────────────
 - An error from RICS now also names the RICS version, the RimWorld version, and any mods that require RICS.
 
+<b>ADDED</b>
+────────────
+- !mypawn gear lists sharp, blunt, and heat on each worn piece. !mypawn armor shows only those numbers, percentages first.
+
 "
                 },
                         {"1.56",

@@ -5,7 +5,7 @@
 // Licensed under the GNU Affero General Public License v3.0 or later.
 // See LICENSE.txt in the project root for full license text.
 //
-// Handles !mypawn gear and !mypawn kills/killcount subcommands.
+// Handles !mypawn gear, !mypawn armor, and !mypawn kills/killcount subcommands.
 // Extracted from main handler for readability and maintainability.
 
 using RimWorld;
@@ -163,7 +163,7 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                 }
             }
 
-            // Armor stats from RimWorld (no complex calculations) — shown in both paths
+            // Per worn piece. The pawn's own armor stat is natural armor only.
             report.Append(GetArmorSummary(pawn));
 
             return report.ToString();
@@ -272,29 +272,122 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             return new List<Thing>();
         }
 
+        /// <summary>
+        /// !mypawn armor / armour. Sharp, blunt, and heat for each worn piece, percentages first.
+        /// </summary>
+        public static string HandleArmorInfo(Pawn pawn)
+        {
+            return GetArmorSummary(pawn);
+        }
+
+        /// <summary>
+        /// One line per worn piece that has at least 1% sharp, blunt, or heat.
+        /// Layers are not added together. The pawn stat is only the body's own armor.
+        /// </summary>
         private static string GetArmorSummary(Pawn pawn)
         {
-            if (pawn?.apparel?.WornApparel == null || !pawn.apparel.WornApparel.Any())
+            var lines = new List<ArmorLine>();
+
+            var worn = pawn?.apparel?.WornApparel;
+            if (worn != null)
+            {
+                foreach (Apparel item in worn)
+                {
+                    if (TryFormatApparelArmor(item, out ArmorLine line))
+                        lines.Add(line);
+                }
+            }
+
+            if (TryFormatNaturalArmor(pawn, out ArmorLine natural))
+                lines.Add(natural);
+
+            if (lines.Count == 0)
                 return "RICS.MPCH.ArmorNone".Translate() + "\n";
+
+            lines.Sort((a, b) =>
+            {
+                int bySharp = b.Sharp.CompareTo(a.Sharp);
+                return bySharp != 0
+                    ? bySharp
+                    : string.Compare(a.Text, b.Text, StringComparison.OrdinalIgnoreCase);
+            });
+
+            var report = new StringBuilder();
+            string header = "RICS.MPCH.ArmorHeader".Translate();
+            report.AppendLine(header.TrimEnd());
+            foreach (ArmorLine line in lines)
+                report.AppendLine(line.Text);
+            return report.ToString();
+        }
+
+        private static bool TryFormatApparelArmor(Apparel item, out ArmorLine line)
+        {
+            line = default;
+            if (item?.def == null)
+                return false;
+
+            try
+            {
+                float sharp = item.GetStatValue(StatDefOf.ArmorRating_Sharp);
+                float blunt = item.GetStatValue(StatDefOf.ArmorRating_Blunt);
+                float heat = item.GetStatValue(StatDefOf.ArmorRating_Heat);
+                if (sharp < 0.01f && blunt < 0.01f && heat < 0.01f)
+                    return false;
+
+                string name = MyPawnCommandHandler.StripTags(item.def.LabelCap);
+                string quality = item.TryGetQuality(out QualityCategory qc) ? $" ({qc})" : "";
+                line = new ArmorLine
+                {
+                    Sharp = sharp,
+                    Text = FormatArmorValues(sharp, blunt, heat) + " " + name + quality
+                };
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Armor stats failed for {item.def.defName}: {ex.Message}");
+                return false;
+            }
+        }
+
+        private static bool TryFormatNaturalArmor(Pawn pawn, out ArmorLine line)
+        {
+            line = default;
+            if (pawn?.def == null)
+                return false;
 
             try
             {
                 float sharp = pawn.GetStatValue(StatDefOf.ArmorRating_Sharp);
                 float blunt = pawn.GetStatValue(StatDefOf.ArmorRating_Blunt);
                 float heat = pawn.GetStatValue(StatDefOf.ArmorRating_Heat);
+                if (sharp < 0.01f && blunt < 0.01f && heat < 0.01f)
+                    return false;
 
-                var parts = new List<string>();
-                if (sharp >= 0.01f) parts.Add($"🗡️{sharp.ToStringPercent()}");
-                if (blunt >= 0.01f) parts.Add($"🔨{blunt.ToStringPercent()}");
-                if (heat >= 0.01f) parts.Add($"🔥{heat.ToStringPercent()}");
-
-                return "RICS.MPCH.ArmorHeader".Translate() + string.Join(" ", parts) + "\n";
+                string name = MyPawnCommandHandler.StripTags(pawn.def.LabelCap);
+                line = new ArmorLine
+                {
+                    Sharp = sharp,
+                    Text = FormatArmorValues(sharp, blunt, heat) + " " + name
+                };
+                return true;
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error calculating armor: {ex}");
-                return "RICS.MPCH.ArmorNone".Translate() + "\n";
+                return false;
             }
+        }
+
+        private static string FormatArmorValues(float sharp, float blunt, float heat)
+        {
+            return $"{sharp.ToStringPercent()} / {blunt.ToStringPercent()} / {heat.ToStringPercent()}";
+        }
+
+        private struct ArmorLine
+        {
+            public float Sharp;
+            public string Text;
         }
 
         // === Weapon Details ===
