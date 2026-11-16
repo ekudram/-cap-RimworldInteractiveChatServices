@@ -91,36 +91,45 @@
     </value>
   </Operation>
 
-  <!-- Move lab coat out of Misc. Def is Anomaly content. -->
-  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Anomaly">
+  <!-- Lab coat is Anomaly content. MayRequire on a patch operation is ignored, so test for the def. -->
+  <Operation Class="PatchOperationConditional">
     <xpath>Defs/ThingDef[defName="Apparel_LabCoat"]/thingCategories</xpath>
-    <value>
-      <thingCategories>
-        <li>ApparelClothing</li>
-      </thingCategories>
-    </value>
+    <match Class="PatchOperationReplace">
+      <xpath>Defs/ThingDef[defName="Apparel_LabCoat"]/thingCategories</xpath>
+      <value>
+        <thingCategories>
+          <li>ApparelClothing</li>
+        </thingCategories>
+      </value>
+    </match>
   </Operation>
 
   <!-- ============================================== -->
   <!--  Move Biotech apparel from ApparelMisc to ApparelUtility -->
   <!-- ============================================== -->
 
-  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Biotech">
+  <Operation Class="PatchOperationConditional">
     <xpath>Defs/ThingDef[defName="Apparel_Bandolier"]/thingCategories</xpath>
-    <value>
-      <thingCategories>
-        <li>ApparelUtility</li>
-      </thingCategories>
-    </value>
+    <match Class="PatchOperationReplace">
+      <xpath>Defs/ThingDef[defName="Apparel_Bandolier"]/thingCategories</xpath>
+      <value>
+        <thingCategories>
+          <li>ApparelUtility</li>
+        </thingCategories>
+      </value>
+    </match>
   </Operation>
 
-  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Biotech">
+  <Operation Class="PatchOperationConditional">
     <xpath>Defs/ThingDef[defName="Apparel_Sash"]/thingCategories</xpath>
-    <value>
-      <thingCategories>
-        <li>ApparelUtility</li>
-      </thingCategories>
-    </value>
+    <match Class="PatchOperationReplace">
+      <xpath>Defs/ThingDef[defName="Apparel_Sash"]/thingCategories</xpath>
+      <value>
+        <thingCategories>
+          <li>ApparelUtility</li>
+        </thingCategories>
+      </value>
+    </match>
   </Operation>
 
   <!-- ============================================== -->
@@ -128,54 +137,69 @@
   <!-- ============================================== -->
 
   <!-- Slave body strap → ApparelUtility -->
-  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Ideology">
+  <Operation Class="PatchOperationConditional">
     <xpath>Defs/ThingDef[defName="Apparel_BodyStrap"]/thingCategories</xpath>
-    <value>
-      <thingCategories>
-        <li>ApparelUtility</li>
-      </thingCategories>
-    </value>
+    <match Class="PatchOperationReplace">
+      <xpath>Defs/ThingDef[defName="Apparel_BodyStrap"]/thingCategories</xpath>
+      <value>
+        <thingCategories>
+          <li>ApparelUtility</li>
+        </thingCategories>
+      </value>
+    </match>
   </Operation>
 
   <!-- Burka → ApparelClothing -->
-  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Ideology">
+  <Operation Class="PatchOperationConditional">
     <xpath>Defs/ThingDef[defName="Apparel_Burka"]/thingCategories</xpath>
-    <value>
-      <thingCategories>
-        <li>ApparelClothing</li>
-      </thingCategories>
-    </value>
+    <match Class="PatchOperationReplace">
+      <xpath>Defs/ThingDef[defName="Apparel_Burka"]/thingCategories</xpath>
+      <value>
+        <thingCategories>
+          <li>ApparelClothing</li>
+        </thingCategories>
+      </value>
+    </match>
   </Operation>
 
   <!-- ============================================== -->
   <!--  Move Royalty psychic apparel from ApparelMisc to ApparelClothing -->
   <!-- ============================================== -->
 
-  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Royalty">
+  <Operation Class="PatchOperationConditional">
     <xpath>Defs/ThingDef[defName="Apparel_PsyfocusShirt"]/thingCategories</xpath>
-    <value>
-      <thingCategories>
-        <li>ApparelClothing</li>
-      </thingCategories>
-    </value>
+    <match Class="PatchOperationReplace">
+      <xpath>Defs/ThingDef[defName="Apparel_PsyfocusShirt"]/thingCategories</xpath>
+      <value>
+        <thingCategories>
+          <li>ApparelClothing</li>
+        </thingCategories>
+      </value>
+    </match>
   </Operation>
 
-  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Royalty">
+  <Operation Class="PatchOperationConditional">
     <xpath>Defs/ThingDef[defName="Apparel_PsyfocusVest"]/thingCategories</xpath>
-    <value>
-      <thingCategories>
-        <li>ApparelClothing</li>
-      </thingCategories>
-    </value>
+    <match Class="PatchOperationReplace">
+      <xpath>Defs/ThingDef[defName="Apparel_PsyfocusVest"]/thingCategories</xpath>
+      <value>
+        <thingCategories>
+          <li>ApparelClothing</li>
+        </thingCategories>
+      </value>
+    </match>
   </Operation>
 
-  <Operation Class="PatchOperationReplace" MayRequire="Ludeon.RimWorld.Royalty">
+  <Operation Class="PatchOperationConditional">
     <xpath>Defs/ThingDef[defName="Apparel_PsyfocusRobe"]/thingCategories</xpath>
-    <value>
-      <thingCategories>
-        <li>ApparelClothing</li>
-      </thingCategories>
-    </value>
+    <match Class="PatchOperationReplace">
+      <xpath>Defs/ThingDef[defName="Apparel_PsyfocusRobe"]/thingCategories</xpath>
+      <value>
+        <thingCategories>
+          <li>ApparelClothing</li>
+        </thingCategories>
+      </value>
+    </match>
   </Operation>
 
 </Patch>
