@@ -427,5 +427,63 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             string symbol = string.IsNullOrEmpty(currencySymbol) ? "¢" : currencySymbol;
             return $"{amount:N0} {symbol}";
         }
+
+        /// <summary>
+        /// Store buy flag for a material. No store row means allowed.
+        /// A disabled row is never used to make gear, on every command.
+        /// </summary>
+        public static bool IsMaterialEnabled(ThingDef material)
+        {
+            if (material == null)
+                return false;
+
+            StoreItem row = StoreInventory.GetStoreItem(material.defName);
+            if (row == null)
+                return true;
+
+            return row.Enabled;
+        }
+
+        /// <summary>
+        /// Random stuff the store still allows for this item.
+        /// Null when every legal material is disabled.
+        /// </summary>
+        public static ThingDef GetRandomEnabledStuffFor(ThingDef thingDef)
+        {
+            if (thingDef == null || !thingDef.MadeFromStuff)
+                return null;
+
+            List<ThingDef> enabled = GenStuff.AllowedStuffsFor(thingDef, TechLevel.Undefined, true)
+                .Where(IsMaterialEnabled)
+                .ToList();
+
+            if (enabled.Count > 0)
+            {
+                if (!enabled.TryRandomElementByWeight(stuff => stuff.stuffProps?.commonality ?? 0f, out ThingDef picked))
+                    enabled.TryRandomElement(out picked);
+                return picked;
+            }
+
+            ThingDef fallback = GenStuff.DefaultStuffFor(thingDef);
+            if (fallback != null && IsMaterialEnabled(fallback))
+                return fallback;
+
+            return null;
+        }
+
+        /// <summary>
+        /// Preferred stuff for a price-check preview. Skips a disabled default.
+        /// </summary>
+        public static ThingDef GetDefaultEnabledStuffFor(ThingDef thingDef)
+        {
+            if (thingDef == null || !thingDef.MadeFromStuff)
+                return null;
+
+            ThingDef preferred = GenStuff.DefaultStuffFor(thingDef);
+            if (preferred != null && IsMaterialEnabled(preferred))
+                return preferred;
+
+            return GenStuff.AllowedStuffsFor(thingDef).FirstOrDefault(IsMaterialEnabled);
+        }
     }
 }

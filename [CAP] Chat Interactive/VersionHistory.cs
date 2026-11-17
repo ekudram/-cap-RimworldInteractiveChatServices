@@ -495,6 +495,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
 <b>FIXED</b>
 ────────────
 - Chat and mod info show the version in the DLL. A JSON settings backup no longer keeps an old number.
+- Disabling a material in the store blocks that material on buy, equip, wear, backpack, and price check, including a random material.
 
 <b>ADDED</b>
 ────────────

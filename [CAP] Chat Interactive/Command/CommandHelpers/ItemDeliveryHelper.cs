@@ -1168,17 +1168,35 @@ public static class ItemDeliveryHelper
 		return deliveryResult;
 	}
 
+	/// <summary>
+	/// Named stuff is kept. A missing material is filled from store-enabled stuff only.
+	/// Returns false when nothing legal is left, with the delivery marked failed and unspawned.
+	/// </summary>
+	private static bool TryResolveEnabledStuff(ThingDef thingDef, ThingDef material, int quantity, DeliveryResult deliveryResult, out ThingDef resolved)
+	{
+		resolved = material;
+		if (thingDef == null || !thingDef.MadeFromStuff || resolved != null)
+			return true;
+
+		resolved = StoreCommandHelper.GetRandomEnabledStuffFor(thingDef);
+		if (resolved != null)
+			return true;
+
+		Logger.Warning($"[ItemSpawn] No enabled material for {thingDef.defName}");
+		deliveryResult.RequestedCount = quantity;
+		deliveryResult.UndeliveredCount = quantity;
+		deliveryResult.PrimaryMethod = DeliveryMethod.Failed;
+		return false;
+	}
+
 	private static DeliveryResult HandleDirectPawnInteraction(ThingDef thingDef, int quantity, QualityCategory? quality, ThingDef material, Pawn pawn, bool equipItem, bool wearItem, bool addToInventory)
 	{
 		DeliveryResult deliveryResult = new DeliveryResult
 		{
 			DeliveryPosition = (pawn?.Position ?? IntVec3.Invalid)
 		};
-		ThingDef thingDef2 = material;
-		if (thingDef.MadeFromStuff && thingDef2 == null)
-		{
-			thingDef2 = GenStuff.RandomStuffFor(thingDef);
-		}
+		if (!TryResolveEnabledStuff(thingDef, material, quantity, deliveryResult, out ThingDef thingDef2))
+			return deliveryResult;
 		List<Thing> list = CreateItemsForDelivery(thingDef, quantity, quality, thingDef2);
 		List<Thing> list2 = new List<Thing>();
 		if (equipItem && pawn != null)
@@ -1246,11 +1264,8 @@ public static class ItemDeliveryHelper
 		{
 			DeliveryPosition = IntVec3.Invalid
 		};
-		ThingDef thingDef2 = material;
-		if (thingDef.MadeFromStuff && thingDef2 == null)
-		{
-			thingDef2 = GenStuff.RandomStuffFor(thingDef);
-		}
+		if (!TryResolveEnabledStuff(thingDef, material, quantity, deliveryResult, out ThingDef thingDef2))
+			return deliveryResult;
 		List<Thing> list = CreateItemsForDelivery(thingDef, quantity, quality, thingDef2);
 		deliveryResult.RequestedCount = quantity;
 		Map map = ResolveDeliveryMap(pawn, allowUndergroundRedirect: false);

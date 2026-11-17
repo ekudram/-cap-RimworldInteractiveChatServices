@@ -63,7 +63,12 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     material = ItemConfigHelper.ParseMaterial(parsed.Material, thingDef);
                     if (material == null)
                         parsed.Material = "";
+                    else if (!StoreCommandHelper.IsMaterialEnabled(material))
+                        return "RICS.BICH.Return.MaterialDisabled".Translate(parsed.Material);
                 }
+
+                if (thingDef.MadeFromStuff && material == null && StoreCommandHelper.GetDefaultEnabledStuffFor(thingDef) == null)
+                    return "RICS.BICH.Return.NoEnabledMaterial".Translate(parsed.ItemName);
 
                 if (quality.HasValue && !ItemConfigHelper.IsQualityAllowed(quality))
                     return "RICS.CC.pricecheck.errorquality".Translate(quality.Value.ToString());
@@ -104,7 +109,9 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
             {
                 ThingDef stuff = material;
                 if (thingDef.MadeFromStuff && stuff == null)
-                    stuff = GenStuff.DefaultStuffFor(thingDef);
+                    stuff = StoreCommandHelper.GetDefaultEnabledStuffFor(thingDef);
+                if (thingDef.MadeFromStuff && stuff == null)
+                    return "";
 
                 tempThing = ThingMaker.MakeThing(thingDef, stuff);
 
