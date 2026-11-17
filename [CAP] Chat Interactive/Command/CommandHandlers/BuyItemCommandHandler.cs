@@ -108,6 +108,13 @@ namespace CAP_ChatInteractive.Commands.CommandHandlers
                     material = ItemConfigHelper.ParseMaterial(materialStr, thingDef);
                     if (materialStr != "random" && material == null)
                         return "RICS.BICH.Return.InvalidMaterial".Translate(materialStr, itemName);
+
+                    if (material != null && !StoreCommandHelper.IsMaterialEnabled(material))
+                        return "RICS.BICH.Return.MaterialDisabled".Translate(materialStr);
+
+                    // Existence only. Leave material null so a random buy keeps today's price.
+                    if (material == null && StoreCommandHelper.GetRandomEnabledStuffFor(thingDef) == null)
+                        return "RICS.BICH.Return.NoEnabledMaterial".Translate(itemName);
                 }
 
                 if (storeItem.HasQuantityLimit && quantity > storeItem.QuantityLimit)

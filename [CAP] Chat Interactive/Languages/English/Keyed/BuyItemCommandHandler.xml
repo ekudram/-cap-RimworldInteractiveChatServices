@@ -14,6 +14,8 @@
   <RICS.BICH.Return.DefNotFound>Error: Item definition not found.</RICS.BICH.Return.DefNotFound>
   <RICS.BICH.Return.BannedRace>Item '{0}' is a banned race and cannot be purchased.</RICS.BICH.Return.BannedRace>
   <RICS.BICH.Return.InvalidMaterial>Material '{0}' is not valid for {1}.</RICS.BICH.Return.InvalidMaterial>
+  <RICS.BICH.Return.MaterialDisabled>Material '{0}' is not available for purchase.</RICS.BICH.Return.MaterialDisabled>
+  <RICS.BICH.Return.NoEnabledMaterial>No available material can be used for {0}.</RICS.BICH.Return.NoEnabledMaterial>
   <RICS.BICH.Return.CannotAfford>You need {0} to purchase {1} {2}! You have {3}.</RICS.BICH.Return.CannotAfford>
   <RICS.BICH.Return.PawnDead>Your pawn is dead. You cannot equip/wear/backpack items.</RICS.BICH.Return.PawnDead>
   <RICS.BICH.Return.GenericError>Error processing purchase. Please try again.</RICS.BICH.Return.GenericError>
