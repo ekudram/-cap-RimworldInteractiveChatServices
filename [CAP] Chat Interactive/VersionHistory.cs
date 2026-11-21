@@ -485,7 +485,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
                         {"1.57",
 @"===========================================================
                          RICS version 1.57 - Changelog
-                         Pre-Release
+                         Nov 21, 2026
 ===========================================================
 
 <b>UPDATED</b>
