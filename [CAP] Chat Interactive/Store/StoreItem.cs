@@ -33,6 +33,11 @@ namespace CAP_ChatInteractive.Store
         public QuantityLimitMode LimitMode { get; set; } = QuantityLimitMode.OneStack; // Changed from Each to OneStack
 
         public bool Enabled { get; set; } = true;
+        /// <summary>
+        /// Stuff only. Viewers may use this as a material on gear when true.
+        /// Separate from <see cref="Enabled"/>. Missing saves load as true.
+        /// </summary>
+        public bool AllowForMaterial { get; set; } = true;
         public bool IsUsable { get; set; } = true; // Setting for Streamer to turn on and off
         public bool CanUse { get; set; } = true; // Setting internal to know if we want the Checkbox to show up so Streamer can turn on and off
         public bool IsEquippable { get; set; } // Setting for Streamer to turn on and off

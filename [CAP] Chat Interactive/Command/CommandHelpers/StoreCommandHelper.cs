@@ -429,8 +429,8 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
         }
 
         /// <summary>
-        /// Store buy flag for a material. No store row means allowed.
-        /// A disabled row is never used to make gear, on every command.
+        /// Whether this stuff may be used as a material. No store row means allowed.
+        /// Reads AllowForMaterial only. The buy, equip, and wear flags stay separate.
         /// </summary>
         public static bool IsMaterialEnabled(ThingDef material)
         {
@@ -441,7 +441,7 @@ namespace _CAP__Chat_Interactive.Command.CommandHelpers
             if (row == null)
                 return true;
 
-            return row.Enabled;
+            return row.AllowForMaterial;
         }
 
         /// <summary>

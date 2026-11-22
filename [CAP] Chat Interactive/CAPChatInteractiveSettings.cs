@@ -162,7 +162,7 @@ namespace CAP_ChatInteractive
     {
         // Chat and the version-history subtitle read modVersion. XML does not scribe it.
         // JSON backups must not either: an old file was pasting "1.50" over this DLL.
-        public const string CompiledModVersion = "1.57";
+        public const string CompiledModVersion = "1.58";
         [JsonIgnore]
         public string modVersion = CompiledModVersion;
         public string modVersionSaved = "";

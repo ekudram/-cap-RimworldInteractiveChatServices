@@ -171,6 +171,7 @@ namespace CAP_ChatInteractive
                                 BasePrice = storeItem.BasePrice,
                                 Category = storeItem.Category ?? "Misc",
                                 Enabled = storeItem.Enabled,
+                                AllowForMaterial = storeItem.AllowForMaterial,
                                 modactive = storeItem.modactive
                             };
                         }
@@ -232,6 +233,8 @@ namespace CAP_ChatInteractive
                     storeItem.BasePrice = itemToken["BasePrice"]?.Value<int>() ?? 0;
                     storeItem.Category = itemToken["Category"]?.Value<string>() ?? "Misc";
                     storeItem.Enabled = itemToken["Enabled"]?.Value<bool>() ?? true;
+                    // Old files have no field. Missing means allowed, so gear still has a material.
+                    storeItem.AllowForMaterial = itemToken["AllowForMaterial"]?.Value<bool>() ?? true;
                     storeItem.modactive = itemToken["modactive"]?.Value<bool>() ?? false;
                     storeItems[property.Name] = storeItem;
                 }

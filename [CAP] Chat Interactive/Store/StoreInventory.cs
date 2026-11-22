@@ -293,6 +293,7 @@ namespace CAP_ChatInteractive.Store
                     bool userIsUsable = existingItem.IsUsable;
                     bool userIsEquippable = existingItem.IsEquippable;
                     bool userIsWearable = existingItem.IsWearable;
+                    bool userAllowForMaterial = existingItem.AllowForMaterial;
 
                     // ────────────────────────────────────────
                     // 2. Update internal "Can" flags (always re-derived, never saved)
@@ -363,6 +364,8 @@ namespace CAP_ChatInteractive.Store
                         existingItem.IsEquippable = false;
                     else
                         existingItem.IsEquippable = userIsEquippable;
+
+                    existingItem.AllowForMaterial = userAllowForMaterial;
 
                     AllStoreItems[key] = existingItem;
                     updatedItems++;

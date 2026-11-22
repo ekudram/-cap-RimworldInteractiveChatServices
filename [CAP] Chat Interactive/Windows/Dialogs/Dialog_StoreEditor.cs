@@ -1147,7 +1147,13 @@ namespace CAP_ChatInteractive
                 }
 
                 // ────────────────────────────────────────
-                // Line 3: Equip (full width if present)
+                // Line 3: Material (stuff only, left) and Equip (right)
+                if (thingDef != null && thingDef.IsStuff)
+                {
+                    Rect materialRect = new Rect(flagsX, flagsY + lineHeight * 2, flagsWidth, lineHeight);
+                    DrawAllowForMaterialCheckbox(materialRect, item);
+                }
+
                 if (item.CanEquip)
                 {
                     Rect equipRect = new Rect(flagsX + flagsWidth + 4f, flagsY + lineHeight * 2, flagsWidth, lineHeight);
@@ -1194,7 +1200,8 @@ namespace CAP_ChatInteractive
             // Center the whole row like old method
             float bulkExactBoxW = 52f;
             float bulkSetW = 40f;
-            float totalWidth = 70f + 24f + 10f + 40f + 24f + 10f + 40f + 24f + 10f + 50f + 24f + 10f + 50f + 24f + 10f + 100f + 24f + 10f + (24f + 6f) * 3
+            float materialLabelW = 72f;
+            float totalWidth = 70f + 24f + 10f + 40f + 24f + 10f + 40f + 24f + 10f + 50f + 24f + 10f + 50f + 24f + 10f + materialLabelW + 24f + 10f + 100f + 24f + 10f + (24f + 6f) * 3
                 + 6f + bulkExactBoxW + 6f + bulkSetW;
             float curX = (rect.width - totalWidth) / 2f;
 
@@ -1236,9 +1243,9 @@ namespace CAP_ChatInteractive
             Widgets.Label(allLabelRect, "RICS.SE.AllItems".Translate());
             curX += 70f;
             Rect allCheckRect = new Rect(curX, 3f, 24f, 24f);
-            bool? allFlagsState = filteredItems.All(i => i.Enabled && i.IsUsable && i.IsWearable && i.IsEquippable)
+            bool? allFlagsState = filteredItems.All(i => i.Enabled && i.IsUsable && i.IsWearable && i.IsEquippable && (!IsMaterialStoreItem(i) || i.AllowForMaterial))
                 ? true
-                : filteredItems.Any(i => i.Enabled || i.IsUsable || i.IsWearable || i.IsEquippable)
+                : filteredItems.Any(i => i.Enabled || i.IsUsable || i.IsWearable || i.IsEquippable || (IsMaterialStoreItem(i) && i.AllowForMaterial))
                     ? (bool?)null
                     : false;
             DrawMixedCheckbox(allCheckRect, allFlagsState, newState =>
@@ -1251,6 +1258,11 @@ namespace CAP_ChatInteractive
                     if (item.IsUsable != newState) { item.IsUsable = newState; itemChanged = true; }
                     if (item.IsWearable != newState) { item.IsWearable = newState; itemChanged = true; }
                     if (item.IsEquippable != newState) { item.IsEquippable = newState; itemChanged = true; }
+                    if (IsMaterialStoreItem(item) && item.AllowForMaterial != newState)
+                    {
+                        item.AllowForMaterial = newState;
+                        itemChanged = true;
+                    }
                     if (itemChanged) changed++;
                 }
                 if (changed > 0)
@@ -1324,6 +1336,35 @@ namespace CAP_ChatInteractive
                 Logger.Debug($"Bulk Equip toggle to {newState}");
             });
             TooltipHandler.TipRegion(equipCheckRect, "RICS.SE.ToggleEquippable".Translate());
+            curX += 24f + 10f;
+
+            // Material checkbox. Only stuff rows change.
+            Rect materialLabelRect = new Rect(curX, 0f, materialLabelW, 30f);
+            Widgets.Label(materialLabelRect, "RICS.SE.Material".Translate());
+            curX += materialLabelW;
+            Rect materialCheckRect = new Rect(curX, 3f, 24f, 24f);
+            var materialItems = filteredItems.Where(IsMaterialStoreItem).ToList();
+            bool? materialState = materialItems.Count == 0
+                ? false
+                : materialItems.All(i => i.AllowForMaterial) ? true
+                : materialItems.Any(i => i.AllowForMaterial) ? (bool?)null : false;
+            DrawMixedCheckbox(materialCheckRect, materialState, newState =>
+            {
+                int changed = 0;
+                foreach (var item in materialItems)
+                {
+                    if (item.AllowForMaterial == newState)
+                        continue;
+                    item.AllowForMaterial = newState;
+                    changed++;
+                }
+                if (changed > 0)
+                {
+                    StoreInventory.SaveStoreToJson();
+                    Logger.Debug($"Bulk Material toggle to {newState} affected {changed} items");
+                }
+            });
+            TooltipHandler.TipRegion(materialCheckRect, "RICS.SE.ToggleMaterial".Translate());
             curX += 24f + 10f;
 
             // Quantity limit checkbox (old logic restored)
@@ -1535,6 +1576,30 @@ namespace CAP_ChatInteractive
                 StoreInventory.SaveStoreToJson();
             }
         }
+        // Stuff rows only. Buy stays a separate checkbox.
+        private void DrawAllowForMaterialCheckbox(Rect rect, StoreItem item)
+        {
+            bool wasAllowed = item.AllowForMaterial;
+            bool current = item.AllowForMaterial;
+            Widgets.CheckboxLabeled(rect, "RICS.SE.Material".Translate(), ref current);
+            TooltipHandler.TipRegion(rect, "RICS.SE.AllowForMaterialTip".Translate());
+            if (current != wasAllowed)
+            {
+                item.AllowForMaterial = current;
+                SoundDefOf.Checkbox_TurnedOn.PlayOneShotOnCamera();
+                StoreInventory.SaveStoreToJson();
+            }
+        }
+
+        private static bool IsMaterialStoreItem(StoreItem item)
+        {
+            if (item == null || string.IsNullOrEmpty(item.DefName))
+                return false;
+
+            ThingDef def = DefDatabase<ThingDef>.GetNamedSilentFail(item.DefName);
+            return def != null && def.IsStuff;
+        }
+
         // This method draws the enabled/disabled toggle for an item in the item row.
         private void DrawEnabledToggle(Rect rect, StoreItem item)
         {
