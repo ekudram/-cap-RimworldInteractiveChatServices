@@ -95,6 +95,7 @@ namespace CAP_ChatInteractive
             sb.AppendLine($"• **Icon** – Click for Def info + custom name editor");
             sb.AppendLine($"• **Enabled** – Makes item buyable via chat");
             sb.AppendLine($"• **Usable / Wearable / Equippable** – Determines chat store button text ('Use'/'Wear'/'Equip')");
+            sb.AppendLine($"• **Material** – Shown on materials only. Viewers can still use it on gear when Buy is off.");
             sb.AppendLine($"• **Price** – Custom price (Reset pulls ThingDef.BaseMarketValue)");
             sb.AppendLine($"• **Quantity Limit** – Checkbox + presets + manual numeric field (1-9999)");
             sb.AppendLine($"");

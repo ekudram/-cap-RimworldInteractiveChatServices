@@ -136,7 +136,10 @@
   <RICS.SE.Use>Use</RICS.SE.Use>
   <RICS.SE.Wear>Wear</RICS.SE.Wear>
   <RICS.SE.Equip>Equip</RICS.SE.Equip>
-  <RICS.SE.ToggleAllFlags>Toggle all flags (Buy, Use, Wear, Equip) for all visible items</RICS.SE.ToggleAllFlags>
+  <RICS.SE.Material>Material</RICS.SE.Material>
+  <RICS.SE.AllowForMaterialTip>Viewers can use this as the material on gear. Separate from Buy.</RICS.SE.AllowForMaterialTip>
+  <RICS.SE.ToggleMaterial>Turn material use on or off for visible materials</RICS.SE.ToggleMaterial>
+  <RICS.SE.ToggleAllFlags>Toggle all flags (Buy, Use, Wear, Equip, Material) for all visible items. Material applies only to materials.</RICS.SE.ToggleAllFlags>
   <RICS.SE.ToggleBuyable>Toggle buyable for all visible items</RICS.SE.ToggleBuyable>
   <RICS.SE.ToggleUsable>Toggle usable for all visible items</RICS.SE.ToggleUsable>
   <RICS.SE.ToggleWearable>Toggle wearable for all visible items</RICS.SE.ToggleWearable>

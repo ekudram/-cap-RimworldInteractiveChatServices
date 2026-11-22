@@ -482,6 +482,22 @@ Also changed message about Ownership and adding mid game to be more clear about 
 - !mypawn story race and xenotype keys.
 "
                 },
+                        {"1.58",
+@"===========================================================
+                         RICS version 1.58 - Changelog
+                         Pre-Release
+===========================================================
+
+<b>ADDED</b>
+────────────
+- Materials in the store have their own Material switch. Turning off Buy no longer stops that material on gear. Turning Material off blocks it on buy, equip, wear, backpack, and price check, including a random material.
+
+<b>TRANSLATIONS</b>
+───────────────────
+- Store editor Material checkbox, and the chat line when a material is not allowed.
+
+"
+                },
                         {"1.57",
 @"===========================================================
                          RICS version 1.57 - Changelog
