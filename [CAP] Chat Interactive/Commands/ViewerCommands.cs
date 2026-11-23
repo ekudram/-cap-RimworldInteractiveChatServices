@@ -1,22 +1,11 @@
-﻿// ViewerCommands.cs
+﻿// File: ViewerCommands.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
-// Commands that viewers can use to interact with the game
-//
+// Commands that viewers can use to interact with the game.
 // RICS_Commands.xml defines the command metadata and localization keys for these commands.
 
 using _CAP__Chat_Interactive.Utilities;
@@ -110,9 +99,8 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
                 return "RICS.CC.whatiskarma";
             }
 
-            // Dynamic summary of ALL key karma settings (exactly 218 chars with default values)
-            // Uses live settings so admins can tune without touching code or translations
-            return $"Karma ({settings.MinKarma:F0} - {settings.MaxKarma:F0}): Decay {settings.KarmaDecayRate:P0} every {settings.KarmaDecayIntervalMinutes} min (floor {settings.KarmaMinDecayFloor}). " +
+            // KarmaDecayRate is already a percent (1 = 1%). Do not use :P, which multiplies by 100.
+            return $"Karma ({settings.MinKarma:F0} - {settings.MaxKarma:F0}): Decay {settings.KarmaDecayRate:0.##}% every {settings.KarmaDecayIntervalMinutes} min (floor {settings.KarmaMinDecayFloor}). " +
                    $"Good +{settings.KarmaGainPerGoodEvent} Neut +{settings.KarmaGainPerNeutralEvent} Bad -{settings.KarmaLossPerBadEvent} Doom -{settings.KarmaLossPerDoomEvent}. " +
                    $"Store +{settings.KarmaPerStoreItem:0.##}% per item | Event x {settings.KarmaEventPriceMultiplier:0.##}. Higher = better coin rewards!";
         }

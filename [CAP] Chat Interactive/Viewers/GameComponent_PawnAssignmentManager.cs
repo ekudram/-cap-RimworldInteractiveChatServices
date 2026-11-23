@@ -1,19 +1,9 @@
-// GameComponent_PawnAssignmentManager.cs
+// File: GameComponent_PawnAssignmentManager.cs
+//
 // Copyright (c) Captolamia
-// This file is part of CAP Chat Interactive.
-// 
-// CAP Chat Interactive is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published
-// by the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// CAP Chat Interactive is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-// 
-// You should have received a copy of the GNU Affero General Public License
-// along with CAP Chat Interactive. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of CAP Chat Interactive (RICS).
+// Licensed under the GNU Affero General Public License v3.0 or later.
+// See LICENSE.txt in the project root for full license text.
 //
 // Assigns pawns to chat viewers (platform ID keys), queue, pending offers, death info.
 using RimWorld;
@@ -650,24 +640,41 @@ namespace CAP_ChatInteractive
 
         public bool RemoveFromQueue(string username)
         {
-            var viewer = Viewers.GetViewer(username);
-            if (viewer == null)
+            if (string.IsNullOrEmpty(username))
                 return false;
 
             try
             {
                 EnsureInitialized();
-                string platformId = viewer.GetPrimaryPlatformIdentifier();
-                bool removed = pawnQueue.Remove(platformId);
-                if (removed)
-                    queueJoinTimes.Remove(platformId);
-                return removed;
+
+                // The queue window passes the stored key (twitch:123). GetViewer would
+                // create a fake viewer from that string, merge starting coins, and miss the row.
+                if (TryRemoveQueueKey(username))
+                    return true;
+
+                Viewer viewer = Viewers.GetViewerNoAdd(username);
+                if (viewer == null)
+                    return false;
+
+                return TryRemoveQueueKey(viewer.GetPrimaryPlatformIdentifier());
             }
             catch (Exception ex)
             {
                 Logger.Error($"[PawnAssign] RemoveFromQueue(username): {ex.Message}");
                 return false;
             }
+        }
+
+        private bool TryRemoveQueueKey(string queueKey)
+        {
+            if (string.IsNullOrEmpty(queueKey))
+                return false;
+
+            if (!pawnQueue.Remove(queueKey))
+                return false;
+
+            queueJoinTimes.Remove(queueKey);
+            return true;
         }
 
         public bool IsInQueue(string username)
