@@ -27,18 +27,22 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
     {
         public override string Name => "bal";
 
-        /// <summary>Emoji band for karma display on !bal only.</summary>
-        private static string GetKarmaEmoji(float karma)
+        /// <summary>
+        /// Emoji band for karma display on !bal only.
+        /// Cuts are the old cap-of-200 steps, as a share of <paramref name="maxKarma"/>.
+        /// </summary>
+        private static string GetKarmaEmoji(float karma, float maxKarma)
         {
-            if (karma >= 199) return "🦄";
-            if (karma >= 150) return "😇";
-            if (karma >= 120) return "😊";
-            if (karma >= 90) return "🙂";
-            if (karma >= 80) return "☺️";
-            if (karma >= 70) return "😐";
-            if (karma >= 50) return "😕";
-            if (karma >= 30) return "😠";
-            if (karma >= 10) return "👿";
+            float percent = maxKarma > 0f ? karma / maxKarma : 0f;
+            if (percent >= 199f / 200f) return "🦄";
+            if (percent >= 150f / 200f) return "😇";
+            if (percent >= 120f / 200f) return "😊";
+            if (percent >= 90f / 200f) return "🙂";
+            if (percent >= 80f / 200f) return "☺️";
+            if (percent >= 70f / 200f) return "😐";
+            if (percent >= 50f / 200f) return "😕";
+            if (percent >= 30f / 200f) return "😠";
+            if (percent >= 10f / 200f) return "👿";
             return "💀";
         }
 
@@ -53,7 +57,7 @@ namespace CAP_ChatInteractive.Commands.ViewerCommands
 
                 var currencySymbol = settings.CurrencyName?.Trim() ?? "¢";
 
-                string karmaEmoji = GetKarmaEmoji(viewer.Karma);
+                string karmaEmoji = GetKarmaEmoji(viewer.Karma, settings.MaxKarma);
 
                 // Calculate coins earned per award cycle (every 2 minutes)
                 int baseCoins = settings.BaseCoinReward;

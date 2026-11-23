@@ -496,6 +496,7 @@ Also changed message about Ownership and adding mid game to be more clear about 
 ────────────
 - !karmasettings shows the decay percent from settings. A rate of 1 says 1%, not 100%.
 - Removing a viewer from the pawn queue takes them off the list. It no longer adds starting coins or karma.
+- !bal karma face follows the karma cap. It stays the same when the cap is 200.
 
 <b>TRANSLATIONS</b>
 ───────────────────
