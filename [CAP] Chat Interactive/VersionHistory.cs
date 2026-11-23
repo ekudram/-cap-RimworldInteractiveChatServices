@@ -492,6 +492,11 @@ Also changed message about Ownership and adding mid game to be more clear about 
 ────────────
 - Materials in the store have their own Material switch. Turning off Buy no longer stops that material on gear. Turning Material off blocks it on buy, equip, wear, backpack, and price check, including a random material.
 
+<b>FIXED</b>
+────────────
+- !karmasettings shows the decay percent from settings. A rate of 1 says 1%, not 100%.
+- Removing a viewer from the pawn queue takes them off the list. It no longer adds starting coins or karma.
+
 <b>TRANSLATIONS</b>
 ───────────────────
 - Store editor Material checkbox, and the chat line when a material is not allowed.
